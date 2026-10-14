@@ -55,8 +55,8 @@
   },
   "mps_evidence": {
     "mps_peak_allocated_bytes": 105906176,
-    "mps_infer_sec": 0.5309254168532789,
-    "cpu_infer_sec": 1.4548878751229495,
+    "mps_infer_sec": 0.32572095887735486,
+    "cpu_infer_sec": 1.2058531669899821,
     "param_devices": [
       "mps"
     ],
@@ -72,7 +72,7 @@
       "aten.unsqueeze.default",
       "aten.view.default"
     ],
-    "speedup_cpu_over_mps": 2.7402867313188124
+    "speedup_cpu_over_mps": 3.7021049279301286
   },
   "cpu_control": {
     "real_cpu_inference": true,
@@ -104,7 +104,7 @@
           764,
           484
         ],
-        "infer_sec": 0.6615962919313461,
+        "infer_sec": 0.33904808410443366,
         "ran_inference": true,
         "param_devices": [
           "mps"
@@ -129,7 +129,7 @@
           764,
           484
         ],
-        "infer_sec": 1.6012095420155674,
+        "infer_sec": 1.3312869581859559,
         "ran_inference": true,
         "param_devices": [
           "cpu"
@@ -167,7 +167,7 @@
           777,
           483
         ],
-        "infer_sec": 0.5309254168532789,
+        "infer_sec": 0.32572095887735486,
         "ran_inference": true,
         "param_devices": [
           "mps"
@@ -192,7 +192,7 @@
           777,
           483
         ],
-        "infer_sec": 1.4548878751229495,
+        "infer_sec": 1.2058531669899821,
         "ran_inference": true,
         "param_devices": [
           "cpu"
@@ -230,7 +230,7 @@
           893,
           477
         ],
-        "infer_sec": 0.5088535828981549,
+        "infer_sec": 0.27869508299045265,
         "ran_inference": true,
         "param_devices": [
           "mps"
@@ -255,7 +255,7 @@
           893,
           477
         ],
-        "infer_sec": 1.4119977080263197,
+        "infer_sec": 1.0807845420204103,
         "ran_inference": true,
         "param_devices": [
           "cpu"

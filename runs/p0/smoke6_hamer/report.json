@@ -412,11 +412,11 @@
     "vitpose": "whole-body pose model that demo.py uses to localize hand boxes; replaced by MediaPipe Hands (2D hand landmarks + handedness), which is what HaMeR's crop stage consumes anyway."
   },
   "mps_evidence": {
-    "mps_infer_sec": 0.09677777765318751,
+    "mps_infer_sec": 0.09742906969040632,
     "mps_batch": 1.0,
     "mps_peak_allocated_bytes": 2690119424.0,
-    "cpu_infer_sec": 0.284012847347185,
-    "speedup_cpu_over_mps": 2.9346907341163835,
+    "cpu_infer_sec": 0.33232265260691446,
+    "speedup_cpu_over_mps": 3.410918873216314,
     "note": "identical input batch forwarded on MPS and on CPU; both timed over 3 warm runs after one warmup forward",
     "param_devices": [
       "mps:0"
