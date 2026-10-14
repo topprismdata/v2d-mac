@@ -14,6 +14,10 @@ Reward is shaped around the official evaluator
 (``runs/p0/assets/tissue_box_lift_hold.json``):
     lift   >= 0.10 m      hold   <= 0.05 m descent / step
     final_min_lift >= -0.01 m         min_hold_steps = 20
+
+The shaping itself lives in :class:`HoldRewardShaper` and is tested property-wise
+in ``tests/test_smoke4_reward.py``: holding must beat lifting-and-dropping, and
+altitude shown in free flight must never be worth more than altitude held.
 """
 
 from __future__ import annotations
@@ -45,22 +49,58 @@ FINGER_BODY_PREFIXES = ("ff_", "mf_", "rf_", "th_")
 OBJECT_GEOM = "object_geom"
 
 # --- reward weights (shaped around the official evaluator) ------------------
-# Weighting rationale (learned the hard way - see report.json deviations):
-#  * the height term must dominate the "touch it" term, otherwise PPO settles for a
-#    permanent light grasp and never lifts;
-#  * the drop penalty must NOT be a per-step cliff on resting contact: an earlier
-#    W_DROP=60/step keyed on lift <= -5 mm made touching the box at all net
-#    negative (a 5 cm lift is only worth 6.0/step), so PPO converged on "never
-#    touch the box". W_DROP is now charged once, on the transition that loses an
-#    already-achieved lift, and W_LIFT is floored so resting contact is free.
-W_REACH = 2.0          # per metre of palm->box distance reduction
-W_ALIGN = 3.0          # box centred under the palm
-W_GRASP = 2.0          # fingertips in contact with the box (enabler, not the goal)
-W_LIFT = 150.0         # per metre lifted above the start height -> 7.5 @ 5 cm
-W_HOLD = 8.0           # per step held above hold_threshold
-W_MIN_HOLD = 60.0      # once min_hold_steps are satisfied
-W_LIFT_BONUS = 200.0   # evaluator lift_threshold (0.10 m) reached
-W_DROP = 60.0          # ONE-SHOT penalty for losing an achieved lift
+# Round-2 rationale. Round 1 trained a FLICK, not a grasp: 2M steps gave 0.28 m
+# peak lifts but A3a came back at force duty 0.03 / mean 0.38 N (bars 0.50 and
+# 1.47 N) because only 2 steps ever had a finger on the box. The reward paid
+# W_LIFT * max(lift, 0) for *altitude shown*, with no term for contact, so the
+# cheapest way to 0.28 m was a strike and a ballistic arc - the box was in free
+# flight for the entire window, which is exactly the trace the gates reject.
+# A scripted probe of the same scene reaches duty 0.88-0.94 with 9-19 N of finger
+# force, so the gates are physically reachable; the reward just never asked for
+# them. Four changes, all in one place:
+#
+#  1. ALTITUDE IS PAID ONLY WHILE GRIPPED (W_LIFT_HELD). Free flight pays nothing.
+#     This closes the "throw it and let gravity do the work" exploit.
+#  2. A HOLD STREAK pays per step and its value GROWS with the streak (W_HOLD_STEP
+#     + W_HOLD_RAMP * min(streak, min_hold_steps) / min_hold_steps), so holding
+#     longer is never worse - the property the official evaluator's
+#     min_hold_steps=20 encodes.
+#  3. Completing min_hold_steps pays a one-shot W_HOLD_BONUS, and a drop costs
+#     W_DROP_BASE + W_DROP_RAMP * fraction_of_hold_streak_lost. A flat one-shot
+#     drop penalty is farmable ("hold 3 steps, drop, re-grasp, repeat"); scaling
+#     with the streak lost makes banking a long hold strictly better than churning.
+#  4. W_FREE_FLIGHT charges every unheld step above hold_threshold. This is the
+#     direct inverse of the flick: throwing the box now costs ~20/step for ~20
+#     steps, versus ~20/step of hold reward for keeping it. Note this is NOT the
+#     round-1 mistake of a cliff keyed on resting contact (lift <= -5 mm) - it
+#     only ever fires while the box is ABOVE hold_threshold and NOT held, which a
+#     policy that simply rests on the pedestal never triggers.
+#
+# W_GRASP and W_ALIGN are enablers only, deliberately small. At reset the palm is
+# already centred above the box and the thumb is already touching it, so both terms
+# pay out from step 0 without doing anything: at the original weights (3.0 and 2.0)
+# a do-nothing policy banked +1289 return while the best scripted grasp scored 968,
+# i.e. the local optimum was "stand still". W_GRIP scales with force magnitude,
+# which is what pulls the policy toward the 1.47 N sufficiency bar instead of a
+# feather touch; it pays the full W_GRIP rate only while the hand actually carries
+# the box, and W_GRIP_PRELOAD while the box still rests on its support, for the
+# same "stand still and crush it" reason.
+BOX_MASS_KG = 0.15
+BOX_WEIGHT_N = BOX_MASS_KG * 9.81
+
+W_REACH = 2.0          # per metre of palm->box distance reduction (one-shot-ish delta)
+W_ALIGN = 0.5          # box centred under the palm (enabler only)
+W_GRASP = 0.5          # fingertips in contact with the box (enabler only)
+W_GRIP = 6.0           # per box-weight of finger force while the hand carries the box
+W_GRIP_PRELOAD = 0.5   # ... and while the box still rests on its support (see below)
+W_LIFT_HELD = 150.0    # per metre lifted *while a finger is on the box* -> 7.5 @ 5 cm
+W_HOLD_STEP = 12.0     # per held step (base value of the hold streak)
+W_HOLD_RAMP = 12.0     # extra per held step, growing to +100% at min_hold_steps
+W_HOLD_BONUS = 60.0    # ONE-SHOT when min_hold_steps consecutive hold steps complete
+W_LIFT_BONUS = 200.0   # ONE-SHOT at the evaluator's lift_threshold (0.10 m), gripped
+W_DROP_BASE = 20.0     # ONE-SHOT penalty for losing an achieved hold ...
+W_DROP_RAMP = 80.0     # ... scaled by the fraction of hold streak thrown away
+W_FREE_FLIGHT = 20.0   # per step above hold_threshold with NO finger on the box
 W_CTRL = 0.002         # action magnitude penalty
 W_VEL = 0.01           # joint velocity penalty
 W_OFF_TABLE = 20.0     # per step while the box is off the table AND not held
@@ -70,6 +110,145 @@ HOLD_SLACK = 0.001     # descent tolerance added on top of max_descent_step_m
 def _load_evaluator() -> dict[str, float]:
     data = json.loads(EVALUATOR_JSON.read_text())["evaluator"]
     return {k: float(v) for k, v in data.items() if isinstance(v, (int, float))}
+
+
+class HoldRewardShaper:
+    """Episode reward state + the per-step reward itself, as a pure function.
+
+    Split out of ``LiftHoldEnv._reward`` so the shaping can be tested against
+    properties (lift-and-hold > lift-and-drop, free flight < 0, hold reward
+    monotone in the streak) with no MuJoCo model and no policy - see
+    ``tests/test_smoke4_reward.py``.
+
+    All the shaping decisions live in :meth:`step`; the caller only measures
+    quantities (height above the reset height, finger contact force, whether a
+    finger is touching the box, palm alignment, reach progress) and hands them in.
+    """
+
+    def __init__(self, *, hold_threshold_m: float, lift_threshold_m: float,
+                 min_hold_steps: int, max_descent_step_m: float,
+                 box_weight_n: float = BOX_WEIGHT_N) -> None:
+        self.hold_threshold_m = float(hold_threshold_m)
+        self.lift_threshold_m = float(lift_threshold_m)
+        self.min_hold_steps = int(min_hold_steps)
+        self.max_descent_step_m = float(max_descent_step_m)
+        self.box_weight_n = float(box_weight_n)
+        self.reset()
+
+    def reset(self) -> None:
+        self.hold_streak = 0        # consecutive evaluator-valid hold steps
+        self.best_hold_streak = 0
+        self.prev_lift = 0.0
+        self.lift_bonus_paid = False
+        self.hold_bonus_paid = False
+
+    # ------------------------------------------------------------------ step
+    def step(self, *, lift: float, finger_force: float, finger_held: bool,
+             on_support: bool, align: float, dist_reach: float,
+             act_pen: float = 0.0, vel_pen: float = 0.0) -> tuple[float, dict]:
+        """Reward one control step. Returns ``(reward, info)``.
+
+        ``finger_held`` must be True only when a *finger* geom is actually in
+        contact with the box - that is the distinction the flick exploit lives in.
+        """
+        held = bool(finger_held)
+        held_f = 1.0 if held else 0.0
+        grasp = 1.0 if finger_force > 0.0 else 0.0
+
+        # --- hold streak: evaluator semantics -----------------------------
+        # A hold step is one where the box is above hold_threshold, a finger is
+        # on it, and it did not descend faster than max_descent_step_m.
+        descent = max(0.0, self.prev_lift - lift)
+        slipping = descent > self.max_descent_step_m + HOLD_SLACK
+        if lift >= self.hold_threshold_m and held and not slipping:
+            self.hold_streak += 1
+        else:
+            self.hold_streak = 0
+        self.best_hold_streak = max(self.best_hold_streak, self.hold_streak)
+        self.prev_lift = lift
+
+        hold = 1.0 if lift >= self.hold_threshold_m else 0.0
+
+        # --- one-shots -----------------------------------------------------
+        # A lift bonus is only earned while gripped: reaching 10 cm in free
+        # flight is the flick, and must not bank the same reward as a hold.
+        lift_bonus = 1.0 if (lift >= self.lift_threshold_m and held
+                             and not self.lift_bonus_paid) else 0.0
+        if lift_bonus:
+            self.lift_bonus_paid = True
+        min_hold = (1.0 if (self.hold_streak >= self.min_hold_steps
+                            and not self.hold_bonus_paid) else 0.0)
+        if min_hold:
+            self.hold_bonus_paid = True
+
+        # --- drop: one-shot, scaled by the hold streak thrown away ---------
+        lost_streak = self.best_hold_streak
+        drop = 1.0 if (lost_streak > 0 and not hold) else 0.0
+        drop_fraction = (lost_streak / self.min_hold_steps) if lost_streak else 0.0
+        if drop:
+            # the streak is gone; the policy must earn the next one honestly
+            self.best_hold_streak = 0
+            self.lift_bonus_paid = False
+            self.hold_bonus_paid = False
+
+        # --- the streak's per-step value grows with its own length ----------
+        ramp = min(self.hold_streak, self.min_hold_steps) / max(1, self.min_hold_steps)
+        hold_value = W_HOLD_STEP + W_HOLD_RAMP * ramp
+
+        # --- free flight: altitude shown with no hand on it ----------------
+        free_flight = 1.0 if (lift >= self.hold_threshold_m and not held) else 0.0
+
+        # Grip force pays the full rate only while the hand carries the box;
+        # squeezing a box that still rests on its support pays the preload rate.
+        carrying = 1.0 if (held and not on_support) else 0.0
+        grip_rate = W_GRIP * carrying + W_GRIP_PRELOAD * (1.0 - carrying)
+
+        # NOTE on two shaping attempts that were tried and reverted (do not
+        # re-add without re-measuring):
+        #  * GRADED hold, hold_value * min(lift / hold_threshold, 1). Intended to
+        #    give the 3.2 cm plateau a gradient toward the 5 cm threshold. It made
+        #    "lift a little, stay safe" strictly better than the high-variance
+        #    attempt to clear the bar: 2M steps ended at z_peak 0.0 in every
+        #    quarter of the curve.
+        #  * W_HOOK, a bonus for having the palm above the box centre while
+        #    carrying it, aimed at the geometry a scripted sweep says clears 5 cm.
+        #    It collapsed exploration instead: training grasp fraction fell to
+        #    0.002-0.018 across all four quarters, versus 0.49 for the config
+        #    that produced the real grasp.
+        # The continuous gradient is already supplied by W_LIFT_HELD.
+        rew = (
+            W_REACH * dist_reach
+            + W_ALIGN * align
+            + W_GRASP * grasp
+            + grip_rate * min(finger_force / self.box_weight_n, 3.0)
+            + W_LIFT_HELD * max(lift, 0.0) * held_f
+            + hold_value * hold * held_f
+            + W_HOLD_BONUS * min_hold
+            + W_LIFT_BONUS * lift_bonus
+            - (W_DROP_BASE + W_DROP_RAMP * min(drop_fraction, 1.0)) * drop
+            - W_FREE_FLIGHT * free_flight
+            - act_pen
+            - vel_pen
+        )
+        info = {
+            "lift": lift,
+            "align": align,
+            "grasp": grasp,
+            "hold": hold * held_f,
+            "min_hold": min_hold,
+            "hold_streak": float(self.hold_streak),
+            "drop": drop,
+            "drop_fraction": drop_fraction,
+            "slip": float(slipping),
+            "free_flight": free_flight,
+            "supported": float(on_support),
+            "finger_held": held_f,
+            "contact_force": float(finger_force),
+            "finger_force": float(finger_force),
+            "finger_contact": grasp,
+            "pairs": [],
+        }
+        return float(rew), info
 
 
 class _ModelOnly:
@@ -110,6 +289,13 @@ class LiftHoldEnv(gym.Env):
         self.min_hold_steps = int(ev["min_hold_steps"])
         self.max_descent_step_m = ev["max_descent_step_m"]
         self.final_min_lift_m = ev["final_min_lift_m"]
+        self._shaper = HoldRewardShaper(
+            hold_threshold_m=ev["hold_threshold_m"],
+            lift_threshold_m=ev["lift_threshold_m"],
+            min_hold_steps=int(ev["min_hold_steps"]),
+            max_descent_step_m=ev["max_descent_step_m"],
+            box_weight_n=BOX_MASS_KG * 9.81,
+        )
 
         self.model = mujoco.MjModel.from_xml_path(str(MJCF))
         self.data = mujoco.MjData(self.model)
@@ -195,11 +381,8 @@ class LiftHoldEnv(gym.Env):
         self._step_count = 0
         self._z0 = 0.0
         self._z_peak = 0.0
-        self._hold_steps = 0
-        self._min_hold_counter = 0
         self._prev_dist = None
         self._prev_obj_pos = None
-        self._prev_lift = 0.0
         self._ctrl_ref = np.zeros(N_ACT)
         self._history = np.zeros(8, dtype=np.float64)
         self._rng = np.random.default_rng(0)
@@ -298,20 +481,18 @@ class LiftHoldEnv(gym.Env):
         self._z0 = float(d.xpos[self.obj_body][2])
         self._z_peak = self._z0
         self._step_count = 0
-        self._hold_steps = 0
-        self._min_hold_counter = 0
+        self._shaper.reset()
         self._prev_obj_pos = d.xpos[self.obj_body].copy()
         self._prev_dist = float(np.linalg.norm(d.xpos[self.palm] - d.xpos[self.obj_body]))
-        self._prev_lift = 0.0
         self._ctrl_ref = d.ctrl.copy()
         self._history = np.zeros(8)
         self.last_contact_pairs = []
         self.last_contact_force = 0.0
         self.trace = {"obj_z": [], "contact_force": [], "finger_force": [],
                       "contact_pairs": [], "obj_vz": [], "supported": [],
-                      "finger_held": [],
+                      "finger_held": [], "hold_streak": [], "free_flight": [],
                       "wrist_z": [], "lift": []}
-        self._ep: dict[str, list[float]] = {"grasp": [], "hold": []}
+        self._ep: dict[str, list[float]] = {"grasp": [], "hold": [], "streak": []}
 
         return self._obs(), {"obj_z0": self._z0}
 
@@ -391,6 +572,12 @@ class LiftHoldEnv(gym.Env):
 
     # --------------------------------------------------------------- reward
     def _reward(self) -> tuple[float, dict[str, float]]:
+        """Measure the world, then delegate the shaping to HoldRewardShaper.
+
+        The shaper owns every decision about what the episode is worth (see its
+        docstring); this method only reads sensors. Round 1 kept the arithmetic
+        inline, which made the shaping untestable without a policy.
+        """
         d = self.data
         obj_pos = d.xpos[self.obj_body]
         lift = float(obj_pos[2] - self._z0)
@@ -405,69 +592,34 @@ class LiftHoldEnv(gym.Env):
         align = float(np.exp(-40.0 * float(np.linalg.norm(obj_pos[:2] - palm_pos[:2]))))
 
         pairs, force, finger_force = self._read_contacts()
-        grasp = 1.0 if finger_force > 0.0 else 0.0
+        on_support, finger_held = self._support_and_held(pairs)
 
-        # evaluator semantics: hold means "stayed above hold_threshold_m without
-        # descending more than max_descent_step_m per step"
-        if lift >= self.hold_threshold_m:
-            descent = max(0.0, self._prev_lift - lift)
-            if descent <= self.max_descent_step_m + HOLD_SLACK:
-                self._min_hold_counter += 1
-            else:
-                self._min_hold_counter = 0
-        else:
-            self._min_hold_counter = 0
-        self._prev_lift = lift
+        qvel = d.qvel[self.finger_dof_adr]
+        wrist_vel = d.qvel[self.wrist_dof_adr]
+        act_pen = float(np.sum(np.square(d.ctrl - self._ctrl_ref))) * W_CTRL
+        vel_pen = float(np.sum(np.square(qvel))) * W_VEL \
+            + float(np.sum(np.square(wrist_vel))) * W_VEL
 
-        hold = 1.0 if lift >= self.hold_threshold_m else 0.0
-        min_hold = 1.0 if self._min_hold_counter >= self.min_hold_steps else 0.0
-        lift_bonus = 1.0 if lift >= self.lift_threshold_m else 0.0
-        # one-shot: charge the drop penalty only on the transition out of an
-        # achieved lift, never for resting contact on the table
-        was_lifted = self._prev_lift >= self.hold_threshold_m
-        drop = 1.0 if (was_lifted and lift < self.hold_threshold_m) else 0.0
-
+        rew, info = self._shaper.step(
+            lift=lift,
+            finger_force=finger_force,
+            finger_held=finger_held,
+            on_support=on_support,
+            align=align,
+            dist_reach=dist_reach,
+            act_pen=act_pen,
+            vel_pen=vel_pen,
+        )
         # Sliding the box off the table used to be a free exploit: once it is off,
         # max(lift, 0) is 0 forever, so PPO learned to shove it over the edge
         # (observed: episode-mean lift of -0.13 m = box at z 0.61, below the table).
-        # Charging every abandoned-off-table step removes that escape hatch.
         knocked = 1.0 if self._box_knocked_away(pairs) else 0.0
-        on_support, finger_held = self._support_and_held(pairs)
+        rew -= W_OFF_TABLE * knocked
 
-        qvel = self.data.qvel[self.finger_dof_adr]
-        wrist_vel = self.data.qvel[self.wrist_dof_adr]
-        act_pen = float(np.sum(np.square(self.data.ctrl - self._ctrl_ref))) * W_CTRL
-        vel_pen = float(np.sum(np.square(qvel))) * W_VEL \
-            + float(np.sum(np.square(wrist_vel))) * W_VEL
-        rew = (
-            W_REACH * dist_reach
-            + W_ALIGN * align
-            + W_GRASP * grasp
-            + W_LIFT * max(lift, 0.0)
-            + W_HOLD * hold
-            + W_MIN_HOLD * min_hold
-            + W_LIFT_BONUS * lift_bonus
-            - W_DROP * drop
-            - W_OFF_TABLE * knocked
-            - act_pen
-            - vel_pen
-        )
-        info = {
-            "lift": lift,
-            "align": align,
-            "grasp": grasp,
-            "hold": hold,
-            "min_hold": min_hold,
-            "drop": drop,
-            "knocked_away": knocked,
-            "supported": float(on_support),
-            "finger_held": float(finger_held),
-            "contact_force": force,
-            "finger_force": finger_force,
-            "finger_contact": grasp,
-            "pairs": pairs,
-            "dist": dist,
-        }
+        info["knocked_away"] = knocked
+        info["contact_force"] = force
+        info["pairs"] = pairs
+        info["dist"] = dist
         return float(rew), info
 
     # ------------------------------------------------------------------ step
@@ -500,6 +652,7 @@ class LiftHoldEnv(gym.Env):
 
         self._ep["grasp"].append(rinfo["grasp"])
         self._ep["hold"].append(rinfo["min_hold"])
+        self._ep["streak"].append(rinfo["hold_streak"])
         self._step_count += 1
         term = False
         trunc = self._step_count >= self.max_episode_steps
@@ -518,6 +671,10 @@ class LiftHoldEnv(gym.Env):
         self.trace["obj_vz"].append(float(self.data.qvel[self.obj_qvel_adr + 2]))
         self.trace["supported"].append(rinfo["supported"])
         self.trace["finger_held"].append(rinfo["finger_held"])
+        # round-2 shaping telemetry: consecutive evaluator-valid hold steps, and
+        # whether the box was aloft with no finger on it (the flick exploit).
+        self.trace["hold_streak"].append(rinfo["hold_streak"])
+        self.trace["free_flight"].append(rinfo["free_flight"])
         self.last_contact_pairs = [(a, b) for a, b in rinfo["pairs"]]
 
         info = {
@@ -539,6 +696,9 @@ class LiftHoldEnv(gym.Env):
             "lift_max": float(max(self.trace["lift"])) if self.trace["lift"] else 0.0,
             "grasp": float(np.mean(self._ep["grasp"])) if self._ep["grasp"] else 0.0,
             "hold": float(np.mean(self._ep["hold"])) if self._ep["hold"] else 0.0,
+            "hold_streak_max": float(max(self._ep["streak"])) if self._ep["streak"] else 0.0,
+            "free_flight": float(np.mean(self.trace["free_flight"]))
+            if self.trace["free_flight"] else 0.0,
             "z_peak": float(self._z_peak - self._z0),
             "contact_force": float(np.mean(self.trace["contact_force"])),
             "steps": n,
