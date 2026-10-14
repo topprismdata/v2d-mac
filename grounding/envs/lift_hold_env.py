@@ -307,7 +307,9 @@ class LiftHoldEnv(gym.Env):
         self._history = np.zeros(8)
         self.last_contact_pairs = []
         self.last_contact_force = 0.0
-        self.trace = {"obj_z": [], "contact_force": [], "finger_force": [], "contact_pairs": [],
+        self.trace = {"obj_z": [], "contact_force": [], "finger_force": [],
+                      "contact_pairs": [], "obj_vz": [], "supported": [],
+                      "finger_held": [],
                       "wrist_z": [], "lift": []}
         self._ep: dict[str, list[float]] = {"grasp": [], "hold": []}
 
@@ -344,19 +346,23 @@ class LiftHoldEnv(gym.Env):
             raise RuntimeError(f"no support geom under ({x}, {y})")
         return best
 
-    def _box_knocked_away(self, pairs: list[tuple[str, str]]) -> bool:
-        """Box is neither resting on a support surface nor held by any finger.
+    def _support_and_held(self, pairs: list[tuple[str, str]]) -> tuple[bool, bool]:
+        """(box resting on a support surface, box held by a finger).
 
-        A legitimately lifted box has no support contact either, so "off the table"
-        alone would penalise the goal itself. This flags only the exploit case: the
-        box shoved clear of its support and abandoned. Note the box rests on the
-        *pedestal*, not the slab, so the support test must accept any static
-        support geom - checking for "table_slab" alone made a normally-resting box
-        look knocked away on every single step.
+        A legitimately lifted box has no support contact, so "off the support"
+        alone cannot distinguish a lift from the box being shoved away. Note the
+        box rests on the *pedestal*, not the slab, so the support test must accept
+        any static support geom - checking for "table_slab" alone made a normally
+        resting box look knocked away on every single step.
         """
         on_support = any(name in self.support_geoms for name, _ in pairs)
         held = any(self.geom_name_to_id.get(name, -1) in self.finger_geom_ids
                    for name, _ in pairs)
+        return on_support, held
+
+    def _box_knocked_away(self, pairs: list[tuple[str, str]]) -> bool:
+        """Box is neither resting on a support surface nor held by any finger."""
+        on_support, held = self._support_and_held(pairs)
         return not on_support and not held
 
     def _read_contacts(self) -> tuple[list[tuple[str, str]], float, float]:
@@ -426,6 +432,7 @@ class LiftHoldEnv(gym.Env):
         # (observed: episode-mean lift of -0.13 m = box at z 0.61, below the table).
         # Charging every abandoned-off-table step removes that escape hatch.
         knocked = 1.0 if self._box_knocked_away(pairs) else 0.0
+        on_support, finger_held = self._support_and_held(pairs)
 
         qvel = self.data.qvel[self.finger_dof_adr]
         wrist_vel = self.data.qvel[self.wrist_dof_adr]
@@ -453,6 +460,8 @@ class LiftHoldEnv(gym.Env):
             "min_hold": min_hold,
             "drop": drop,
             "knocked_away": knocked,
+            "supported": float(on_support),
+            "finger_held": float(finger_held),
             "contact_force": force,
             "finger_force": finger_force,
             "finger_contact": grasp,
@@ -503,6 +512,12 @@ class LiftHoldEnv(gym.Env):
         self.trace["contact_force"].append(rinfo["contact_force"])
         self.trace["finger_force"].append(rinfo["finger_force"])
         self.trace["contact_pairs"].append([list(p) for p in rinfo["pairs"]])
+        # per-step state the acceptance gates segment on: vertical velocity (for the
+        # gravity-consistency check on a free-falling box) and whether the box was
+        # supported / finger-held at this step.
+        self.trace["obj_vz"].append(float(self.data.qvel[self.obj_qvel_adr + 2]))
+        self.trace["supported"].append(rinfo["supported"])
+        self.trace["finger_held"].append(rinfo["finger_held"])
         self.last_contact_pairs = [(a, b) for a, b in rinfo["pairs"]]
 
         info = {

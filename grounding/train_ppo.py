@@ -71,7 +71,7 @@ class WindowedCurve:
 
 
 def train(total_steps: int, n_envs: int, seed: int, episode_len: int,
-          early_stop_lift: float) -> dict:
+          early_stop_lift: float, resume: bool = False) -> dict:
     from stable_baselines3 import PPO  # noqa: PLC0415
     from stable_baselines3.common.callbacks import BaseCallback  # noqa: PLC0415
     from stable_baselines3.common.vec_env import SubprocVecEnv  # noqa: PLC0415
@@ -115,35 +115,45 @@ def train(total_steps: int, n_envs: int, seed: int, episode_len: int,
 
     vec = SubprocVecEnv([_make_env(i, seed, episode_len) for i in range(n_envs)],
                         start_method="spawn")
-    model = PPO(
-        "MlpPolicy", vec,
-        seed=seed,
-        verbose=0,
-        # 8 envs x 256 steps = 2048 samples per rollout -> ~975 policy updates over
-        # the 2M budget. With n_steps=1024 it was only ~244 updates, far too few for
-        # a 22-dim contact-rich exploration problem.
-        n_steps=256,
-        batch_size=128,
-        n_epochs=10,
-        gae_lambda=0.95,
-        gamma=0.99,
-        # a little entropy helps: the grasp is only reachable by coordinated
-        # 22-dim motion, and a deterministic policy gets stuck in the "never touch
-        # the box" local optimum.
-        ent_coef=0.01,
-        learning_rate=3e-4,
-        clip_range=0.2,
-        policy_kwargs={"net_arch": [256, 256]},
-    )
+    ckpt = OUT_DIR / "ppo_lift_hold.zip"
+    resumed_from = None
+    if resume and ckpt.exists():
+        # continue from the existing policy; total_steps is the NEW budget to add
+        model = PPO.load(ckpt, env=vec, device="cpu")
+        resumed_from = int(model.num_timesteps)
+    else:
+        model = PPO(
+            "MlpPolicy", vec,
+            seed=seed,
+            verbose=0,
+            # 8 envs x 256 steps = 2048 samples per rollout -> ~975 policy updates
+            # over the 2M budget. With n_steps=1024 it was only ~244 updates, far
+            # too few for a 22-dim contact-rich exploration problem.
+            n_steps=256,
+            batch_size=128,
+            n_epochs=10,
+            gae_lambda=0.95,
+            gamma=0.99,
+            # a little entropy helps: the grasp is only reachable by coordinated
+            # 22-dim motion, and a deterministic policy gets stuck in the
+            # "never touch the box" local optimum.
+            ent_coef=0.01,
+            learning_rate=3e-4,
+            clip_range=0.2,
+            policy_kwargs={"net_arch": [256, 256]},
+        )
     cb = CurveCallback()
     t0 = time.time()
-    model.learn(total_timesteps=total_steps, callback=cb, progress_bar=False)
+    model.learn(total_timesteps=total_steps, callback=cb, progress_bar=False,
+                reset_num_timesteps=not resume)
     wall = time.time() - t0
     model.save(OUT_DIR / "ppo_lift_hold")
     vec.close()
 
     summary = {
         "total_steps_requested": total_steps,
+        "cumulative_timesteps": int(model.num_timesteps),
+        "resumed_from_timesteps": resumed_from,
         "wall_seconds": wall,
         "seed": seed,
         "n_envs": n_envs,
@@ -196,6 +206,10 @@ def evaluate(n_episodes: int, seed: int, episode_len: int) -> dict:
                 "contact_force": env.trace["contact_force"],
                 "finger_force": env.trace["finger_force"],
                 "contact_pairs": pairs,
+                "obj_vz": env.trace["obj_vz"],
+                "supported": env.trace["supported"],
+                "finger_held": env.trace["finger_held"],
+                "dt": float(env.dt),
             },
         })
         print(f"[eval] ep={ep} max_lift={episodes[-1]['max_lift_m']:+.4f} m "
@@ -252,11 +266,14 @@ def main() -> None:
     p.add_argument("--eval-episodes", type=int, default=10)
     p.add_argument("--eval-only", action="store_true")
     p.add_argument("--early-stop-lift", type=float, default=0.10)
+    p.add_argument("--resume", action="store_true",
+                   help="continue from runs/p0/smoke4_mujoco_ppo/ppo_lift_hold.zip; "
+                        "--total-steps is then the ADDITIONAL budget")
     args = p.parse_args()
 
     if not args.eval_only:
         s = train(args.total_steps, args.n_envs, args.seed, args.episode_len,
-                  args.early_stop_lift)
+                  args.early_stop_lift, resume=args.resume)
         print(json.dumps(s, indent=2), flush=True)
     res = evaluate(args.eval_episodes, args.seed + 10_000, args.episode_len)
     best = res["episodes"][res["best_episode"]]

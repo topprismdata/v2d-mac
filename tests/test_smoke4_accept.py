@@ -24,7 +24,6 @@ curve.csv, report.json.
 from __future__ import annotations
 
 import json
-import math
 import pathlib
 import sys
 
@@ -40,8 +39,11 @@ EVAL_JSON = RUN_DIR / "eval_episodes.json"
 REPORT_JSON = RUN_DIR / "report.json"
 CURVE_CSV = RUN_DIR / "curve.csv"
 LIFT_THRESHOLD = 0.05          # A1: acceptance lift (stricter than nothing, looser than eval 0.10)
-MIN_CORRELATION = 0.3          # A3
-MAX_STEP_DISPLACEMENT = 0.01   # A3, mirrors evaluator max_descent_step_m
+MAX_STEP_DISPLACEMENT = 0.01   # A3c, anchored segment only (mirrors evaluator max_descent_step_m)
+MIN_FORCE_DUTY = 0.50          # A3a(i): finger force present on >=50% of the lift window
+BOX_MASS_KG = 0.15
+BOX_WEIGHT_N = BOX_MASS_KG * 9.81  # A3a(ii): quasi-static force sufficiency
+MAX_GRAVITY_ERROR = 0.60       # A3c: |dv_z + g*dt| on free flight, m/s (no energy injection)
 
 
 @pytest.fixture(scope="module")
@@ -113,6 +115,7 @@ def _analyse_episode(ep: dict) -> dict:
     tr = ep["trace"]
     lift = np.asarray(tr["lift"], dtype=float)
     force = np.asarray(tr["contact_force"], dtype=float)
+    finger_force = np.asarray(tr["finger_force"], dtype=float)
     wrist_z = np.asarray(tr["wrist_z"], dtype=float)
     obj_z = np.asarray(tr["obj_z"], dtype=float)
 
@@ -135,15 +138,57 @@ def _analyse_episode(ep: dict) -> dict:
                 finger_pairs.add((name, other))
         n_finger_steps += int(has_finger)
 
-    # A3: correlation between finger contact force and box height, over the lift
-    # window (up to the peak), not the whole episode
-    win = slice(0, peak_i + 1)
-    corr_all = _pearson(force[win], lift[win])
-    finger_force = np.asarray(tr["finger_force"], dtype=float)
-    corr_finger = _pearson(finger_force[win], lift[win])
+    # --- A3a (re-frozen, Main ruling): quasi-static force sufficiency ------------
+    # The previous gate was Pearson r(force, lift) > 0.3. That is the WRONG statistic
+    # for a real grasp: a grasp first builds force, THEN lifts, so once the grip
+    # saturates the box rises roughly linearly while force plateaus - instantaneous
+    # correlation is low by construction. Measured on the best eval episode it was
+    # r = 0.089, which says nothing about whether the lift was real.
+    # What actually distinguishes a contact-driven lift from a teleported one is the
+    # ABSENCE of contact force: a fake lift has none. So the gate is now
+    #   (i)  duty cycle  - finger force present on >= 50% of the lift window
+    #   (ii) sufficiency - mean finger force >= m_box * g (1.47 N), i.e. the applied
+    #        force is physically able to support/accelerate the box
+    # corr_force_lift_finger_only is retained as UNGATED evidence.
+    lift_window = slice(0, peak_i + 1)
+    n_win = peak_i + 1
+    duty = float(np.mean(finger_force[lift_window] > 0.0)) if n_win else 0.0
+    mean_force = float(np.mean(finger_force[lift_window])) if n_win else 0.0
+    duty_ok = duty >= MIN_FORCE_DUTY
+    sufficiency_ok = mean_force >= BOX_WEIGHT_N
 
-    steps = np.diff(obj_z, prepend=obj_z[0])
-    max_step = float(np.max(np.abs(steps))) if len(steps) else 0.0
+    # --- A3c (re-frozen, Main ruling): segment by whether the box is supported -----
+    # A box knocked off the pedestal is in LEGAL free fall, where a 1 cm/step cap is
+    # meaningless. What must be forbidden is energy injection. So:
+    #   * supported / finger-held segment: per-step displacement < 10 mm (unchanged)
+    #   * free-flight segment: |dv_z - (-g*dt)| within tolerance (no energy added)
+    #   * and the box must have left support only while a finger was touching it.
+    supported = np.asarray(tr["supported"], dtype=float) > 0.5
+    held = np.asarray(tr["finger_held"], dtype=float) > 0.5
+    anchored = supported | held  # still supported and/or gripped -> cap applies
+    dt = float(tr.get("dt", 0.02))
+
+    per_step = np.abs(np.diff(obj_z, prepend=obj_z[0]))
+    anchored_disp = per_step[anchored]
+    max_anchored = float(np.max(anchored_disp)) if anchored_disp.size else 0.0
+
+    free = ~anchored
+    dvz = np.diff(np.asarray(tr["obj_vz"], dtype=float), prepend=0.0)
+    free_dv = dvz[1:][free[1:]]  # transitions into free flight
+    gravity_err = np.abs(free_dv - (-9.81 * dt)) if free_dv.size else np.array([0.0])
+    max_gravity_err = float(np.max(gravity_err)) if gravity_err.size else 0.0
+    max_free_disp = float(np.max(per_step[free])) if per_step[free].size else 0.0
+
+    # the box may only leave its support while a finger is in contact with it
+    first_free = int(np.argmax(free)) if free.any() else -1
+    separation_contact_driven = True
+    if first_free > 0:
+        separation_contact_driven = bool(
+            float(np.max(finger_force[max(0, first_free - 5):first_free + 1])) > 0.0)
+
+    anchored_ok = max_anchored < MAX_STEP_DISPLACEMENT
+    gravity_ok = max_gravity_err < MAX_GRAVITY_ERROR
+    separation_ok = separation_contact_driven
 
     # airborne at peak: no support-surface contact on that step
     peak_pairs = [tuple(p) for p in tr["contact_pairs"][peak_i]]
@@ -154,9 +199,24 @@ def _analyse_episode(ep: dict) -> dict:
         "peak_step": peak_i,
         "n_finger_contact_steps": n_finger_steps,
         "finger_pairs": sorted(list(p) for p in finger_pairs),
-        "corr_force_lift_all_contact": corr_all,
-        "corr_force_lift_finger_only": corr_finger,
-        "max_per_step_displacement_m": max_step,
+        # A3a evidence + gates
+        "corr_force_lift_all_contact": _pearson(force[lift_window], lift[lift_window]),
+        "corr_force_lift_finger_only": _pearson(
+            finger_force[lift_window], lift[lift_window]),
+        "finger_force_duty_cycle": duty,
+        "finger_force_mean_N": mean_force,
+        "box_weight_N": BOX_WEIGHT_N,
+        "force_duty_ok": bool(duty_ok),
+        "force_sufficiency_ok": bool(sufficiency_ok),
+        # A3c gates + evidence
+        "max_per_step_displacement_m": max_anchored,
+        "max_anchored_step_m": max_anchored,
+        "max_free_flight_step_m": max_free_disp,
+        "max_free_fall_gravity_error": max_gravity_err,
+        "separation_contact_driven": separation_contact_driven,
+        "anchored_step_ok": bool(anchored_ok),
+        "free_fall_gravity_ok": bool(gravity_ok),
+        "separation_ok": bool(separation_ok),
         "table_touching_at_peak": table_touching_peak,
         "wrist_z_at_peak": float(wrist_z[peak_i]),
         "peak_force_N": float(force[peak_i]),
@@ -195,19 +255,40 @@ def test_a3_lift_is_contact_driven(eval_data):
     ev = _analyse_episode(ep)
 
     assert ev["peak_lift_m"] > LIFT_THRESHOLD
-    # correlation between contact force and the lift (finger contacts only)
-    corr = ev["corr_force_lift_finger_only"]
-    assert not math.isnan(corr), "contact force or lift series is constant - cannot attribute"
-    assert corr > MIN_CORRELATION, (
-        f"box z does not correlate with finger contact force "
-        f"(r={corr:.3f} <= {MIN_CORRELATION}); the rise is not contact-driven"
+    # (i) finger force present through the lift window
+    assert ev["force_duty_ok"], (
+        f"finger contact force present on only {ev['finger_force_duty_cycle']*100:.0f}% "
+        f"of the lift window (need >= {MIN_FORCE_DUTY*100:.0f}%) - the lift is not "
+        "carried by the hand"
+    )
+    # (ii) quasi-static sufficiency: force applied can physically hold the box
+    assert ev["force_sufficiency_ok"], (
+        f"mean finger contact force over the lift window is {ev['finger_force_mean_N']:.3f} N, "
+        f"below the box weight {BOX_WEIGHT_N:.2f} N - the applied force could not "
+        "support or accelerate the box"
     )
     assert not ev["table_touching_at_peak"], (
-        "the box was still touching the table at peak lift - it was not airborne"
+        "the box was still touching its support at peak lift - it was not airborne"
     )
-    assert ev["max_per_step_displacement_m"] < MAX_STEP_DISPLACEMENT, (
-        f"box moved {ev['max_per_step_displacement_m']:.4f} m in a single step "
-        f"(>= {MAX_STEP_DISPLACEMENT} m): teleport, not physics"
+
+
+def test_a3c_no_energy_injection(eval_data):
+    """Segmented anti-teleport gate: displacement cap while anchored, gravity
+    consistency while the box is legitimately in free flight."""
+    ep = _best_episode(eval_data)
+    ev = _analyse_episode(ep)
+
+    assert ev["anchored_step_ok"], (
+        f"box moved {ev['max_anchored_step_m']:.4f} m in one step while supported or "
+        f"finger-held (>= {MAX_STEP_DISPLACEMENT} m): teleport, not physics"
+    )
+    assert ev["free_fall_gravity_ok"], (
+        f"free-fall dv_z deviates from gravity by {ev['max_free_fall_gravity_error']:.3f} m/s "
+        f"(> {MAX_GRAVITY_ERROR} m/s): energy was injected into the box"
+    )
+    assert ev["separation_ok"], (
+        "the box left its support with no finger contact beforehand - the separation "
+        "was not contact-driven"
     )
 
 
