@@ -1,0 +1,309 @@
+{
+  "smoke": "smoke3_foundpose",
+  "verdict": "pass",
+  "device": "mps",
+  "device_evidence": {
+    "mps_available": true,
+    "mps_built": true,
+    "times": {
+      "mps": 0.034658193588256836,
+      "cpu": 0.1544802188873291
+    }
+  },
+  "key_lib_versions": {
+    "torch": "2.3.0",
+    "mps": "True",
+    "cv2": "4.5.5",
+    "numpy": "1.26.4",
+    "scipy": "1.13.0",
+    "sklearn": "1.5.0",
+    "faiss": "1.8.0",
+    "trimesh": "3.23.5",
+    "kornia": "0.7.2",
+    "python": "3.9.25"
+  },
+  "weights_version": {
+    "source": "torch.hub (dl.fbaipublicfiles.com)",
+    "extractor": "dinov2 vits14-reg (DINOv2 ViT-S/14 with registers)",
+    "note": "FoundPose is training-free; the only network weights are the DINOv2 backbone.",
+    "file": "/Users/guohongbin/.cache/torch/hub/checkpoints/dinov2_vits14_reg4_pretrain.pth",
+    "url": "https://dl.fbaipublicfiles.com/dinov2/dinov2_vits14/dinov2_vits14_reg4_pretrain.pth",
+    "bytes": 88291785,
+    "sha256": "f433177089a681826f849f194ece3bb48f4d63fb38d32fc837e3dc7a4e5641fb"
+  },
+  "template_source": "handmade_proxy_box",
+  "template_source_detail": "handmade proxy box, perception/assets/tissue_box_proxy.obj, [0.24, 0.12, 0.08] m, BOP PLY diameter 280.0 mm",
+  "template_count": 798,
+  "template_opts": {
+    "num_viewspheres": 1,
+    "min_num_viewpoints": 57,
+    "num_inplane_rotations": 14,
+    "images_per_view": 1,
+    "ssaa_factor": 2.0
+  },
+  "criteria": {
+    "C1_T_finite_rigid_4x4": {
+      "value": true,
+      "threshold": "finite, last row [0,0,0,1], |det R - 1| < 1e-3",
+      "pass": true
+    },
+    "C2_template_count_gt_0": {
+      "value": 798,
+      "threshold": "> 0",
+      "pass": true
+    },
+    "C3_corners_inside_image": {
+      "value": true,
+      "threshold": "all 8 corners in [0,1280) x [0,720)",
+      "pass": true,
+      "corners_px": [
+        [
+          623.2243350402505,
+          413.55262004961946
+        ],
+        [
+          434.0288718683812,
+          215.46726598601404
+        ],
+        [
+          626.207512264116,
+          190.23796276390524
+        ],
+        [
+          764.8701910371493,
+          421.86976578130776
+        ],
+        [
+          595.6686404998869,
+          507.09691414011525
+        ],
+        [
+          369.49325828590366,
+          340.60428477902866
+        ],
+        [
+          573.5999826673336,
+          339.7041697051108
+        ],
+        [
+          745.0897547225286,
+          528.2812222702113
+        ]
+      ]
+    },
+    "C4_silhouette_iou": {
+      "value": 0.5594105755931482,
+      "threshold": ">= 0.5",
+      "pass": true
+    },
+    "C5_bbox_center_dist_px": {
+      "value": 33.599017652391304,
+      "threshold": "<= 64.0",
+      "pass": true,
+      "mask_bbox_xyxy": [
+        425.0,
+        274.0,
+        763.0,
+        485.0
+      ],
+      "projected_bbox_xyxy": [
+        369.49325828590366,
+        190.23796276390524,
+        764.8701910371493,
+        528.2812222702113
+      ],
+      "bbox_iou": 0.5335996634731187
+    },
+    "C6_inference_on_mps": {
+      "value": "mps",
+      "threshold": "mps",
+      "pass": true,
+      "evidence": {
+        "mps_available": true,
+        "mps_built": true,
+        "times": {
+          "mps": 0.034658193588256836,
+          "cpu": 0.1544802188873291
+        }
+      }
+    }
+  },
+  "inference_diagnostics": {
+    "corresp_per_template": [
+      159,
+      159,
+      159,
+      159,
+      159
+    ],
+    "pnp_inlier_counts": [
+      11.0,
+      11.0,
+      10.0,
+      10.0,
+      10.0
+    ],
+    "best_pnp_inliers": 11.0,
+    "success_hypotheses": 1,
+    "seconds_per_hypothesis": 1.2774,
+    "mps_op_cpu_fallbacks": [
+      "aten::_upsample_bicubic2d_aa.out"
+    ]
+  },
+  "errors": {
+    "silhouette_iou": 0.5594105755931482,
+    "bbox_center_dist_px": 33.599017652391304,
+    "bbox_iou": 0.5335996634731187,
+    "mask_coverage_by_proxy": 0.8388347346085736,
+    "proxy_area_over_mask_area": 1.3383321899778242,
+    "in_plane_axis_error_deg": 41.13878887437545,
+    "foundpose_internal_score": 0.0,
+    "foundpose_internal_score_note": "FoundPose's own per-hypothesis score is 0.0 because upstream eval_util.update_without_anno is called with camera_c2w=orig_camera_c2w while the correspondences live in the crop camera, so it reprojects with the wrong camera; this does not affect the T_camera_object we export (trans_m2oc frame is correct)",
+    "symmetric_add_proxy_metric": null,
+    "object_diameter_mm": 280.0,
+    "pose_translation_mm": [
+      -20.12620200560622,
+      17.95028265073526,
+      396.5456595265655
+    ],
+    "note": "no metric GT pose exists for this clip; errors are 2D reprojection-based"
+  },
+  "T_camera_object": [
+    [
+      -0.4074053474828185,
+      0.8775683918341944,
+      0.2527737131123832,
+      -20.12620200560622
+    ],
+    [
+      -0.5094735946457329,
+      0.011312231419861206,
+      -0.8604119512638079,
+      17.95028265073526
+    ],
+    [
+      -0.7579297662501345,
+      -0.47931796327880277,
+      0.442489259862944,
+      396.5456595265655
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "camera_assumed": {
+    "K": [
+      [
+        650.0,
+        0.0,
+        640.0
+      ],
+      [
+        0.0,
+        650.0,
+        360.0
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "im_size": [
+      1280,
+      720
+    ],
+    "source": "assumed 90 deg HFOV (no calibration available for this clip)",
+    "scale_source": "handmade_proxy_box"
+  },
+  "mask_source": "opencv GrabCut (GC_INIT_WITH_RECT, seed rect (424, 271, 342, 222), 5 iters)",
+  "dataset_info": {
+    "obj_dims_m": [
+      0.24,
+      0.12,
+      0.08
+    ],
+    "model_diameter_mm": 280.0,
+    "mask_bbox_xyxy": [
+      425,
+      274,
+      763,
+      485
+    ],
+    "mask_area_px": 62681
+  },
+  "stage_timings": {
+    "reused_from_previous_run": true,
+    "logs": "/Users/guohongbin/v2d-mac/runs/p0/smoke3_foundpose/logs"
+  },
+  "cpu_fallbacks": [
+    "torch 2.3.0 MPS op fallback (PYTORCH_ENABLE_MPS_FALLBACK=1): aten::_upsample_bicubic2d_aa in DINOv2 interpolate_pos_encoding has no MPS kernel; everything else in the ViT runs natively on MPS",
+    "faiss-cpu 1.8.0: visual-words and per-template kNN indices (CPU-only build, no MPS/CUDA)",
+    "pyrender/OpenGL: template rasterisation (CPU, no MPS equivalent)",
+    "opencv solvePnPRansac + LM refinement: pose solving (CPU)",
+    "OpenCV GrabCut: object mask (CPU)",
+    "bop_toolkit dataset/camera IO: CPU"
+  ],
+  "env": {
+    "conda_env": "foundpose-mps",
+    "yaml": "/Users/guohongbin/v2d-mac/conda_foundpose_mps.yaml",
+    "yaml_source": "runs/upstream/foundpose/conda_foundpose_mps.yaml",
+    "deltas": [
+      "name foundpose_mps -> foundpose-mps",
+      "dropped channels nvidia, xformers (no osx-arm64 builds)",
+      "dropped conda dep vispy (pulls qt/qt-webengine; imported nowhere)",
+      "dropped conda deps triangle, glumpy (imported nowhere)",
+      "dropped pip deps submitit, webdataset, hand_tracking_toolkit (imported nowhere)",
+      "added pip dep trimesh (required by utils/renderer.py)",
+      "first attempt with the unmodified official yaml failed: CondaHTTPError on qt-main / matplotlib-base downloads from repo.anaconda.com (vispy dependency)"
+    ]
+  },
+  "upstream_patches": [
+    {
+      "file": "external/bop_toolkit/bop_toolkit_lib/config.py",
+      "change": "output_path honours BOP_OUTPUT_PATH env var"
+    },
+    {
+      "file": "external/bop_toolkit/bop_toolkit_lib/dataset_params.py",
+      "change": "registered the synthetic 'tbox' dataset (obj_ids, symmetric_obj_ids, split params)"
+    },
+    {
+      "file": "utils/data_util.py",
+      "change": "DatasetOpts.crop_image_center=False, add_depth=False (1280x720 RGB-only clip)"
+    },
+    {
+      "file": "scripts/infer.py, scripts/gen_repre.py",
+      "change": "device selection now prefers MPS (upstream only has cuda/cpu)"
+    },
+    {
+      "file": "utils/knn_util.py",
+      "change": "KNN.fit/KNN.search unwrap any non-CPU tensor (upstream only handles CUDA); faiss-cpu segfaults when handed MPS-backed torch storage (observed in gen_repre)"
+    },
+    {
+      "file": "utils/infer_pose_util.py",
+      "change": "mask slice bug fix: `[shift:-shift]` is empty when shift == 0 (`-0 == 0`); the detection mask became empty and grid_sample then crashed"
+    },
+    {
+      "file": "scripts/infer.py",
+      "change": "debug visualisation of the per-vertex error now requires a GT pose; the no-annotation path passed None into vis_pointcloud_error and crashed"
+    },
+    {
+      "file": "(none)",
+      "change": "MPS op-level CPU fallback (env PYTORCH_ENABLE_MPS_FALLBACK=1): aten::_upsample_bicubic2d_aa inside DINOv2 interpolate_pos_encoding is not implemented for MPS in torch 2.3.0"
+    }
+  ],
+  "host": {
+    "machine": "arm64",
+    "python": "3.9.25",
+    "os": "macOS-27.0-arm64-arm-64bit"
+  },
+  "artifacts": {
+    "overlay": "/Users/guohongbin/v2d-mac/runs/p0/smoke3_foundpose/evidence/overlay_f0001_foundpose_proxy.png",
+    "mask": "/Users/guohongbin/v2d-mac/runs/p0/smoke3_foundpose/evidence/mask_f0001.png",
+    "T_camera_object": "/Users/guohongbin/v2d-mac/runs/p0/smoke3_foundpose/T_camera_object.txt",
+    "logs": "/Users/guohongbin/v2d-mac/runs/p0/smoke3_foundpose/logs"
+  }
+}

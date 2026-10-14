@@ -1,0 +1,49 @@
+# Derived from facebookresearch/foundpose @ e1277af2 : conda_foundpose_mps.yaml
+#
+# Deltas applied for the v2d-mac P0 smoke (Apple Silicon / no CUDA). Every delta is
+# recorded in runs/p0/smoke3_foundpose/report.json under "env_yaml_deltas".
+#
+# 1. name: foundpose_mps -> foundpose-mps (smoke env naming; also passed via -n).
+# 2. channels: dropped "nvidia" and "xformers" (CUDA/xformers-only, no osx-arm64 builds).
+# 3. conda deps dropped: vispy (pulls qt-main/qt-webengine, ~GB, imported nowhere in
+#    scripts/ or utils/), triangle, glumpy (imported nowhere in scripts/ or utils/).
+# 4. pip deps dropped: git+facebookincubator/submitit, webdataset,
+#    git+facebookresearch/hand_tracking_toolkit (imported nowhere in scripts/ or utils/).
+# 5. pip deps added: trimesh (required by utils/renderer.py -> pyrender.Mesh.from_trimesh),
+#    plyfile-free: bop_toolkit_lib.inout.load_ply is self-contained (no plyfile needed).
+name: foundpose-mps
+channels:
+  - defaults
+  - pytorch
+  - conda-forge
+dependencies:
+  - python=3.9
+  - cython
+  - pytorch::pytorch=2.3.0 # CPU
+  - pytorch::torchvision=0.18.0
+  - omegaconf
+  - torchmetrics=0.10.3
+  - fvcore
+  - iopath
+  - torchinfo
+  - faiss-cpu=1.8.0 # CPU
+  - scipy=1.13.0
+  - kiwisolver=1.3.1
+  - matplotlib=3.8.4
+  - opencv=4.6.0
+  - numpy=1.26.4
+  - pillow=10.3.0
+  - pip=24.0
+  - pip:
+    - kornia==0.7.2
+    - pypng==0.20220715.0
+    - pycocotools==2.0
+    - scikit-learn==1.5.0
+    - scikit-image==0.22.0
+    - imageio==2.34.1
+    - pyopengl==3.1.0
+    - pyglet==2.0.15
+    - pytz==2024.1
+    - pyrender==0.1.45
+    - trimesh==3.23.5
+    - opencv-python==4.5.5.62
