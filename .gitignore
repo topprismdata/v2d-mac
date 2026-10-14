@@ -1,4 +1,14 @@
-runs/
+# runs/ 默认全忽略（权重/大视频/抽帧不入库），但证据类文件白名单入库
+runs/**
+!runs/**/
+!runs/p0/**/report.json
+!runs/p0/**/retarget_qa.json
+!runs/p0/**/curve.csv
+!runs/p0/**/SUMMARY.md
+!runs/p0/**/BLOCKER.md
+!runs/p0/assets/MANIFEST.md
+!runs/p0/**/evidence/*.png
+
 __pycache__/
 *.pyc
 .venv/
@@ -6,6 +16,7 @@ __pycache__/
 *.pth
 *.onnx
 *.mp4
+*.pkl
 frames/
 weights/
 .DS_Store
