@@ -1,0 +1,11 @@
+runs/
+__pycache__/
+*.pyc
+.venv/
+*.pt
+*.pth
+*.onnx
+*.mp4
+frames/
+weights/
+.DS_Store
