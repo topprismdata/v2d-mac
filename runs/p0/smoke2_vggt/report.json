@@ -1,0 +1,256 @@
+{
+  "smoke": "smoke2_vggt",
+  "verdict": "pass",
+  "device": "mps",
+  "device_probe": {
+    "mps_available": true,
+    "allocated_via": "mps",
+    "weights_device": "mps:0",
+    "dtype": "float32 (Metal has no stable fp16 attention path here)",
+    "op_probe": {
+      "scaled_dot_product_attention": "mps",
+      "conv2d": "mps",
+      "interpolate": "mps",
+      "float16_matmul": "mps"
+    },
+    "cpu_fallbacks": []
+  },
+  "cpu_fallbacks": [],
+  "mps_inference_seconds": 30.12833004188724,
+  "cpu_control_seconds": 12.979744334006682,
+  "cpu_control_frames": 4,
+  "speedup_vs_cpu_control": 3.231114448418072,
+  "n_frames": 30,
+  "input_frames": [
+    "f_0001.jpg",
+    "f_0002.jpg",
+    "f_0003.jpg",
+    "f_0004.jpg",
+    "f_0005.jpg",
+    "f_0006.jpg",
+    "f_0007.jpg",
+    "f_0008.jpg",
+    "f_0009.jpg",
+    "f_0010.jpg",
+    "f_0011.jpg",
+    "f_0012.jpg",
+    "f_0013.jpg",
+    "f_0014.jpg",
+    "f_0015.jpg",
+    "f_0016.jpg",
+    "f_0017.jpg",
+    "f_0018.jpg",
+    "f_0019.jpg",
+    "f_0020.jpg",
+    "f_0021.jpg",
+    "f_0022.jpg",
+    "f_0023.jpg",
+    "f_0024.jpg",
+    "f_0025.jpg",
+    "f_0026.jpg",
+    "f_0027.jpg",
+    "f_0028.jpg",
+    "f_0029.jpg",
+    "f_0030.jpg"
+  ],
+  "preprocess": "vggt.utils.load_and_preprocess_images(mode='crop', width=518)",
+  "depth_shape": [
+    30,
+    294,
+    518
+  ],
+  "weights": {
+    "model_id": "facebook/VGGT-1B",
+    "revision": "860abec7937da0a4c03c41d3c269c366e82abdf9",
+    "file": "model.safetensors",
+    "local_path": "/Users/guohongbin/.cache/huggingface/hub/models--facebook--VGGT-1B/snapshots/860abec7937da0a4c03c41d3c269c366e82abdf9/model.safetensors",
+    "size_bytes": 5026367224,
+    "n_parameters": 1256537516
+  },
+  "fork_selection": {
+    "chosen": "jmanhype/vggt-mps",
+    "commit": "a81c9e5",
+    "candidates_considered": [
+      {
+        "repo": "jmanhype/vggt-mps",
+        "stars": 92,
+        "last_push": "2026-03-25",
+        "is_fork": false,
+        "mps_adaptation": "MPS device/dtype wrapper + vendored upstream VGGT source under repo/vggt; sparse cross-view attention patch (make_vggt_sparse) via MegaLoc-MPS covisibility masking",
+        "verdict": "selected: only candidate with community traction (92 stars), independent repo, and a real vendored VGGT implementation"
+      },
+      {
+        "repo": "zixingjiang/vggt-mps",
+        "stars": 0,
+        "last_push": "2026-05-12",
+        "is_fork": true,
+        "mps_adaptation": "same lineage as jmanhype (fork), newer push",
+        "verdict": "rejected: 0 stars, no adoption signal"
+      },
+      {
+        "repo": "2apanner/vggtmac",
+        "stars": 0,
+        "last_push": "2026-03-25",
+        "is_fork": true,
+        "mps_adaptation": "same lineage as jmanhype (fork)",
+        "verdict": "rejected: 0 stars, no adoption signal"
+      }
+    ],
+    "attempt_chain": [
+      "clone jmanhype/vggt-mps (primary) -> installed editable into runs/.venv-vggt (torch 2.14.1, MPS available); inference used the real facebook/VGGT-1B weights through the fork's vendored repo/vggt source"
+    ],
+    "rebuild": [
+      "git clone --depth 1 https://github.com/jmanhype/vggt-mps runs/upstream/vggt",
+      "uv venv --python 3.13 runs/.venv-vggt",
+      "VIRTUAL_ENV=runs/.venv-vggt uv pip install -e runs/upstream/vggt",
+      "VIRTUAL_ENV=runs/.venv-vggt uv pip install pytest opencv-python-headless",
+      "runs/.venv-vggt/bin/python -m pytest tests/test_smoke2_vggt.py"
+    ]
+  },
+  "key_lib_versions": {
+    "torch": "2.14.1",
+    "numpy": "2.5.4",
+    "vggt_mps": "2.0.0",
+    "python": "3.13.9"
+  },
+  "motion_stats": {
+    "rotation_rad": {
+      "mean": 0.002513220603388977,
+      "median": 0.002112401499885373,
+      "max": 0.006082679847077023,
+      "std": 0.0015745587004742994,
+      "min": 0.0003663249500025481
+    },
+    "translation_m": {
+      "mean": 0.006235223216529711,
+      "median": 0.005649115305204709,
+      "max": 0.01691556684532211,
+      "std": 0.005007949102341259,
+      "min": 0.00010495613624104979
+    },
+    "joint_m_rad": {
+      "mean": 0.006826402131219588,
+      "median": 0.006299315591158478,
+      "max": 0.017975967173440143,
+      "std": 0.005114030662501992,
+      "min": 0.0006028329466308956
+    }
+  },
+  "reprojection": {
+    "method": "adjacent-frame ORB (800 feat, BFMatcher ratio 0.75) match -> unproject with VGGT depth_i and pose_i (world->camera), reproject into camera i+1 with K_{i+1}; error = ||p_proj - p_match|| in ORIGINAL frame pixels; median over all pairs",
+    "n_pairs": 29,
+    "n_matches": 14061,
+    "median_px": 1.8685344152301762,
+    "mean_px": 9.144523648298472,
+    "p90_px": 29.551908269451737,
+    "per_pair_median_px": [
+      1.1218721781928829,
+      1.0021551606090977,
+      1.200241763297935,
+      1.173071357260233,
+      1.0972572079667702,
+      1.2863453571751562,
+      1.1638313247343999,
+      1.390869883706626,
+      1.36906990137394,
+      1.0527992544112363,
+      1.459167034798146,
+      3.066037318700932,
+      2.067155164372636,
+      2.133060526745502,
+      4.537358777797192,
+      3.5293839102781988,
+      27.275691819844525,
+      28.02810279213039,
+      20.558989754314734,
+      13.394619139690597,
+      9.084601521054973,
+      3.8310372509331514,
+      35.87492888972706,
+      28.210113652434156,
+      26.280247600766845,
+      3.2394842087023235,
+      3.4976766488430444,
+      2.9537622500364025,
+      2.4414854740138456
+    ],
+    "identity_pose_baseline_px": 2.5882013657403458,
+    "beats_identity_baseline": true,
+    "note": "VGGT poses must score below the identity baseline; the baseline is the raw inter-frame feature displacement and bounds how much this gate can prove."
+  },
+  "scale_consistency": {
+    "method": "coefficient of variation of per-frame median depth (static scene -> near 0), plus spread of pairwise median-depth ratios",
+    "per_frame_median_depth": [
+      0.8806885480880737,
+      0.8710994720458984,
+      0.8637801706790924,
+      0.8876194953918457,
+      0.8874958753585815,
+      0.8909544348716736,
+      0.9083970487117767,
+      0.8978475034236908,
+      0.8793987035751343,
+      0.8876380324363708,
+      0.911362498998642,
+      0.8970287144184113,
+      0.8580109477043152,
+      0.8231497704982758,
+      0.7893410921096802,
+      0.7704726755619049,
+      0.7432920336723328,
+      0.7270176410675049,
+      0.7176055014133453,
+      0.7104852795600891,
+      0.7079896330833435,
+      0.7160902917385101,
+      0.7182902991771698,
+      0.7165729105472565,
+      0.7323794662952423,
+      0.7599895894527435,
+      0.7934657335281372,
+      0.8260075747966766,
+      0.8525509536266327,
+      0.8795835375785828
+    ],
+    "cv": 0.08973944246417424,
+    "max_pairwise_ratio": 1.2872540167425837,
+    "camera_center_span_m": 0.06835885514540843
+  },
+  "evidence": [
+    "f_0001_depth_edges.jpg",
+    "f_0015_depth_edges.jpg",
+    "f_0030_depth_edges.jpg"
+  ],
+  "criteria": {
+    "a_all_frames_no_nan": {
+      "pass": true,
+      "frames_expected": 30,
+      "poses_finite": true,
+      "depths_finite": true,
+      "depth_min": 0.07598090916872025,
+      "depth_max": 1.4868602752685547,
+      "nan_count": 0
+    },
+    "b_step_norm_lt_3x_median": {
+      "pass": true,
+      "limit_ratio": 3.0,
+      "joint_median": 0.006299315591158478,
+      "joint_max": 0.017975967173440143,
+      "joint_ratio": 2.8536381315250576,
+      "translation_median": 0.005649115305204709,
+      "translation_max": 0.01691556684532211,
+      "translation_ratio": 2.9943745049312875,
+      "rotation_median": 0.002112401499885373,
+      "rotation_max": 0.006082679847077023,
+      "rotation_ratio": 2.8795093392080493
+    },
+    "c_rot_trans_separate": {
+      "pass": true,
+      "keys": [
+        "joint_m_rad",
+        "rotation_rad",
+        "translation_m"
+      ]
+    }
+  }
+}
