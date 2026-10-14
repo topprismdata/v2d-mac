@@ -84,7 +84,11 @@ def test_c1b_mano_fk_matches_smplx_reference():
 
     model, _ = load_mano(rs.MANO_RIGHT)
     with open(rs.MANO_RIGHT, "rb") as fh:
-        hands_mean = np.asarray(pickle.load(fh, encoding="latin1")["hands_mean"])
+        # hands_mean is stored flat (45,), one 3-vector per hand-pose joint;
+        # adding it to a (15, 3) rotvec block needs the shape restored first.
+        hands_mean = np.asarray(
+            pickle.load(fh, encoding="latin1")["hands_mean"]
+        ).reshape(15, 3)
     rng = np.random.default_rng(0)
     for _ in range(3):
         pose = rng.normal(0, 0.3, (15, 3))
@@ -92,9 +96,14 @@ def test_c1b_mano_fk_matches_smplx_reference():
         # smplx applies the MANO mean pose on top of the hand pose
         from scipy.spatial.transform import Rotation
 
-        full = np.concatenate(
-            [np.zeros(3), Rotation.from_rotvec(pose + hands_mean).as_rotvec()]
-        )
+        # MANO's pose parameter is one flat 48-vector: global_orient (3) then
+        # hand_pose (15x3). from_rotvec on a (15, 3) block yields 15 rotations,
+        # so its rotvecs come back 2-D and have to be flattened before the
+        # concatenate.
+        full = np.concatenate([
+            np.zeros(3),
+            Rotation.from_rotvec(pose + hands_mean).as_rotvec().reshape(-1),
+        ])
         ours, _, _ = mano_forward(model, shape, full[:3], full[3:].reshape(15, 3), np.zeros(3))
         assert ours.shape == (21, 3)
         assert np.all(np.isfinite(ours))
