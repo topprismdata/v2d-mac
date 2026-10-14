@@ -54,3 +54,7 @@
 ### 收尾任务（主代理亲做）
 - 复跑六个验收脚本全绿；六个 report.json 汇总 `runs/p0/SUMMARY.md`；git tag `p0-green`
 - 六绿后：阈值校准材料（P0 实测分布）呈给用户签字固化 P1 阈值
+
+## P1 衔接备注（波次产出中累积，不改 DESIGN 签字稿）
+
+- **Smoke 1 实证缺陷**：固定中心框 prompt 无法跟踪——f_0020 起 tissue box 离开画面中心后 SAM2 分割到木头桌面（mask hue 中位 29° vs 正确物体 206–222°），而"MPS vs CPU 一致性"判据会同错而静默通过。P1 的 L2 必须用 **SAM2 视频预测器 `propagate_in_video`** 做跟踪（注意其 `load_video_frames` 要求整数文件名，`f_####` 命名需转换/软链接），并保留 smoke1 已实现的物体命中诊断（色相代理）作为每帧断言。
