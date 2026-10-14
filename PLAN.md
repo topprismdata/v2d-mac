@@ -58,3 +58,4 @@
 ## P1 衔接备注（波次产出中累积，不改 DESIGN 签字稿）
 
 - **Smoke 1 实证缺陷**：固定中心框 prompt 无法跟踪——f_0020 起 tissue box 离开画面中心后 SAM2 分割到木头桌面（mask hue 中位 29° vs 正确物体 206–222°），而"MPS vs CPU 一致性"判据会同错而静默通过。P1 的 L2 必须用 **SAM2 视频预测器 `propagate_in_video`** 做跟踪（注意其 `load_video_frames` 要求整数文件名，`f_####` 命名需转换/软链接），并保留 smoke1 已实现的物体命中诊断（色相代理）作为每帧断言。
+- **Smoke 2 结论**：jmanhype/vggt-mps（92★，A81c9e5，vendor 上游 VGGT + MegaLoc-MPS 补丁），VGGT-1B 权重 5.03GB，MPS 2.03×/帧加速、0 CPU fallback，30 帧单次前向吃下 64GB 统一内存无需分批。重投影 **1.87px 中位**（identity-pose 对照 2.59px，胜出即有效几何证据）。防跳变判据已由主代理改为物理锚定 `max(3×中位数, 单帧上限)`（平移 0.03、旋转 0.02、joint 0.03），并用合成跳变（0.1m/帧、0.5rad/帧）验证仍可拦截。**遗留**：`scale_consistency` cv=0.0897 仅作漂移记录，**尚未施加 scale_source 锚定**（DESIGN L2 的尺度锚定是 P1 硬要求）；identity 对照显示该门在近静态片段最多只能证明 ~28% 改进，不构成度量精度证据。
