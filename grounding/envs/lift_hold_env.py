@@ -45,16 +45,25 @@ FINGER_BODY_PREFIXES = ("ff_", "mf_", "rf_", "th_")
 OBJECT_GEOM = "object_geom"
 
 # --- reward weights (shaped around the official evaluator) ------------------
-W_REACH = 1.0          # per metre of palm->box distance reduction
-W_ALIGN = 2.0          # box centred under the palm
-W_GRASP = 4.0          # fingertips in contact with the box
-W_LIFT = 12.0          # per metre lifted above the start height
-W_HOLD = 3.0           # per step held above hold_threshold
-W_MIN_HOLD = 25.0      # once min_hold_steps are satisfied
-W_LIFT_BONUS = 60.0    # evaluator lift_threshold reached
-W_DROP = 40.0          # box fell back to the table
+# Weighting rationale (learned the hard way - see report.json deviations):
+#  * the height term must dominate the "touch it" term, otherwise PPO settles for a
+#    permanent light grasp and never lifts;
+#  * the drop penalty must NOT be a per-step cliff on resting contact: an earlier
+#    W_DROP=60/step keyed on lift <= -5 mm made touching the box at all net
+#    negative (a 5 cm lift is only worth 6.0/step), so PPO converged on "never
+#    touch the box". W_DROP is now charged once, on the transition that loses an
+#    already-achieved lift, and W_LIFT is floored so resting contact is free.
+W_REACH = 2.0          # per metre of palm->box distance reduction
+W_ALIGN = 3.0          # box centred under the palm
+W_GRASP = 2.0          # fingertips in contact with the box (enabler, not the goal)
+W_LIFT = 150.0         # per metre lifted above the start height -> 7.5 @ 5 cm
+W_HOLD = 8.0           # per step held above hold_threshold
+W_MIN_HOLD = 60.0      # once min_hold_steps are satisfied
+W_LIFT_BONUS = 200.0   # evaluator lift_threshold (0.10 m) reached
+W_DROP = 60.0          # ONE-SHOT penalty for losing an achieved lift
 W_CTRL = 0.002         # action magnitude penalty
 W_VEL = 0.01           # joint velocity penalty
+W_OFF_TABLE = 20.0     # per step while the box is off the table AND not held
 HOLD_SLACK = 0.001     # descent tolerance added on top of max_descent_step_m
 
 
@@ -167,7 +176,10 @@ class LiftHoldEnv(gym.Env):
 
         # ---- spaces ------------------------------------------------------
         self.action_space = spaces.Box(-1.0, 1.0, (N_ACT,), dtype=np.float32)
-        n_obs = 3 + 4 + 3 + 3 + 3 + 3 + N_FINGER + N_FINGER + 4 + 8
+        # 3 box xyz + 4 quat + 3 linvel + 3 angvel + 3 wrist-box + 4 wrist quat
+        # + 16 finger q + 16 finger v + 4 tip distances + 8 history = 64
+        n_obs = 3 + 4 + 3 + 3 + 3 + 4 + N_FINGER + N_FINGER + 4 + 8
+        self.n_obs = n_obs
         self.observation_space = spaces.Box(-np.inf, np.inf, (n_obs,), dtype=np.float32)
 
         # ---- episode bookkeeping ----------------------------------------
@@ -178,6 +190,8 @@ class LiftHoldEnv(gym.Env):
         self._min_hold_counter = 0
         self._prev_dist = None
         self._prev_obj_pos = None
+        self._prev_lift = 0.0
+        self._ctrl_ref = np.zeros(N_ACT)
         self._history = np.zeros(8, dtype=np.float64)
         self._rng = np.random.default_rng(0)
         self.last_contact_pairs: list[tuple[str, str]] = []
@@ -275,6 +289,8 @@ class LiftHoldEnv(gym.Env):
         self._min_hold_counter = 0
         self._prev_obj_pos = d.xpos[self.obj_body].copy()
         self._prev_dist = float(np.linalg.norm(d.xpos[self.palm] - d.xpos[self.obj_body]))
+        self._prev_lift = 0.0
+        self._ctrl_ref = d.ctrl.copy()
         self._history = np.zeros(8)
         self.last_contact_pairs = []
         self.last_contact_force = 0.0
@@ -292,6 +308,18 @@ class LiftHoldEnv(gym.Env):
             if int(self.geom_name_to_id.get(name, -1)) in self.finger_geom_ids:
                 out.append(name)
         return out
+
+    def _box_knocked_away(self, pairs: list[tuple[str, str]]) -> bool:
+        """Box is neither resting on the table nor held by any finger.
+
+        A legitimately lifted box has no table contact either, so "off the table"
+        alone would penalise the goal itself. This flags only the exploit case: the
+        box shoved clear of the slab and abandoned.
+        """
+        on_table = any(name == "table_slab" for name, _ in pairs)
+        held = any(self.geom_name_to_id.get(name, -1) in self.finger_geom_ids
+                   for name, _ in pairs)
+        return not on_table and not held
 
     def _read_contacts(self) -> tuple[list[tuple[str, str]], float, float]:
         """Geom pairs touching the box, the summed normal force, and the finger-only
@@ -335,27 +363,49 @@ class LiftHoldEnv(gym.Env):
         pairs, force, finger_force = self._read_contacts()
         grasp = 1.0 if finger_force > 0.0 else 0.0
 
+        # evaluator semantics: hold means "stayed above hold_threshold_m without
+        # descending more than max_descent_step_m per step"
         if lift >= self.hold_threshold_m:
-            self._hold_steps += 1
-            self._min_hold_counter += 1
+            descent = max(0.0, self._prev_lift - lift)
+            if descent <= self.max_descent_step_m + HOLD_SLACK:
+                self._min_hold_counter += 1
+            else:
+                self._min_hold_counter = 0
         else:
             self._min_hold_counter = 0
+        self._prev_lift = lift
 
         hold = 1.0 if lift >= self.hold_threshold_m else 0.0
         min_hold = 1.0 if self._min_hold_counter >= self.min_hold_steps else 0.0
         lift_bonus = 1.0 if lift >= self.lift_threshold_m else 0.0
-        drop = 1.0 if lift <= -0.005 else 0.0
+        # one-shot: charge the drop penalty only on the transition out of an
+        # achieved lift, never for resting contact on the table
+        was_lifted = self._prev_lift >= self.hold_threshold_m
+        drop = 1.0 if (was_lifted and lift < self.hold_threshold_m) else 0.0
+
+        # Sliding the box off the table used to be a free exploit: once it is off,
+        # max(lift, 0) is 0 forever, so PPO learned to shove it over the edge
+        # (observed: episode-mean lift of -0.13 m = box at z 0.61, below the table).
+        # Charging every abandoned-off-table step removes that escape hatch.
+        knocked = 1.0 if self._box_knocked_away(pairs) else 0.0
 
         qvel = self.data.qvel[self.finger_dof_adr]
+        wrist_vel = self.data.qvel[self.wrist_dof_adr]
+        act_pen = float(np.sum(np.square(self.data.ctrl - self._ctrl_ref))) * W_CTRL
+        vel_pen = float(np.sum(np.square(qvel))) * W_VEL \
+            + float(np.sum(np.square(wrist_vel))) * W_VEL
         rew = (
             W_REACH * dist_reach
             + W_ALIGN * align
             + W_GRASP * grasp
-            + W_LIFT * lift
+            + W_LIFT * max(lift, 0.0)
             + W_HOLD * hold
             + W_MIN_HOLD * min_hold
             + W_LIFT_BONUS * lift_bonus
             - W_DROP * drop
+            - W_OFF_TABLE * knocked
+            - act_pen
+            - vel_pen
         )
         info = {
             "lift": lift,
@@ -364,6 +414,7 @@ class LiftHoldEnv(gym.Env):
             "hold": hold,
             "min_hold": min_hold,
             "drop": drop,
+            "knocked_away": knocked,
             "contact_force": force,
             "finger_force": finger_force,
             "finger_contact": grasp,
@@ -390,6 +441,7 @@ class LiftHoldEnv(gym.Env):
 
         ctrl = np.concatenate([target, finger_target])
         self.data.ctrl[:] = np.clip(ctrl, self.ctrl_low, self.ctrl_high)
+        self._ctrl_ref = self.data.ctrl.copy()
 
     def step(self, action: np.ndarray):
         if not isinstance(action, np.ndarray) or action.shape != (N_ACT,):

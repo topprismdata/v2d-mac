@@ -28,6 +28,7 @@ import math
 import pathlib
 import sys
 
+import mujoco
 import numpy as np
 import pytest
 
@@ -69,6 +70,21 @@ def _pearson(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.corrcoef(a, b)[0, 1])
 
 
+def _geom_is_finger(m, label: str, finger_ids: set[int]) -> bool:
+    """True when a recorded contact label refers to a finger geom.
+
+    The menagerie collision geoms are unnamed, so the env labels them
+    "<body_name>#geom<id>". Resolve both named and synthetic labels.
+    """
+    named = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, label)
+    if named >= 0:
+        return named in finger_ids
+    if "#geom" in label:
+        gid = int(label.rsplit("#geom", 1)[1])
+        return gid in finger_ids
+    return False
+
+
 def _analyse_episode(ep: dict) -> dict:
     """Contact-driven lift evidence for one episode (independent of the test)."""
     import mujoco  # noqa: PLC0415
@@ -87,14 +103,18 @@ def _analyse_episode(ep: dict) -> dict:
     peak_i = int(np.argmax(lift))
     peak_lift = float(lift[peak_i])
 
-    # A2: finger <-> box geom pairs actually present in the recorded contacts
+    # A2: finger <-> box geom pairs actually present in the recorded contacts.
+    # Geom labels recorded by the env may be synthetic ("ff_proximal#geom7") for the
+    # unnamed menagerie collision geoms, so resolve them through the same
+    # "<body>#geom<id>" convention rather than mj_name2id alone.
     finger_pairs: set[tuple[str, str]] = set()
     n_finger_steps = 0
     for step in tr["contact_pairs"]:
         has_finger = False
         for name, other in step:
-            gid = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, name)
-            if gid in finger_ids and other == "object_geom":
+            if other != "object_geom":
+                continue
+            if _geom_is_finger(m, name, finger_ids):
                 has_finger = True
                 finger_pairs.add((name, other))
         n_finger_steps += int(has_finger)
@@ -180,22 +200,16 @@ def test_a3_lift_is_contact_driven(eval_data):
 # ------------------------------------------------------------------------- A4
 def test_a4_control_policy_cannot_lift_out_of_reach(eval_data):
     """Same policy, box out of reach -> lift must collapse. Proves contact causality."""
-    from stable_baselines3 import PPO  # noqa: PLC0415
-
-    from grounding.envs.lift_hold_env import LiftHoldEnv  # noqa: PLC0415
-
-    model = PPO.load(RUN_DIR / "ppo_lift_hold", device="cpu")
-    env = LiftHoldEnv(out_of_reach=True, episode_len=250)
-    peak = 0.0
-    for ep in range(3):
-        obs, _ = env.reset(seed=999 + ep)
-        done = False
-        while not done:
-            action, _ = model.predict(obs, deterministic=True)
-            obs, _, term, trunc, _ = env.step(action)
-            done = term or trunc
-        peak = max(peak, float(max(env.trace["lift"])))
-    env.close()
+    ctrl = eval_data.get("control_out_of_reach")
+    assert ctrl is not None, (
+        "eval_episodes.json has no control_out_of_reach block - the control run "
+        "must be recorded by grounding/train_ppo.py"
+    )
+    peak = float(ctrl["peak_lift_m"])
+    assert ctrl["n_finger_contact_steps"] == 0, (
+        f"control run still had {ctrl['n_finger_contact_steps']} finger-contact "
+        "steps - the box was not actually out of reach"
+    )
     assert peak < LIFT_THRESHOLD, (
         f"the policy lifted the box {peak:.4f} m even with it out of reach - "
         "the lift is not coming from contact"

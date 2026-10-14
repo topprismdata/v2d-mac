@@ -107,21 +107,30 @@ def train(total_steps: int, n_envs: int, seed: int, episode_len: int,
                 if payload["z_peak"] > self.best["z_peak"]:
                     self.best = {"z_peak": payload["z_peak"], "episode": self.episode,
                                  "global_step": int(self.num_timesteps)}
-            return False
+            # True == keep training; returning False would abort learn() after 1 step
+            return True
 
         def _on_training_end(self) -> None:
             self.curve.close()
 
-    vec = SubprocVecEnv([_make_env(i, seed, episode_len) for i in range(n_envs)])
+    vec = SubprocVecEnv([_make_env(i, seed, episode_len) for i in range(n_envs)],
+                        start_method="spawn")
     model = PPO(
         "MlpPolicy", vec,
         seed=seed,
         verbose=0,
-        n_steps=1024,
-        batch_size=256,
+        # 8 envs x 256 steps = 2048 samples per rollout -> ~975 policy updates over
+        # the 2M budget. With n_steps=1024 it was only ~244 updates, far too few for
+        # a 22-dim contact-rich exploration problem.
+        n_steps=256,
+        batch_size=128,
+        n_epochs=10,
         gae_lambda=0.95,
         gamma=0.99,
-        ent_coef=0.0,
+        # a little entropy helps: the grasp is only reachable by coordinated
+        # 22-dim motion, and a deterministic policy gets stuck in the "never touch
+        # the box" local optimum.
+        ent_coef=0.01,
         learning_rate=3e-4,
         clip_range=0.2,
         policy_kwargs={"net_arch": [256, 256]},
@@ -195,11 +204,39 @@ def evaluate(n_episodes: int, seed: int, episode_len: int) -> dict:
               flush=True)
     env.close()
 
+    # A4 control: same policy, box parked out of the hand's workspace. If the lift
+    # still happened here, it would not be contact-driven.
+    ctrl_env = LiftHoldEnv(out_of_reach=True, episode_len=episode_len)
+    ctrl_peak = 0.0
+    ctrl_finger_steps = 0
+    for ep in range(3):
+        obs, _ = ctrl_env.reset(seed=999 + ep)
+        done = False
+        while not done:
+            action, _ = model.predict(obs, deterministic=True)
+            obs, _, term, trunc, _ = ctrl_env.step(action)
+            done = term or trunc
+        ctrl_peak = max(ctrl_peak, float(max(ctrl_env.trace["lift"])))
+        ctrl_finger_steps += sum(
+            1 for step in ctrl_env.trace["contact_pairs"]
+            if any(p[0].split("#")[0].startswith(("ff_", "mf_", "rf_", "th_"))
+                   for p in step))
+    ctrl_env.close()
+    print(f"[control out_of_reach] peak_lift={ctrl_peak:+.4f} m "
+          f"finger_contact_steps={ctrl_finger_steps}", flush=True)
+
     result = {
         "n_episodes": n_episodes,
         "evaluator": json.loads(
             (REPO / "runs/p0/assets/tissue_box_lift_hold.json").read_text())["evaluator"],
         "best_episode": int(np.argmax([e["max_lift_m"] for e in episodes])),
+        "control_out_of_reach": {
+            "n_episodes": 3,
+            "peak_lift_m": ctrl_peak,
+            "n_finger_contact_steps": ctrl_finger_steps,
+            "threshold_m": 0.05,
+            "pass": bool(ctrl_peak < 0.05),
+        },
         "episodes": episodes,
     }
     (OUT_DIR / "eval_episodes.json").write_text(json.dumps(result, indent=2))
