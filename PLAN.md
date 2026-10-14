@@ -51,6 +51,28 @@
 - 任务 5.2 在 `grounding/assets/allegro_floating.xml` 场景（含代理盒）内回放关节序列：QA 数值全按 DESIGN G3 细则——接触状态序列、最大穿透深度（MuJoCo 容差判）、关节速度/加速度界、执行器力限幅、腕部连续性、指尖跟踪误差
 - 任务 5.3 `tests/test_smoke5_retarget.py` 产出 `RetargetQA` 报告全绿 RED→GREEN；报告存 `runs/p0/smoke5_retarget/retarget_qa.json`
 
+## Wave 3（MJCF 修订轮 —— 由 smoke4/5 实证缺陷驱动，smoke4b 训练结束后统一执行）
+
+> 触发条件：smoke4b 报告产出后立即执行。修订期间**禁止**任何 smoke4 训练在跑（物理/动作语义变更会作废已训策略）。
+
+### 修订项（一次性改完，来源均为实测）
+
+| 项 | 现状 | 目标 | 依据 |
+|---|---|---|---|
+| wrist_z ctrlrange | 覆盖不足 | +0.062 m 行程 | smoke5 gauge fixing 后残留 wrist_z 0.062 m（物理量：垂直下降） |
+| wrist_ry ctrlrange | 覆盖不足 | +0.058 rad 行程 | 同上 wrist_ry 0.058 rad（物理量：俯仰摆动） |
+| wrist_rz / x / y | 超程 1.145 rad / 0.063 m | **不动** | gauge fixing 后超程已归零，任何 gauge 选择都吸收不了 rz/x/y 是不成立的 |
+| 接触刚度 | 默认偏软 → 指尖压入盒子 2.7 mm | 提高 box↔finger 接触刚度 | 纸盒是刚性体；真机 Allegro V5 指尖力上限 10 N/指，MJCF 手指 ±2 N·m 折算约 50 N，0.15 kg 盒子仅需 1.47 N → 权限不是瓶颈，软接触才是 |
+| 手指 forcerange | ±2 N·m | 保留，但 report 记录指尖力折算 | 保持远超真机能力，不做"调到刚好够用" |
+| 手指/掌 geom 命名 | 全由无名 `<default>` 生成，42 geom 无 name | **命名全部手指与掌 geom** | smoke5 曾因此写出"检测器结构性失明 → 0 接触"的假结论；命名是根因消除 |
+| 穿透容差 | 固定 1e-3 m | **由实测静置下沉基线推导**（容差 = k × floor，k≥3） | 静置下沉实测 2.39e-4 m；接触加硬后基线会变，写死容差会变成"随意的数字" |
+
+### 修订后并行复验
+
+- smoke4：MJCF 物理变更 → **必须重训 + 重评**（不可沿用旧 checkpoint）
+- smoke5：只需复跑（管线运行时读 MJCF，零代码改动）
+- 两轮复验的 report 必须记录"基于修订后 MJCF 的 commit 哈希"，禁止与旧物理混账
+
 ### 收尾任务（主代理亲做）
 - 复跑六个验收脚本全绿；六个 report.json 汇总 `runs/p0/SUMMARY.md`；git tag `p0-green`
 - 六绿后：阈值校准材料（P0 实测分布）呈给用户签字固化 P1 阈值
