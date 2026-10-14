@@ -16,10 +16,10 @@
     "cpu_fallbacks": []
   },
   "cpu_fallbacks": [],
-  "mps_inference_seconds": 30.12833004188724,
-  "cpu_control_seconds": 12.979744334006682,
+  "mps_inference_seconds": 28.03545695799403,
+  "cpu_control_seconds": 21.60890879202634,
   "cpu_control_frames": 4,
-  "speedup_vs_cpu_control": 3.231114448418072,
+  "speedup_vs_cpu_control": 5.780780252058129,
   "n_frames": 30,
   "input_frames": [
     "f_0001.jpg",
@@ -231,18 +231,27 @@
       "depth_max": 1.4868602752685547,
       "nan_count": 0
     },
-    "b_step_norm_lt_3x_median": {
+    "b_step_no_teleport": {
       "pass": true,
+      "rule": "max(3 x median_step, absolute_per_frame_ceiling)",
       "limit_ratio": 3.0,
+      "abs_limit": {
+        "joint_m_rad": 0.03,
+        "translation_m": 0.03,
+        "rotation_rad": 0.02
+      },
       "joint_median": 0.006299315591158478,
       "joint_max": 0.017975967173440143,
       "joint_ratio": 2.8536381315250576,
+      "joint_limit": 0.03,
       "translation_median": 0.005649115305204709,
       "translation_max": 0.01691556684532211,
       "translation_ratio": 2.9943745049312875,
+      "translation_limit": 0.03,
       "rotation_median": 0.002112401499885373,
       "rotation_max": 0.006082679847077023,
-      "rotation_ratio": 2.8795093392080493
+      "rotation_ratio": 2.8795093392080493,
+      "rotation_limit": 0.02
     },
     "c_rot_trans_separate": {
       "pass": true,
