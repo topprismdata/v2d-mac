@@ -656,18 +656,22 @@ def superseded_blocker_claims(qa: dict, sat: dict, vel: dict) -> dict[str, Any]:
 
 
 # ----------------------------------------------------------------------- stamp
-def stamp(report_path: pathlib.Path = REPORT_PATH,
-          qa_path: pathlib.Path = QA_PATH) -> dict[str, Any]:
-    """Write the MJCF commit + the re-run evidence into both artefacts."""
+def attach(report: dict[str, Any], qa: dict[str, Any]) -> dict[str, Any]:
+    """Add provenance + re-run evidence to the two artefact dicts, in place.
+
+    Called from ``retarget_smoke.run_smoke`` (via a deferred import, to avoid
+    the module cycle) so the stamp cannot go stale: any run rewrites the JSON,
+    so any run must restamp it.  A drift in the working-tree scene XML is
+    recorded loudly rather than raised -- the smoke itself should still produce
+    its numbers when the tree is mid-edit.
+    """
     prov = mjcf_provenance()
     if not prov["scene_matches_mjcf_commit"]:
-        raise SystemExit(
-            "refusing to stamp: working-tree scene XML does not match "
-            f"{MJCF_COMMIT} ({prov})"
+        prov["provenance_guard"] = (
+            f"WARNING: the working-tree scene XML does not match {MJCF_COMMIT}. "
+            "These numbers are on different physics than the pinned commit and "
+            "must not be read as that commit's results."
         )
-
-    report = json.loads(report_path.read_text())
-    qa = json.loads(qa_path.read_text())
     vel = velocity_evidence()
     sat = saturation_evidence()
     superseded = superseded_blocker_claims(qa, sat, vel)
@@ -675,12 +679,34 @@ def stamp(report_path: pathlib.Path = REPORT_PATH,
     report["mjcf_commit"] = prov
     report["superseded_blocker_claims"] = superseded
     report["rerun_evidence"] = {"velocity_gate": vel, "saturation_and_box": sat}
-    report_path.write_text(json.dumps(report, indent=2) + "\n")
+    report["warm_start"] = report.get("replay", {}).get("warm_start")
 
     qa["physics_provenance"] = prov
     qa["velocity_gate_evidence"] = vel
     qa["saturation_evidence"] = sat
     qa["superseded_blocker_claims"] = superseded
+    return prov
+
+
+def stamp(report_path: pathlib.Path = REPORT_PATH,
+          qa_path: pathlib.Path = QA_PATH) -> dict[str, Any]:
+    """Re-stamp the two artefacts on disk, hard-failing on a tree drift.
+
+    The standalone entry point (``python -m retarget.mjcf_provenance``).  It
+    exists for re-stamping artefacts written before the stamp became automatic;
+    the guard is fatal here, whereas ``attach`` only records the mismatch.
+    """
+    report = json.loads(report_path.read_text())
+    qa = json.loads(qa_path.read_text())
+    prov = mjcf_provenance()
+    if not prov["scene_matches_mjcf_commit"]:
+        raise SystemExit(
+            "refusing to stamp: working-tree scene XML does not match "
+            f"{MJCF_COMMIT}: {prov['scene_sha256']} != "
+            f"{prov['scene_sha256_at_mjcf_commit']}"
+        )
+    attach(report, qa)
+    report_path.write_text(json.dumps(report, indent=2) + "\n")
     qa_path.write_text(json.dumps(qa, indent=2) + "\n")
     return prov
 

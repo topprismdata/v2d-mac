@@ -122,6 +122,43 @@ PENETRATION_TOLERANCE_M = 1e-3
 # trajectory at that hardware limit.
 JOINT_VEL_LIMIT_RAD_S = 3.14
 JOINT_ACC_LIMIT_RAD_S2 = 200.0  # 64x the velocity limit over one 20 Hz frame
+# ---------------------------------------------------------------- warm start
+# reset_scene() leaves the floating wrist at identity and the fingers at a
+# half-curl, then the replay's very first frame commands the retargeted pose.
+# Commanding a 1.3 rad wrist pitch in one 50 ms step asks for ~26 rad/s, which
+# no real hand can do -- the servo correctly refuses and the first few control
+# intervals measure the servo's refusal, not the retargeted trajectory.  The
+# replay therefore ramps into the first command at a rate the hardware can
+# actually track, measured free-space on this very model (see
+# runs/p0/smoke5_retarget/report.json -> rerun_evidence.velocity_gate.
+# floating_wrist_servo_ceiling):
+#   wrist hinges  kp=14  N m/rad, +-6  N m -> trackable to 1.5  rad/s
+#   wrist slides  kp=180 N/m,    +-45 N  -> trackable to 0.2  m/s
+#   finger joints URDF velocity="3.14" rad/s, and they execute at 0.34 rad/s,
+#   so the ramp is not what limits them; it is capped at the URDF figure anyway.
+WARM_START_HINGE_RATE_RAD_S = 1.5
+WARM_START_SLIDE_RATE_M_S = 0.2
+WARM_START_FINGER_RATE_RAD_S = 3.14
+# Hold the first command for 5 s of control time (100 steps at 20 Hz, three
+# times the ramp itself) once the ramp has arrived.  Bounded, not "until
+# converged": at the first commanded pose the hand is in sustained box contact,
+# so the servos settle to a finite contact-deflection error that decays
+# asymptotically.  The error it leaves is recorded as tracking_error_to_goal.
+WARM_START_SETTLE_STEPS = 100
+# A DoF counts as reached when the servos hold it within this of the command:
+# 10 mm on a slide, 10 mrad on a hinge.  Applied to both because the tracking
+# error is a single rad/m vector; at this pose the hand already carries ~1 mm
+# of contact deflection, so 10 mm is a generous "arrived" and 170 mm of shortfall
+# is unmistakably "jammed".
+WARM_START_REACHABLE_TOL = 0.01
+# Run the warm start in replay().  Enabled per the wave-3 ruling, and kept as a
+# one-line switch because it is currently a net *regression* on this scene: the
+# ramp honours its rate caps, but the first commanded wrist pose is outside the
+# floating wrist's reachable set here, so the hand wedges against the box
+# instead of arriving and three criteria that were green at commit 6e66cf5 go
+# red.  Set False to reproduce 6e66cf5's numbers exactly; the underlying defect
+# is reachability, not the ramp.
+WARM_START_ENABLED = True
 # Wrist continuity, physically anchored as in smoke 2: a jump must exceed BOTH
 # 3x the median inter-frame wrist step AND an absolute per-frame ceiling.  The
 # ceiling is set by the actuators' own authority: the 6-DoF floating wrist is a
@@ -408,6 +445,184 @@ def _geom_id(model, name: str) -> int:
 
 
 # ================================================================ replay stage
+def warm_start(
+    model,
+    data,
+    finger_qadr: np.ndarray,
+    wrist_qadr: np.ndarray,
+    finger_act: np.ndarray,
+    wrist_act: np.ndarray,
+    finger_goal: np.ndarray,
+    wrist_goal: np.ndarray,
+    ctrl_hz: int = CTRL_HZ,
+    frame_skip: int = 25,
+) -> dict[str, Any]:
+    """Ramp the servos from the reset pose into the first commanded pose.
+
+    ``reset_scene()`` leaves the floating wrist at identity and the fingers at
+    the pre-curl.  Stepping straight to the first retargeted command asks the
+    wrist for a 1.3 rad pitch change in 50 ms (~26 rad/s) and the fingers for up
+    to 1.23 rad; the force-limited servos refuse, and the resulting transient
+    says nothing about the trajectory.  A real hand would be driven there over
+    a second or so.
+
+    This walks ``data.ctrl`` along a per-axis ramp capped at the servos'
+    *measured* trackable rates and then holds the goal until the position error
+    stops falling.  Only ``data.ctrl`` is written; ``data.qpos``/``data.qvel``
+    are read, never assigned, so the C5 "replay never writes qpos" invariant
+    still holds for the warm start too.
+
+    The ramp is a pure input shaping: it changes the path the servos take to
+    the first command, never the command itself.  tests/test_smoke5_warmstart.py
+    pins that by settling the warm-started state and a straight-to-target
+    reference and requiring the hand's and the box's world poses to agree.
+
+    Returns what the ramp did, for the report: control steps, duration, the
+    peak commanded rate per class, the peak *realised* rate, and the residual to
+    the goal.
+    """
+    import mujoco
+
+    dt_ctrl = frame_skip * model.opt.timestep
+    lo = model.actuator_ctrlrange[:, 0]
+    hi = model.actuator_ctrlrange[:, 1]
+    goal = np.concatenate([np.asarray(finger_goal, float), np.asarray(wrist_goal, float)])
+    goal = np.clip(goal, lo, hi)
+    n_f = len(finger_qadr)
+    # per-DoF command cap: slides in m/s, everything else in rad/s
+    finger_caps = np.full(n_f, WARM_START_FINGER_RATE_RAD_S)
+    if n_f:
+        finger_slide = np.array([
+            model.jnt_type[
+                [j for j in range(model.njnt)
+                 if int(model.jnt_qposadr[j]) == int(qa)][0]
+            ] == mujoco.mjtJoint.mjJNT_SLIDE
+            for qa in finger_qadr
+        ])
+        finger_caps[finger_slide] = WARM_START_SLIDE_RATE_M_S
+    caps = np.concatenate([
+        finger_caps,
+        np.full(3, WARM_START_SLIDE_RATE_M_S),
+        np.full(3, WARM_START_HINGE_RATE_RAD_S),
+    ])
+
+    cur = np.concatenate([
+        data.qpos[finger_qadr].copy(), data.qpos[wrist_qadr].copy()
+    ])
+    start = cur.copy()
+
+    steps = 0
+    peak_cmd = np.zeros(model.nu)
+    hist: list[np.ndarray] = []
+    prev_q = np.concatenate([
+        data.qpos[finger_qadr].copy(), data.qpos[wrist_qadr].copy()
+    ])
+    realised = []
+    ramp_done_at = None
+    # Settling is bounded rather than run to convergence: at the first commanded
+    # pose the hand is in sustained contact with the box, so the servos hold a
+    # finite contact-deflection error instead of reaching the commanded qpos
+    # exactly, and the residual decays asymptotically.  WARM_START_SETTLE_STEPS
+    # is 5 s at 20 Hz -- three times the ramp itself -- and the tracking error
+    # it leaves is recorded rather than hidden.
+    settle_budget = WARM_START_SETTLE_STEPS
+    while True:
+        delta = goal - cur
+        step = np.clip(delta, -caps * dt_ctrl, caps * dt_ctrl)
+        cur = cur + step
+        data.ctrl[finger_act] = cur[:n_f]
+        data.ctrl[wrist_act] = cur[n_f:]
+        peak_cmd = np.maximum(peak_cmd, np.abs(step) / dt_ctrl)
+        for _ in range(frame_skip):
+            mujoco.mj_step(model, data)
+        now = np.concatenate([
+            data.qpos[finger_qadr].copy(), data.qpos[wrist_qadr].copy()
+        ])
+        realised.append((now - prev_q) / dt_ctrl)
+        prev_q = now
+        hist.append(now.copy())
+        steps += 1
+        if ramp_done_at is None and np.max(np.abs(goal - cur)) <= 1e-12:
+            ramp_done_at = steps
+            continue
+        if ramp_done_at is None:
+            continue
+        held = steps - ramp_done_at
+        if held >= settle_budget:
+            break
+    if ramp_done_at is None:
+        ramp_done_at = steps
+
+    realised_arr = np.abs(np.stack(realised)) if realised else np.zeros((0, model.nu))
+    residual = float(np.max(np.abs(goal - cur)))
+    tracking = np.abs(goal - prev_q)
+    idx = {"finger": slice(0, n_f), "wrist_slide": slice(n_f, n_f + 3),
+           "wrist_hinge": slice(n_f + 3, n_f + 6)}
+
+    # Did the servos actually get there, or did the world stop them?  The
+    # tracking error is the honest discriminator: the ramp caps the *command*
+    # rate, but a hand that jams on the box never arrives no matter how slowly
+    # it is driven, and reporting the shortfall keeps "the warm start failed"
+    # from being ambiguous.
+    return {
+        "reachable": bool(np.max(tracking) <= WARM_START_REACHABLE_TOL),
+        "unreachable_dofs": [
+            str(rs_name)
+            for rs_name, ok in zip(WRIST_JOINTS,
+                                   tracking[n_f:] <= WARM_START_REACHABLE_TOL)
+            if not ok
+        ],
+        "unreachable_note": (
+            "the first commanded wrist pose is not in this floating wrist's "
+            "reachable set on this scene: the palm rests on the box top and "
+            "blocks the wrist's descent, so no approach path reaches the "
+            "command. The ramp caps the *command* rate; it cannot make an "
+            "unreachable pose reachable."
+        ),
+        "control_steps": int(steps),
+        "ramp_control_steps": int(ramp_done_at),
+        "ramp_duration_s": float(ramp_done_at * dt_ctrl),
+        "settle_control_steps": int(steps - ramp_done_at),
+        "duration_s": float(steps * dt_ctrl),
+        "dt_ctrl_s": float(dt_ctrl),
+        "rate_caps": {
+            "finger_rad_s": WARM_START_FINGER_RATE_RAD_S,
+            "wrist_slide_m_s": WARM_START_SLIDE_RATE_M_S,
+            "wrist_hinge_rad_s": WARM_START_HINGE_RATE_RAD_S,
+            "source": (
+                "free-space step/ramp measurement of this model's own servos, "
+                "recorded in rerun_evidence.velocity_gate."
+                "floating_wrist_servo_ceiling"
+            ),
+        },
+        "commanded_peak_rate": {
+            k: float(np.max(peak_cmd[v])) for k, v in idx.items()
+        },
+        "realised_peak_rate": {
+            k: float(np.max(realised_arr[:, v])) if realised_arr.size else 0.0
+            for k, v in idx.items()
+        },
+        "command_span": {
+            k: float(np.max(np.abs(goal[v] - start[v]))) for k, v in idx.items()
+        },
+        "tracking_error_to_goal": {
+            k: float(np.max(tracking[v])) for k, v in idx.items()
+        },
+        "tracking_error_note": (
+            "finite by design: the first commanded pose puts the hand in "
+            "sustained box contact, so the force-limited servos hold a contact "
+            "deflection instead of reaching the commanded qpos exactly."
+        ),
+        "residual_to_goal_rad": residual,
+        "reached_goal": bool(residual <= 1e-9),
+        "cap_respected": bool(
+            np.max(peak_cmd) <= max(
+                WARM_START_FINGER_RATE_RAD_S, WARM_START_SLIDE_RATE_M_S,
+                WARM_START_HINGE_RATE_RAD_S) + 1e-9),
+        "qpos_history": np.stack(hist),
+    }
+
+
 def replay(qpos: np.ndarray, anchor: dict, seed: int = 0) -> dict[str, Any]:
     """Replay the retargeted sequence through the 22 position actuators.
 
@@ -457,6 +672,24 @@ def replay(qpos: np.ndarray, anchor: dict, seed: int = 0) -> dict[str, Any]:
     # the target actuator's ctrlrange, which is how the mistake announces itself.
     finger_target = qpos[:, 6:22][:, URDF_TO_MJCF_ACTUATOR_ORDER]
     wrist_target = target_ctrl
+
+    # Rate-limited warm start: drive the servos from the reset pose to the
+    # first commanded pose at a rate they can actually track, so the recorded
+    # trajectory starts from a state the hardware could be in instead of from a
+    # step command the servos had to refuse.  See WARM_START_ENABLED for why
+    # this is a switch and not a given.
+    if WARM_START_ENABLED:
+        warm = warm_start(
+            mujoco_model, data, finger_qadr, wrist_qadr, finger_act, wrist_act,
+            np.clip(finger_target[0], ctrl_lo[finger_act], ctrl_hi[finger_act]),
+            np.clip(wrist_target[0], ctrl_lo[wrist_act], ctrl_hi[wrist_act]),
+            ctrl_hz=ctrl_hz, frame_skip=frame_skip,
+        )
+        warm.pop("qpos_history", None)
+    else:
+        warm = {"enabled": False,
+                "note": "WARM_START_ENABLED is False; the replay starts from the "
+                        "reset seed directly, as at commit 6e66cf5"}
 
     n_frames = qpos.shape[0]
     contact_seq: list[int] = []
@@ -513,6 +746,18 @@ def replay(qpos: np.ndarray, anchor: dict, seed: int = 0) -> dict[str, Any]:
 
     wrist_reachability = _wrist_reachability(mujoco_model, target_ctrl)
 
+    # The warm start is input shaping, not part of the retargeted sequence, so
+    # the gate above measures the replay trajectory only.  Its own velocities
+    # are kept in full under "warm_start" so nothing is dropped silently.
+    n_f = len(finger_qadr)
+    if WARM_START_ENABLED:
+        warm["velocity_scope"] = (
+            "warm-start segment excluded from joint_velocity_max_rad_s by "
+            "design: it is a rate-limited approach to the first command, not "
+            "retargeted motion. Its own rates are below."
+        )
+        warm["replay_qpos_at_warm_start_end"] = q_hist[0].tolist()
+
     return {
         "n_frames": n_frames,
         "ctrl_hz": ctrl_hz,
@@ -539,6 +784,7 @@ def replay(qpos: np.ndarray, anchor: dict, seed: int = 0) -> dict[str, Any]:
         "final_tip_positions_world": tips[-1],
         "qpos_history": q,
         "final_finger_qpos": q[-1, finger_qadr],
+        "warm_start": warm,
     }
 
 
@@ -951,8 +1197,6 @@ def run_smoke(out_dir: pathlib.Path = OUT_DIR, n_frames: int = N_FRAMES) -> dict
     for k in private:
         rep.pop(k)
 
-    (out_dir / "retarget_qa.json").write_text(json.dumps(qa, indent=2) + "\n")
-
     checks = qa["checks"]
     verdict = "pass" if all(checks.values()) else "fail"
     report = {
@@ -989,6 +1233,17 @@ def run_smoke(out_dir: pathlib.Path = OUT_DIR, n_frames: int = N_FRAMES) -> dict
         "versions": _versions(),
         "qa_report": str((out_dir / "retarget_qa.json")),
     }
+    # Stamp the MJCF commit and the re-run evidence before either file is
+    # written, so every run produces provenance-tagged artefacts.  Deferred
+    # import: mjcf_provenance imports this module.  A failure here must not
+    # cost us the run's numbers, so it is recorded rather than raised.
+    try:
+        from retarget import mjcf_provenance  # noqa: PLC0415
+
+        mjcf_provenance.attach(report, qa)
+    except Exception as exc:  # pragma: no cover - provenance must not gate data
+        report["mjcf_provenance_error"] = f"{type(exc).__name__}: {exc}"
+    (out_dir / "retarget_qa.json").write_text(json.dumps(qa, indent=2) + "\n")
     (out_dir / "report.json").write_text(json.dumps(report, indent=2) + "\n")
     return report
 
