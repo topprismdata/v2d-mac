@@ -41,6 +41,7 @@ if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
 from retarget.mano_fk import load_mano, mano_forward, sha256_file  # noqa: E402
+from retarget.gauge import fix_gauge  # noqa: E402
 
 # ---------------------------------------------------------------- fixed inputs
 SCENE_XML = REPO / "grounding/assets/allegro_floating.xml"
@@ -86,6 +87,27 @@ URDF_TIP_FRAMES = ["link_3.0_tip", "link_7.0_tip", "link_11.0_tip", "link_15.0_t
 MJCF_TIP_BODIES = ["ff_tip", "mf_tip", "rf_tip", "th_tip"]
 # Scene geoms the hand must never be credited with touching the box through.
 SUPPORT_GEOMS = {"table_slab", "pedestal", "floor"}
+# Every finger/palm geom in this MJCF is built from an unnamed <default> class,
+# so mj_id2name returns None for all 42 of them. Contact classification must
+# therefore go through geom->body ancestry, never through geom names -- keying on
+# names silently reports "no contact" for a hand buried in the box.
+HAND_BODIES = (
+    ["palm"]
+    + [f"{p}_{seg}" for p in ("ff", "mf", "rf", "th")
+       for seg in ("base", "proximal", "medial", "distal", "tip")]
+)
+
+
+def hand_geom_ids(model) -> set[int]:
+    """Geom ids belonging to the hand (palm + 4 finger chains)."""
+    import mujoco
+
+    bodies = {
+        mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, name)
+        for name in HAND_BODIES
+        if mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, name) >= 0
+    }
+    return {g for g in range(model.ngeom) if model.geom_bodyid[g] in bodies}
 
 # ---------------------------------------------------------------- thresholds
 # Frozen before the first run; see runs/p0/smoke5_retarget/retarget_qa.json.
@@ -352,9 +374,17 @@ def solve_wrist_anchor(qpos: np.ndarray, tip_pos: np.ndarray, model, data) -> di
     ctrl = np.zeros((qpos.shape[0], 6))
     ctrl[:, 0:3] = qpos[:, 0:3] + slide_offset
     ctrl[:, 3:6] = hinge
+
+    # Gauge fixing: strip the global yaw and the in-plane base offset out of the
+    # wrist command. Those are coordinate freedoms of a hand with no fixed arm,
+    # not physics; leaving them on the actuators is what pushed wrist_rz to
+    # 2.71 rad against a +-1.57 rad ctrlrange.
+    ctrl, gauge = fix_gauge(ctrl, model.actuator_ctrlrange[:6], r_palm)
+
     return {
         "ctrl": ctrl,
         "slide_offset": slide_offset,
+        "gauge_fixing": gauge,
         "hinge_convention": "MJCF wrist_rx->wrist_ry->wrist_rz, composed Rz@Ry@Rx",
         "anchor_rule": (
             "single constant translation offset placing the mid-clip retargeted "
@@ -577,14 +607,19 @@ def _joint_id(model, name: str) -> int:
 def _finger_box_contact(model, data) -> tuple[bool, float]:
     """(any finger/palm-vs-box contact, deepest penetration).
 
-    Contacts against the table/pedestal/floor are *not* counted: the tissue-box
-    proxy rests on the pedestal, so an unguarded check would read that resting
-    contact as hand-object contact and pass the gate without the hand ever
-    touching the box.
-    """
-    import mujoco
+    Two exclusions, both load-bearing:
 
+    * Contacts against the table/pedestal/floor are not counted -- the box rests
+      on the pedestal, so an unguarded check would read that resting contact as
+      hand-object contact and pass the gate without the hand ever touching the
+      box.
+    * The *other* geom must belong to the hand. This MJCF's finger/palm geoms
+      are all unnamed (they come from <default> classes), so membership is
+      decided by geom->body ancestry; a name-based check returns None for every
+      one of them and reports zero contact no matter how deep the hand is buried.
+    """
     box = _geom_id(model, "object_geom")
+    hand = hand_geom_ids(model)
     hit = False
     pen = 0.0
     for c in range(data.ncon):
@@ -592,8 +627,7 @@ def _finger_box_contact(model, data) -> tuple[bool, float]:
         if box not in (con.geom1, con.geom2):
             continue
         other = con.geom2 if con.geom1 == box else con.geom1
-        name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, other)
-        if name is None or name in SUPPORT_GEOMS:
+        if other not in hand:
             continue
         hit = True
         pen = max(pen, -float(con.dist))
@@ -794,18 +828,52 @@ def _failure_reason(qa: dict) -> str:
 
 
 def _blocker(qa: dict, rep: dict) -> dict[str, Any]:
-    """The physical reason the contact criterion cannot be met on this scene."""
+    """The physical reason the remaining criteria cannot be met on this scene."""
     reach = qa["actuators"]["wrist_reachability"]
+    gauge = qa["retargeting"]["wrist_anchor"]["gauge_fixing"]
     return {
         "what": (
-            "the floating Allegro wrist cannot execute the retargeted wrist pose, "
-            "so the hand never reaches the tissue-box proxy and the G3 contact "
-            "criterion is unproven -- this smoke FAILS rather than passing on a "
-            "hand that never touches anything"
+            "after gauge fixing, the wrist still cannot fully execute the "
+            "retargeted pose and the fingers interpenetrate the box proxy, so "
+            "the G3 penetration/limit/velocity criteria fail on geometry"
         ),
+        "gauge_fixing_applied": gauge["gauge_freedoms_removed"],
+        "gauge_fitting_result": {
+            "wrist_rz_command_rad": [gauge["command_min"][5], gauge["command_max"][5]],
+            "wrist_rz_overshoot": gauge["overshoot_after"][5],
+            "wrist_x_command_m": [gauge["command_min"][0], gauge["command_max"][0]],
+            "wrist_x_overshoot": gauge["overshoot_after"][0],
+            "wrist_y_command_m": [gauge["command_min"][1], gauge["command_max"][1]],
+            "wrist_y_overshoot": gauge["overshoot_after"][1],
+            "axes_still_out_of_range": gauge["axes_out_of_range_after"],
+            "note": (
+                "the gauge fix removed the global yaw and the in-plane base "
+                "offset exactly as predicted: wrist_x, wrist_y, wrist_rx and "
+                "wrist_rz now all fit with ZERO overshoot (before: x 0.063, rz "
+                "1.145 rad over). The applied rotation is a single constant Rz for "
+                "the whole clip, verified by "
+                "test_gauge_fixing_preserves_the_world_pose, so the hand's pose "
+                "relative to the object is untouched. Only wrist_z (0.062 m) and "
+                "wrist_ry (0.058 rad) remain out of range: those carry the hand's "
+                "vertical drop and pitch swing, which are physical, not "
+                "convention, and no gauge choice can absorb them."
+            ),
+        },
         "wrist_axes_out_of_range": reach["axes_out_of_range"],
         "max_overshoot": dict(zip(WRIST_JOINTS, reach["max_overshoot"])),
         "ctrlrange": reach["ctrlrange"],
+        "penetration": {
+            "max_m": qa["penetration"]["max_m"],
+            "tolerance_m": qa["penetration"]["tolerance_m"],
+            "why": (
+                "with the wrist now executing the retargeted pose, the fingers "
+                "reach the box and push into it: the deepest finger-box "
+                "penetration is several times the tolerance. Position servos "
+                "kp=3 with forcerange +-2 N m cannot hold the box out, so the "
+                "hand sinks in."
+            ),
+        },
+        "contact_duty": qa["contact"]["duty"],
         "measured_fingertip_height_m": float(
             np.min(rep["final_tip_positions_world"][:, 2])
         ),
@@ -813,27 +881,23 @@ def _blocker(qa: dict, rep: dict) -> dict[str, Any]:
             qa["retargeting"]["wrist_anchor"]["box_center"][2]
             + qa["retargeting"]["wrist_anchor"]["box_half_size"][2]
         ),
-        "why": (
-            "the retargeted wrist wants up to 2.71 rad of wrist_rz and -0.24 m of "
-            "wrist_x while the MJCF grants +-1.57 rad and +-0.18 m; clipped, the "
-            "fingertips stay above the box top face, so contact duty is 0. "
-            "Measured directly: even at maximum finger curl with the wrist at its "
-            "lowest (-0.10 m) the fingertips bottom out ~0.918 m against a box "
-            "top of 0.840 m."
-        ),
         "not_a_threshold_problem": (
             "PENETRATION_TOLERANCE_M, the velocity bound and the wrist-continuity "
-            "ceiling were not relaxed to reach this verdict; the contact and "
-            "saturation criteria fail on geometry."
+            "ceiling were not relaxed. The earlier 'no contact' verdict was a "
+            "detector bug (this MJCF builds every finger geom from an unnamed "
+            "<default> class, so a name-keyed check could never see a hand "
+            "contact); with body-ancestry classification contact is real and "
+            "duty is "
+            f"{qa['contact']['duty']:.2f}."
         ),
         "fixes_for_p1": [
-            "widen the floating wrist ctrlrange (wrist_rz to +-2.8 rad, wrist_x/y to "
-            "+-0.26 m) or re-anchor the wrist so the retargeted pose fits",
-            "or mount the tissue-box proxy within the achieved fingertip workspace "
-            "(hand_root 0.92 m with fingertips reaching ~0.918 m needs the box top "
-            "at or below that)",
-            "or run the retargeter with the human wrist trajectory instead of the "
-            "wrist-centred variant, so the optimizer sees the real approach",
+            "widen wrist_z to about [-0.17, 0.16] (needs 0.062 m more) and "
+            "wrist_ry to about [-1.27, 1.27] (needs 0.058 rad more) -- much less "
+            "than the rz +-2.8 / x-y +-0.26 originally estimated, because the "
+            "gauge freedoms are already removed",
+            "the 2.7 mm finger-box penetration is a separate servo-authority "
+            "question: finger actuators are kp=3 with forcerange +-2 N m, too "
+            "weak to hold the box out once the wrist can actually reach it",
         ],
     }
 

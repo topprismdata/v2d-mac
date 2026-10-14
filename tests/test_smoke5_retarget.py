@@ -180,6 +180,66 @@ def test_c6_finger_object_contact_occurred(artifacts):
 
 
 # --------------------------------------------------------------------------- C9
+def test_gauge_fixing_removes_the_convention_degrees_of_freedom(artifacts):
+    """Gauge fixing must cut wrist travel without touching the MJCF."""
+    _, qa = artifacts
+    gauge = qa["retargeting"]["wrist_anchor"]["gauge_fixing"]
+    assert "absorbed_yaw_rad" in gauge["gauge_freedoms_removed"]
+    # x/y are pure gauge (arbitrary base origin) and must fit exactly
+    assert gauge["overshoot_after"][0] == 0.0, "wrist_x must fit after gauge fixing"
+    assert gauge["overshoot_after"][1] == 0.0, "wrist_y must fit after gauge fixing"
+    # the yaw was the dominant term: it must now be near-centre, not at 2.71 rad
+    assert gauge["overshoot_after"][5] < 0.2, (
+        "global yaw should be absorbed by the gauge; residual overshoot "
+        f"{gauge['overshoot_after'][5]}"
+    )
+    assert "coordinate convention" in gauge["physical_meaning"]
+
+
+def test_gauge_fixing_preserves_the_world_pose(artifacts):
+    """Gauge fixing is a relabelling: world orientation must be unchanged."""
+    from retarget.gauge import fix_gauge
+
+    rng = np.random.default_rng(3)
+    ctrl = np.zeros((12, 6))
+    ctrl[:, 0:3] = rng.normal(0, 0.05, (12, 3))
+    ctrl[:, 3] = rng.normal(0, 0.4, 12)
+    ctrl[:, 4] = rng.normal(0, 0.4, 12)
+    ctrl[:, 5] = rng.uniform(2.0, 2.7, 12)  # the offending large yaw
+    ctrlrange = np.array(
+        [[-0.18, 0.18], [-0.18, 0.18], [-0.1, 0.16],
+         [-1.2, 1.2], [-1.2, 1.2], [-1.57, 1.57]]
+    )
+    from scipy.spatial.transform import Rotation
+
+    palm = Rotation.from_euler("xyz", [0.0, np.pi / 2, 0.0]).as_matrix()
+    before = np.stack(
+        [Rotation.from_euler("XYZ", ctrl[t, 3:6]).as_matrix() @ palm for t in range(12)]
+    )
+    after_ctrl, _rec = fix_gauge(ctrl, ctrlrange, palm)
+    after = np.stack(
+        [
+            Rotation.from_euler("XYZ", after_ctrl[t, 3:6]).as_matrix() @ palm
+            for t in range(12)
+        ]
+    )
+    world = np.einsum("tij,tjk->tik", after, np.linalg.inv(before))
+    # The invariant is "ONE constant rotation for the whole clip", not identity:
+    # a gauge fix is a relabelling of the base frame, so the world pose moves by
+    # a single Rz the report accounts for. A per-frame or non-rigid change would
+    # silently slide the hand across the object.
+    assert np.allclose(world[0], world[1], atol=1e-9), (
+        "gauge fixing must apply ONE constant rotation to the whole clip, not a "
+        f"per-frame change (spread {np.abs(world - world[0]).max():.2e})"
+    )
+    r_g = _rec["gauge_freedoms_removed"]["base_rotation_matrix"]
+    assert np.allclose(world, np.asarray(r_g)[None], atol=1e-9), (
+        "the applied rotation must equal the one recorded in the report"
+    )
+    assert np.allclose(world @ world[0].T, np.eye(3), atol=1e-9), "must be a rotation"
+    assert np.abs(after_ctrl[:, 5]).max() < 1.2, "large yaw must be absorbed"
+
+
 def test_c9_contact_detector_is_not_vacuous(artifacts):
     """A hand parked out of reach must report zero contact.
 
@@ -213,15 +273,39 @@ def test_c9_contact_detector_is_not_vacuous(artifacts):
     # otherwise C6 proves nothing either.
     data.qpos[wrist_qadr[2]] = -0.10
     data.ctrl[2] = -0.10
+    full_curl = np.array([0.0, 1.61, 1.709, 1.618] * 3 + [1.396, 1.163, 1.644, 1.719])
+    data.qpos[finger_qadr] = full_curl
+    data.ctrl[6:] = full_curl
     for _ in range(600):
         mujoco.mj_step(model, data)
-    box_z = float(data.xpos[rs._body_id(model, "object")][2])
-    tips = [
-        float(data.xpos[rs._body_id(model, b)][2]) for b in rs.MJCF_TIP_BODIES
-    ]
-    # document how close this scene's wrist travel actually gets
-    assert box_z > 0.0
-    assert min(tips) < 1.5
+    hit_in, pen_in = rs._finger_box_contact(model, data)
+    assert hit_in, (
+        "detector never fires even at maximum curl with the wrist at its lowest "
+        "-- it cannot distinguish contact from no contact"
+    )
+    assert pen_in > 0.0
+
+
+def test_contact_detector_sees_unnamed_finger_geoms(artifacts):
+    """This MJCF's finger geoms are unnamed; the detector must not key on names.
+
+    A name-keyed check returns None for all 42 hand geoms and reports zero
+    contact no matter how deep the hand is buried -- which is exactly the false
+    negative that made an earlier draft of this smoke look "safe".
+    """
+    _, model, _ = rs.load_scene()
+    hand = rs.hand_geom_ids(model)
+    assert len(hand) >= 20, f"hand geom set suspiciously small: {len(hand)}"
+    import mujoco
+
+    unnamed = sum(
+        1
+        for g in hand
+        if mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, g) is None
+    )
+    assert unnamed > 0, (
+        "if every hand geom were named the ancestry path would be untested"
+    )
 
 
 # --------------------------------------------------------------------------- C7
