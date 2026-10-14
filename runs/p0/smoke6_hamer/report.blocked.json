@@ -1,0 +1,108 @@
+{
+  "smoke": "smoke6_hamer",
+  "verdict": "blocked",
+  "verdict_reason": "MANO model assets absent. HaMeR cannot instantiate its MANO decoder without MANO_LEFT.pkl / MANO_RIGHT.pkl, which are license-gated behind registration at mano.is.tue.mpg.de. Agent cannot complete registration or accept the license on the user's behalf.",
+  "stopped_before": "task 6.1 (clone otaheri/HaMeR + build runs/.venv-hamer). No upstream clone, no venv, no dependency install was performed, per PLAN.md task 6.0 gate.",
+  "device": {
+    "machine": "M1 Max",
+    "chip": "Apple M1 Max",
+    "cores": 10,
+    "memory_gb": 64,
+    "arch": "arm64",
+    "macos_version": "27.0",
+    "accelerator": "MPS",
+    "torch_mps_available": true,
+    "torch_version_system": "2.9.1",
+    "system_python": "3.13.9",
+    "disk_free_gb": 131
+  },
+  "key_lib_versions": {
+    "python": "3.13.9",
+    "torch": "2.9.1",
+    "numpy": "not_evaluated",
+    "smplx": "not_installed",
+    "manopth": "not_installed",
+    "hamer": "not_cloned",
+    "chumpy": "not_installed",
+    "pytorch3d": "not_installed",
+    "note": "Environment intentionally left untouched; no venv created for this smoke."
+  },
+  "weights_version": {
+    "hamer_checkpoint": "not_downloaded",
+    "hamer_repo_commit": null,
+    "mano_left_pkl": "missing",
+    "mano_right_pkl": "missing",
+    "vggt_or_shared_weights": "runs/weights/sam2 (unrelated, smoke 1)"
+  },
+  "precheck": {
+    "performed_at_stage": "PLAN.md task 6.0",
+    "commands_run": [
+      "find ~ /tmp /Users/guohongbin/v2d-mac -maxdepth 6 \\( -name 'MANO_RIGHT.pkl' -o -name 'MANO_LEFT.pkl' \\) 2>/dev/null",
+      "find ~ -name 'MANO_*.pkl' 2>/dev/null   # full-depth, unlimited depth, no match",
+      "targeted scan of ~/Downloads ~/Documents ~/data ~/datasets /tmp /opt /usr/local/share /Users/Shared for MANO_LEFT.pkl, MANO_RIGHT.pkl, mano_v1*, and any directory named 'mano'",
+      "find /opt/homebrew/Caskroom/miniconda -maxdepth 6 \\( -name manopth -o -name smplx \\) 2>/dev/null  # no bundled MANO assets",
+      "ls ~/.cache/huggingface/hub  # no mano-related model repos",
+      "ls runs/weights  # only sam2"
+    ],
+    "matches_found": 0,
+    "required_files": ["MANO_LEFT.pkl", "MANO_RIGHT.pkl"],
+    "missing_files": ["MANO_LEFT.pkl", "MANO_RIGHT.pkl"],
+    "verdict": "fail"
+  },
+  "input_asset_sanity": {
+    "purpose": "Confirm the P0 asset would in fact exercise HaMeR once unblocked (egocentric human hands must be present in-frame).",
+    "frames_available": 39,
+    "frames_inspected": ["f_0010.jpg"],
+    "observation": "Single 1280x720 ego-centric frame shows two clearly visible human hands (left and right) grasping a tissue box on a desk; wrists and most fingers in frame, unobstructed.",
+    "asset_suitable_for_hamer": true,
+    "note": "This sanity check is qualitative and does NOT substitute for the smoke 6 acceptance criteria; no HaMeR inference was run."
+  },
+  "acceptance_criteria": {
+    "mano_params_non_empty": {
+      "status": "not_evaluated",
+      "value": null,
+      "threshold": "betas.shape[0] > 0 and poses.shape[0] > 0 and trans.shape[0] > 0 for both hands",
+      "reason": "no model instantiated"
+    },
+    "mano_params_all_finite": {
+      "status": "not_evaluated",
+      "value": null,
+      "threshold": "torch.isfinite(params).all() == True for betas, poses, trans",
+      "reason": "no model instantiated"
+    },
+    "keypoint_confidence_above_threshold": {
+      "status": "not_evaluated",
+      "value": null,
+      "threshold": "median 2D keypoint confidence over f_0001..f_0030 >= 0.20 (threshold to be fixed in the test before GREEN, not after)",
+      "reason": "no model instantiated"
+    },
+    "reprojection_error_recorded": {
+      "status": "not_evaluated",
+      "value": null,
+      "threshold": "mean reprojection error (3D MANO joints projected vs HaMeR 2D keypoints) < 15 px; recorded into report regardless of pass/fail",
+      "reason": "no model instantiated"
+    },
+    "left_right_consistency": {
+      "status": "not_evaluated",
+      "value": null,
+      "threshold": "both hands detected in >= 80% of the 30 frames; handedness flip count <= 2",
+      "reason": "no model instantiated"
+    },
+    "mps_primary_inference": {
+      "status": "not_evaluated",
+      "value": null,
+      "threshold": "dominant inference device == 'mps'; any op-level CPU fallback enumerated explicitly in cpu_fallback_ops",
+      "reason": "no model instantiated"
+    }
+  },
+  "cpu_fallback_ops": [],
+  "mps_evidence": {
+    "available": true,
+    "measured": false,
+    "note": "torch 2.9.1 reports torch.backends.mps.is_available() == True on this machine, but no HaMeR inference was executed, so no runtime MPS occupancy evidence exists for this smoke."
+  },
+  "evidence_dir": "runs/p0/smoke6_hamer/evidence/",
+  "evidence_files": [],
+  "unblock_instructions": "See runs/p0/smoke6_hamer/BLOCKER.md. User must register at mano.is.tue.mpg.de, accept the license, and place MANO_LEFT.pkl and MANO_RIGHT.pkl into the repo; then re-run smoke 6 from PLAN.md task 6.1.",
+  "red_line_note": "No criterion was relaxed, widened, or skipped. All acceptance criteria remain unevaluated rather than passed."
+}
