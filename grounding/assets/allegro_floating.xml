@@ -133,20 +133,22 @@
       friction="0.8 0.02 0.002"/>
     <geom name="table_slab" type="box" size="0.45 0.45 0.02" pos="0 0 0.6800"
       material="table" friction="0.9 0.02 0.002"/>
+    <geom name="pedestal" type="box" size="0.30 0.30 0.0300" pos="0 0 0.7300"
+      material="table" friction="0.9 0.02 0.002"/>
 
     <camera name="cam_overhead" mode="fixed" pos="0 0 1.55" xyaxes="1 0 0 0 1 0"
       fovy="45"/>
     <camera name="cam_wrist" mode="fixed" pos="0 0.16 0.10" xyaxes="1 0 0 0 0 -1"
       fovy="70"/>
 
-    <body name="object" pos="0 0 0.7400">
+    <body name="object" pos="0 0 0.8000">
       <freejoint name="object_free"/>
       <geom name="object_geom" type="box" size="0.06 0.12 0.04" mass="0.15"
         rgba="0.30 0.55 0.85 1" material="box" condim="4"
         friction="1.4 0.02 0.004"/>
     </body>
 
-    <body name="hand_root" pos="0 0 0.86">
+    <body name="hand_root" pos="0 0 0.92">
       <joint name="wrist_x" type="slide" axis="1 0 0" range="-0.18 0.18"
         damping="25" armature="0.03"/>
       <joint name="wrist_y" type="slide" axis="0 1 0" range="-0.18 0.18"

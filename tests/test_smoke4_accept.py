@@ -70,6 +70,16 @@ def _pearson(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.corrcoef(a, b)[0, 1])
 
 
+def _geom_label(m, gid: int) -> str:
+    """Same labelling the env records: named geoms by name, menagerie's unnamed
+    collision geoms as "<body>#geom<id>"."""
+    name = mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_GEOM, gid)
+    if name:
+        return name
+    bname = mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, int(m.geom_bodyid[gid])) or "world"
+    return f"{bname}#geom{gid}"
+
+
 def _geom_is_finger(m, label: str, finger_ids: set[int]) -> bool:
     """True when a recorded contact label refers to a finger geom.
 
@@ -90,9 +100,15 @@ def _analyse_episode(ep: dict) -> dict:
     import mujoco  # noqa: PLC0415
 
     m = mujoco.MjModel.from_xml_path(str(REPO / "grounding/assets/allegro_floating.xml"))
-    obj_geom = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, "object_geom")
-    table_geom = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, "table_slab")
     finger_ids = _finger_geom_ids()
+    # The box rests on the pedestal, not the slab, so "still supported" must test
+    # every static support geom - checking the slab alone would call a resting box
+    # airborne and pass the test for the wrong reason.
+    support_geoms = {
+        _geom_label(m, g) for g in range(m.ngeom)
+        if int(m.geom_bodyid[g]) == 0
+        and int(m.geom_type[g]) == int(mujoco.mjtGeom.mjGEOM_BOX)
+    }
 
     tr = ep["trace"]
     lift = np.asarray(tr["lift"], dtype=float)
@@ -129,11 +145,9 @@ def _analyse_episode(ep: dict) -> dict:
     steps = np.diff(obj_z, prepend=obj_z[0])
     max_step = float(np.max(np.abs(steps))) if len(steps) else 0.0
 
-    # airborne at peak: no table contact on that step
+    # airborne at peak: no support-surface contact on that step
     peak_pairs = [tuple(p) for p in tr["contact_pairs"][peak_i]]
-    table_touching_peak = any(
-        mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, name) == table_geom
-        for name, _ in peak_pairs)
+    table_touching_peak = any(name in support_geoms for name, _ in peak_pairs)
 
     return {
         "peak_lift_m": peak_lift,

@@ -173,6 +173,15 @@ class LiftHoldEnv(gym.Env):
             self.geom_label.append(name)
         self.ctrl_low = m.actuator_ctrlrange[:, 0].copy()
         self.ctrl_high = m.actuator_ctrlrange[:, 1].copy()
+        # world-body box geoms the object can rest on (table slab, pedestal, ...)
+        self.support_geoms: set[str] = set()
+        for g in range(m.ngeom):
+            if int(m.geom_bodyid[g]) != 0 or g == self.obj_geom:
+                continue
+            if int(m.geom_type[g]) != int(mujoco.mjtGeom.mjGEOM_BOX):
+                continue
+            self.support_geoms.add(self.geom_label[g])
+        assert self.support_geoms, "scene defines no support geometry"
 
         # ---- spaces ------------------------------------------------------
         self.action_space = spaces.Box(-1.0, 1.0, (N_ACT,), dtype=np.float32)
@@ -243,12 +252,16 @@ class LiftHoldEnv(gym.Env):
         mujoco.mj_resetData(m, d)
 
         # --- object placement (allowed: reset may write qpos) -------------
-        box_z = float(m.body_pos[self.obj_body][2]) + float(m.geom_size[self.obj_geom][2])
         # out_of_reach parks the box 0.35 m along +y: far outside the hand's
         # workspace (fingers reach ~0.06 m past the palm, and the wrist ctrlrange
-        # caps travel at 0.18 m) but still on the table, so the box cannot move.
-        y_off = 0.35 if self.out_of_reach else 0.0
-        obj_pos = np.array([0.0, y_off, box_z])
+        # caps travel at 0.18 m) but still over the table slab, so the box cannot
+        # move. The resting height must be the height of whatever is actually
+        # beneath it (the pedestal only spans +-0.30 m), so it is raycast rather
+        # than assumed - otherwise the box free-falls 60 mm during settling.
+        x_off, y_off = (0.0, 0.35) if self.out_of_reach else (0.0, 0.0)
+        support_z = self._support_height(x_off, y_off)
+        box_z = support_z + float(m.geom_size[self.obj_geom][2])
+        obj_pos = np.array([x_off, y_off, box_z])
         quat = np.array([1.0, 0.0, 0.0, 0.0])
         if self.domain_rand and not self.out_of_reach:
             obj_pos[:2] += self._rng.uniform(-0.01, 0.01, 2)
@@ -309,17 +322,42 @@ class LiftHoldEnv(gym.Env):
                 out.append(name)
         return out
 
-    def _box_knocked_away(self, pairs: list[tuple[str, str]]) -> bool:
-        """Box is neither resting on the table nor held by any finger.
+    def _support_height(self, x: float, y: float) -> float:
+        """Top surface height of the highest axis-aligned static geom under (x, y).
 
-        A legitimately lifted box has no table contact either, so "off the table"
-        alone would penalise the goal itself. This flags only the exploit case: the
-        box shoved clear of the slab and abandoned.
+        Resolved from the model rather than assumed, because the pedestal only
+        spans +-0.30 m: placing the parked box at the nominal pedestal height would
+        drop it 60 mm onto the bare table during settling.
         """
-        on_table = any(name == "table_slab" for name, _ in pairs)
+        m = self.model
+        best = -np.inf
+        for gid in range(m.ngeom):
+            if gid == self.obj_geom or int(m.geom_bodyid[gid]) != 0:
+                continue  # skip the box and anything parented to a body
+            if int(m.geom_type[gid]) != int(mujoco.mjtGeom.mjGEOM_BOX):
+                continue
+            half = m.geom_size[gid]
+            pos = m.geom_pos[gid]
+            if abs(x - pos[0]) <= half[0] and abs(y - pos[1]) <= half[1]:
+                best = max(best, float(pos[2] + half[2]))
+        if not np.isfinite(best):
+            raise RuntimeError(f"no support geom under ({x}, {y})")
+        return best
+
+    def _box_knocked_away(self, pairs: list[tuple[str, str]]) -> bool:
+        """Box is neither resting on a support surface nor held by any finger.
+
+        A legitimately lifted box has no support contact either, so "off the table"
+        alone would penalise the goal itself. This flags only the exploit case: the
+        box shoved clear of its support and abandoned. Note the box rests on the
+        *pedestal*, not the slab, so the support test must accept any static
+        support geom - checking for "table_slab" alone made a normally-resting box
+        look knocked away on every single step.
+        """
+        on_support = any(name in self.support_geoms for name, _ in pairs)
         held = any(self.geom_name_to_id.get(name, -1) in self.finger_geom_ids
                    for name, _ in pairs)
-        return not on_table and not held
+        return not on_support and not held
 
     def _read_contacts(self) -> tuple[list[tuple[str, str]], float, float]:
         """Geom pairs touching the box, the summed normal force, and the finger-only
