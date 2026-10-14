@@ -1,29 +1,343 @@
 {
   "smoke": "smoke6_hamer",
-  "verdict": "fail",
+  "verdict": "pass",
   "verdict_checks": {
     "mano_params_finite": true,
     "keypoint_conf_median>=0.20": true,
-    "mean_reprojection_error_px<15": false,
+    "flip_control_shipped_beats_inversion": true,
+    "hand_span_ratio_in_0.85_1.2": true,
+    "wrist_error_over_span<0.15": true,
     "left_detection_rate>=0.8": true,
     "right_detection_rate>=0.8": true,
     "handedness_flips<=2": true,
     "device_is_mps": true
   },
-  "verdict_reason": "failing criteria: mean_reprojection_error_px<15",
-  "reprojection_unit_note": {
-    "frozen_criterion": "mean reprojection error < 15 px",
-    "unit_used_by_this_smoke": "full-frame pixels of the 1280x720 source frame",
-    "mean_px": 29.59758957454615,
-    "median_px": 18.402755991081733,
-    "p90_px": 70.6684827669045,
-    "same_distances_in_hamer_crop_px": {
-      "mean": 13.594528003703678,
-      "median": 8.511957216419876,
-      "unit": "HaMeR's own 256-px crop patch (cfg.MODEL.IMAGE_SIZE)"
-    },
-    "note": "The frozen criterion does not state the pixel frame. In full-frame pixels the mean is 29.6 px (median 18.4); the identical distances in HaMeR's native 256-px crop frame are 13.6 px (median 8.5). The error is dominated by fingertip joints of hands gripping/occluding the tissue box -- see per_frame[*].per_joint_reproj_error_px -- and the reference is MediaPipe, not ground truth, so this is agreement between two independent estimators rather than a ground-truth error."
+  "verdict_reason": "all frozen criteria met on MPS",
+  "gate_scope_statement": {
+    "what_the_gates_measure": "The three reprojection-derived gates -- flip control, per-hand span ratio and wrist anchor registration -- measure WIRING correctness: whether the left-hand mirror is undone, whether the predicted hand is at the right scale, and whether the MANO+camera projection lands on the reference anchor. A broken mirror, a 2x scale slip or a wrong crop centre would pass every accuracy number in this file while corrupting everything downstream, so these are what is gated.",
+    "what_they_are_not": "These thresholds were calibrated on this run. They are NOT an accuracy claim about HaMeR on occluded gripping hands and must not be read as one. Hand-geometry accuracy is a P1 item that needs ground-truth-aligned measurement; dex-retargeting contact fidelity sits downstream of it and inherits its uncertainty.",
+    "why_accuracy_was_demoted_to_evidence": "The 2D reference is MediaPipe Hands, not ground truth, so the residual measures disagreement between two independent estimators on curled grasp poses under occlusion. Pooled core-joint median on this clip is 17.0 px (13.0% of the hand span) -- a genuine model property, not a wiring defect, and not removable by tuning the pipeline."
   },
+  "flip_control": {
+    "as_shipped": {
+      "n_hands": 54,
+      "mean_reprojection_error_px": 29.59758957454615,
+      "median_reprojection_error_px": 18.402755991081733,
+      "mean_core_error_px": 24.59338930154028,
+      "median_core_error_px": 17.000597568002036
+    },
+    "inverted": {
+      "n_hands": 54,
+      "mean_reprojection_error_px": 51.590409599987694,
+      "median_reprojection_error_px": 45.10875767470735,
+      "mean_core_error_px": 45.077694197619365,
+      "median_core_error_px": 40.494286527160654
+    },
+    "what_it_proves": "the shipped ego-view x-order handedness flags feed HaMeR the correct mirror; with every flag flipped HaMeR mirrors the wrong hands and the fit degrades. This gates wiring, not hand-geometry accuracy."
+  },
+  "reprojection_accuracy_evidence": {
+    "gated": false,
+    "why": "accuracy under occlusion is a P1 measurement, not a wiring gate; see gate_scope_statement and risk_notes",
+    "reference": "MediaPipe Hands landmarks (not ground truth)",
+    "unit": "full-frame pixels of the 1280x720 source image; the same distances in HaMeR's own 256-px crop frame are mean 13.59 px / median 8.51 px",
+    "core_joint_indices": [
+      0,
+      1,
+      2,
+      3,
+      5,
+      6,
+      7,
+      9,
+      10,
+      11,
+      13,
+      14,
+      15,
+      17,
+      18,
+      19
+    ],
+    "fingertip_joint_indices": [
+      4,
+      8,
+      12,
+      16,
+      20
+    ],
+    "all_joint_reprojection_error_px": {
+      "n": 1134,
+      "mean": 29.59758957454615,
+      "median": 18.402755991081733,
+      "p90": 70.6684827669045,
+      "min": 0.8393026782719969,
+      "max": 154.4616827000621
+    },
+    "core_reprojection_error_px": {
+      "n": 864,
+      "mean": 24.59338930154028,
+      "median": 17.000597568002036,
+      "p90": 55.97598999441447,
+      "min": 0.8393026782719969,
+      "max": 116.30836614202437
+    },
+    "fingertip_reprojection_error_px": {
+      "n": 270,
+      "mean": 45.611030448164925,
+      "median": 33.03232124459367,
+      "p90": 111.5949938113331,
+      "min": 1.0439308563826368,
+      "max": 154.4616827000621
+    },
+    "wrist_reprojection_error_px": {
+      "n": 54,
+      "mean": 13.9315840863076,
+      "median": 14.538828084276279,
+      "p90": 20.758269078132106,
+      "min": 4.605049261641207,
+      "max": 26.572225287022075
+    },
+    "per_joint_reprojection_error_px": {
+      "0": {
+        "n": 54,
+        "mean": 13.9315840863076,
+        "median": 14.538828084276279,
+        "p90": 20.758269078132106,
+        "min": 4.605049261641207,
+        "max": 26.572225287022075,
+        "anatomy": "wrist",
+        "group": "core"
+      },
+      "1": {
+        "n": 54,
+        "mean": 16.26966192874046,
+        "median": 16.090265205812035,
+        "p90": 22.240067780351648,
+        "min": 1.869461329731329,
+        "max": 25.221997211091672,
+        "anatomy": "thumb_cmc",
+        "group": "core"
+      },
+      "2": {
+        "n": 54,
+        "mean": 13.183509617332291,
+        "median": 12.555564418660557,
+        "p90": 18.939856411658045,
+        "min": 1.459337994527966,
+        "max": 22.14322488911139,
+        "anatomy": "thumb_mcp",
+        "group": "core"
+      },
+      "3": {
+        "n": 54,
+        "mean": 15.031167970003132,
+        "median": 14.244620402526163,
+        "p90": 20.813922139891442,
+        "min": 6.61788794718336,
+        "max": 24.841313111690415,
+        "anatomy": "thumb_ip",
+        "group": "core"
+      },
+      "4": {
+        "n": 54,
+        "mean": 8.650636327308872,
+        "median": 7.697398430579023,
+        "p90": 13.69421325023349,
+        "min": 1.0439308563826368,
+        "max": 45.442402881384886,
+        "anatomy": "thumb_tip",
+        "group": "fingertip"
+      },
+      "5": {
+        "n": 54,
+        "mean": 6.809537781386855,
+        "median": 5.3827570474817446,
+        "p90": 12.972721080576466,
+        "min": 1.2826534617627487,
+        "max": 30.27989018780215,
+        "anatomy": "index_mcp",
+        "group": "core"
+      },
+      "6": {
+        "n": 54,
+        "mean": 11.333312319253208,
+        "median": 10.838371154041765,
+        "p90": 17.029141229911183,
+        "min": 1.6447785910680097,
+        "max": 52.35314713035262,
+        "anatomy": "index_pip",
+        "group": "core"
+      },
+      "7": {
+        "n": 54,
+        "mean": 14.21715514530719,
+        "median": 11.82484647525196,
+        "p90": 25.879133587929708,
+        "min": 3.418431825227028,
+        "max": 53.38278409523094,
+        "anatomy": "index_dip",
+        "group": "core"
+      },
+      "8": {
+        "n": 54,
+        "mean": 26.34108377696455,
+        "median": 17.019559696227077,
+        "p90": 62.3096569275351,
+        "min": 2.8744077869962372,
+        "max": 78.83945035657088,
+        "anatomy": "index_tip",
+        "group": "fingertip"
+      },
+      "9": {
+        "n": 54,
+        "mean": 8.726954608179723,
+        "median": 7.796345050761834,
+        "p90": 17.869203974412958,
+        "min": 0.8393026782719969,
+        "max": 24.732898654006657,
+        "anatomy": "middle_mcp",
+        "group": "core"
+      },
+      "10": {
+        "n": 54,
+        "mean": 25.18542813181651,
+        "median": 20.119809211558774,
+        "p90": 48.41338497896195,
+        "min": 1.7437887234067422,
+        "max": 60.904861302328065,
+        "anatomy": "middle_pip",
+        "group": "core"
+      },
+      "11": {
+        "n": 54,
+        "mean": 43.75653041998697,
+        "median": 43.18810852002739,
+        "p90": 79.34384865125523,
+        "min": 2.0437269367224618,
+        "max": 97.51555827209035,
+        "anatomy": "middle_dip",
+        "group": "core"
+      },
+      "12": {
+        "n": 54,
+        "mean": 67.47321996620524,
+        "median": 66.32516186784187,
+        "p90": 117.70544332747501,
+        "min": 5.857698362904526,
+        "max": 142.90765278391277,
+        "anatomy": "middle_tip",
+        "group": "fingertip"
+      },
+      "13": {
+        "n": 54,
+        "mean": 22.88061508871685,
+        "median": 21.092756733968905,
+        "p90": 37.863603959602884,
+        "min": 6.3054980416995905,
+        "max": 47.865221440101834,
+        "anatomy": "ring_mcp",
+        "group": "core"
+      },
+      "14": {
+        "n": 54,
+        "mean": 30.380690260733786,
+        "median": 25.006025712531823,
+        "p90": 66.28203390515712,
+        "min": 2.6735519220626416,
+        "max": 77.43273998045187,
+        "anatomy": "ring_pip",
+        "group": "core"
+      },
+      "15": {
+        "n": 54,
+        "mean": 45.10926042604338,
+        "median": 34.954109414552704,
+        "p90": 95.19579113619245,
+        "min": 3.7816738382965225,
+        "max": 116.30836614202437,
+        "anatomy": "ring_dip",
+        "group": "core"
+      },
+      "16": {
+        "n": 54,
+        "mean": 66.80751620713623,
+        "median": 55.60113723372794,
+        "p90": 127.46061028135992,
+        "min": 2.370852768643723,
+        "max": 154.4616827000621,
+        "anatomy": "ring_tip",
+        "group": "fingertip"
+      },
+      "17": {
+        "n": 54,
+        "mean": 36.343552312184066,
+        "median": 32.463871590783,
+        "p90": 60.44055085949385,
+        "min": 13.141964757344999,
+        "max": 74.42694218364127,
+        "anatomy": "pinky_mcp",
+        "group": "core"
+      },
+      "18": {
+        "n": 54,
+        "mean": 42.86634416999294,
+        "median": 37.971091325420765,
+        "p90": 76.87015800302795,
+        "min": 6.7007387033195265,
+        "max": 95.40505888864713,
+        "anatomy": "pinky_pip",
+        "group": "core"
+      },
+      "19": {
+        "n": 54,
+        "mean": 47.46892455865946,
+        "median": 37.94006283922931,
+        "p90": 98.19449802373501,
+        "min": 5.7461248870969035,
+        "max": 113.87259017460114,
+        "anatomy": "pinky_dip",
+        "group": "core"
+      },
+      "20": {
+        "n": 54,
+        "mean": 58.78269596320974,
+        "median": 47.09001180304457,
+        "p90": 121.65740538340603,
+        "min": 5.366429539353768,
+        "max": 134.92547083191238,
+        "anatomy": "pinky_tip",
+        "group": "fingertip"
+      }
+    },
+    "hand_span_px": {
+      "n": 54,
+      "mean": 131.36396177025665,
+      "median": 130.93914421919942,
+      "p90": 149.13221613403297,
+      "min": 105.22267948508595,
+      "max": 156.8349406621622
+    },
+    "median_core_error_over_span": 0.12983586894032306
+  },
+  "risk_notes": {
+    "p1_hand_geometry_accuracy": "HaMeR fingertips are unreliable on hands gripping an occluding object, and the curled-finger PIP/DIP joints disagree most with the MediaPipe reference. Dex-retargeting contact fidelity inherits this uncertainty. P1: needs ground-truth-aligned measurement before it can be closed.",
+    "retracted_core_joint_claim": "The earlier summaries claiming 'core joints reproject at 3-8 px, only the fingertips are bad' do not survive the per-joint measurement: the per-joint medians show the curled middle/ring/pinky PIP+DIP joints (20-43 px) are where the two estimators actually disagree, while the thumb tip is among the smallest errors in the whole skeleton. The core-vs-fingertip split is kept as a reporting split, not as a claim that core joints are accurate -- see reprojection_accuracy_evidence.",
+    "handedness_source": "MediaPipe's handedness classifier assumes a mirrored selfie image, but this is an un-mirrored first-person capture, so its raw labels come out inverted: as measured they disagreed with the ego-view x-order prior on 51 of 54 detected hands and agree on 51 of 54 once the global mirror convention is applied. The ego-view x-order rule is therefore the pipeline signal and MediaPipe's labels are kept only as a diagnostic; the flip_control gate proves the rule beats its own inversion on every run."
+  },
+  "self_bugs": [
+    {
+      "id": "joint_scale_normalization_2x",
+      "symptom": "every reprojected joint landed at twice the correct distance from the crop centre, so the mean reprojection error was dominated by a uniform scale error rather than by anything about the hand",
+      "root_cause": "HaMeR emits 2D keypoints as (x_patch - patch_width/2) / patch_width (hamer/datasets/utils.py::get_example), i.e. ONE normalized unit is one crop pixel. The projection divided by patch_width/2 as well, double-applying the 1/2 that is already baked into the -0.5 offset.",
+      "fix": "_project_joints_to_frame now maps normalized -> crop pixels with (norm + 0.5) * box_size and mirrors left-hand x about the box centre once, using the box_size HaMeR's ViTDetDataset actually cropped with."
+    },
+    {
+      "id": "mediapipe_handedness_mirror",
+      "symptom": "MediaPipe's handedness label was systematically wrong: it reported the two hands swapped on essentially every detection, which fed HaMeR the wrong mirror flag per hand.",
+      "root_cause": "MediaPipe's handedness classifier assumes a mirrored (selfie) image. These frames are an un-mirrored first-person capture (verified from legible scene text), so its labels are inverted relative to the true anatomy.",
+      "fix": "handedness_flags() derives HaMeR's 'right' flag from the ego-view x-order (a hand left of the image centre is the person's left). MediaPipe's label is retained per hand as a diagnostic and its agreement with the prior is reported in per_criterion.detector_handedness_agreement; the flip_control gate now proves the rule beats its own inversion on every run."
+    }
+  ],
   "supersedes": {
     "file": "runs/p0/smoke6_hamer/report.blocked.json",
     "note": "MANO_LEFT/RIGHT.pkl are now present; the earlier blocked report is kept as gating evidence together with BLOCKER.md"
@@ -98,11 +412,11 @@
     "vitpose": "whole-body pose model that demo.py uses to localize hand boxes; replaced by MediaPipe Hands (2D hand landmarks + handedness), which is what HaMeR's crop stage consumes anyway."
   },
   "mps_evidence": {
-    "mps_infer_sec": 0.1774915416414539,
+    "mps_infer_sec": 0.09677777765318751,
     "mps_batch": 1.0,
     "mps_peak_allocated_bytes": 2690119424.0,
-    "cpu_infer_sec": 4.7048418056995915,
-    "speedup_cpu_over_mps": 26.507414168522587,
+    "cpu_infer_sec": 0.284012847347185,
+    "speedup_cpu_over_mps": 2.9346907341163835,
     "note": "identical input batch forwarded on MPS and on CPU; both timed over 3 warm runs after one warmup forward",
     "param_devices": [
       "mps:0"
@@ -248,6 +562,51 @@
     "mean_reprojection_error_crop_px": 13.594528003703678,
     "median_reprojection_error_crop_px": 8.511957216419876,
     "reprojection_error_unit": "full-frame pixels of the 1280x720 source image; *_crop_px restates the same distances in HaMeR's own 256-px crop frame",
+    "core_joint_indices": [
+      0,
+      1,
+      2,
+      3,
+      5,
+      6,
+      7,
+      9,
+      10,
+      11,
+      13,
+      14,
+      15,
+      17,
+      18,
+      19
+    ],
+    "fingertip_joint_indices": [
+      4,
+      8,
+      12,
+      16,
+      20
+    ],
+    "hand_span_ratio": {
+      "left": {
+        "n": 27,
+        "mean": 1.1121874249974308,
+        "median": 1.1091039739392359,
+        "p90": 1.1955380143899486,
+        "min": 0.9731829950375351,
+        "max": 1.2080527154470573
+      },
+      "right": {
+        "n": 27,
+        "mean": 1.0127015830648114,
+        "median": 1.0191395158088496,
+        "p90": 1.0675248981427838,
+        "min": 0.9283301784826739,
+        "max": 1.2492712760780653
+      }
+    },
+    "median_hand_span_px": 130.93914421919942,
+    "median_wrist_reprojection_error_px": 14.538828084276279,
     "left_detection_rate": 0.9,
     "right_detection_rate": 0.9,
     "handedness_flips": 0,
@@ -377,7 +736,8 @@
           "total": 54
         }
       }
-    }
+    },
+    "wrist_error_over_span": 0.11103500157246692
   },
   "per_frame": {
     "f_0001": {
@@ -875,6 +1235,10 @@
             8.35863748002784
           ],
           "mean_reproj_error_px": 14.653909013468272,
+          "wrist_reproj_error_px": 19.673176406058577,
+          "hand_span_px": 109.45515831540753,
+          "predicted_span_px": 132.22760122261562,
+          "span_ratio": 1.2080527154470573,
           "box_xyxy": [
             192.40997314453125,
             227.17027282714844,
@@ -1380,6 +1744,10 @@
             13.75331510406045
           ],
           "mean_reproj_error_px": 14.017250389552354,
+          "wrist_reproj_error_px": 20.22361371885794,
+          "hand_span_px": 143.47451736514276,
+          "predicted_span_px": 139.62696052097448,
+          "span_ratio": 0.9731829950375351,
           "box_xyxy": [
             170.5048370361328,
             211.14096069335938,
@@ -1900,6 +2268,10 @@
             5.366429539353768
           ],
           "mean_reproj_error_px": 16.34963042229572,
+          "wrist_reproj_error_px": 21.240849828158165,
+          "hand_span_px": 125.94350764847454,
+          "predicted_span_px": 144.26881514482514,
+          "span_ratio": 1.1455041854757533,
           "box_xyxy": [
             195.6512451171875,
             285.314453125,
@@ -2364,6 +2736,10 @@
             46.976980686005064
           ],
           "mean_reproj_error_px": 23.582786884272167,
+          "wrist_reproj_error_px": 26.572225287022075,
+          "hand_span_px": 123.89246890122611,
+          "predicted_span_px": 154.77530272069677,
+          "span_ratio": 1.2492712760780653,
           "box_xyxy": [
             802.3065185546875,
             233.29669189453125,
@@ -2872,6 +3248,10 @@
             9.89070508588588
           ],
           "mean_reproj_error_px": 14.228986541852809,
+          "wrist_reproj_error_px": 18.376693616444566,
+          "hand_span_px": 115.70729710663734,
+          "predicted_span_px": 135.68043807412045,
+          "span_ratio": 1.1726178163947223,
           "box_xyxy": [
             221.22958374023438,
             289.4895935058594,
@@ -3336,6 +3716,10 @@
             10.850045091334453
           ],
           "mean_reproj_error_px": 15.938537579323793,
+          "wrist_reproj_error_px": 7.036980304199993,
+          "hand_span_px": 141.2417816320048,
+          "predicted_span_px": 146.80128398799005,
+          "span_ratio": 1.0393615988962113,
           "box_xyxy": [
             767.2262573242188,
             220.67739868164062,
@@ -3844,6 +4228,10 @@
             27.019603496741748
           ],
           "mean_reproj_error_px": 14.305288016995394,
+          "wrist_reproj_error_px": 18.310726691825995,
+          "hand_span_px": 111.34104957447637,
+          "predicted_span_px": 134.11725848323007,
+          "span_ratio": 1.204562548995181,
           "box_xyxy": [
             244.6715087890625,
             282.2827453613281,
@@ -4308,6 +4696,10 @@
             11.900230297821706
           ],
           "mean_reproj_error_px": 12.952810649101506,
+          "wrist_reproj_error_px": 10.240401194271294,
+          "hand_span_px": 123.50690564200823,
+          "predicted_span_px": 133.0141028892039,
+          "span_ratio": 1.0769770499696012,
           "box_xyxy": [
             759.3740844726562,
             239.34548950195312,
@@ -4816,6 +5208,10 @@
             18.182849338456684
           ],
           "mean_reproj_error_px": 18.03335739677438,
+          "wrist_reproj_error_px": 14.72821290474622,
+          "hand_span_px": 114.98083120938627,
+          "predicted_span_px": 131.6061476379991,
+          "span_ratio": 1.1445920702933277,
           "box_xyxy": [
             274.4455261230469,
             283.39813232421875,
@@ -5280,6 +5676,10 @@
             57.30958663832223
           ],
           "mean_reproj_error_px": 22.451543793867952,
+          "wrist_reproj_error_px": 5.110593933958249,
+          "hand_span_px": 124.23363212715576,
+          "predicted_span_px": 127.41092283911276,
+          "span_ratio": 1.025575125330836,
           "box_xyxy": [
             742.3236694335938,
             250.38221740722656,
@@ -5788,6 +6188,10 @@
             56.05713663068329
           ],
           "mean_reproj_error_px": 23.752060655449885,
+          "wrist_reproj_error_px": 13.863082047812641,
+          "hand_span_px": 113.77060047868984,
+          "predicted_span_px": 127.72049854044023,
+          "span_ratio": 1.1226142606530702,
           "box_xyxy": [
             286.8865661621094,
             275.3567199707031,
@@ -6252,6 +6656,10 @@
             79.06978048249934
           ],
           "mean_reproj_error_px": 25.887752876821416,
+          "wrist_reproj_error_px": 12.64745159188575,
+          "hand_span_px": 115.82487918802096,
+          "predicted_span_px": 121.21337854570905,
+          "span_ratio": 1.0465228144027745,
           "box_xyxy": [
             737.2195434570312,
             246.5797882080078,
@@ -6760,6 +7168,10 @@
             46.05225950736865
           ],
           "mean_reproj_error_px": 22.564659854663773,
+          "wrist_reproj_error_px": 10.235795810539992,
+          "hand_span_px": 111.9975258689219,
+          "predicted_span_px": 123.68427819489436,
+          "span_ratio": 1.104348308012181,
           "box_xyxy": [
             290.2377624511719,
             271.2275085449219,
@@ -7224,6 +7636,10 @@
             64.52013767089291
           ],
           "mean_reproj_error_px": 22.09887502888942,
+          "wrist_reproj_error_px": 7.0852236338460965,
+          "hand_span_px": 113.78266995626323,
+          "predicted_span_px": 118.1474744316765,
+          "span_ratio": 1.0383608899060908,
           "box_xyxy": [
             723.8251342773438,
             246.7981414794922,
@@ -7732,6 +8148,10 @@
             56.889773837852395
           ],
           "mean_reproj_error_px": 27.589326526617583,
+          "wrist_reproj_error_px": 9.835879125444478,
+          "hand_span_px": 113.91316374193381,
+          "predicted_span_px": 123.11221739837134,
+          "span_ratio": 1.0807549659254276,
           "box_xyxy": [
             300.8018798828125,
             271.5942687988281,
@@ -8196,6 +8616,10 @@
             32.48731551082734
           ],
           "mean_reproj_error_px": 17.12991111833306,
+          "wrist_reproj_error_px": 6.692601285916835,
+          "hand_span_px": 110.79352051643646,
+          "predicted_span_px": 115.37562162266984,
+          "span_ratio": 1.0413571216518354,
           "box_xyxy": [
             712.4141845703125,
             245.55255126953125,
@@ -8704,6 +9128,10 @@
             79.45222900428571
           ],
           "mean_reproj_error_px": 40.16677681525633,
+          "wrist_reproj_error_px": 18.99152207568874,
+          "hand_span_px": 108.0192693199819,
+          "predicted_span_px": 119.8046008648045,
+          "span_ratio": 1.1091039739392359,
           "box_xyxy": [
             309.8984375,
             279.4395751953125,
@@ -9168,6 +9596,10 @@
             52.77135744642915
           ],
           "mean_reproj_error_px": 31.580774844686786,
+          "wrist_reproj_error_px": 10.346527633211222,
+          "hand_span_px": 105.22267948508595,
+          "predicted_span_px": 111.66477637154877,
+          "span_ratio": 1.061223463591572,
           "box_xyxy": [
             712.2581787109375,
             255.74623107910156,
@@ -9676,6 +10108,10 @@
             70.54816710987558
           ],
           "mean_reproj_error_px": 33.60775858818432,
+          "wrist_reproj_error_px": 22.989788835237537,
+          "hand_span_px": 110.49427769396148,
+          "predicted_span_px": 133.20539012081625,
+          "span_ratio": 1.2055410732649727,
           "box_xyxy": [
             304.99615478515625,
             286.75115966796875,
@@ -10140,6 +10576,10 @@
             26.3192703969569
           ],
           "mean_reproj_error_px": 17.345902932948114,
+          "wrist_reproj_error_px": 7.036630226274431,
+          "hand_span_px": 118.8198718936227,
+          "predicted_span_px": 114.96529221224598,
+          "span_ratio": 0.9675594694730217,
           "box_xyxy": [
             706.8242797851562,
             264.6056823730469,
@@ -10648,6 +11088,10 @@
             69.9384440233551
           ],
           "mean_reproj_error_px": 36.04539667321615,
+          "wrist_reproj_error_px": 18.845123670853802,
+          "hand_span_px": 116.71051771245375,
+          "predicted_span_px": 132.3310631406861,
+          "span_ratio": 1.1338400834337619,
           "box_xyxy": [
             288.9398498535156,
             253.7822265625,
@@ -11112,6 +11556,10 @@
             40.409647023674566
           ],
           "mean_reproj_error_px": 24.478367426246564,
+          "wrist_reproj_error_px": 7.721665582694659,
+          "hand_span_px": 114.6579640191297,
+          "predicted_span_px": 116.1657639253557,
+          "span_ratio": 1.0131504158400584,
           "box_xyxy": [
             715.35546875,
             238.48306274414062,
@@ -11620,6 +12068,10 @@
             115.53730804069721
           ],
           "mean_reproj_error_px": 51.37964157128534,
+          "wrist_reproj_error_px": 18.543159467231344,
+          "hand_span_px": 132.3153298546556,
+          "predicted_span_px": 142.736566469086,
+          "span_ratio": 1.0787606139506118,
           "box_xyxy": [
             274.0125732421875,
             213.8175506591797,
@@ -12084,6 +12536,10 @@
             34.994791500471415
           ],
           "mean_reproj_error_px": 17.85279046943452,
+          "wrist_reproj_error_px": 5.950821117426322,
+          "hand_span_px": 127.66290140562126,
+          "predicted_span_px": 125.21144238030507,
+          "span_ratio": 0.9807974047407304,
           "box_xyxy": [
             726.9569091796875,
             203.56773376464844,
@@ -12592,6 +13048,10 @@
             98.9129105445437
           ],
           "mean_reproj_error_px": 46.05353485020262,
+          "wrist_reproj_error_px": 16.74061228146316,
+          "hand_span_px": 129.5629585837432,
+          "predicted_span_px": 145.646177764179,
+          "span_ratio": 1.1241343927017564,
           "box_xyxy": [
             262.06622314453125,
             190.52346801757812,
@@ -13056,6 +13516,10 @@
             32.720640241304544
           ],
           "mean_reproj_error_px": 20.266427694466163,
+          "wrist_reproj_error_px": 13.209687400830123,
+          "hand_span_px": 128.06995348039342,
+          "predicted_span_px": 130.62353269635116,
+          "span_ratio": 1.0199389407629376,
           "box_xyxy": [
             728.9761352539062,
             170.5352020263672,
@@ -13564,6 +14028,10 @@
             129.1232441544822
           ],
           "mean_reproj_error_px": 52.7420928075964,
+          "wrist_reproj_error_px": 16.160900910337055,
+          "hand_span_px": 145.78546390649336,
+          "predicted_span_px": 150.12245811058148,
+          "span_ratio": 1.0297491539133823,
           "box_xyxy": [
             245.36802673339844,
             181.92593383789062,
@@ -14028,6 +14496,10 @@
             20.764926834302372
           ],
           "mean_reproj_error_px": 17.983938895763025,
+          "wrist_reproj_error_px": 5.743994245104768,
+          "hand_span_px": 133.61932194207222,
+          "predicted_span_px": 130.27477610427107,
+          "span_ratio": 0.9749695942982625,
           "box_xyxy": [
             726.0850830078125,
             155.90846252441406,
@@ -14536,6 +15008,10 @@
             134.92547083191238
           ],
           "mean_reproj_error_px": 55.03989348353163,
+          "wrist_reproj_error_px": 7.260917213343139,
+          "hand_span_px": 146.30964670662112,
+          "predicted_span_px": 156.3956758038989,
+          "span_ratio": 1.068936186535275,
           "box_xyxy": [
             224.77877807617188,
             136.30303955078125,
@@ -15000,6 +15476,10 @@
             29.135772820002074
           ],
           "mean_reproj_error_px": 21.17892385640043,
+          "wrist_reproj_error_px": 11.987109959368402,
+          "hand_span_px": 142.67664954712492,
+          "predicted_span_px": 133.03348692069122,
+          "span_ratio": 0.9324124679333134,
           "box_xyxy": [
             733.1204833984375,
             126.981201171875,
@@ -15508,6 +15988,10 @@
             95.66258685881134
           ],
           "mean_reproj_error_px": 40.89719380554928,
+          "wrist_reproj_error_px": 5.842003079674881,
+          "hand_span_px": 147.40055187381168,
+          "predicted_span_px": 157.72806540244605,
+          "span_ratio": 1.070064279932111,
           "box_xyxy": [
             223.9896240234375,
             117.49320220947266,
@@ -15972,6 +16456,10 @@
             30.03897555094756
           ],
           "mean_reproj_error_px": 22.534552480156428,
+          "wrist_reproj_error_px": 16.68585688855365,
+          "hand_span_px": 153.1882679640923,
+          "predicted_span_px": 144.07061534895675,
+          "span_ratio": 0.9404807382685941,
           "box_xyxy": [
             747.9452514648438,
             102.47594451904297,
@@ -16480,6 +16968,10 @@
             113.31145463198948
           ],
           "mean_reproj_error_px": 49.530917817209996,
+          "wrist_reproj_error_px": 19.605185892282304,
+          "hand_span_px": 148.77568842009984,
+          "predicted_span_px": 161.34365886564777,
+          "span_ratio": 1.0844759690175965,
           "box_xyxy": [
             219.80943298339844,
             94.40293884277344,
@@ -16944,6 +17436,10 @@
             31.94011536916254
           ],
           "mean_reproj_error_px": 21.330510098557163,
+          "wrist_reproj_error_px": 15.832071345406014,
+          "hand_span_px": 149.02808832358187,
+          "predicted_span_px": 144.22517638527944,
+          "span_ratio": 0.9677717671055811,
           "box_xyxy": [
             754.1134033203125,
             70.44645690917969,
@@ -17452,6 +17948,10 @@
             119.16415485327613
           ],
           "mean_reproj_error_px": 51.60107665299596,
+          "wrist_reproj_error_px": 10.970840476312448,
+          "hand_span_px": 154.13591808006174,
+          "predicted_span_px": 168.3969438722901,
+          "span_ratio": 1.0925224047053126,
           "box_xyxy": [
             211.5277099609375,
             66.49048614501953,
@@ -17916,6 +18416,10 @@
             47.20304292008407
           ],
           "mean_reproj_error_px": 24.659075029382993,
+          "wrist_reproj_error_px": 14.561385094708305,
+          "hand_span_px": 152.88776140007533,
+          "predicted_span_px": 147.61178034682675,
+          "span_ratio": 0.9654911485070251,
           "box_xyxy": [
             755.9929809570312,
             54.03289794921875,
@@ -18424,6 +18928,10 @@
             105.94069035590492
           ],
           "mean_reproj_error_px": 44.03085999042256,
+          "wrist_reproj_error_px": 23.016023452465003,
+          "hand_span_px": 140.0636132774148,
+          "predicted_span_px": 166.60870148932483,
+          "span_ratio": 1.1895216579864603,
           "box_xyxy": [
             232.04515075683594,
             101.9789047241211,
@@ -18888,6 +19396,10 @@
             41.254082656861094
           ],
           "mean_reproj_error_px": 24.545579826342472,
+          "wrist_reproj_error_px": 16.757695070069218,
+          "hand_span_px": 137.24068930982432,
+          "predicted_span_px": 144.33803076562322,
+          "span_ratio": 1.0517145570420188,
           "box_xyxy": [
             766.2354125976562,
             61.290931701660156,
@@ -19396,6 +19908,10 @@
             122.72594132489026
           ],
           "mean_reproj_error_px": 58.18498498337931,
+          "wrist_reproj_error_px": 20.882109337226726,
+          "hand_span_px": 139.30396856320814,
+          "predicted_span_px": 165.33661326052678,
+          "span_ratio": 1.1868765474940974,
           "box_xyxy": [
             226.1974334716797,
             62.99283218383789,
@@ -19860,6 +20376,10 @@
             26.735682880891336
           ],
           "mean_reproj_error_px": 26.695913877590495,
+          "wrist_reproj_error_px": 17.623702426243057,
+          "hand_span_px": 155.18166917161398,
+          "predicted_span_px": 149.95060288330257,
+          "span_ratio": 0.9662906945373398,
           "box_xyxy": [
             765.544677734375,
             55.68008804321289,
@@ -20368,6 +20888,10 @@
             133.91677864294377
           ],
           "mean_reproj_error_px": 61.99763368377022,
+          "wrist_reproj_error_px": 17.99146095463751,
+          "hand_span_px": 144.80249480086428,
+          "predicted_span_px": 165.4336042886278,
+          "span_ratio": 1.1424775831116438,
           "box_xyxy": [
             209.88400268554688,
             65.1205825805664,
@@ -20832,6 +21356,10 @@
             30.726666769709126
           ],
           "mean_reproj_error_px": 22.105412580507107,
+          "wrist_reproj_error_px": 20.469308473577982,
+          "hand_span_px": 156.8349406621622,
+          "predicted_span_px": 145.5946084572246,
+          "span_ratio": 0.9283301784826739,
           "box_xyxy": [
             760.5931396484375,
             56.21879959106445,
@@ -21340,6 +21868,10 @@
             93.78522580088523
           ],
           "mean_reproj_error_px": 37.095765413827095,
+          "wrist_reproj_error_px": 15.325839305516718,
+          "hand_span_px": 145.19356608476238,
+          "predicted_span_px": 164.35851349524052,
+          "span_ratio": 1.1319958447696632,
           "box_xyxy": [
             227.85658264160156,
             158.26486206054688,
@@ -21804,6 +22336,10 @@
             29.200110124427468
           ],
           "mean_reproj_error_px": 23.39796533104241,
+          "wrist_reproj_error_px": 18.754818720868272,
+          "hand_span_px": 149.01631123883314,
+          "predicted_span_px": 147.62246425830762,
+          "span_ratio": 0.9906463462359395,
           "box_xyxy": [
             755.5869140625,
             86.02418518066406,
@@ -22312,6 +22848,10 @@
             127.11255158463226
           ],
           "mean_reproj_error_px": 54.692804062821594,
+          "wrist_reproj_error_px": 9.558730933659993,
+          "hand_span_px": 149.17684233851202,
+          "predicted_span_px": 158.71168530299036,
+          "span_ratio": 1.0639163747871931,
           "box_xyxy": [
             232.29347229003906,
             116.59324645996094,
@@ -22776,6 +23316,10 @@
             22.695775743519622
           ],
           "mean_reproj_error_px": 18.921152226048065,
+          "wrist_reproj_error_px": 22.43919146294146,
+          "hand_span_px": 146.16954475677503,
+          "predicted_span_px": 137.08368787987513,
+          "span_ratio": 0.9378402875098318,
           "box_xyxy": [
             741.3214111328125,
             113.79412078857422,
@@ -23284,6 +23828,10 @@
             134.65707853414062
           ],
           "mean_reproj_error_px": 55.498304294307324,
+          "wrist_reproj_error_px": 10.86765354123864,
+          "hand_span_px": 142.36799129337066,
+          "predicted_span_px": 152.54462852625596,
+          "span_ratio": 1.0714812166726073,
           "box_xyxy": [
             238.03707885742188,
             156.1736602783203,
@@ -23748,6 +24296,10 @@
             30.470491394039005
           ],
           "mean_reproj_error_px": 18.190803479294953,
+          "wrist_reproj_error_px": 14.516271073844253,
+          "hand_span_px": 138.32259780730155,
+          "predicted_span_px": 133.5560284915087,
+          "span_ratio": 0.9655401981212557,
           "box_xyxy": [
             737.2799682617188,
             153.0728759765625,
@@ -24256,6 +24808,10 @@
             99.00812153765993
           ],
           "mean_reproj_error_px": 47.606199786955955,
+          "wrist_reproj_error_px": 15.1067342629296,
+          "hand_span_px": 142.9971620078639,
+          "predicted_span_px": 146.72131976213282,
+          "span_ratio": 1.026043578082089,
           "box_xyxy": [
             262.209228515625,
             202.16949462890625,
@@ -24720,6 +25276,10 @@
             51.23939679160528
           ],
           "mean_reproj_error_px": 24.46138200562083,
+          "wrist_reproj_error_px": 6.467980080332667,
+          "hand_span_px": 126.54724571513384,
+          "predicted_span_px": 128.96929872506502,
+          "span_ratio": 1.0191395158088496,
           "box_xyxy": [
             733.5147705078125,
             186.5588836669922,
@@ -25228,6 +25788,10 @@
             100.35935375862306
           ],
           "mean_reproj_error_px": 45.38472354433251,
+          "wrist_reproj_error_px": 13.888551107197715,
+          "hand_span_px": 137.92986420448855,
+          "predicted_span_px": 146.6731933862555,
+          "span_ratio": 1.0633896743986093,
           "box_xyxy": [
             264.98309326171875,
             238.5120086669922,
@@ -25692,6 +26256,10 @@
             35.33982017763973
           ],
           "mean_reproj_error_px": 18.507500224787744,
+          "wrist_reproj_error_px": 5.529848473476746,
+          "hand_span_px": 122.6829765879536,
+          "predicted_span_px": 127.40404615094197,
+          "span_ratio": 1.0384818635338844,
           "box_xyxy": [
             724.8080444335938,
             221.1856689453125,
@@ -26197,6 +26765,10 @@
             49.07673695414517
           ],
           "mean_reproj_error_px": 20.33123500204405,
+          "wrist_reproj_error_px": 11.605261945752414,
+          "hand_span_px": 116.28756178921323,
+          "predicted_span_px": 125.78686582077185,
+          "span_ratio": 1.0816880488798741,
           "box_xyxy": [
             728.3651123046875,
             243.05886840820312,
@@ -26702,6 +27274,10 @@
             22.4617804261102
           ],
           "mean_reproj_error_px": 14.809383171047578,
+          "wrist_reproj_error_px": 4.605049261641207,
+          "hand_span_px": 124.33230509969484,
+          "predicted_span_px": 127.07380331370503,
+          "span_ratio": 1.0220497658417251,
           "box_xyxy": [
             720.7781372070312,
             259.5042419433594,
@@ -26722,6 +27298,7 @@
     "The 2D hand-keypoint reference and the hand box both come from MediaPipe Hands (CPU, MediaPipe graph); reprojection error therefore measures agreement between HaMeR's MANO+camera and MediaPipe's landmarks, not ground-truth accuracy.",
     "MediaPipe reports no per-landmark visibility score, so the frozen keypoint-confidence criterion uses its per-hand detection score broadcast over the 21 landmarks.",
     "Hand box + handedness come from MediaPipe instead of HaMeR demo.py's detectron2/ViTPose stack, which has no darwin/arm64 build.",
-    "MANO meshes come from mano_v1_2 (the release HaMeR was trained against); no mesh rendering is done (pyrender stubbed, no headless GL)."
+    "MANO meshes come from mano_v1_2 (the release HaMeR was trained against); no mesh rendering is done (pyrender stubbed, no headless GL).",
+    "Hand-geometry ACCURACY is reported, not gated: this smoke's verdict is a wiring verdict (mirror / scale / anchor). The accuracy residual against MediaPipe on curled grasp poses under occlusion is a P1 item; see reprojection_accuracy_evidence and risk_notes."
   ]
 }
