@@ -37,6 +37,7 @@ Run: pytest tests/test_smoke6_mjcf.py
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 import re
 import subprocess
@@ -684,23 +685,42 @@ W35E_UNLOADED_LINKS = ("medial", "distal", "base")
 
 def test_w35e_exactly_five_explicit_box_pairs(model):
     """Every box<->hand contact that R3 could not govern by itself is named by one
-    explicit <pair>, and nothing else is."""
-    assert model.npair == len(W35E_BOX_PAIRS), (
+    explicit <pair>, and nothing else is.
+
+    Both sides are asserted, because the W4/R8 lip work showed how easily this
+    test can be made to pass while the scope is wrong in one direction: the count
+    alone is satisfied by any 5 pairs touching the box. The hand side is the scope
+    3.5-B/E argued for and measured; the box side is whatever object geoms the
+    scene actually has, which is what has to be covered.
+    """
+    n_obj = len(builder.object_geom_names())
+    assert model.npair == len(W35E_BOX_PAIRS) * n_obj, (
         f"{model.npair} explicit pairs in the committed XML, expected exactly "
-        f"{len(W35E_BOX_PAIRS)}: palm + the four finger-proximal links"
+        f"{len(W35E_BOX_PAIRS)} hand geoms x {n_obj} object geoms = "
+        f"{len(W35E_BOX_PAIRS) * n_obj}"
     )
-    obj = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "object_geom")
-    got = set()
+    obj_geoms = {mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, n)
+                 for n in builder.object_geom_names()}
+    hand_side: set[str] = set()
+    box_side: set[str] = set()
     for i in range(model.npair):
         g1, g2 = int(model.pair_geom1[i]), int(model.pair_geom2[i])
-        geom = g2 if g1 == obj else g1
-        assert g1 == obj or g2 == obj, (
+        assert g1 in obj_geoms or g2 in obj_geoms, (
             f"explicit pair {i} does not touch the tissue box, so it is not part of "
             f"the box-contact scope R3 and 3.5-E govern"
         )
-        got.add(mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, geom))
-    assert got == set(W35E_BOX_PAIRS), (
-        f"explicit box pairs are {sorted(got)}, expected {sorted(W35E_BOX_PAIRS)}"
+        # the MJCF writes geom1=object, geom2=hand, but do not rely on that order:
+        # pick each side by membership, not by position
+        box_g, hand_g = (g1, g2) if g1 in obj_geoms else (g2, g1)
+        box_side.add(mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, box_g))
+        hand_side.add(mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, hand_g))
+    assert hand_side == set(W35E_BOX_PAIRS), (
+        f"the hand side of the explicit pairs is {sorted(hand_side)}, expected "
+        f"{sorted(W35E_BOX_PAIRS)} - the scope is palm + four proximal links"
+    )
+    assert box_side == set(builder.object_geom_names()), (
+        f"the box side of the explicit pairs is {sorted(box_side)}, expected "
+        f"{sorted(builder.object_geom_names())}"
     )
 
 
@@ -819,6 +839,126 @@ def test_model_loads_and_statistics_are_self_consistent(model):
     assert model.nv == 28
     obj = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "object")
     assert float(model.body_mass[obj]) == pytest.approx(BOX_MASS_KG)
+
+
+# ================================================================ W4 / R8
+def test_r8_lip_geometry_is_refuted_and_withdrawn(model):
+    """R8 REFUTED the lip kinematically; this pins the withdrawal.
+
+    The lip design (a flange on the box's upper edge for a fingertip to hook) was
+    swept over overhang 4-12 mm x lip_h 6-14 mm and found unreachable in all 15
+    cells: the palm floor (0.839 m) sits level with the box top (0.840 m), so no
+    finger can come over the top and cut back under a 6-14 mm flange. The geometry
+    is therefore NOT in the repo - the shipped XML is byte-identical to 1b0f13f.
+
+    What is KEPT is the parameterisation, so a future variant has a fixed
+    reference to A/B against. These assertions are the guard on the withdrawal:
+    without them, someone could quietly re-ship the refuted geometry by editing
+    the two constants, and nothing in this file would object.
+    """
+    assert builder.BOX_LIP_OVERHANG_M == 0.0 and builder.BOX_LIP_HEIGHT_M == 0.0, (
+        "the R8 lip is refuted; shipping a non-zero lip re-introduces a design "
+        "that was measured unreachable in all 15 swept cells"
+    )
+    assert builder.box_lip_specs() == [], "a zero lip must emit no geoms"
+    for name in builder.BOX_LIP_GEOM_NAMES:
+        assert mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, name) == -1, (
+            f"{name} is in the shipped scene - the refuted lip geometry is back in"
+        )
+    assert model.ngeom == 46, "the withdrawn lip's two geoms are still in the scene"
+    assert model.npair == len(W35E_BOX_PAIRS), (
+        f"{model.npair} explicit pairs; the withdrawn lip must not add any"
+    )
+
+
+def test_r8_zero_lip_reproduces_the_shipped_scene_byte_for_byte():
+    """The property that makes the parameterisation worth keeping.
+
+    build(0, 0) must regenerate the committed XML EXACTLY, so any future geometry
+    variant is A/B-ed against a fixed reference instead of a hand-maintained
+    baseline. Byte equality, not "close enough": a stray blank line or a reformatted
+    mass attribute would make every A/B comparison ambiguous.
+    """
+    # unique name: this test and test_generated_xml_is_reproducible_from_the_generator
+    # both drive the generator, and a fixed filename lets two runs collide
+    tmp = MJCF.parent / f"_r8_zero_lip_{os.getpid()}.xml"
+    try:
+        builder.build(0.0, 0.0, tmp)
+        assert tmp.read_bytes() == MJCF.read_bytes(), (
+            "build(0, 0) does not reproduce the committed XML byte for byte - the "
+            "zero-lip control cell is not a clean reference"
+        )
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def test_r8_box_mass_is_still_exactly_0p15kg(model):
+    """THE invariant. Every force gate is written against 0.15 kg.
+
+    A3a's sufficiency bound is 0.15 * 9.81 = 1.4715 N; the pedestal-load ratios
+    divide by the same weight. Read from the COMPILED model - the only place the
+    sum is real, since the XML carries one mass attribute per geom that could
+    disagree with the body's total.
+    """
+    obj = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "object")
+    total = float(model.body_mass[obj])
+    assert total == pytest.approx(BOX_MASS_KG, abs=1e-9), (
+        f"the object body weighs {total:.9f} kg, not {BOX_MASS_KG} kg. Every force "
+        f"gate (A3a's {BOX_MASS_KG * 9.81:.4f} N sufficiency bound, the pedestal-load "
+        f"ratios) is calibrated on that weight."
+    )
+    assert builder.object_geom_names() == ["object_geom"], (
+        "the shipped scene has no lip, so the box is a single geom again"
+    )
+    assert builder.box_geom_mass() == pytest.approx(BOX_MASS_KG, abs=1e-12)
+    assert builder.box_object_mass() == pytest.approx(BOX_MASS_KG, abs=1e-12)
+
+
+def test_r8_added_box_hardware_never_changes_the_total_mass():
+    """The mass rule the parameterisation encodes, for every cell of the sweep.
+
+    Added mass comes OUT of the 0.15 kg, never on top of it. This is checked over
+    the whole swept grid rather than at the one shipped setting, because the
+    failure it guards against is a sweep regenerating a 0.152 kg scene that nobody
+    notices until a force gate moves.
+    """
+    for oh in (0.0, 0.004, 0.006, 0.008, 0.010, 0.012):
+        for lh in (0.0, 0.006, 0.010, 0.014):
+            assert builder.box_object_mass(oh, lh) == pytest.approx(
+                BOX_MASS_KG, abs=1e-12), (
+                f"overhang={oh * 1e3:g}mm lip_h={lh * 1e3:g}mm does not sum to "
+                f"{BOX_MASS_KG} kg")
+            assert builder.box_geom_mass(oh, lh) == pytest.approx(
+                BOX_MASS_KG - builder.lip_total_mass(oh, lh), abs=1e-12)
+    # the measured 8 mm / 10 mm cell: 145 g box + 2 x 2.5 g lip = 150.000 g
+    assert builder.lip_total_mass(0.008, 0.010) == pytest.approx(0.005, abs=1e-9)
+    assert builder.box_geom_mass(0.008, 0.010) == pytest.approx(0.145, abs=1e-9)
+    # the control cell really is the bare box
+    assert builder.box_lip_specs(0.0, 0.010) == []
+    assert builder.box_geom_mass(0.0, 0.010) == pytest.approx(BOX_MASS_KG, abs=1e-12)
+    # and an absurd lip is refused rather than silently producing a negative mass
+    with pytest.raises(ValueError):
+        builder.box_geom_mass(0.5, 0.5)
+
+
+def test_revision_md_records_the_r8_refutation():
+    """R8 is a REFUTATION, and the revision has to say so with its evidence.
+
+    A refutation recorded only in a commit message is invisible to the next person
+    who reads REVISION.md and wonders why there is no lip - and who might then
+    re-propose it, or worse, ship it without re-measuring.
+    """
+    doc = REVISION_MD.read_text()
+    assert "R8" in doc, "REVISION.md has no R8 section"
+    for tok in ("否决", "唇边", "0.652", "0.830"):
+        assert tok in doc, f"REVISION.md's R8 section does not record {tok}"
+    # the swept grid and its all-zero verdict
+    for v in ("4 mm", "12 mm", "6 mm", "14 mm"):
+        assert v in doc, f"REVISION.md's R8 section does not record the {v} cell"
+    # the mass invariant and the re-derived R5 tolerance, as credibility evidence
+    assert "2.90924263123702644e-05" in doc
+    assert "1.16369705249481058e-04" in doc
+    assert "1ea0fdf5" in doc, "REVISION.md does not record the restored XML hash"
 
 
 def test_revision_md_records_the_forcerange_table():
