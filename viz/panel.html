@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>v2d-mac · MuJoCo 抓取证据面板</title>
+<style>
+  :root {
+    --bg: #0e1116; --bg2: #151a22; --line: #232b38; --fg: #d7dee8; --dim: #8a96a8;
+    --green: #34d399; --red: #f87171; --amber: #fbbf24; --cyan: #38bdf8; --accent: #60a5fa;
+    --mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { background: var(--bg); color: var(--fg); font: 13px/1.45 -apple-system, "PingFang SC", "Helvetica Neue", sans-serif; overflow: hidden; }
+  #app { display: grid; grid-template-rows: 46px 1fr; height: 100vh; }
+
+  header { display: flex; align-items: center; gap: 10px; padding: 0 14px; border-bottom: 1px solid var(--line); background: var(--bg2); white-space: nowrap; overflow: hidden; }
+  header h1 { font-size: 14px; font-weight: 600; letter-spacing: .02em; }
+  .badge { font: 11px var(--mono); padding: 2px 8px; border-radius: 10px; border: 1px solid var(--line); color: var(--dim); background: #0b0e13; }
+  .badge b { color: var(--fg); font-weight: 600; }
+  .badge.pass { color: var(--green); border-color: rgba(52,211,153,.4); }
+  .badge.fail { color: var(--red); border-color: rgba(248,113,113,.4); }
+  #meta .spacer { flex: 1; }
+
+  main { display: grid; grid-template-columns: 1fr 400px; min-height: 0; }
+  #stage { position: relative; min-width: 0; display: grid; grid-template-rows: 1fr auto; }
+  #glwrap { position: relative; min-height: 0; }
+  #gl { display: block; width: 100%; height: 100%; cursor: grab; }
+  #gl:active { cursor: grabbing; }
+
+  #hud { position: absolute; left: 12px; top: 10px; font: 12px var(--mono); color: var(--dim); pointer-events: none; }
+  #hud .lift { font-size: 22px; color: var(--cyan); font-weight: 600; }
+  #hud .peakchip { margin-top: 6px; color: var(--amber); }
+  #hint { position: absolute; right: 12px; top: 10px; font: 11px var(--mono); color: #566174; pointer-events: none; text-align: right; }
+
+  #controls { border-top: 1px solid var(--line); background: var(--bg2); padding: 8px 14px 10px; display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; }
+  #controls button { background: #1b2230; color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; }
+  #controls button:hover { background: #242e40; }
+  .speed-group { display: inline-flex; gap: 4px; margin-left: 8px; }
+  .speed-group button.on { background: #1d3a5f; border-color: var(--accent); color: #bfdbfe; }
+  #scrubwrap { position: relative; }
+  #scrub { width: 100%; accent-color: var(--accent); cursor: pointer; }
+  #peakline { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--amber); pointer-events: none; }
+  #peakline::after { content: "peak 74"; position: absolute; top: -14px; left: -20px; font: 10px var(--mono); color: var(--amber); white-space: nowrap; }
+  #timecode { font: 12px var(--mono); color: var(--dim); min-width: 150px; text-align: right; }
+  #liftchart { display: block; width: 100%; height: 34px; margin-top: 4px; }
+
+  aside { border-left: 1px solid var(--line); overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; background: var(--bg); }
+  aside h2 { font-size: 12px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
+  .card { border: 1px solid var(--line); border-radius: 8px; background: var(--bg2); padding: 10px 12px; }
+
+  .gate-row { display: flex; align-items: center; gap: 8px; padding: 3.5px 0; border-bottom: 1px dashed #1d2530; font-size: 12.5px; }
+  .gate-row:last-child { border-bottom: none; }
+  .gate-row .name { flex: 1; min-width: 0; }
+  .gate-row .name small { color: var(--dim); display: block; font-size: 11px; }
+  .gate-row .val { font: 11.5px var(--mono); color: var(--fg); text-align: right; }
+  .pill { font: 10.5px var(--mono); padding: 1px 7px; border-radius: 9px; min-width: 44px; text-align: center; }
+  .pill.ok { background: rgba(52,211,153,.14); color: var(--green); }
+  .pill.bad { background: rgba(248,113,113,.14); color: var(--red); }
+  .pill.warn { background: rgba(251,191,36,.14); color: var(--amber); }
+
+  .bar-row { display: grid; grid-template-columns: 52px 1fr 58px; gap: 8px; align-items: center; padding: 2.5px 0; font: 11.5px var(--mono); }
+  .bar-row .lab { color: var(--dim); }
+  .bar-track { height: 12px; background: #10151d; border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--accent); }
+  .bar-fill.hot { background: var(--green); }
+  .bar-row .pct { text-align: right; }
+
+  table.smoke { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.smoke td { padding: 4px 6px 4px 0; border-bottom: 1px dashed #1d2530; vertical-align: top; }
+  table.smoke tr:last-child td { border-bottom: none; }
+  table.smoke td:first-child { color: var(--dim); font: 11px var(--mono); width: 18px; }
+  .note { color: var(--dim); font-size: 11px; }
+  .foot { color: #566174; font: 10.5px var(--mono); }
+  #err { display: none; position: absolute; inset: 0; background: rgba(14,17,22,.94); color: var(--red); padding: 40px; font: 13px var(--mono); z-index: 10; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="meta">
+    <h1>MuJoCo 抓取证据面板 · 门干净顶面钩</h1>
+    <div class="spacer"></div>
+    <!-- badges filled by JS from panel_data.json -->
+  </header>
+  <main>
+    <section id="stage">
+      <div id="glwrap">
+        <canvas id="gl"></canvas>
+        <div id="hud"></div>
+        <div id="hint">拖拽旋转 · 滚轮缩放</div>
+        <div id="err"></div>
+      </div>
+      <div id="controls">
+        <div>
+          <button id="play">播放</button>
+          <span class="speed-group" id="speeds">
+            <button data-s="0.25">0.25×</button>
+            <button data-s="0.5">0.5×</button>
+            <button data-s="1" class="on">1×</button>
+          </span>
+        </div>
+        <div id="scrubwrap">
+          <input id="scrub" type="range" min="0" max="0" value="0" step="1">
+          <div id="peakline"></div>
+          <canvas id="liftchart"></canvas>
+        </div>
+        <div id="timecode"></div>
+      </div>
+    </section>
+    <aside>
+      <div class="card" id="gate-card"><h2>冻结门判定</h2><div id="gate-rows"></div></div>
+      <div class="card" id="load-card"><h2>承载分解（接触法向占比）</h2><div id="load-rows"></div></div>
+      <div class="card" id="contact-card"><h2>peak 接触证据</h2><div id="contact-rows"></div></div>
+      <div class="card" id="smoke-card"><h2>六 smoke 状态</h2><table class="smoke" id="smoke-rows"></table></div>
+      <div class="foot" id="foot"></div>
+    </aside>
+  </main>
+</div>
+<script src="./three.min.js"></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const fail = msg => { const e = $('err'); e.style.display = 'block'; e.textContent = '加载失败: ' + msg; };
+
+fetch('./panel_data.json').then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+.then(boot).catch(e => fail(e.message));
+
+function boot(D) {
+  // ---------- header badges (every value straight from the JSON) ----------
+  const meta = D.meta, gate = D.gate;
+  const hdr = $('meta');
+  const badge = (html, cls) => { const s = document.createElement('span'); s.className = 'badge' + (cls ? ' ' + cls : ''); s.innerHTML = html; hdr.appendChild(s); };
+  badge('mjcf <b>' + meta.mjcf_commit + '</b>');
+  badge('sha256 <b>' + String(meta.xml_sha256).slice(0, 12) + '…</b>');
+  badge('ctrl <b>' + meta.ctrl_hz + 'Hz</b>');
+  badge('frames <b>' + D.frames.length + '</b> / ' + (D.frames.length / meta.ctrl_hz).toFixed(1) + 's');
+  badge('peak <b>' + (gate.peak_lift_m * 1000).toFixed(1) + 'mm</b>');
+  badge('gate_pass <b>' + gate.gate_pass + '</b>', gate.gate_pass ? 'pass' : 'fail');
+  hdr.title = meta.trajectory + ' · xml_sha256=' + meta.xml_sha256;
+
+  // ---------- mujoco(xyz, z-up) -> three(xzy, y-up); reflection conjugates quats ----------
+  const P = p => new THREE.Vector3(p[0], p[2], p[1]);
+  const Q = q => new THREE.Quaternion(-q[0], -q[2], -q[1], q[3]);
+
+  // ---------- per-frame body poses, precomputed ----------
+  const NF = D.frames.length;
+  const bodies = D.frames.map(f => {
+    const m = {};
+    for (const b of f.b) m[b.name] = { p: P(b.pos), q: Q(b.quat) };
+    return m;
+  });
+
+  // ---------- renderer / scene ----------
+  const canvas = $('gl');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0e1116);
+  const TARGET = new THREE.Vector3(0, 0.8, 0);
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 30);
+
+  // query params: deterministic camera / frame for verification
+  const qp = new URLSearchParams(location.search);
+  let camTheta = parseFloat(qp.get('theta') || '0.85');
+  let camPhi = parseFloat(qp.get('phi') || '1.12');
+  let camR = parseFloat(qp.get('r') || '0.88');
+  camPhi = Math.min(Math.max(camPhi, 0.08), Math.PI - 0.08);
+
+  scene.add(new THREE.HemisphereLight(0x9db4d6, 0x14161c, 0.85));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+  sun.position.set(1.6, 2.4, 1.1);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.camera.left = -1; sun.shadow.camera.right = 1;
+  sun.shadow.camera.top = 1; sun.shadow.camera.bottom = -1;
+  scene.add(sun);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.22));
+  const grid = new THREE.GridHelper(3, 30, 0x1d2530, 0x161c26);
+  grid.position.y = 0.001;
+  scene.add(grid);
+
+  // ---------- geometry factory ----------
+  const matte = (r, g, b, extra) => new THREE.MeshStandardMaterial(Object.assign(
+    { color: new THREE.Color(r, g, b), roughness: 0.85, metalness: 0.05 }, extra || {}));
+  function makeGeom(g) {
+    const s = g.size;
+    let geo;
+    // mujoco(x,y,z) -> three(x,z,y): the mujoco local z axis maps to three local y,
+    // so capsule/cylinder keep their native Y alignment; boxes swap depth/height.
+    if (g.type === 'sphere') geo = new THREE.SphereGeometry(s[0], 24, 16);
+    else if (g.type === 'capsule') geo = new THREE.CapsuleGeometry(s[0], s[1] * 2, 6, 16);
+    else if (g.type === 'cylinder') geo = new THREE.CylinderGeometry(s[0], s[0], s[1] * 2, 24);
+    else if (s[0] === 0 && s[1] === 0) { // plane dumped as size [0,0,t] -> thin slab, top at y=0
+      geo = new THREE.BoxGeometry(5, 0.02, 5);
+    } else {
+      geo = new THREE.BoxGeometry(s[0] * 2, s[2] * 2, s[1] * 2); // mesh-AABB or box
+    }
+    const mesh = new THREE.Mesh(geo, materialFor(g));
+    mesh.position.copy(P(g.pos));
+    if (s[0] === 0 && s[1] === 0 && g.type !== 'sphere') mesh.position.y -= 0.01;
+    mesh.quaternion.copy(Q(g.quat));
+    mesh.castShadow = g.body !== 'world' || g.name !== 'floor';
+    mesh.receiveShadow = true;
+    return mesh;
+  }
+  function materialFor(g) {
+    const [r, gr, b] = g.rgba;
+    if (g.name === 'object_geom') return matte(r, gr, b, { roughness: 0.5, metalness: 0.1 });
+    if (g.body === 'world') return matte(r, gr, b);
+    if (g.name.endsWith('_collision')) // contact primitives: translucent amber shells
+      return new THREE.MeshStandardMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.10, roughness: 0.6, depthWrite: false });
+    return matte(0.72, 0.75, 0.8, { roughness: 0.5, metalness: 0.35 }); // link visuals: aluminum
+  }
+
+  // ---------- static (world-bound) geoms ----------
+  for (const g of D.static) if (g.body === 'world') scene.add(makeGeom(g));
+
+  // ---------- body-bound geoms: local = inv(body0) ∘ geom_world(static) ----------
+  const dynByBody = {};  // body name -> [{mesh, lp:Vector3, lq:Quaternion}]
+  const b0 = bodies[0];
+  const bO = D.box_outline_m; // mujoco full extents [x,y,z] -> three (x, z, y)
+  const objEdges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(bO[0], bO[2], bO[1])),
+    new THREE.LineBasicMaterial({ color: 0x9ecbff, transparent: true, opacity: 0.5 }));
+  scene.add(objEdges);
+  for (const g of D.static) {
+    if (g.body === 'world') continue;
+    const mesh = makeGeom(g);
+    mesh.castShadow = true;
+    scene.add(mesh);
+    const bp = b0[g.body].p, bq = b0[g.body].q;
+    const lp = P(g.pos).sub(bp).applyQuaternion(bq.clone().invert());
+    const lq = bq.clone().invert().multiply(Q(g.quat));
+    (dynByBody[g.body] = dynByBody[g.body] || []).push({ mesh, lp, lq });
+  }
+
+  // ---------- hand-rolled orbit (drag rotate + wheel zoom) ----------
+  function applyCam() {
+    const sp = Math.sin(camPhi), off = new THREE.Vector3(camR * sp * Math.sin(camTheta), camR * Math.cos(camPhi), camR * sp * Math.cos(camTheta));
+    camera.position.copy(TARGET).add(off);
+    camera.lookAt(TARGET);
+  }
+  applyCam();
+  let drag = null;
+  canvas.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); });
+  canvas.addEventListener('pointermove', e => {
+    if (!drag) return;
+    camTheta -= (e.clientX - drag.x) * 0.005;
+    camPhi = Math.min(Math.max(camPhi - (e.clientY - drag.y) * 0.005, 0.08), Math.PI - 0.08);
+    drag = { x: e.clientX, y: e.clientY };
+    applyCam();
+  });
+  canvas.addEventListener('pointerup', () => drag = null);
+  canvas.addEventListener('wheel', e => { e.preventDefault(); camR = Math.min(Math.max(camR * Math.exp(e.deltaY * 0.0012), 0.25), 4); applyCam(); }, { passive: false });
+
+  // ---------- playback state ----------
+  let frame = 0, playing = !qp.has('t'), speed = 1;
+  if (qp.has('t')) frame = Math.min(NF - 1, Math.max(0, Math.round(parseFloat(qp.get('t') || '0') * meta.ctrl_hz)));
+  const PEAK = D.peak_step;
+
+  const qa = new THREE.Quaternion(), qb = new THREE.Quaternion(), qt = new THREE.Quaternion();
+  function applyFrame(i, alpha) {
+    const A = bodies[i], B = bodies[Math.min(i + 1, NF - 1)];
+    for (const name in dynByBody) {
+      const a = A[name], b = B[name];
+      qa.copy(a.q); qb.copy(b.q);
+      qt.slerpQuaternions(qa, qb, alpha);
+      const px = a.p.x + (b.p.x - a.p.x) * alpha, py = a.p.y + (b.p.y - a.p.y) * alpha, pz = a.p.z + (b.p.z - a.p.z) * alpha;
+      for (const d of dynByBody[name]) {
+        d.mesh.position.set(px, py, pz);
+        d.mesh.position.add(d.lp.clone().applyQuaternion(qt));
+        d.mesh.quaternion.multiplyQuaternions(qt, d.lq);
+      }
+    }
+    const o = A.object;
+    objEdges.position.copy(o.p); objEdges.quaternion.copy(o.q);
+  }
+
+  // ---------- controls / HUD ----------
+  const scrub = $('scrub'); scrub.max = NF - 1;
+  const playBtn = $('play'), tc = $('timecode'), hud = $('hud');
+  const peakPct = (PEAK / (NF - 1) * 100).toFixed(3) + '%';
+  $('peakline').style.left = 'calc(' + peakPct + ' - 1px)';
+  scrub.addEventListener('input', () => { frame = +scrub.value; playing = false; playBtn.textContent = '播放'; draw(); });
+  playBtn.addEventListener('click', () => { playing = !playing; playBtn.textContent = playing ? '暂停' : '播放'; });
+  for (const b of $('speeds').querySelectorAll('button')) b.addEventListener('click', () => {
+    speed = parseFloat(b.dataset.s);
+    for (const x of $('speeds').querySelectorAll('button')) x.classList.toggle('on', x === b);
+  });
+
+  const chart = $('liftchart'), cx = chart.getContext('2d');
+  function drawChart() {
+    const w = chart.width = chart.clientWidth * 2, h = chart.height = 68;
+    cx.clearRect(0, 0, w, h);
+    const maxL = Math.max(...D.frames.map(f => f.lift), 1e-6);
+    cx.strokeStyle = '#243149'; cx.beginPath();
+    D.frames.forEach((f, i) => { const x = i / (NF - 1) * w, y = h - 6 - f.lift / maxL * (h - 14); i ? cx.lineTo(x, y) : cx.moveTo(x, y); });
+    cx.stroke();
+    const pk = PEAK / (NF - 1) * w;
+    cx.strokeStyle = '#fbbf24'; cx.beginPath(); cx.moveTo(pk, 0); cx.lineTo(pk, h); cx.stroke();
+    const cu = frame / (NF - 1) * w;
+    cx.strokeStyle = '#38bdf8'; cx.beginPath(); cx.moveTo(cu, 0); cx.lineTo(cu, h); cx.stroke();
+  }
+
+  function draw() {
+    const i = Math.min(Math.floor(frame), NF - 1), alpha = frame - i;
+    applyFrame(i, alpha);
+    const f = D.frames[i];
+    hud.innerHTML = '<span class="lift">' + (f.lift * 1000).toFixed(1) + '</span> mm lift' +
+      '<br>reward ' + f.reward.toFixed(2) +
+      '<div class="peakchip">peak @' + PEAK + ' · ' + (gate.peak_lift_m * 1000).toFixed(1) + 'mm' + (gate.gate_pass ? ' · PASS' : '') + '</div>';
+    tc.textContent = '帧 ' + (i + 1) + '/' + NF + ' · t=' + (i / meta.ctrl_hz).toFixed(2) + 's · ' + speed + '×';
+    if (document.activeElement !== scrub) scrub.value = i;
+    drawChart();
+  }
+
+  function resize() {
+    const w = $('glwrap').clientWidth, h = $('glwrap').clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+    draw();
+  }
+  addEventListener('resize', resize);
+  resize();
+
+  let last = performance.now();
+  (function loop(now) {
+    const dt = Math.min(Math.max(now - last, 0), 100) / 1000; last = now;
+    if (playing) {
+      frame = Math.min(NF - 1, Math.max(0, frame + dt * speed * meta.ctrl_hz));
+      if (frame >= NF - 1) { frame = NF - 1; playing = false; playBtn.textContent = '播放'; }
+      draw();
+    }
+    renderer.render(scene, camera);
+    requestAnimationFrame(loop);
+  })(last);
+
+  buildEvidence(D);
+}
+
+// ---------- evidence panels (all values read from the JSON) ----------
+function buildEvidence(D) {
+  const g = D.gate, rows = $('gate-rows');
+  const pill = ok => '<span class="pill ' + (ok ? 'ok">通过' : 'bad">未过') + '</span>';
+  const row = (name, val, ok, sub) => '<div class="gate-row"><span class="name">' + name +
+    (sub ? '<small>' + sub + '</small>' : '') + '</span><span class="val">' + val + '</span>' +
+    (ok === null ? '' : pill(ok)) + '</div>';
+  const mm = v => (v * 1000).toFixed(2) + ' mm';
+  let h = '';
+  h += row('gate_pass（总判定）', String(g.gate_pass), g.gate_pass, '六 smoke 后的冻结验收门');
+  h += row('peak_lift_m', mm(g.peak_lift_m), g.peak_lift_m > 0.05, '门限 ≥ 50 mm');
+  h += row('n_finger_contact_steps', String(g.n_finger_contact_steps), g.n_finger_contact_steps >= 5, '门限 ≥ 5 步');
+  h += row('force_duty_ok', String(g.force_duty_ok), g.force_duty_ok, '接触占空比 ' + (g.finger_force_duty_cycle * 100).toFixed(1) + '%');
+  h += row('force_sufficiency_ok', String(g.force_sufficiency_ok), g.force_sufficiency_ok,
+    '指力均值 ' + g.finger_force_mean_N.toFixed(2) + ' N ≥ 盒重 ' + g.box_weight_N.toFixed(2) + ' N');
+  h += row('table_touching_at_peak', String(g.table_touching_at_peak), !g.table_touching_at_peak, 'peak 时不得 Touch 桌面（须为 false）');
+  h += row('anchored_step_ok', String(g.anchored_step_ok), g.anchored_step_ok, '最大锚定步进 ' + mm(g.max_anchored_step_m));
+  h += row('free_fall_gravity_ok', String(g.free_fall_gravity_ok), g.free_fall_gravity_ok, '自由飞行重力误差 ' + g.max_free_fall_gravity_error.toFixed(3));
+  h += row('separation_ok', String(g.separation_ok), g.separation_ok, '分离由接触驱动: ' + g.separation_contact_driven);
+  rows.innerHTML = h;
+
+  const meas = [
+    ['corr_force_lift_all_contact', g.corr_force_lift_all_contact.toFixed(3), '合力-提升相关系数（全接触）'],
+    ['corr_force_lift_finger_only', g.corr_force_lift_finger_only.toFixed(3), '相关系数（仅手指）'],
+    ['max_per_step_displacement_m', mm(g.max_per_step_displacement_m), '单步最大位移'],
+    ['max_free_flight_step_m', mm(g.max_free_flight_step_m), '最大自由飞行步进'],
+    ['peak_force_N', g.peak_force_N.toFixed(2) + ' N', 'peak 合力'],
+    ['wrist_z_at_peak', g.wrist_z_at_peak.toFixed(4) + ' m', 'peak 腕高'],
+    ['box_weight_N', g.box_weight_N.toFixed(3) + ' N', '盒重'],
+    ['peak_step（与回放标记一致）', String(D.peak_step), null],
+  ];
+  $('gate-card').insertAdjacentHTML('beforeend',
+    '<div style="margin-top:8px">' + meas.map(m =>
+      '<div class="gate-row"><span class="name">' + m[0] + (m[2] ? '<small>' + m[2] + '</small>' : '') +
+      '</span><span class="val">' + m[1] + '</span></div>').join('') + '</div>');
+
+  // load decomposition bars
+  const ld = D.load_decomposition;
+  const labels = { top: 'top（顶面钩）', x_pos: '+x 侧壁', x_neg: '−x 侧壁', y_pos: '+y 侧壁', y_neg: '−y 侧壁', other: 'other' };
+  let lh = '';
+  for (const k of ['top', 'x_pos', 'x_neg', 'y_pos', 'y_neg', 'other']) {
+    const v = ld[k] || 0, pct = (v * 100).toFixed(1) + '%';
+    lh += '<div class="bar-row"><span class="lab">' + labels[k] + '</span>' +
+      '<span class="bar-track"><span class="bar-fill' + (v > 0 ? ' hot' : '') + '" style="width:' + Math.max(v * 100, v > 0 ? 1.5 : 0) + '%"></span></span>' +
+      '<span class="pct">' + pct + '</span></div>';
+  }
+  lh += '<div class="note" style="margin-top:6px">total_N = ' + ld.total_N.toFixed(1) + ' N · 承载占比来自 load_decomposition</div>';
+  $('load-rows').innerHTML = lh;
+
+  // peak contact evidence
+  $('contact-rows').innerHTML = [
+    ['分离是否接触驱动', String(g.separation_contact_driven)],
+    ['手指接触步数', String(g.n_finger_contact_steps) + ' / ' + D.frames.length],
+    ['接触占空比', (g.finger_force_duty_cycle * 100).toFixed(1) + '%'],
+    ['指力均值', g.finger_force_mean_N.toFixed(2) + ' N'],
+    ['peak 时触桌', g.table_touching_at_peak ? '是' : '否'],
+  ].map(x => '<div class="gate-row"><span class="name">' + x[0] + '</span><span class="val">' + x[1] + '</span></div>').join('') +
+    '<div class="note" style="margin-top:6px">逐接触对（finger_pairs）明细未包含在 panel_data.json，此处不展示推断数据。</div>';
+
+  // six smokes
+  $('smoke-rows').innerHTML = D.six_smoke.map(s => {
+    const cls = s.verdict === 'pass' ? 'ok' : 'warn';
+    const pillHtml = '<span class="pill ' + cls + '">' + s.verdict + '</span>';
+    return '<tr><td>' + s.id + '</td><td>' + s.name + '</td><td>' + pillHtml +
+      '</td><td class="note">' + (s.note || '') + '</td></tr>';
+  }).join('');
+
+  $('foot').textContent = '数据源 viz/panel_data.json · mjcf_commit ' + D.meta.mjcf_commit +
+    ' · xml_sha256 ' + String(D.meta.xml_sha256).slice(0, 16) + '… · 复现: python3 -m http.server 8420 → /viz/panel.html';
+}
+</script>
+</body>
+</html>

@@ -38,6 +38,17 @@ Evidence-native **Video → Data → Policy** pipeline on Apple Silicon (MPS/Met
 
 与 [agv-world-model](https://github.com/topprismdata/agv-world-model)（物理证据门控世界模型）和 [dc-twin](https://github.com/topprismdata/dc-twin)（ESR 自进化数字孪生）的结合蓝图、分阶段落地与证据 schema 草案：**[docs/topprism_integration.md](docs/topprism_integration.md)**。
 
+## 证据面板（viz）
+
+`viz/panel.html` — 门干净顶面钩轨迹（1/15625，peak 106.6mm，gate_pass）的交互式 HTML 证据面板：three.js 实时 3D 回放（桌面/基座/盒/Allegro 手 46 geom，帧间四元数插值）、六 smoke 状态、冻结门逐项判定、承载分解、peak 接触证据。所有数字来自 `viz/panel_data.json`（由 `runs/w5/dump_panel_data.py` 生成；`static` 的 body 绑定几何以 MJCF 常量按 frames[0] 构型落位）。
+
+```bash
+python3 -m http.server 8420   # repo 根目录
+# 浏览器打开 http://localhost:8420/viz/panel.html
+# 拖拽旋转 / 滚轮缩放 / 播放暂停 / 进度 scrub / 0.25×–1× 速度
+# URL 参数：?t=秒 定帧（如 ?t=1.48 = peak step 74）、&theta=&phi=&r= 初始机位
+```
+
 ## 文档
 
 - `DESIGN.md` — 签字稿（P0 六绿 smoke 设计）
