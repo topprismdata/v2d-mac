@@ -22,6 +22,7 @@ is modified.
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 import sys
 import time
@@ -51,7 +52,9 @@ CELLS = ((0.004, 0.006), (0.008, 0.010), (0.012, 0.014))
 
 def lip_scene(overhang: float, lip_h: float):
     """XML text for one lip setting, compiled in memory; no file left behind."""
-    tmp = ASSETS / "_w4_recheck_tmp.xml"
+    # PID-unique: build() writes this path in two passes, so a fixed name lets a
+    # concurrent run (or a rerun) delete the file out from under the second pass
+    tmp = ASSETS / f"_w4_recheck_tmp_{os.getpid()}.xml"
     try:
         baf.build(overhang, lip_h, tmp)
         text = tmp.read_text()
@@ -70,8 +73,14 @@ class Rig:
             model, mujoco.mjtObj.mjOBJ_JOINT, "object_free")])
         self.box_z = baf.TABLE_TOP_Z_M + baf.PEDESTAL_H_M + baf.BOX_HALF_M[2]
         self.bx, self.by, _bz = baf.BOX_HALF_M
+        self.lip_h = lip_h
         self.hook_z = baf.BOX_HALF_M[2] - lip_h      # box-frame z of the lip face
         self.x_lo, self.x_hi = self.bx, self.bx + overhang
+        # objective() reads these, so they have to live on the rig, not just be
+        # constructor arguments: without them the hook-face test below raises
+        # NameError on the first pose
+        self.lip_h = lip_h
+        self.overhang = overhang
         self.lip_geoms = [mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, n)
                           for n in baf.BOX_LIP_GEOM_NAMES]
         self.obj_geoms = self.lip_geoms + [mujoco.mj_name2id(
@@ -130,7 +139,8 @@ class Rig:
                     continue
                 qx, qy, qz = (float(v) for v in ft[3:6])
                 rel_z = qz - self.box_z
-                off = (max(0.0, abs(rel_z - self.hook_z) - max(lip_h, WALL_BAND_M))
+                off = (max(0.0, abs(rel_z - self.hook_z)
+                           - max(self.lip_h, WALL_BAND_M))
                        + max(0.0, self.x_lo - abs(qx) - WALL_BAND_M)
                        + max(0.0, abs(qx) - self.x_hi - WALL_BAND_M)
                        + max(0.0, abs(qy) - self.by - WALL_BAND_M))
