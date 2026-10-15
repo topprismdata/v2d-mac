@@ -148,9 +148,20 @@
 
     <body name="object" pos="0 0 0.8000">
       <freejoint name="object_free"/>
-      <geom name="object_geom" type="box" size="0.06 0.12 0.04" mass="0.15"
+      <geom name="object_geom" type="box" size="0.06 0.12 0.04" mass="0.149602252"
         rgba="0.30 0.55 0.85 1" material="box" condim="4"
         friction="1.4 0.02 0.004" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2"/>
+      <geom name="object_chamfer_negx" type="box" size="0.00212132 0.12 0.0015" pos="-0.0595607 0 0.0395607"
+        euler="0 45 0" mass="0.000198874" rgba="0.30 0.55 0.85 1" material="box"
+        condim="4" friction="1.4 0.02 0.004"
+        solref="0.004 1"
+        solimp="0.95 0.99 0.001 0.5 2"/>
+      <geom name="object_chamfer_posx" type="box" size="0.00212132 0.12 0.0015" pos="0.0595607 0 0.0395607"
+        euler="0 -45 0" mass="0.000198874" rgba="0.30 0.55 0.85 1" material="box"
+        condim="4" friction="1.4 0.02 0.004"
+        solref="0.004 1"
+        solimp="0.95 0.99 0.001 0.5 2"/>
+
     </body>
 
     <body name="hand_root" pos="0 0 0.92">
@@ -276,10 +287,20 @@
     <exclude body1="palm" body2="th_base"/>
     <exclude body1="palm" body2="th_proximal"/>
     <pair geom1="palm_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
+    <pair geom1="palm_collision" geom2="object_chamfer_negx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
+    <pair geom1="palm_collision" geom2="object_chamfer_posx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
     <pair geom1="ff_proximal_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
+    <pair geom1="ff_proximal_collision" geom2="object_chamfer_negx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
+    <pair geom1="ff_proximal_collision" geom2="object_chamfer_posx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
     <pair geom1="mf_proximal_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
+    <pair geom1="mf_proximal_collision" geom2="object_chamfer_negx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
+    <pair geom1="mf_proximal_collision" geom2="object_chamfer_posx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
     <pair geom1="rf_proximal_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
+    <pair geom1="rf_proximal_collision" geom2="object_chamfer_negx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
+    <pair geom1="rf_proximal_collision" geom2="object_chamfer_posx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
     <pair geom1="th_proximal_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
+    <pair geom1="th_proximal_collision" geom2="object_chamfer_negx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
+    <pair geom1="th_proximal_collision" geom2="object_chamfer_posx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
   </contact>
 
   <actuator>

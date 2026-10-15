@@ -160,8 +160,11 @@ def run_chamfer(chamfer_m: float, quick: bool) -> dict:
         "passing_poses": [
             {"wrist_world": r["cfg"]["wrist_world"], "rot": r["cfg"]["rot"],
              "peak_lift_m": r["peak_lift_m"],
-             "chamfer_in_contact": r["chamfer_in_contact"]}
-            for r in passed[:8]
+             "chamfer_in_contact": r["chamfer_in_contact"],
+             # full config: these trajectories are knife-edge sensitive, so an
+             # audit replay needs the EXACT cfg, not a pose approximation
+             "cfg": r["cfg"]}
+            for r in passed
         ],
         "seconds": round(time.time() - t0, 1),
         "variant_sha256": hashlib.sha256(pathlib.Path(variant).read_bytes()).hexdigest(),
@@ -172,14 +175,26 @@ def run_chamfer(chamfer_m: float, quick: bool) -> dict:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--quick", action="store_true")
+    ap.add_argument("--only", type=float, default=None, help="single chamfer, mm")
     args = ap.parse_args()
-    chamfers = (0.0, 5.0) if args.quick else CHAMFERS_MM
+    if args.only is not None:
+        chamfers = (args.only,)
+    else:
+        chamfers = (0.0, 5.0) if args.quick else CHAMFERS_MM
     results = [run_chamfer(c / 1000.0, args.quick) for c in chamfers]
-    OUT.write_text(json.dumps({
-        "baseline_sha": BARE_SHA,
-        "adjudicator": "tests/test_smoke4_accept._analyse_episode via gate_eval",
-        "results": results,
-    }, indent=2, default=str))
+    if args.only is not None and OUT.exists():
+        merged = json.loads(OUT.read_text())
+        by_mm = {round(r["chamfer_mm"] * 1000): r for r in merged["results"]}
+        for r in results:
+            by_mm[round(r["chamfer_mm"] * 1000)] = r
+        merged["results"] = [by_mm[k] for k in sorted(by_mm)]
+        OUT.write_text(json.dumps(merged, indent=2, default=str))
+    else:
+        OUT.write_text(json.dumps({
+            "baseline_sha": BARE_SHA,
+            "adjudicator": "tests/test_smoke4_accept._analyse_episode via gate_eval",
+            "results": results,
+        }, indent=2, default=str))
     print(f"\n{'chamfer':>8} {'clean':>6} {'best_mm':>8} {'survived':>9} "
           f"{'max_off_mm':>11}")
     for r in results:

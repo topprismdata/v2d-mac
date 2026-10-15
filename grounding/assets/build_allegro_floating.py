@@ -131,7 +131,7 @@ BOX_LIP_HEIGHT_M = 0.0
 # perturbation.  A chamfer turns that edge into a short ramp, which is the
 # physically honest version of the same object: production boxes have
 # relieved lid edges.  0.0 reproduces the bare box byte for byte.
-BOX_CHAMFER_M = 0.0
+BOX_CHAMFER_M = 0.003
 BOX_CHAMFER_T_M = 0.003  # plate thickness, m
 BOX_CHAMFER_GEOM_NAMES = ("object_chamfer_negx", "object_chamfer_posx")
 # The rim runs the full length of the box, so it is a tray rim and not two pads.
@@ -525,7 +525,7 @@ def lip_geom_lines(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
         pos = " ".join(f"{v:g}" for v in s["pos"])
         rows.append(
             f'      <geom name="{s["name"]}" type="box" size="{size}" pos="{pos}"\n'
-            f'        mass="{s["mass"]:.6f}" rgba="0.30 0.55 0.85 1" material="box"\n'
+            f'        mass="{s["mass"]:.9f}" rgba="0.30 0.55 0.85 1" material="box"\n'
             f'        condim="4" friction="1.4 0.02 0.004"\n'
             f'        solref="{_fmt_pair(CONTACT_SOLREF)}"\n'
             f'        solimp="{_fmt_pair(CONTACT_SOLIMP)}"/>'
@@ -552,7 +552,7 @@ def chamfer_geom_lines(chamfer_m: float = BOX_CHAMFER_M) -> str:
         pos = " ".join(f"{v:g}" for v in s["pos"])
         rows.append(
             f'      <geom name="{s["name"]}" type="box" size="{size}" pos="{pos}"\n'
-            f'        euler="{s["euler"]}" mass="{s["mass"]:.6f}"'
+            f'        euler="{s["euler"]}" mass="{s["mass"]:.9f}"'
             f' rgba="0.30 0.55 0.85 1" material="box"\n'
             f'        condim="4" friction="1.4 0.02 0.004"\n'
             f'        solref="{_fmt_pair(CONTACT_SOLREF)}"\n'
@@ -1183,7 +1183,7 @@ def _emit(assets: str, defaults: str, palm: str, excludes: str,
         ped_z=f"{TABLE_TOP_Z_M + PEDESTAL_H_M / 2:.4f}",
         box_z=f"{TABLE_TOP_Z_M + PEDESTAL_H_M + BOX_HALF_M[2]:.4f}",
         bx=BOX_HALF_M[0], by=BOX_HALF_M[1], bz=BOX_HALF_M[2],
-        mass=f"{box_geom_mass(lip_overhang_m, lip_h_m, chamfer_m):g}",
+        mass=f"{box_geom_mass(lip_overhang_m, lip_h_m, chamfer_m):.9f}",
         lip=lip_geom_lines(lip_overhang_m, lip_h_m),
         chamfer=chamfer_geom_lines(chamfer_m),
         hand_home=HAND_HOME,
