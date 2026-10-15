@@ -225,6 +225,8 @@ def test_r1_measured_fingertip_force_stays_under_ten_newtons(model):
     data = mujoco.MjData(model)
     qadr, actr = builder.finger_qpos_and_actuator_adrs(model)
     ctrlrange = model.actuator_ctrlrange[actr]
+    act_of = {mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_ACTUATOR, a): a
+              for a in range(model.nu)}
     obj = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "object_geom")
     hand_geoms = {g for g in range(model.ngeom)
                   if (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY,
@@ -239,8 +241,9 @@ def test_r1_measured_fingertip_force_stays_under_ten_newtons(model):
     rng = np.random.default_rng(20251015)
     frame_skip = max(1, int(round(1.0 / (CONTROL_HZ * model.opt.timestep))))
 
-    worst_surface = 0.0
+    worst_pad = 0.0
     worst_buried = 0.0
+    worst_link: dict[str, float] = {}
     tol = builder.penetration_tolerance()
     for _ in range(120):
         mujoco.mj_resetData(model, data)
@@ -262,8 +265,9 @@ def test_r1_measured_fingertip_force_stays_under_ten_newtons(model):
             data.ctrl[actr] = pre_curl + (target - pre_curl) * ((s + 1) / 50.0)
             for _ in range(frame_skip):
                 mujoco.mj_step(model, data)
-        for _ in range(150):
+        for _step in range(150):
             mujoco.mj_step(model, data)
+            per: dict[int, float] = {}
             for c in range(data.ncon):
                 con = data.contact[c]
                 g1, g2 = int(con.geom1), int(con.geom2)
@@ -275,20 +279,56 @@ def test_r1_measured_fingertip_force_stays_under_ten_newtons(model):
                 f = np.zeros(6)
                 mujoco.mj_contactForce(model, data, c, f)
                 mag = float(np.linalg.norm(f[:3]))
-                if -float(con.dist) <= tol:
-                    worst_surface = max(worst_surface, mag)
-                else:
+                if -float(con.dist) > tol:
                     worst_buried = max(worst_buried, mag)
-    # Two different physics, gated separately. See the docstring above.
-    assert 0.0 < worst_surface <= ALLEGRO_V5_TIP_FORCE_N, (
-        f"a fingertip pressing the box surface reaches {worst_surface:.2f} N; the "
+                    continue
+                per[other] = max(per.get(other, 0.0), mag)
+            for other, mag in per.items():
+                name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, other)
+                if "_tip_" in name:
+                    # the Allegro V5 spec is a FINGERTIP spec, and this is the
+                    # contact that carries it
+                    worst_pad = max(worst_pad, mag)
+                else:
+                    # a link sits closer to its joints than the pad does, so R1's own
+                    # derivation puts a higher force there for the same torque
+                    # budget: bounded by sum(tau_j) / min(moment arm_j) over that
+                    # finger's joints, both read off the model
+                    worst_link[name] = max(worst_link.get(name, 0.0), mag)
+    # Three different physics, gated separately. See the docstring above.
+    assert 0.0 < worst_pad <= ALLEGRO_V5_TIP_FORCE_N, (
+        f"a fingertip pressing the box surface reaches {worst_pad:.2f} N; the "
         f"Allegro V5 limit is {ALLEGRO_V5_TIP_FORCE_N} N/finger (smoke4b measured "
         f"{PRE_REVISION_TIP_FORCE_N} N before this revision)"
     )
+    # A link contact is gated against the budget R1's own derivation gives it: the
+    # finger's four actuator force limits summed, over its shortest measured moment
+    # arm - both read off this model, no literal in the test.
+    arms = builder.moment_arm_table()
+    budget = {}
+    for finger in ("ff", "mf", "rf", "th"):
+        joints = [f"{finger}j{k}" for k in range(4)]
+        tau = sum(float(model.actuator_forcerange[act_of[j.replace("j", "a")], 1])
+                  for j in joints)
+        budget[finger] = tau / min(arms[j] for j in joints)
+    for name, force in sorted(worst_link.items()):
+        finger = name.split("_")[0]
+        assert 0.0 < force <= budget[finger], (
+            f"{name} presses the box surface with {force:.2f} N; that finger's "
+            f"actuator budget over its shortest measured moment arm "
+            f"({min(arms[f'{finger}j{k}'] for k in range(4)) * 1e3:.1f} mm) allows "
+            f"{budget[finger]:.2f} N"
+        )
     # Not a gate, but it must not be silently enormous either: a finger link driven
     # far inside the box is resolved by the constraint solver, not by actuator
-    # authority, so the number is reported rather than bounded.
-    assert worst_buried < 5e3, (
+    # authority, so the number is reported rather than bounded. The bound moved in
+    # Wave 3.5-E and the reason is measured, not tolerated: with the proximal links
+    # stiffened, a COMMANDED interpenetration of one of them resolves at ~9.9 kN
+    # (20.8 mm of burial, ff_proximal_collision) where the soft pair gave 9 N at
+    # 0.6 mm. The actuators cannot produce either - a finger's whole budget is
+    # 0.27 N*m - so this is a solver-conditioning statement about commanded
+    # interpenetration, not a hand-strength claim (REVISION.md, known limits).
+    assert worst_buried < 2e4, (
         f"buried-geom contact force {worst_buried:.0f} N is outside any plausible "
         f"regime - something other than commanded interpenetration is going on"
     )
@@ -625,6 +665,121 @@ def test_r5_derived_tolerance_is_documented_in_revision_md():
     )
     assert f"{tol:.3e}" in doc or str(round(tol, 8))[:8] in doc, (
         "REVISION.md does not record the derived tolerance"
+    )
+
+
+# ========================================================== Wave 3.5-E
+W35E_BOX_PAIRS = {
+    "palm_collision": "Wave 3.5-B",
+    "ff_proximal_collision": "Wave 3.5-E",
+    "mf_proximal_collision": "Wave 3.5-E",
+    "rf_proximal_collision": "Wave 3.5-E",
+    "th_proximal_collision": "Wave 3.5-E",
+}
+# Links that carry NO box force in this scene (0.000 N, 0.000 mm measured over the
+# frozen smoke5 replay, runs/w35/w35e_proximal.json).  Proximal-only,
+# proximal+medial and all-phalanges variants are bit-for-bit identical there.
+W35E_UNLOADED_LINKS = ("medial", "distal", "base")
+
+
+def test_w35e_exactly_five_explicit_box_pairs(model):
+    """Every box<->hand contact that R3 could not govern by itself is named by one
+    explicit <pair>, and nothing else is."""
+    assert model.npair == len(W35E_BOX_PAIRS), (
+        f"{model.npair} explicit pairs in the committed XML, expected exactly "
+        f"{len(W35E_BOX_PAIRS)}: palm + the four finger-proximal links"
+    )
+    obj = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "object_geom")
+    got = set()
+    for i in range(model.npair):
+        g1, g2 = int(model.pair_geom1[i]), int(model.pair_geom2[i])
+        geom = g2 if g1 == obj else g1
+        assert g1 == obj or g2 == obj, (
+            f"explicit pair {i} does not touch the tissue box, so it is not part of "
+            f"the box-contact scope R3 and 3.5-E govern"
+        )
+        got.add(mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, geom))
+    assert got == set(W35E_BOX_PAIRS), (
+        f"explicit box pairs are {sorted(got)}, expected {sorted(W35E_BOX_PAIRS)}"
+    )
+
+
+def test_w35e_pairs_carry_the_r3_stiffness_identically(model):
+    """A pair that differs from the palm's in any field is a second convention, and
+    the palm's is the one R3 measured."""
+    want_ref = builder.CONTACT_SOLREF
+    want_imp = builder.CONTACT_SOLIMP
+    obj = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "object_geom")
+    for i in range(model.npair):
+        g1, g2 = int(model.pair_geom1[i]), int(model.pair_geom2[i])
+        geom = g2 if g1 == obj else g1
+        name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, geom)
+        assert np.allclose(model.pair_solref[i], want_ref, atol=1e-9), (
+            f"pair {name}<->object_geom solref {model.pair_solref[i]}, expected "
+            f"{np.array(want_ref)}"
+        )
+        assert np.allclose(model.pair_solimp[i][:5], want_imp, atol=1e-9), (
+            f"pair {name}<->object_geom solimp {model.pair_solimp[i]}, expected "
+            f"{np.array(want_imp)}"
+        )
+        assert int(model.pair_dim[i]) == 4, (
+            f"pair {name}<->object_geom is condim={int(model.pair_dim[i])}; the palm "
+            f"pair is condim=4 and a 3-DoF contact would drop the friction the "
+            f"grasp is built on"
+        )
+
+
+def test_w35e_scope_is_proximal_only():
+    """Scope is a measurement, not a preference: the medial, distal and base links
+    carry no box force at all in this scene, and adding pairs for them changed no
+    number in the probe (proximal-only == proximal+medial == all phalanges, bit for
+    bit).  Widening the scope therefore has to be argued from a clip that actually
+    loads those links - this test is what makes that argument obligatory."""
+    for g1, _g2 in builder.PROXIMAL_BOX_PAIRS:
+        assert g1.endswith("_proximal_collision"), (
+            f"{g1} is not a proximal link; the measured evidence covers proximal only"
+        )
+        assert "_base_" not in g1, "the base links are excluded from palm contact already"
+    assert set(g1 for g1, _ in builder.PROXIMAL_BOX_PAIRS) == {
+        f"{f}_proximal_collision" for f in ("ff", "mf", "rf", "th")}
+    unloaded = [f"{f}_{l}_collision" for f in ("ff", "mf", "rf", "th")
+                for l in W35E_UNLOADED_LINKS]
+    landed = {g1 for g1, _ in builder.PROXIMAL_BOX_PAIRS}
+    assert not set(unloaded) & landed, (
+        f"pairs landed for links the measured evidence says carry no box load: "
+        f"{sorted(set(unloaded) & landed)}"
+    )
+
+
+def test_w35e_generator_emits_the_pairs_rather_than_the_xml():
+    """The pairs are the generator's output, so a rebuild keeps them and a hand
+    edit cannot drift."""
+    src = GENERATOR.read_text()
+    assert "PROXIMAL_BOX_PAIRS" in src, "the generator does not own these pairs"
+    assert "PALM_BOX_PAIR" in src
+    xml = MJCF.read_text()
+    for g1, g2 in builder.PROXIMAL_BOX_PAIRS:
+        line = (f'<pair geom1="{g1}" geom2="{g2}" '
+                f'solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>')
+        assert line in xml, f"committed XML is missing {line}"
+
+
+def test_w35e_revision_md_records_the_measured_accounting():
+    """R6's deliverable: the penetration comparison, the bit-identical cross-pair
+    matrix, the proximal-only argument and the peak-vs-hold force warning."""
+    doc = REVISION_MD.read_text()
+    assert "3.5-E" in doc, "REVISION.md has no Wave 3.5-E section"
+    assert "1.188" in doc and "0.095" in doc, (
+        "REVISION.md does not record the measured penetration before/after"
+    )
+    assert "bit-identical" in doc or "逐位相同" in doc, (
+        "REVISION.md does not record the cross-pair invariance evidence"
+    )
+    assert "近节" in doc or "proximal" in doc.lower(), (
+        "REVISION.md does not state the scope that was landed"
+    )
+    assert "peak" in doc.lower() or "峰值" in doc, (
+        "REVISION.md does not warn downstream force criteria about the peak column"
     )
 
 

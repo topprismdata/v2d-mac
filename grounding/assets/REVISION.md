@@ -312,6 +312,14 @@ void — and smoke5 must re-run. Both are the next round's job.
   ~950 N at 53 mm of burial. Not actuator-driven, so it is not a hand-strength
   statement, and the R1 test gates the surface-contact regime instead. If the
   re-verification round sees the box launched, this is the first thing to check.
+  **Wave 3.5-E moved this number on the proximal links**: a *commanded* burial of
+  one of the now-stiffened proximal links resolves at **9.93 kN at 20.8 mm**
+  (`ff_proximal_collision`, measured by the same R1 probe that measures the grip
+  force), against 9 N at 0.6 mm for the soft pair. Still not actuator-driven — a
+  finger's entire budget is 0.27 N·m — so it remains a solver-conditioning fact
+  about commanded interpenetration and not a strength claim, but a policy that
+  commands a link into the box now gets ~1000x harder push-back than before. The
+  `tests/test_smoke6_mjcf.py` sanity bound moved 5e3 → 2e4 N to record it.
 * The 12 mm moment-arm floor for `ffj0`/`mfj0`/`rfj0`/`thj1`/`thj3` is set by the
   fingertip capsule radius exclusion, not by the mechanism reaching a true
   singularity. Those five joints therefore sit at the conservative end of their
@@ -331,3 +339,63 @@ void — and smoke5 must re-run. Both are the next round's job.
 - 4ee6f1d 的 commit message 误写"wrist pitch ±1.2→±1.8"，实际改动为 **wrist_rx（roll）**；真 pitch（wrist_ry）保持 -1.259..1.2 未动。诊断（runs/w35/w35d_diag.json）证明放宽真 pitch 亦无法开启 K1，无需后续修订。
 - 波段 3.5-C 报告的"联合指标 0.089mm"经复核为**端面/平面延拓度量伪影**（ff 垫距 +y 端面、拇指距壁外 82mm 的顶平面延拓），非壁接触。后续轮次采用 w35d_diag.json 的严格壁接触判据（最近点须落在侧面矩形内）。
 - Wave 3.5-D 结论：K1 双侧壁捏为 **B 类（真实形态×场景）结构性不可行**（~19M 位姿穷举 + 100 次 descent；正 pitch 拇指锥轴离 -x 143.6° / 负 pitch 手指扇出通道，全俯仰圆反相关）；MJCF 无可修目标。
+
+## Wave 3.5-E / R6（2026-10-15）：近节↔盒显式 pair——把 3.5-B 的修法补到真正承力的连杆上
+
+**缺陷。** R3 只在四个指尖垫上盖了刚度戳，Wave 3.5-B 又单独补了掌板一条 pair；**其余每根手指连杆的盒接触仍走隐式配对**——MuJoCo 对隐式 pair 取两侧 solref 的平均（取正值较大者语义），连杆自己的默认 20 ms 时间常数因此赢下这一侧，盒的地板在连杆下面比在指尖下面软。4ee6f1d 上的 smoke5 复跑正是这样把**最深穿透从掌板转移到未加硬的 `rf_proximal_collision`**（端面采样 1.188 mm @3.136 N f17，帧内峰值 1.282 mm @7.258 N），穿透门从 12/13 掉到 10/13。
+
+**改动。** 生成器里四条显式 pair（`PROXIMAL_BOX_PAIRS`），与掌板同字段；重新生成后 XML 只多 4 行 `<contact>` 内容 + 一行头注释，byte 可复现（两次生成 `cmp` 一致）：
+
+```
+<pair geom1="ff_proximal_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
+<pair geom1="mf_proximal_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
+<pair geom1="rf_proximal_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
+<pair geom1="th_proximal_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
+```
+
+### 穿透前后对照（`runs/w35/w35e_proximal.json`，冻结的 smoke5 replay，逐物理子步记录接触）
+
+口径＝控制帧末尾（`retarget_smoke._finger_box_contact` 的采样点）：
+
+| geom | 加硬前 | 加硬后 | 倍数 |
+|---|---|---|---|
+| `ff_proximal_collision` | 0.4812 mm @1.929 N (f15)；帧内峰值 0.7712 mm @9.805 N | **0.0471 mm** @6.912 N (f18)；帧内峰值 0.1149 mm @29.108 N | 10.2× |
+| `mf_proximal_collision` | 0.4025 mm @4.581 N (f16)；帧内峰值 0.4811 mm @6.050 N | **0.0934 mm** @17.305 N (f25)；帧内峰值 0.0934 mm @18.740 N | 4.3× |
+| `rf_proximal_collision` | **1.188 mm** @3.136 N (f17)；帧内峰值 1.282 mm @7.258 N | **0.0950 mm** @8.986 N (f25)；帧内峰值 0.2911 mm @20.522 N | 12.5× |
+| `palm_collision` | 0.1067 mm @0.129 N | 不变 | — |
+| 中节/远节/拇指各节 | 盒受力 0.000 N、穿透 0.0000 mm | 同左 | — |
+
+**10 N 读数**（在实测的逐帧力–穿透曲线上插值，加硬后曲线实测到 11.0–20.1 N，10 N 落在实测区间内）：ff 0.0361 mm、mf 0.0666 mm、rf 0.0344 mm——落在 R3 指尖预算带（3.5-B 掌板同载荷 0.035 mm；R5 容差 0.213 mm）内。加硬前的 10 N 值由放大指令扫描夹逼：0.773–0.791 mm / 0.634–0.896 mm / 1.224–1.229 mm。smoke5 门数 **1.188 mm → 0.107 mm**（11.1×），已回到 1.0 mm 容差内。
+
+### 跨对影响矩阵：非目标对逐位不变（R3 的 77 kN 教训未复现）
+
+整段 replay 的逐物理子步峰值法向力，加硬前后逐位比较：
+
+| 接触对 | 前 | 后 | 判定 |
+|---|---|---|---|
+| `pedestal\|object_geom` | 54.56006 N | 54.56006 N | **逐位相同** |
+| `pedestal\|palm_collision` | 21.64077 N | 21.64077 N | **逐位相同** |
+| `object_geom\|palm_collision` | 55.72984 N | 55.72984 N | **逐位相同** |
+| `object_geom\|th_base_collision` | 1.38582 N | 1.38582 N | **逐位相同** |
+| `ff_distal\|mf_distal` | 0.25175 N | 0.25175 N | **逐位相同** |
+| `object_geom\|{ff,mf,rf}_proximal` | 9.80 / 6.05 / 7.26 N | 29.11 / 18.74 / 20.52 N | 目标对 |
+| `ff_distal\|mf_medial` | 0.59239 N | 1.98174 N | 连带，+1.39 N |
+
+R3 当年把刚度盖在"一侧"上，连掌板-基座擦碰都被顺带治理，从 3.2 kN 放大到 77 kN；显式 `<pair>` 只命名一个 geom 对，其余配对保留隐式混合——上表里唯一非逐位的非目标项是 +1.39 N 的指–指接触，绝对量级可忽略。掌板↔基座（当年最危险的那对）与掌板↔盒均逐位不变。
+
+### ⚠️ 峰值列 vs 保持列：3× 反向效应，供下游力判据复核
+
+加硬后接触把伺服器的出力在接触瞬间原样传给盒，**帧内峰值反力升约 3 倍**（rf_proximal 7.26 → 20.52 N），而**帧末保持力只从 4.91 升到 8.99 N**。任何下游的力阈值必须对照**保持列**复核；若拿帧内峰值当握力指标，会把加硬误读成"手变强 3 倍"。穿透指标则相反地受益于峰值列（更早、更硬地建立接触）。
+
+### 最小充分范围＝仅近节（这是测量结论，不是偏好）
+
+中节、远节、base 各连杆在本场景**对盒零受力**（0.000 N / 0.000 mm，见上表）。探针因此跑了三个变体：仅近节（4 条 pair）、近节+中节（8 条）、全部指骨（12 条）——**三者逐位相同**：穿透、每一个接触对的峰值力、每一项门指标全部 bit-for-bit 一致。给零受力的连杆加 pair 在此是无证据的改动，故不落。扩大范围必须由"确有片段加载这些连杆"的证据重新论证，`tests/test_smoke6_mjcf.py::test_w35e_scope_is_proximal_only` 已把该义务钉在测试里。
+
+### 影响面（诚实记账）
+
+- 接触 duty 0.667 不变；掌板执行偏差 102.24 mm **不变**——本改动不触碰 smoke5 的主 blocker（掌板压盒、腕部力预算耗尽），只解穿透。
+- **执行器力饱和帧 261 → 259**（近见饱和减少）。
+- `mfj1` 物理态越界 7.173 mrad **逐位不变**（取证见 `runs/w35/w35e_mfj1_forensics.json`）：该越界由 0.347 N 的指–指接触 `ff_distal|mf_medial` 驱动的位置伺服弹性挠曲引起，与盒接触无关，加硬与否都不改变它——需单独裁决门容差，本轮未改任何门阈值。
+- R5 派生的穿透容差**不变**（实测静止下沉 1.163697055107007e-04 m 加硬前后逐位相同，因为 `pedestal|object_geom` 逐位相同）。
+- 新 MJCF sha256 `1ea0fdf5c87ce5a161efcda7c597b0fc6647c9fe30bcf2f5d0bcb52402d24b89`（旧 `dbba3d70…`）。`MJCF_COMMIT` 钉在旧 sha 的示教集与下游产物由重跑轮处理；本轮**未改其任何文件**。
+- R1 的 10 N 门语义随之明确：V5 的 10 N 是**指尖**规格，指尖垫实测峰值 1.48 N；连杆接触另按 R1 自身推导的预算 `Στ_j / min(arm_j)` 门（rf 16.1 N，实测 10.52 N）。见 `tests/test_smoke6_mjcf.py` 的 R1 段注释。

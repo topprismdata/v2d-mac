@@ -45,6 +45,11 @@ grounding/assets/REVISION.md for the numbers and their sources.
   R5  the penetration tolerance is k x the measured resting sink rather than a
       hardcoded 1e-3 m, so it follows R3.
 
+Wave 3.5-E extends the explicit-pair scope from the palm to the four finger
+proximal links - the same solref mixing 3.5-B removed on the palm, on the links
+that actually carry the grasp. Proximal only, and that is measured rather than
+assumed: see PROXIMAL_BOX_PAIRS.
+
 Run:  python grounding/assets/build_allegro_floating.py
 """
 
@@ -193,6 +198,26 @@ DEFAULT_SOLREF = (0.02, 1.0)
 # is identical before and after (14.694 N both ways, runs/w35/palm_probe.json).
 PALM_BOX_PAIR = ("palm_collision", "object_geom")
 
+# --- Wave 3.5-E: explicit finger-proximal <-> box contact pairs --------------
+# Same defect Wave 3.5-B found on the palm, on the links that carry the grasp.
+# R3 stamped the four fingertip pads, 3.5-B added one pair for the palm, and every
+# other finger link still resolved its box contact implicitly, where MuJoCo
+# averages the two sides' solref and the link's own 20 ms timeconstant wins. The
+# smoke5 rerun on 4ee6f1d then measured the deepest box penetration on
+# rf_proximal_collision - 1.188 mm end-of-frame, 1.282 mm in-frame - load that the
+# palm fix pushed off the palm and onto an unstiffened link (runs/w35/
+# w35e_proximal.json). Four explicit pairs, one per proximal link, remove that
+# mixing for exactly the links that carry box load and nothing else: penetration
+# 1.188 -> 0.095 mm, every non-target contact pair's peak force bit-identical.
+#
+# Scope is proximal ONLY, and that is a measurement, not a guess: the medial and
+# distal links carry no box force at all in this scene (0.000 N, 0.000 mm), so
+# pairs for them govern nothing - the proximal-only, proximal+medial and
+# all-phalanges variants are bit-for-bit identical in every recorded number.
+# Widening the scope later has to be argued from a clip that loads those links.
+PROXIMAL_BOX_PAIRS = tuple((f"{f}_proximal_collision", "object_geom")
+                           for f in ("ff", "mf", "rf", "th"))
+
 # --- R5: penetration tolerance derived from the resting sink -----------------
 # k >= 3 by contract: the tolerance must sit clear of MuJoCo's own resting
 # numerical tolerance so a real interpenetration cannot hide under it, while staying
@@ -221,7 +246,8 @@ TEMPLATE_HEAD = """<mujoco model="allegro_floating">
        Wave 3 revision: finger forcerange derived from the measured moment arm to
        the fingertip at the Allegro V5 10 N/finger limit, widened wrist_z/wrist_ry
        travel, stiffened box<->finger contacts, named hand geoms, and an explicit
-       stiff palm<->box contact pair (Wave 3.5-B). -->
+       stiff palm<->box contact pair (Wave 3.5-B) and stiff finger-proximal<->box
+       contact pairs (Wave 3.5-E). -->
   <compiler angle="radian" meshdir="{meshdir}" autolimits="true"/>
 
   <option cone="elliptic" impratio="10" timestep="0.002" integrator="implicitfast"/>
@@ -833,11 +859,18 @@ def _emit(assets: str, defaults: str, palm: str, excludes: str,
             hand_actuator_lines.append(
                 f'    <position name="{name}" joint="{joint}" class="{cls}" '
                 f'kp="{kp[joint]:g}" forcerange="{-tau:.5f} {tau:.5f}"/>')
-    palm_box_pair = (
-        f'    <pair geom1="{PALM_BOX_PAIR[0]}" geom2="{PALM_BOX_PAIR[1]}" '
-        f'solref="{_fmt_pair(CONTACT_SOLREF)}" solimp="{_fmt_pair(CONTACT_SOLIMP)}" '
-        f'condim="4"/>'
-    )
+    def _box_pair(g1: str, g2: str) -> str:
+        return (
+            f'    <pair geom1="{g1}" geom2="{g2}" '
+            f'solref="{_fmt_pair(CONTACT_SOLREF)}" '
+            f'solimp="{_fmt_pair(CONTACT_SOLIMP)}" condim="4"/>'
+        )
+
+    # the template puts {pairs} on its own line, so the block carries no trailing
+    # newline and the generated <contact> keeps exactly one line per pair
+    palm_box_pair = _box_pair(*PALM_BOX_PAIR)
+    proximal_box_pairs = "\n".join(_box_pair(g1, g2)
+                                    for g1, g2 in PROXIMAL_BOX_PAIRS)
     return TEMPLATE_HEAD.format(
         repo=UPSTREAM_REPO,
         commit=UPSTREAM_COMMIT,
@@ -855,7 +888,7 @@ def _emit(assets: str, defaults: str, palm: str, excludes: str,
         wrist_joints="\n".join(_wrist_joint_lines()),
         palm=palm,
         excludes=excludes,
-        pairs=palm_box_pair,
+        pairs="\n".join([palm_box_pair, proximal_box_pairs]),
         wrist_actuators="\n".join(_wrist_actuator_lines()),
         hand_actuators="\n".join(hand_actuator_lines),
     )

@@ -6,7 +6,8 @@
        Wave 3 revision: finger forcerange derived from the measured moment arm to
        the fingertip at the Allegro V5 10 N/finger limit, widened wrist_z/wrist_ry
        travel, stiffened box<->finger contacts, named hand geoms, and an explicit
-       stiff palm<->box contact pair (Wave 3.5-B). -->
+       stiff palm<->box contact pair (Wave 3.5-B) and stiff finger-proximal<->box
+       contact pairs (Wave 3.5-E). -->
   <compiler angle="radian" meshdir="../../runs/upstream/menagerie/wonik_allegro/assets" autolimits="true"/>
 
   <option cone="elliptic" impratio="10" timestep="0.002" integrator="implicitfast"/>
@@ -275,6 +276,10 @@
     <exclude body1="palm" body2="th_base"/>
     <exclude body1="palm" body2="th_proximal"/>
     <pair geom1="palm_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
+    <pair geom1="ff_proximal_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
+    <pair geom1="mf_proximal_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
+    <pair geom1="rf_proximal_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
+    <pair geom1="th_proximal_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
   </contact>
 
   <actuator>
