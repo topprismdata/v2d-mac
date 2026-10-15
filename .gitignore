@@ -41,3 +41,4 @@ weights/
 # that regenerate them are tracked; large JSON/pickle payloads stay ignored.
 !runs/w4/*.py
 !runs/w35/*.py
+!runs/w5/*.py

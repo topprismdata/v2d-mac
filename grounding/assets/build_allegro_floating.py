@@ -123,6 +123,17 @@ BOX_MASS = BOX_MASS_KG
 # resurrect the refuted one.
 BOX_LIP_OVERHANG_M = 0.0
 BOX_LIP_HEIGHT_M = 0.0
+
+# W5: a 45-degree chamfer plate along the box's two top +-x edges.  The bare
+# box's top edge is a knife edge, and the one gate-clean top-hook trajectory
+# the sweep found (1/15625, load 100% through the top-face contact) has a
+# ZERO survival boundary -- a finger balanced on a knife edge dies under any
+# perturbation.  A chamfer turns that edge into a short ramp, which is the
+# physically honest version of the same object: production boxes have
+# relieved lid edges.  0.0 reproduces the bare box byte for byte.
+BOX_CHAMFER_M = 0.0
+BOX_CHAMFER_T_M = 0.003  # plate thickness, m
+BOX_CHAMFER_GEOM_NAMES = ("object_chamfer_negx", "object_chamfer_posx")
 # The rim runs the full length of the box, so it is a tray rim and not two pads.
 BOX_LIP_HALF_Y_M = BOX_HALF_M[1]
 BOX_LIP_GEOM_NAMES = ("object_lip_negx", "object_lip_posx")
@@ -256,11 +267,12 @@ PALM_BOX_PAIR = ("palm_collision", "object_geom")
 # re-introduced on the surface that now carries the grasp. Built from the same
 # two constants so the pair set cannot silently miss a new box geom.
 def box_pairs(*, lip_overhang_m: float = BOX_LIP_OVERHANG_M,
-              lip_h_m: float = BOX_LIP_HEIGHT_M) -> list[tuple[str, str]]:
+              lip_h_m: float = BOX_LIP_HEIGHT_M,
+              chamfer_m: float = BOX_CHAMFER_M) -> list[tuple[str, str]]:
     """(hand geom, object geom) for every explicit box pair this scene emits."""
-    out = [(PALM_BOX_PAIR[0], name) for name in object_geom_names(lip_overhang_m, lip_h_m)]
+    out = [(PALM_BOX_PAIR[0], name) for name in object_geom_names(lip_overhang_m, lip_h_m, chamfer_m)]
     out += [(g1, name) for g1, _ in PROXIMAL_BOX_PAIRS
-            for name in object_geom_names(lip_overhang_m, lip_h_m)]
+            for name in object_geom_names(lip_overhang_m, lip_h_m, chamfer_m)]
     return out
 
 # --- Wave 3.5-E: explicit finger-proximal <-> box contact pairs --------------
@@ -347,7 +359,7 @@ TEMPLATE_HEAD = """<mujoco model="allegro_floating">
       <freejoint name="object_free"/>
       <geom name="object_geom" type="box" size="{bx} {by} {bz}" mass="{mass}"
         rgba="0.30 0.55 0.85 1" material="box" condim="4"
-        friction="1.4 0.02 0.004" solref="{solref}" solimp="{solimp}"/>{lip}
+        friction="1.4 0.02 0.004" solref="{solref}" solimp="{solimp}"/>{lip}{chamfer}
     </body>
 
     <body name="hand_root" pos="{hand_home}">
@@ -406,8 +418,52 @@ def lip_total_mass(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
     return sum(s["mass"] for s in box_lip_specs(lip_overhang_m, lip_h_m))
 
 
+def box_chamfer_specs(chamfer_m: float = BOX_CHAMFER_M) -> list[dict]:
+    """A 45-degree chamfer plate per top +-x edge, in the object body's frame.
+
+    APPROXIMATION, stated rather than hidden: a true chamfer removes the
+    corner, which a box primitive cannot express.  This is a thin plate lying
+    on the chamfer plane (outer face exactly on the ideal 45-degree cut),
+    while the box's own sharp corner stays underneath it and pokes past the
+    plate by at most ``chamfer / sqrt(2)`` at the vertex.  For a hook probe
+    that is the right approximation -- the finger lands on the plate's outer
+    face, which is the ramp -- but it is not exact CSG, and any conclusion
+    that depends on the sub-millimetre profile of that vertex has to say so.
+
+    Mass uses the same density convention as the lip and is SUBTRACTED from
+    the box (see box_geom_mass): the plate replaces edge material, it does
+    not stack on top of 0.15 kg.
+    """
+    if chamfer_m <= 0.0:
+        return []
+    bx, _by, bz = BOX_HALF_M
+    t = BOX_CHAMFER_T_M
+    # numpy is imported lazily in this module, so use literal roots here
+    face_len = chamfer_m * 2.0 ** 0.5  # from (bx-c, bz) to (bx, bz-c)
+    vol = face_len * (2.0 * BOX_LIP_HALF_Y_M) * t
+    mass = BOX_LIP_DENSITY_KG_M3 * vol
+    inset = t / (2.0 * 2.0 ** 0.5)
+    out = []
+    for name, sign in zip(BOX_CHAMFER_GEOM_NAMES, (-1.0, 1.0)):
+        out.append({
+            "name": name,
+            "size": (face_len / 2.0, BOX_LIP_HALF_Y_M, t / 2.0),
+            "euler": f"0 {sign * -45.0:g} 0",
+            # outer face flush with the ideal chamfer plane
+            "pos": (sign * (bx - chamfer_m / 2.0 + inset), 0.0,
+                    bz - chamfer_m / 2.0 + inset),
+            "mass": mass,
+        })
+    return out
+
+
+def chamfer_total_mass(chamfer_m: float = BOX_CHAMFER_M) -> float:
+    return sum(s["mass"] for s in box_chamfer_specs(chamfer_m))
+
+
 def box_geom_mass(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
-                  lip_h_m: float = BOX_LIP_HEIGHT_M) -> float:
+                  lip_h_m: float = BOX_LIP_HEIGHT_M,
+                  chamfer_m: float = BOX_CHAMFER_M) -> float:
     """Mass of the ``object_geom`` box itself: 0.15 kg MINUS the lip.
 
     The 0.15 kg is the frozen number every force gate is written against
@@ -416,26 +472,33 @@ def box_geom_mass(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
     checked in the emitted XML by tests/test_smoke6_mjcf.py, which is the only
     place that assertion can be trusted, because it reads the compiled model.
     """
-    remaining = BOX_MASS_KG - lip_total_mass(lip_overhang_m, lip_h_m)
+    extra = lip_total_mass(lip_overhang_m, lip_h_m) + chamfer_total_mass(chamfer_m)
+    remaining = BOX_MASS_KG - extra
     if remaining <= 0.0:
         raise ValueError(
-            f"lip ({lip_overhang_m * 1e3:.1f} mm x {lip_h_m * 1e3:.1f} mm) weighs "
-            f"{lip_total_mass(lip_overhang_m, lip_h_m):.4f} kg, at or over the whole "
-            f"{BOX_MASS_KG} kg box - there is no mass left for the box itself"
+            f"lip ({lip_overhang_m * 1e3:.1f} mm x {lip_h_m * 1e3:.1f} mm) plus "
+            f"chamfer ({chamfer_m * 1e3:.1f} mm) weighs {extra:.4f} kg, at or over "
+            f"the whole {BOX_MASS_KG} kg box - there is no mass left for the box itself"
         )
     return remaining
 
 
 def box_object_mass(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
-                    lip_h_m: float = BOX_LIP_HEIGHT_M) -> float:
-    """Total object-body mass, lip included. Must equal BOX_MASS_KG exactly."""
-    return box_geom_mass(lip_overhang_m, lip_h_m) + lip_total_mass(lip_overhang_m, lip_h_m)
+                    lip_h_m: float = BOX_LIP_HEIGHT_M,
+                    chamfer_m: float = BOX_CHAMFER_M) -> float:
+    """Total object-body mass, lip and chamfer included. Must equal BOX_MASS_KG exactly."""
+    return (box_geom_mass(lip_overhang_m, lip_h_m, chamfer_m)
+            + lip_total_mass(lip_overhang_m, lip_h_m)
+            + chamfer_total_mass(chamfer_m))
 
 
 def object_geom_names(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
-                      lip_h_m: float = BOX_LIP_HEIGHT_M) -> list[str]:
+                      lip_h_m: float = BOX_LIP_HEIGHT_M,
+                      chamfer_m: float = BOX_CHAMFER_M) -> list[str]:
     """Every geom on the ``object`` body, in MJCF order."""
-    return ["object_geom"] + [s["name"] for s in box_lip_specs(lip_overhang_m, lip_h_m)]
+    return (["object_geom"]
+            + [s["name"] for s in box_lip_specs(lip_overhang_m, lip_h_m)]
+            + [s["name"] for s in box_chamfer_specs(chamfer_m)])
 
 
 def lip_geom_lines(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
@@ -463,6 +526,34 @@ def lip_geom_lines(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
         rows.append(
             f'      <geom name="{s["name"]}" type="box" size="{size}" pos="{pos}"\n'
             f'        mass="{s["mass"]:.6f}" rgba="0.30 0.55 0.85 1" material="box"\n'
+            f'        condim="4" friction="1.4 0.02 0.004"\n'
+            f'        solref="{_fmt_pair(CONTACT_SOLREF)}"\n'
+            f'        solimp="{_fmt_pair(CONTACT_SOLIMP)}"/>'
+        )
+    return "\n" + "\n".join(rows) + "\n"
+
+
+def chamfer_geom_lines(chamfer_m: float = BOX_CHAMFER_M) -> str:
+    """The chamfer plates as MJCF text, same conventions as ``lip_geom_lines``.
+
+    Same contact attributes as ``object_geom`` (friction, condim, R3
+    solref/solimp) and the explicit ``<pair>`` list extends to them via
+    ``object_geom_names`` -- a chamfer that resolved its contacts at MuJoCo's
+    soft default would be a second, undocumented contact convention.  Empty
+    string at ``chamfer_m <= 0``, which is what makes ``build(chamfer_m=0)``
+    byte-identical to the bare box.
+    """
+    specs = box_chamfer_specs(chamfer_m)
+    if not specs:
+        return ""
+    rows = []
+    for s in specs:
+        size = " ".join(f"{v:g}" for v in s["size"])
+        pos = " ".join(f"{v:g}" for v in s["pos"])
+        rows.append(
+            f'      <geom name="{s["name"]}" type="box" size="{size}" pos="{pos}"\n'
+            f'        euler="{s["euler"]}" mass="{s["mass"]:.6f}"'
+            f' rgba="0.30 0.55 0.85 1" material="box"\n'
             f'        condim="4" friction="1.4 0.02 0.004"\n'
             f'        solref="{_fmt_pair(CONTACT_SOLREF)}"\n'
             f'        solimp="{_fmt_pair(CONTACT_SOLIMP)}"/>'
@@ -958,6 +1049,7 @@ def _upstream_parts() -> tuple[str, str, str, str, list]:
 
 def build(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
           lip_h_m: float = BOX_LIP_HEIGHT_M,
+          chamfer_m: float = BOX_CHAMFER_M,
           out: pathlib.Path | None = None,
           *, verbose: bool = False) -> pathlib.Path:
     """Write the MJCF for one lip setting. Returns the path written.
@@ -983,7 +1075,8 @@ def build(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
     defaults, assets, palm, excludes, hand_acts = _upstream_parts()
 
     placeholder = _emit(assets, defaults, palm, excludes, hand_acts, None,
-                        lip_overhang_m=lip_overhang_m, lip_h_m=lip_h_m)
+                        lip_overhang_m=lip_overhang_m, lip_h_m=lip_h_m,
+                        chamfer_m=chamfer_m)
     out.write_text(placeholder)
     _verify_out(placeholder, out)
 
@@ -999,7 +1092,8 @@ def build(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
     kp = finger_kp_table(arms, gravity, inertia, spans, float(model.opt.timestep))
 
     final = _emit(assets, defaults, palm, excludes, hand_acts, (arms, kp),
-                  lip_overhang_m=lip_overhang_m, lip_h_m=lip_h_m)
+                  lip_overhang_m=lip_overhang_m, lip_h_m=lip_h_m,
+                  chamfer_m=chamfer_m)
     out.write_text(final)
     _verify_out(final, out)
 
@@ -1015,9 +1109,9 @@ def build(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
         print(f"W4/R8 lip overhang={lip_overhang_m * 1e3:g} mm lip_h={lip_h_m * 1e3:g} mm  "
               f"lip mass={lip_total_mass(lip_overhang_m, lip_h_m) * 1e3:.3f} g  "
               f"box mass={box_geom_mass(lip_overhang_m, lip_h_m):.6f} kg  "
-              f"total={box_object_mass(lip_overhang_m, lip_h_m):.6f} kg")
-        print(f"W3.5-B/E explicit pairs ({len(box_pairs(lip_overhang_m=lip_overhang_m, lip_h_m=lip_h_m))}): "
-              f"{', '.join(f'{a}<->{b}' for a, b in box_pairs(lip_overhang_m=lip_overhang_m, lip_h_m=lip_h_m))}")
+              f"total={box_object_mass(lip_overhang_m, lip_h_m, chamfer_m):.6f} kg")
+        print(f"W3.5-B/E explicit pairs ({len(box_pairs(lip_overhang_m=lip_overhang_m, lip_h_m=lip_h_m, chamfer_m=chamfer_m))}): "
+              f"{', '.join(f'{a}<->{b}' for a, b in box_pairs(lip_overhang_m=lip_overhang_m, lip_h_m=lip_h_m, chamfer_m=chamfer_m))}")
         sink = measure_resting_sink(out)
         print(f"R5 resting sink = {sink:.4e} m -> tolerance = {PENETRATION_TOLERANCE_K} x "
               f"sink = {PENETRATION_TOLERANCE_K * sink:.4e} m")
@@ -1048,7 +1142,8 @@ def _verify_out(xml_text: str, out: pathlib.Path | None = None) -> None:
 def _emit(assets: str, defaults: str, palm: str, excludes: str,
           hand_acts, measured, *,
           lip_overhang_m: float = BOX_LIP_OVERHANG_M,
-          lip_h_m: float = BOX_LIP_HEIGHT_M) -> str:
+          lip_h_m: float = BOX_LIP_HEIGHT_M,
+          chamfer_m: float = BOX_CHAMFER_M) -> str:
     if measured is None:
         arms = kp = None
     else:
@@ -1088,8 +1183,9 @@ def _emit(assets: str, defaults: str, palm: str, excludes: str,
         ped_z=f"{TABLE_TOP_Z_M + PEDESTAL_H_M / 2:.4f}",
         box_z=f"{TABLE_TOP_Z_M + PEDESTAL_H_M + BOX_HALF_M[2]:.4f}",
         bx=BOX_HALF_M[0], by=BOX_HALF_M[1], bz=BOX_HALF_M[2],
-        mass=f"{box_geom_mass(lip_overhang_m, lip_h_m):g}",
+        mass=f"{box_geom_mass(lip_overhang_m, lip_h_m, chamfer_m):g}",
         lip=lip_geom_lines(lip_overhang_m, lip_h_m),
+        chamfer=chamfer_geom_lines(chamfer_m),
         hand_home=HAND_HOME,
         solref=_fmt_pair(CONTACT_SOLREF),
         solimp=_fmt_pair(CONTACT_SOLIMP),
