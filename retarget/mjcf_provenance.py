@@ -135,9 +135,8 @@ def velocity_evidence() -> dict[str, Any]:
     joints21, _ = rs.mano_skeleton(seq)
     retargeter, _ = rs.build_retargeter()
     qpos = rs.retarget_sequence(joints21, retargeter)
-    tip = rs.retargeted_tip_positions(qpos, retargeter)
     rs._mj_forward(model, data)
-    anchor = rs.solve_wrist_anchor(qpos, tip, model, data)
+    anchor = rs.executed_anchor(qpos, model, data)
     rep = rs.replay(qpos, anchor)
 
     names = _dof_names(model)
@@ -457,9 +456,8 @@ def saturation_evidence() -> dict[str, Any]:
     joints21, _ = rs.mano_skeleton(seq)
     retargeter, _ = rs.build_retargeter()
     qpos = rs.retarget_sequence(joints21, retargeter)
-    tip = rs.retargeted_tip_positions(qpos, retargeter)
     rs._mj_forward(model, data)
-    anchor = rs.solve_wrist_anchor(qpos, tip, model, data)
+    anchor = rs.executed_anchor(qpos, model, data)
     rep = rs.replay(qpos, anchor)
 
     names = [mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_ACTUATOR, i)

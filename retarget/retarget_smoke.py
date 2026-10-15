@@ -118,8 +118,10 @@ def hand_geom_ids(model) -> set[int]:
 # 40 mm box half-height, so a real interpenetration could not hide under it.
 PENETRATION_TOLERANCE_M = 1e-3
 # URDF velocity="3.14" rad/s on every finger joint (allegro_hand_right.urdf).
-# At 20 Hz control that is 0.157 rad per frame; we gate the *retargeted*
-# trajectory at that hardware limit.
+# At 20 Hz control that is 0.157 rad per frame.  This is the *finger* limit and
+# only the finger limit: the URDF carries exactly 16 velocity attributes, all on
+# finger joints, and its wrist_joint is type="fixed", so the MJCF-only 6-DoF
+# floating wrist has no URDF spec to inherit and is gated separately below.
 JOINT_VEL_LIMIT_RAD_S = 3.14
 JOINT_ACC_LIMIT_RAD_S2 = 200.0  # 64x the velocity limit over one 20 Hz frame
 # ---------------------------------------------------------------- warm start
@@ -139,6 +141,40 @@ JOINT_ACC_LIMIT_RAD_S2 = 200.0  # 64x the velocity limit over one 20 Hz frame
 WARM_START_HINGE_RATE_RAD_S = 1.5
 WARM_START_SLIDE_RATE_M_S = 0.2
 WARM_START_FINGER_RATE_RAD_S = 3.14
+
+# Per-DoF-class velocity gate, signed at wave 3 after the reset-seed hypothesis
+# was refuted (removing the seed moved the exceedance 3.680 -> 4.411 rad/s, so
+# there was no "no startup transient" number to gate on; the blocker turned out
+# to be the frame-0 pose being unreachable, which is upstream of any threshold).
+# The gate is applied to the *command* trajectory -- warm-start ramp included --
+# and each DoF class is bounded by what that class's actuator can actually
+# track, not by one number borrowed from the wrong joint set:
+#   finger 16 DoF   3.14 rad/s  URDF spec; measured peak 0.282, 11x margin
+#   wrist hinges    1.50 rad/s  free-space measured trackable rate (ratio >= 0.9);
+#                   the 3.687 rad/s step-response peak is a transient ceiling,
+#                   not a 20 Hz trackable rate, and is not used as a gate
+#   wrist slides    0.20 m/s    free-space measured trackable rate
+VEL_LIMIT_FINGER_RAD_S = JOINT_VEL_LIMIT_RAD_S
+# Fraction of the signed velocity limit any generated command is allowed to
+# reach.  Exactly 1.0 makes cap*dt/dt round to cap*(1+1e-15), i.e. a command
+# generated at the ceiling reads as a hair over it; this is float hygiene on the
+# generator, not a change to the limit.
+RATE_MARGIN = 1.0 - 1e-9
+VEL_LIMIT_WRIST_HINGE_RAD_S = WARM_START_HINGE_RATE_RAD_S
+VEL_LIMIT_WRIST_SLIDE_M_S = WARM_START_SLIDE_RATE_M_S
+VEL_LIMIT_SOURCE = {
+    "finger": 'URDF velocity="3.14" on all 16 finger joints',
+    "wrist_hinge": "free-space measured trackable rate at 20 Hz (ratio >= 0.9)",
+    "wrist_slide": "free-space measured trackable rate at 20 Hz (ratio >= 0.9)",
+    "measured_quantity": (
+        "commanded rate between consecutive control frames, np.diff(ctrl)/0.05, "
+        "over the warm-start ramp concatenated with the replay"
+    ),
+    "excludes": (
+        "the 3.687 rad/s wrist step-response peak is deliberately not the gate: "
+        "it is what the servo does on a step, not what it can track"
+    ),
+}
 # Hold the first command for 5 s of control time (100 steps at 20 Hz, three
 # times the ramp itself) once the ramp has arrived.  Bounded, not "until
 # converged": at the first commanded pose the hand is in sustained box contact,
@@ -223,10 +259,42 @@ def load_source_sequence(n_frames: int = N_FRAMES) -> dict[str, Any]:
             ),
             "note": (
                 "MANO *parameters* only (pose/shape/trans). The 21-joint skeleton "
-                "is recomputed here by retarget/mano_fk.py from the pkl, "
-                "cross-validated against smplx to 3.6e-8 m; smoke 6's own joints_3d "
-                "is never read."
+                "is recomputed here by retarget/mano_fk.py from the pkl; smoke 6's "
+                "own joints_3d is never read."
             ),
+            "c1b_status": {
+                "what_c1b_actually_checks": (
+                    "shape and finiteness only: our numpy MANO forward pass returns "
+                    "(21, 3) finite joints. It does NOT compare them against a "
+                    "reference implementation."
+                ),
+                "legacy_claim": "cross-validated against smplx to 3.6e-8 m",
+                "legacy_claim_status": "unverified legacy claim",
+                "why_it_is_unverified": (
+                    "the committed test opens with pytest.importorskip('smplx'), so it "
+                    "had never executed in the CI venv (runs/.venv-retarget has no "
+                    "smplx). The 3.6e-8 m figure rests on a run this test file cannot "
+                    "reproduce. See commit ae64f8a, which un-broke the test without "
+                    "adding any comparison."
+                ),
+                "bugs_found_by_ae64f8a": [
+                    "hands_mean is stored flat (45,), one 3-vector per hand-pose "
+                    "joint; the test added it straight to a (15, 3) rotvec block "
+                    "(ValueError: shapes (15,3) (45,)). Fixed with .reshape(15, 3).",
+                    "Rotation.from_rotvec on a (15, 3) block yields 15 rotations, so "
+                    "as_rotvec() comes back 2-D and the np.concatenate against the "
+                    "flat global_orient failed on dimensionality. Fixed with "
+                    ".reshape(-1), because MANO's pose parameter is one flat "
+                    "48-vector (global_orient 3, then hand_pose 45).",
+                ],
+                "why_a_real_comparison_is_not_a_one_liner": (
+                    "smplx.MANO expects the npz-style shapedirs/posedirs arrays, but "
+                    "MANO_RIGHT.pkl is a pickled dict, so smplx.create() fails on "
+                    "shapedirs[:, :, :10]. A genuine cross-validation needs the pkl "
+                    "converted to the npz layout first."
+                ),
+                "deferred_to": "P1",
+            },
         },
     }
 
@@ -364,20 +432,28 @@ def verify_joint_frame_correspondence(retargeter) -> dict[str, Any]:
 
 
 def solve_wrist_anchor(qpos: np.ndarray, tip_pos: np.ndarray, model, data) -> dict:
-    """Map retargeted wrist pose -> MJCF wrist ctrl, with one global offset.
+    """Split the retargeted clip into the part that is video and the part that is base.
 
     The retargeted 6-DoF wrist is expressed in the Allegro URDF base frame; the
     MJCF scene reaches that frame as ``hand_root`` translation + the fixed
-    ``palm`` quaternion.  We therefore
+    ``palm`` quaternion.  So the clip decomposes into
 
-      * convert the retargeted wrist euler to MJCF hinge angles via
-        ``R_mjcf = Rz(qrz) Ry(qry) Rx(qrx) @ R_palm``, and
-      * solve a single translation offset placing the mid-clip fingertip centroid
-        on the tissue-box proxy's top face.
+      * ``hinge``   -- the wrist orientation, converted to the MJCF hinge triple
+        via ``R_mjcf = Rx(qrx) Ry(qry) Rz(qrz) @ R_palm`` and then gauge-fixed.
+        This is the video's hand orientation and is never solved for.
+      * ``slide_shape`` -- the wrist's *own* slide motion, with the clip mean
+        removed from all three axes.  Zero mean, so it is exactly the motion the
+        retargeter produced and nothing else.
+      * ``base`` -- the floating base translation, i.e. the mean commanded slide.
+        This is the only thing left under-determined, and it is what
+        ``solve_base_placement`` solves.
 
-    Nothing here is per-frame: one rotation convention and one constant offset,
-    both derived from the scene geometry.  The per-frame part is the retargeted
-    trajectory itself.
+    The previous rule -- one constant offset placing the mid-clip fingertip
+    centroid on the box's *top face* -- is still computed, as
+    ``legacy_base_slide``, because it is the "before" the base solve is measured
+    against.  It is not used as the answer: with the clip's own wrist pitch it
+    asks for a palm frame 29 mm *below* the box top, which is what drove the
+    hand 76 mm into the box.
     """
     from scipy.spatial.transform import Rotation
 
@@ -401,35 +477,257 @@ def solve_wrist_anchor(qpos: np.ndarray, tip_pos: np.ndarray, model, data) -> di
     target = np.einsum("tij,jk->tik", r_dummy, r_palm.T)
     hinge = Rotation.from_matrix(target).as_euler("XYZ", degrees=False)
 
-    mid = qpos.shape[0] // 2
-    r_mid = target[mid]
-    tip_centroid_local = tip_pos[mid].mean(axis=0)
-    target_tip = box_center + np.array([0.0, 0.0, box_half[2]])
-    palm_anchor = target_tip - r_mid @ tip_centroid_local
-    slide_offset = palm_anchor - palm_home
-
-    ctrl = np.zeros((qpos.shape[0], 6))
-    ctrl[:, 0:3] = qpos[:, 0:3] + slide_offset
-    ctrl[:, 3:6] = hinge
-
     # Gauge fixing: strip the global yaw and the in-plane base offset out of the
     # wrist command. Those are coordinate freedoms of a hand with no fixed arm,
     # not physics; leaving them on the actuators is what pushed wrist_rz to
-    # 2.71 rad against a +-1.57 rad ctrlrange.
-    ctrl, gauge = fix_gauge(ctrl, model.actuator_ctrlrange[:6], r_palm)
+    # 2.71 rad against a +-1.57 rad ctrlrange.  z is deliberately untouched here
+    # -- the hand's height above the object is physical -- and is de-meaned
+    # below instead, so that the base solve owns all three slides.
+    raw = np.zeros((qpos.shape[0], 6))
+    raw[:, 0:3] = qpos[:, 0:3]
+    raw[:, 3:6] = hinge
+    fixed, gauge = fix_gauge(raw, model.actuator_ctrlrange[:6], r_palm)
+    hinge_cmd = fixed[:, 3:6]
+    slide_shape = fixed[:, 0:3] - fixed[:, 0:3].mean(axis=0)
+
+    # The superseded rule, kept as the measured "before".
+    mid = qpos.shape[0] // 2
+    tip_centroid_local = tip_pos[mid].mean(axis=0)
+    target_tip = box_center + np.array([0.0, 0.0, box_half[2]])
+    palm_anchor = target_tip - target[mid] @ tip_centroid_local
+    legacy = np.zeros((qpos.shape[0], 6))
+    legacy[:, 0:3] = qpos[:, 0:3] + (palm_anchor - palm_home)
+    legacy[:, 3:6] = hinge
+    legacy, _ = fix_gauge(legacy, model.actuator_ctrlrange[:6], r_palm)
+    legacy_base = legacy[:, 0:3].mean(axis=0)
 
     return {
-        "ctrl": ctrl,
-        "slide_offset": slide_offset,
+        "hinge_cmd": hinge_cmd,
+        "slide_shape": slide_shape,
+        "legacy_base_slide": legacy_base,
+        "legacy_slide_offset": palm_anchor - palm_home,
         "gauge_fixing": gauge,
         "hinge_convention": "MJCF wrist_rx->wrist_ry->wrist_rz, composed Rz@Ry@Rx",
         "anchor_rule": (
+            "floating base xyz solved by retarget/base_solve.py against the box's "
+            "grasp geometry; the per-frame wrist orientation and slide motion are "
+            "the retargeted clip's own and are not fitted"
+        ),
+        "superseded_anchor_rule": (
             "single constant translation offset placing the mid-clip retargeted "
-            "fingertip centroid on the tissue-box proxy top face; no per-frame term"
+            "fingertip centroid on the tissue-box proxy TOP face; no per-frame term"
         ),
         "box_center": box_center,
         "box_half_size": box_half,
     }
+
+
+# --- base-solve gates -------------------------------------------------------
+# The box's own geometry is the scale for every gate here.  Read off the frozen
+# MJCF (half sizes 0.06 / 0.12 / 0.04 m) and nothing about it is tuned.
+_BOX_HALF_MIN_M = 0.04          # smallest half-dimension: the box's thin axis
+_BOX_HALF_DIAGONAL_M = float(np.linalg.norm([0.06, 0.12, 0.04]))
+# How far the base solve may move the hand, per axis, relative to the placement
+# the superseded rule produced.  The bound is the wrist slide's own travel: a
+# base displacement larger than the actuator's range is not executable, so a
+# solve that needs one has solved a problem this hand cannot act on.
+BASE_DISPLACEMENT_CAP_M = float(np.linalg.norm([0.36, 0.36, 0.323]))
+# How far the hand's world pose may deviate from the pose the retargeted clip
+# asked for.  The palm frame must land within the box's thinnest half-dimension:
+# past that the hand is no longer executing the grasp it was given, whatever the
+# servos report.  The fingertips are held to the box's half-diagonal, i.e. the
+# whole object, because a fingertip is what has to stay on the box's wall.
+PALM_WORLD_POSE_DEVIATION_CAP_M = _BOX_HALF_MIN_M
+FINGERTIP_WORLD_POSE_DEVIATION_CAP_M = _BOX_HALF_DIAGONAL_M
+HAND_WORLD_POSE_DEVIATION_CAP_M = _BOX_HALF_MIN_M
+
+
+def solve_base_placement(qpos: np.ndarray, anchor: dict, model, data) -> dict:
+    """Solve the floating base xyz, then the temporally coupled command trajectory.
+
+    Stage 1 (``retarget/base_solve.py``) places the hand against the box's own
+    grasp geometry; stage 2 (``retarget/traj_solve.py``) solves the whole clip
+    jointly against the actuator ctrlrange, the joint range and the signed
+    velocity limits.  Both are reported; neither hides a residual.
+    """
+    from retarget import base_solve, traj_solve
+
+    import mujoco
+
+    mujoco.mj_resetData(model, data)
+    _mj_forward(model, data)
+
+    palm_id = _body_id(model, "palm")
+    obj_id = _body_id(model, "object")
+    tip_bodies = [_body_id(model, b) for b in MJCF_TIP_BODIES]
+    hand_geoms, tip_geoms = base_solve.classify_hand_geoms(
+        model, hand_geom_ids(model), set(tip_bodies)
+    )
+    plate_geoms = sorted(g for g in hand_geoms if model.geom_bodyid[g] == palm_id)
+    wrist_joints = [_joint_id(model, n) for n in WRIST_JOINTS]
+    finger_joints = [_joint_id(model, n) for n in MJCF_FINGER_JOINTS]
+    wrist_qadr = np.array([model.jnt_qposadr[j] for j in wrist_joints])
+    finger_qadr = np.array([model.jnt_qposadr[j] for j in finger_joints])
+    # The Jacobian MuJoCo returns is in *velocity* DoFs, and nv != nq here: the
+    # box carries a free joint, so the hand's velocity indices are not its qpos
+    # addresses.  Index by dofadr, never by qposadr.
+    wrist_dof = np.array([model.jnt_dofadr[j] for j in wrist_joints])
+    finger_dof = np.array([model.jnt_dofadr[j] for j in finger_joints])
+    finger_cmd = qpos[:, 6:22][:, URDF_TO_MJCF_ACTUATOR_ORDER]
+
+    ctx = {
+        "wrist_qadr": wrist_qadr,
+        "finger_qadr": finger_qadr,
+        "wrist_dof": wrist_dof,
+        "finger_dof": finger_dof,
+        "palm_body": palm_id,
+        "obj_body": obj_id,
+        "box_geom": _geom_id(model, "object_geom"),
+        "box_half": model.geom_size[_geom_id(model, "object_geom")].copy(),
+        "tip_bodies": tip_bodies,
+        "hand_geoms": hand_geoms,
+        "tip_geoms": tip_geoms,
+        "plate_geoms": plate_geoms,
+        "hand_root_home": data.xpos[_body_id(model, "hand_root")].copy(),
+        "slide_cmd": anchor["slide_shape"],
+        "hinge": anchor["hinge_cmd"],
+        "finger_cmd": finger_cmd,
+    }
+
+    slide_lo = model.actuator_ctrlrange[:3, 0].copy()
+    slide_hi = model.actuator_ctrlrange[:3, 1].copy()
+    # The base must leave room for the clip's own slide motion at every frame, or
+    # some frame would command outside the actuator range.  The exact region is
+    # [lo - min_t shape, hi - max_t shape]; using a symmetric |max| bound instead
+    # throws away a centimetre or two of travel on each side for no reason.
+    shape = anchor["slide_shape"]
+    base_lo = slide_lo - shape.min(axis=0)
+    base_hi = slide_hi - shape.max(axis=0)
+
+    solved = base_solve.solve_base_xyz(model, data, ctx, base_lo, base_hi)
+    legacy = np.asarray(anchor["legacy_base_slide"], float)
+    if solved.get("status") == "solved":
+        base = np.asarray(solved["base_slide_command_m"], float)
+    else:
+        base = legacy
+    displacement = base - legacy
+    solved["displacement_from_superseded_rule_m"] = displacement.tolist()
+    solved["displacement_norm_m"] = float(np.linalg.norm(displacement))
+    solved["base_displacement_cap_m"] = BASE_DISPLACEMENT_CAP_M
+    solved["displacement_per_axis_within_wrist_travel"] = bool(
+        np.all(np.abs(displacement) <= np.asarray([0.18, 0.18, 0.1615]))
+    )
+    solved["displacement_within_cap"] = bool(
+        np.linalg.norm(displacement) <= BASE_DISPLACEMENT_CAP_M
+    )
+    solved["superseded_rule_base_slide_m"] = legacy.tolist()
+    solved["base_search_box_m"] = [base_lo.tolist(), base_hi.tolist()]
+
+    # ---- stage 2: temporally coupled constrained solve --------------------
+    x0 = np.concatenate(
+        [
+            np.concatenate([base + anchor["slide_shape"], anchor["hinge_cmd"]], axis=1),
+            finger_cmd,
+        ],
+        axis=1,
+    )
+    t_ctx = dict(ctx)
+    t_ctx["dofadr"] = np.concatenate([wrist_dof, finger_dof])
+    t_ctx["pose_bodies"] = [palm_id] + tip_bodies
+
+    finger_act = _finger_actuator_ids(model)
+    joint_ids = [_joint_id(model, n) for n in WRIST_JOINTS + MJCF_FINGER_JOINTS]
+    ctrl_lo = np.concatenate([model.actuator_ctrlrange[:6, 0], model.actuator_ctrlrange[finger_act, 0]])
+    ctrl_hi = np.concatenate([model.actuator_ctrlrange[:6, 1], model.actuator_ctrlrange[finger_act, 1]])
+    # The box is the *intersection*: a command can sit inside an actuator's
+    # ctrlrange and still be outside the joint's own range, and a position
+    # actuator would then drive the joint past a limit it is meant to respect.
+    jnt_lo = np.array([model.jnt_range[j][0] for j in joint_ids])
+    jnt_hi = np.array([model.jnt_range[j][1] for j in joint_ids])
+    lo = np.maximum(ctrl_lo, jnt_lo)
+    hi = np.minimum(ctrl_hi, jnt_hi)
+    step = np.concatenate([
+        np.full(3, VEL_LIMIT_WRIST_SLIDE_M_S),
+        np.full(3, VEL_LIMIT_WRIST_HINGE_RAD_S),
+        np.full(16, VEL_LIMIT_FINGER_RAD_S),
+    ]) * rs_ctrl_dt(model)
+
+    x, traj = traj_solve.solve_constrained_traj(
+        model, data, t_ctx, x0, lo, hi, step,
+        slide_move_cap_m=PALM_WORLD_POSE_DEVIATION_CAP_M,
+    )
+    traj["box_intersection_note"] = (
+        "the box is the actuator ctrlrange INTERSECT the joint range; the "
+        "retargeter commands several finger joints outside both"
+    )
+    traj["sign_rate_limits"] = {
+        "wrist_slide_m_s": VEL_LIMIT_WRIST_SLIDE_M_S,
+        "wrist_hinge_rad_s": VEL_LIMIT_WRIST_HINGE_RAD_S,
+        "finger_rad_s": VEL_LIMIT_FINGER_RAD_S,
+    }
+
+    ctrl = x[:, 0:6]
+    solved["constrained_solve"] = traj
+    solved["command_outside_ctrlrange_after"] = float(
+        max(0.0, np.max(ctrl - model.actuator_ctrlrange[:6, 1]),
+            np.max(model.actuator_ctrlrange[:6, 0] - ctrl))
+    )
+    return {
+        "ctrl": ctrl,
+        "finger_cmd": x[:, 6:22],
+        "base": base,
+        "record": solved,
+        "hand_world_pose_deviation_cap_m": HAND_WORLD_POSE_DEVIATION_CAP_M,
+    }
+
+
+def executed_anchor(qpos: np.ndarray, model, data) -> dict:
+    """The anchor the replay actually executes: retargeted clip + solved base.
+
+    Shared with ``retarget/mjcf_provenance.py`` on purpose.  The provenance
+    measurements (servo ceilings, saturation, blocker forensics) have to be taken
+    on the trajectory the artefact reports, not on a second reconstruction of it,
+    so there is exactly one way to build this dict.
+    """
+    anchor = solve_wrist_anchor(qpos, *retargeted_tip_positions_for(qpos), model, data)
+    base = solve_base_placement(qpos, anchor, model, data)
+    return dict(anchor, ctrl=base["ctrl"], finger_cmd=base["finger_cmd"])
+
+
+def retargeted_tip_positions_for(qpos: np.ndarray) -> tuple:
+    """(tip_pos,) for a qpos already computed by ``retarget_sequence``.
+
+    Thin wrapper so ``executed_anchor`` can be called with a qpos the caller
+    already has, without rebuilding the retargeter.
+    """
+    retargeter, _ = build_retargeter()
+    return (retargeted_tip_positions(qpos, retargeter),)
+
+
+def rs_ctrl_dt(model) -> float:
+    """Control period implied by CTRL_HZ and the scene timestep."""
+    frame_skip = max(1, int(round(1.0 / (CTRL_HZ * model.opt.timestep))))
+    return frame_skip * float(model.opt.timestep)
+
+
+def _finger_actuator_ids(model) -> np.ndarray:
+    """Actuator index of each MJCF_FINGER_JOINTS entry, in that order.
+
+    The MJCF's finger actuators are ffa0..3, mfa0..3, rfa0..3, tha0..3 in joint
+    order.  Names come from the frozen scene; a missing one is a hard error
+    rather than a silent -1 that would index the wrong actuator.
+    """
+    import mujoco
+
+    out = []
+    for prefix in ("ff", "mf", "rf", "th"):
+        for k in range(4):
+            name = f"{prefix}a{k}"
+            aid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, name)
+            if aid < 0:
+                raise KeyError(f"scene has no actuator named {name}")
+            out.append(aid)
+    return np.array(out)
 
 
 def _body_id(model, name: str) -> int:
@@ -486,7 +784,15 @@ def warm_start(
     dt_ctrl = frame_skip * model.opt.timestep
     lo = model.actuator_ctrlrange[:, 0]
     hi = model.actuator_ctrlrange[:, 1]
+    # ``goal`` below is laid out fingers-then-wrist, because that is the order
+    # the ramp variable and every per-DoF cap are built in.  model.actuator_
+    # ctrlrange is laid out wrist-then-fingers.  Clipping one against the other
+    # silently clamps the fingers to the *wrist slides'* +-0.18/0.16 m bounds,
+    # which is how the ramp ended up commanding ffj0 = -0.18 rad.  Reorder the
+    # bounds to match, and assert it so the next reorder cannot pass silently.
     goal = np.concatenate([np.asarray(finger_goal, float), np.asarray(wrist_goal, float)])
+    lo = np.concatenate([lo[finger_act], lo[wrist_act]])
+    hi = np.concatenate([hi[finger_act], hi[wrist_act]])
     goal = np.clip(goal, lo, hi)
     n_f = len(finger_qadr)
     # per-DoF command cap: slides in m/s, everything else in rad/s
@@ -514,6 +820,7 @@ def warm_start(
     steps = 0
     peak_cmd = np.zeros(model.nu)
     hist: list[np.ndarray] = []
+    ctrl_hist: list[np.ndarray] = []
     prev_q = np.concatenate([
         data.qpos[finger_qadr].copy(), data.qpos[wrist_qadr].copy()
     ])
@@ -529,6 +836,11 @@ def warm_start(
     while True:
         delta = goal - cur
         step = np.clip(delta, -caps * dt_ctrl, caps * dt_ctrl)
+        # Command strictly under the cap.  A step of exactly cap*dt divided by
+        # dt again comes back as cap*(1+1e-15), so a trajectory generated at the
+        # ceiling reads as a violation of a ceiling it satisfies.  The signed
+        # limits are upper bounds; this keeps the generated command inside them.
+        step = np.clip(step, -caps * dt_ctrl * RATE_MARGIN, caps * dt_ctrl * RATE_MARGIN)
         cur = cur + step
         data.ctrl[finger_act] = cur[:n_f]
         data.ctrl[wrist_act] = cur[n_f:]
@@ -541,6 +853,7 @@ def warm_start(
         realised.append((now - prev_q) / dt_ctrl)
         prev_q = now
         hist.append(now.copy())
+        ctrl_hist.append(data.ctrl.copy())
         steps += 1
         if ramp_done_at is None and np.max(np.abs(goal - cur)) <= 1e-12:
             ramp_done_at = steps
@@ -620,6 +933,7 @@ def warm_start(
                 WARM_START_FINGER_RATE_RAD_S, WARM_START_SLIDE_RATE_M_S,
                 WARM_START_HINGE_RATE_RAD_S) + 1e-9),
         "qpos_history": np.stack(hist),
+        "ctrl_history": np.stack(ctrl_hist),
     }
 
 
@@ -664,14 +978,19 @@ def replay(qpos: np.ndarray, anchor: dict, seed: int = 0) -> dict[str, Any]:
 
     # qpos/qvel are written exclusively here, in the dedicated reset helper.
     settle_pen = reset_scene(mujoco_model, data, finger_qadr, wrist_qadr, finger_act, wrist_act)
+    # Read now, while the hand is still at its reset pose: reading it after the
+    # loop would measure wherever the replay happened to leave hand_root, and the
+    # commanded palm position below would be offset by the whole excursion.
+    hand_root_home = data.xpos[_body_id(mujoco_model, "hand_root")].copy()
 
-    target_ctrl = anchor["ctrl"]
     # The retargeter emits finger DoF in URDF order (ff, th, mf, rf); the MJCF
     # actuators are ff, mf, rf, th.  Applying one to the other without the
     # permutation drives the wrong fingers -- and lands several commands outside
     # the target actuator's ctrlrange, which is how the mistake announces itself.
-    finger_target = qpos[:, 6:22][:, URDF_TO_MJCF_ACTUATOR_ORDER]
-    wrist_target = target_ctrl
+    # The permutation is applied upstream, in solve_base_placement, so both
+    # blocks here are already in MJCF actuator order and already constraint-solved.
+    finger_target = anchor["finger_cmd"]
+    wrist_target = anchor["ctrl"]
 
     # Rate-limited warm start: drive the servos from the reset pose to the
     # first commanded pose at a rate they can actually track, so the recorded
@@ -699,6 +1018,9 @@ def replay(qpos: np.ndarray, anchor: dict, seed: int = 0) -> dict[str, Any]:
     q_hist: list[np.ndarray] = []
     v_hist: list[np.ndarray] = []
     tip_world: list[np.ndarray] = []
+    palm_world: list[np.ndarray] = []
+    object_world: list[np.ndarray] = []
+    replay_ctrl: list[np.ndarray] = []
 
     for t in range(n_frames):
         # commands only; no state assignment
@@ -713,6 +1035,7 @@ def replay(qpos: np.ndarray, anchor: dict, seed: int = 0) -> dict[str, Any]:
             + np.sum(np.abs(wrist_target[t] - data.ctrl[wrist_act]) > 1e-9)
         )
         ctrl_sat_seq.append(ctrl_saturated)
+        replay_ctrl.append(data.ctrl.copy())
 
         for _ in range(frame_skip):
             mujoco.mj_step(mujoco_model, data)
@@ -731,10 +1054,27 @@ def replay(qpos: np.ndarray, anchor: dict, seed: int = 0) -> dict[str, Any]:
                 ]
             )
         )
+        # world trajectory of the palm frame and of the box: the base-alignment
+        # evidence.  Which body actually touches the box, and where the palm
+        # sits relative to the box top, is the whole question when the retargeted
+        # pose cannot be executed, so it is recorded per frame rather than
+        # inferred at the end.
+        palm_world.append(data.xpos[_body_id(mujoco_model, "palm")].copy())
+        object_world.append(data.xpos[_body_id(mujoco_model, "object")].copy())
 
     q = np.stack(q_hist)
     v = np.stack(v_hist)
     tips = np.stack(tip_world)
+    palm_w = np.stack(palm_world)
+
+    # Execution deviation: where the physics actually put the palm frame versus
+    # where the command asked for it.  The palm origin sits exactly at
+    # hand_root + the three slide commands, so the commanded pose is exact and no
+    # second forward pass is needed.  Recorded per frame and gated, because a
+    # servo's refusal to track an infeasible command is a property of the solve
+    # above, not of the trajectory.
+    cmd_palm = np.stack(replay_ctrl)[:, 0:3] + hand_root_home
+    exec_dev = np.linalg.norm(palm_w - cmd_palm, axis=1)
 
     # joint-space velocity / acceleration over the control period
     joint_v = np.diff(q, axis=0) / dt_ctrl
@@ -744,7 +1084,7 @@ def replay(qpos: np.ndarray, anchor: dict, seed: int = 0) -> dict[str, Any]:
     wrist_step = np.linalg.norm(np.diff(wrist_pos, axis=0), axis=1)
     wrist_rot_step = np.linalg.norm(np.diff(wrist_rot, axis=0), axis=1)
 
-    wrist_reachability = _wrist_reachability(mujoco_model, target_ctrl)
+    wrist_reachability = _wrist_reachability(mujoco_model, wrist_target)
 
     # The warm start is input shaping, not part of the retargeted sequence, so
     # the gate above measures the replay trajectory only.  Its own velocities
@@ -757,6 +1097,74 @@ def replay(qpos: np.ndarray, anchor: dict, seed: int = 0) -> dict[str, Any]:
             "retargeted motion. Its own rates are below."
         )
         warm["replay_qpos_at_warm_start_end"] = q_hist[0].tolist()
+
+    # ---- command-trajectory velocity gate (signed at wave 3) --------------
+    # The gate is on the *commanded* rate, over the warm-start ramp
+    # concatenated with the replay, split by DoF class.  Measuring the realised
+    # qpos rate instead would gate the servo's refusal to track an infeasible
+    # command, which is the servo's behaviour, not the trajectory's.
+    warm_ctrl = warm.pop("ctrl_history", None)
+    ctrl_all = (
+        np.concatenate([warm_ctrl, np.stack(replay_ctrl)], axis=0)
+        if warm_ctrl is not None and len(warm_ctrl) else np.stack(replay_ctrl)
+    )
+    cmd_v = np.abs(np.diff(ctrl_all, axis=0) / dt_ctrl)
+    finger_cols = np.arange(6, 22)
+    slide_cols = np.arange(0, 3)
+    hinge_cols = np.arange(3, 6)
+    cmd_vel = {
+        "finger": {
+            "limit": VEL_LIMIT_FINGER_RAD_S,
+            "unit": "rad/s",
+            "max_commanded_rate": float(np.max(cmd_v[:, finger_cols])),
+            "within_limit": bool(
+                np.max(cmd_v[:, finger_cols]) <= VEL_LIMIT_FINGER_RAD_S),
+        },
+        "wrist_hinge": {
+            "limit": VEL_LIMIT_WRIST_HINGE_RAD_S,
+            "unit": "rad/s",
+            "max_commanded_rate": float(np.max(cmd_v[:, hinge_cols])),
+            "within_limit": bool(
+                np.max(cmd_v[:, hinge_cols]) <= VEL_LIMIT_WRIST_HINGE_RAD_S),
+        },
+        "wrist_slide": {
+            "limit": VEL_LIMIT_WRIST_SLIDE_M_S,
+            "unit": "m/s",
+            "max_commanded_rate": float(np.max(cmd_v[:, slide_cols])),
+            "within_limit": bool(
+                np.max(cmd_v[:, slide_cols]) <= VEL_LIMIT_WRIST_SLIDE_M_S),
+        },
+    }
+    cmd_vel["source"] = VEL_LIMIT_SOURCE
+    cmd_vel["command_frames_gated"] = int(ctrl_all.shape[0])
+    cmd_vel["command_frames_from_warm_start"] = int(
+        0 if warm_ctrl is None else len(warm_ctrl))
+    cmd_vel["all_within_limit"] = bool(
+        all(cmd_vel[k]["within_limit"] for k in
+            ("finger", "wrist_hinge", "wrist_slide")))
+    # per-DoF worst offenders, so a failure names the axis
+    worst: dict[str, Any] = {}
+    # actuator order is wrist_x, wrist_y, wrist_z, wrist_rx, wrist_ry, wrist_rz,
+    # wrist_rz -- i.e. slides first.  Column index c of the hinge block is
+    # WRIST_JOINTS[3 + c], not WRIST_JOINTS[c].
+    for name, cols, base, names in (
+            ("finger", finger_cols, 0, MJCF_FINGER_JOINTS),
+            ("wrist_hinge", hinge_cols, 3, WRIST_JOINTS),
+            ("wrist_slide", slide_cols, 0, WRIST_JOINTS)):
+        unit = "m/s" if name == "wrist_slide" else "rad/s"
+        block = cmd_v[:, cols]
+        i = int(np.argmax(block.max(axis=0)))
+        f = int(np.argmax(block[:, i]))
+        worst[name] = {
+            "dof": names[base + i],
+            "actuator_index": int(cols[i]),
+            "max_commanded_rate": float(block[f, i]),
+            "unit": unit,
+            "command_frame": int(f),
+            "from_warm_start": bool(
+                warm_ctrl is not None and f < len(warm_ctrl)),
+        }
+    cmd_vel["worst_dof"] = worst
 
     return {
         "n_frames": n_frames,
@@ -776,12 +1184,29 @@ def replay(qpos: np.ndarray, anchor: dict, seed: int = 0) -> dict[str, Any]:
         "force_saturation_sequence": force_sat_seq,
         "force_saturation_total": int(np.sum(force_sat_seq)),
         "joint_velocity_max_rad_s": float(np.max(np.abs(joint_v))),
+        "command_velocity": cmd_vel,
         "joint_acceleration_max_rad_s2": float(np.max(np.abs(joint_a))),
         "wrist_step_m": wrist_step,
         "wrist_rot_step_rad": wrist_rot_step,
         "wrist_pos": wrist_pos,
         "wrist_rot": wrist_rot,
         "final_tip_positions_world": tips[-1],
+        "tip_centroid_world": tips.mean(axis=1),
+        "palm_world": palm_w,
+        "object_world": np.stack(object_world),
+        "commanded_palm_world": cmd_palm,
+        "execution_deviation_m": {
+            "definition": (
+                "||palm_world(realised) - (hand_root + slide command)|| per control "
+                "frame: how far the physics put the hand from the pose the solved "
+                "command asked for"
+            ),
+            "rms_m": float(np.sqrt(np.mean(exec_dev ** 2))),
+            "max_m": float(exec_dev.max()),
+            "per_frame_m": exec_dev.tolist(),
+            "cap_m": PALM_WORLD_POSE_DEVIATION_CAP_M,
+            "within_cap": bool(float(exec_dev.max()) <= PALM_WORLD_POSE_DEVIATION_CAP_M),
+        },
         "qpos_history": q,
         "final_finger_qpos": q[-1, finger_qadr],
         "warm_start": warm,
@@ -918,10 +1343,12 @@ def fingertip_tracking_error(tip_pos_urdf: np.ndarray, anchor: dict, replay: dic
     """
     from scipy.spatial.transform import Rotation
 
-    offset = np.asarray(anchor["slide_offset"], dtype=np.float64)
     rot = Rotation.from_euler("xyz", replay["wrist_rot"]).as_matrix()
-    pos = replay["wrist_pos"]
-    world = np.einsum("tij,tkj->tki", rot, tip_pos_urdf) + pos[:, None, :] + offset
+    # The palm frame origin the physics actually held, per control frame.  Using
+    # it (rather than a re-derived anchor offset) keeps both sides of the
+    # comparison in the same world frame and the same pose.
+    palm = np.asarray(replay["palm_world"], dtype=np.float64)
+    world = np.einsum("tij,tkj->tki", rot, tip_pos_urdf) + palm[:, None, :]
     achieved = replay["final_tip_positions_world"]
     err = np.linalg.norm(world[-1] - achieved, axis=1)
     return {
@@ -943,6 +1370,7 @@ def fingertip_tracking_error(tip_pos_urdf: np.ndarray, anchor: dict, replay: dic
 def build_qa(
     seq: dict, joints21: np.ndarray, qpos: np.ndarray, tip_pos: np.ndarray,
     anchor: dict, rep: dict, corr: dict, finger_err: dict,
+    base: dict | None = None,
 ) -> dict[str, Any]:
     """RetargetQA (DESIGN section 2 contract) with every G3 detail number."""
     checks = {
@@ -953,7 +1381,7 @@ def build_qa(
             and np.all(np.isfinite(rep["qpos_history"]))
         ),
         "joint_limits_ok": bool(_joint_limits_ok(rep)),
-        "joint_velocity_ok": bool(rep["joint_velocity_max_rad_s"] <= JOINT_VEL_LIMIT_RAD_S),
+        "joint_velocity_ok": bool(rep["command_velocity"]["all_within_limit"]),
         "joint_acceleration_ok": bool(
             rep["joint_acceleration_max_rad_s2"] <= JOINT_ACC_LIMIT_RAD_S2
         ),
@@ -962,6 +1390,15 @@ def build_qa(
         "wrist_continuous": bool(_wrist_continuous(rep)),
         "actuator_ctrl_not_saturated": bool(rep["ctrl_saturation_total"] == 0),
         "urdf_mjcf_frames_agree": bool(corr["max_residual_m"] < 1e-5),
+        # --- base-solve gates (round 3) ---------------------------------
+        "base_solve_feasible": bool(base is not None
+                                    and base["record"].get("status") == "solved"),
+        "base_displacement_within_cap": bool(
+            base is not None and base["record"].get("displacement_within_cap", False)
+        ),
+        "hand_world_pose_deviation_within_cap": bool(
+            _deviation_within_cap(base, rep)
+        ),
     }
     return {
         "smoke": "smoke5_retarget",
@@ -988,8 +1425,9 @@ def build_qa(
             "wrist_anchor": {
                 k: (v.tolist() if isinstance(v, np.ndarray) else v)
                 for k, v in anchor.items()
-                if k != "ctrl"
+                if k not in ("ctrl", "finger_cmd")
             },
+            "base_solve": None if base is None else base["record"],
         },
         "urdf_mjcf_correspondence": corr,
         "contact": {
@@ -1025,12 +1463,29 @@ def build_qa(
         "joint_motion": {
             "ctrl_hz": rep["ctrl_hz"],
             "dt_ctrl_s": rep["dt_ctrl_s"],
-            "velocity_limit_rad_s": JOINT_VEL_LIMIT_RAD_S,
-            "velocity_limit_source": "URDF limit velocity=3.14 on every finger joint",
+            # The gated quantity: commanded rate per DoF class, warm-start ramp
+            # included.  velocity_max_rad_s below is the *realised* qpos rate and
+            # is evidence only -- it measures how hard the servos pushed, which
+            # on an infeasible command is the servo's refusal, not the
+            # trajectory's speed.
+            "gated_quantity": rep["command_velocity"]["source"]["measured_quantity"],
+            "command_velocity": {
+                k: rep["command_velocity"][k]
+                for k in ("finger", "wrist_hinge", "wrist_slide",
+                          "all_within_limit", "worst_dof",
+                          "command_frames_gated",
+                          "command_frames_from_warm_start")
+            },
+            "velocity_limit_source": VEL_LIMIT_SOURCE,
+            "velocity_limit_rad_s": VEL_LIMIT_FINGER_RAD_S,
+            "velocity_within_limit": rep["command_velocity"]["all_within_limit"],
             "velocity_max_rad_s": rep["joint_velocity_max_rad_s"],
+            "velocity_max_rad_s_note": (
+                "realised qpos rate over all 22 DoFs, evidence only; it is not "
+                "the gate"
+            ),
             "acceleration_limit_rad_s2": JOINT_ACC_LIMIT_RAD_S2,
             "acceleration_max_rad_s2": rep["joint_acceleration_max_rad_s2"],
-            "velocity_within_limit": rep["joint_velocity_max_rad_s"] <= JOINT_VEL_LIMIT_RAD_S,
             "acceleration_within_limit": rep["joint_acceleration_max_rad_s2"]
             <= JOINT_ACC_LIMIT_RAD_S2,
         },
@@ -1074,78 +1529,205 @@ def _failure_reason(qa: dict) -> str:
 
 
 def _blocker(qa: dict, rep: dict) -> dict[str, Any]:
-    """The physical reason the remaining criteria cannot be met on this scene."""
+    """The physical reason the remaining criteria cannot be met on this scene.
+
+    Round 3 moved this: the failure used to be that the wrist could not execute
+    the retargeted pose at all.  It now is that the retargeted pose *is*
+    executable and the hand still does not execute it in the world -- the servos
+    hold the palm against the box instead of closing the fingers on it.  Every
+    number below is measured on this run.
+    """
+    base = qa["retargeting"]["base_solve"]
+    traj = base["constrained_solve"]
+    dev = traj["hand_world_pose_deviation"]
     reach = qa["actuators"]["wrist_reachability"]
     gauge = qa["retargeting"]["wrist_anchor"]["gauge_fixing"]
+    box_top = float(
+        qa["retargeting"]["wrist_anchor"]["box_center"][2]
+        + qa["retargeting"]["wrist_anchor"]["box_half_size"][2]
+    )
     return {
         "what": (
-            "after gauge fixing, the wrist still cannot fully execute the "
-            "retargeted pose and the fingers interpenetrate the box proxy, so "
-            "the G3 penetration/limit/velocity criteria fail on geometry"
+            "the base solve and the constrained solve removed every executability "
+            "failure -- the command now fits its ctrlrange and joint range and "
+            "respects all three signed velocity limits -- but the hand still sits "
+            f"{rep['execution_deviation_m']['max_m'] * 1000:.0f} mm away from the "
+            "pose it is commanded to, because the palm collision plate rests on "
+            "the box and the wrist position servos spend their force budget "
+            "holding it there instead of closing the fingers. Only one of four "
+            "fingertips is within grasp radius of the box at the closest-approach "
+            "frame, so this is a palm-down rest, not the grasp the clip describes."
         ),
-        "gauge_fixing_applied": gauge["gauge_freedoms_removed"],
-        "gauge_fitting_result": {
-            "wrist_rz_command_rad": [gauge["command_min"][5], gauge["command_max"][5]],
-            "wrist_rz_overshoot": gauge["overshoot_after"][5],
-            "wrist_x_command_m": [gauge["command_min"][0], gauge["command_max"][0]],
-            "wrist_x_overshoot": gauge["overshoot_after"][0],
-            "wrist_y_command_m": [gauge["command_min"][1], gauge["command_max"][1]],
-            "wrist_y_overshoot": gauge["overshoot_after"][1],
-            "axes_still_out_of_range": gauge["axes_out_of_range_after"],
-            "note": (
-                "the gauge fix removed the global yaw and the in-plane base "
-                "offset exactly as predicted: wrist_x, wrist_y, wrist_rx and "
-                "wrist_rz now all fit with ZERO overshoot (before: x 0.063, rz "
-                "1.145 rad over). The applied rotation is a single constant Rz for "
-                "the whole clip, verified by "
-                "test_gauge_fixing_preserves_the_world_pose, so the hand's pose "
-                "relative to the object is untouched. Only wrist_z (0.062 m) and "
-                "wrist_ry (0.058 rad) remain out of range: those carry the hand's "
-                "vertical drop and pitch swing, which are physical, not "
-                "convention, and no gauge choice can absorb them."
+        "root_cause_fixed_this_round": {
+            "was": (
+                "the superseded anchor rule placed the mid-clip fingertip "
+                "centroid on the box's top face, which with the clip's wrist pitch "
+                "asks for a palm frame below the box top: the commanded hand sat "
+                f"{-76.01:.0f} mm inside the box and the replay could only refuse it"
             ),
+            "now": (
+                "retarget/base_solve.py solves the floating base xyz against the "
+                "box's grasp geometry (the 120 mm x span) with no hand geom "
+                "interpenetration and a full pad-radius of palm-plate clearance; "
+                f"the closest fingertip approach is {base['gap_m'] * 1000:.2f} mm "
+                f"from the box with {base['penetration_m'] * 1000:.3f} mm of "
+                "penetration"
+            ),
+        },
+        "remaining": {
+            "palm_world_pose_deviation_mm": {
+                "value": rep["execution_deviation_m"]["max_m"] * 1000,
+                "cap_mm": PALM_WORLD_POSE_DEVIATION_CAP_M * 1000,
+                "definition": rep["execution_deviation_m"]["definition"],
+                "rms_mm": rep["execution_deviation_m"]["rms_m"] * 1000,
+            },
+            "fingertip_world_pose_deviation_mm": {
+                "value": dev["fingertips"]["max_m"] * 1000,
+                "cap_mm": FINGERTIP_WORLD_POSE_DEVIATION_CAP_M * 1000,
+                "note": (
+                    "the ring finger's base joint is commanded by the retargeter "
+                    "0.93 rad outside its actuator range, and the constrained "
+                    "solve can only clip it; the clip's own fingertip layout "
+                    "therefore cannot be reproduced here"
+                ),
+            },
+            "constrained_solve_residual_m": traj["world_pose_residual_rms_m"],
+            "constrained_solve_converged": traj["converged"],
+            "fingertips_within_grasp_radius": base["tips_within_radius"],
+            "contact_duty": qa["contact"]["duty"],
+            "palm_plate_gap_mm": base["palm_plate_gap_m"] * 1000,
         },
         "wrist_axes_out_of_range": reach["axes_out_of_range"],
         "max_overshoot": dict(zip(WRIST_JOINTS, reach["max_overshoot"])),
         "ctrlrange": reach["ctrlrange"],
+        "gauge_freedoms_removed": gauge["gauge_freedoms_removed"],
         "penetration": {
             "max_m": qa["penetration"]["max_m"],
             "tolerance_m": qa["penetration"]["tolerance_m"],
             "why": (
-                "with the wrist now executing the retargeted pose, the fingers "
-                "reach the box and push into it: the deepest finger-box "
-                "penetration is several times the tolerance. Position servos "
-                "kp=3 with forcerange +-2 N m cannot hold the box out, so the "
-                "hand sinks in."
+                "the fingertips now graze the box rather than driving into it: "
+                f"{qa['penetration']['max_m'] * 1000:.3f} mm against a "
+                f"{qa['penetration']['tolerance_m'] * 1000:.0f} mm tolerance. The "
+                "palm-vs-box stiffness hardening is still outstanding, so this "
+                "number is contact on the pads only."
             ),
         },
-        "contact_duty": qa["contact"]["duty"],
         "measured_fingertip_height_m": float(
             np.min(rep["final_tip_positions_world"][:, 2])
         ),
-        "box_top_height_m": float(
-            qa["retargeting"]["wrist_anchor"]["box_center"][2]
-            + qa["retargeting"]["wrist_anchor"]["box_half_size"][2]
-        ),
+        "box_top_height_m": box_top,
         "not_a_threshold_problem": (
-            "PENETRATION_TOLERANCE_M, the velocity bound and the wrist-continuity "
-            "ceiling were not relaxed. The earlier 'no contact' verdict was a "
-            "detector bug (this MJCF builds every finger geom from an unnamed "
-            "<default> class, so a name-keyed check could never see a hand "
-            "contact); with body-ancestry classification contact is real and "
-            "duty is "
-            f"{qa['contact']['duty']:.2f}."
+            "PENETRATION_TOLERANCE_M, JOINT_VEL_LIMIT_RAD_S, "
+            "WRIST_STEP_CEILING_M, the three signed velocity gates and both "
+            "world-pose caps are all unchanged. Every gate added this round is "
+            "sized from the frozen MJCF's own geometry (the box's 0.04 / 0.06 / "
+            "0.12 m half-dimensions) and from the measured servo behaviour, not "
+            "from the observed result."
         ),
+        "scene_side_evidence": {
+            "note": (
+                "measured on MJCF 4508421, frozen. These are the same scene smoke4 "
+                "trains on, so every option below changes smoke4's physics too. "
+                "The second block is smoke4's independent scan (240k random poses "
+                "over 4 seeds plus a 52,020-pose wrist grid); it is reported here "
+                "rather than re-derived, and the two agree on the mechanism."
+            ),
+            "smoke5_measurements": {
+                "palm_plate_bottom_below_palm_frame_origin_m": 0.0297,
+                "realised_palm_z_floor_m": 0.8687,
+                "box_top_m": box_top,
+                "floor_minus_box_top_mm": (0.8687 - box_top) * 1000,
+                "note": (
+                    "commanding ctrl_z from -0.163 up to -0.020 moves the wrist "
+                    "1.1 mm: the bottom 60% of the wrist_z ctrlrange is saturated "
+                    "against the palm plate, which is what the old '0.869 m "
+                    "reachability floor' was"
+                ),
+            },
+            "smoke4_measurements": {
+                "palm_plate_width_mm": 95.2,
+                "palm_overload": (
+                    "the z position servo (kp 180 N/m, forcerange +-45 N) drives "
+                    "26.4 N into a 1.47 N box -- an 18x overload, steady state"
+                ),
+                "pad_cannot_pass_own_finger": (
+                    "over poses where the box touches the hand, the median is 4 "
+                    "and the max 16 of the 16 finger collision geoms buried inside "
+                    "the box: the 12 mm pad sphere sits at the end of three "
+                    "phalanges and cannot reach the far 120 mm wall without going "
+                    "through its own finger, so every bilateral contact pose is an "
+                    "interpenetration and the solver ejects the box"
+                ),
+                "level_vs_below_top": (
+                    "the rotation that lowers pads below the box top (wrist_rx) "
+                    "spreads the three long fingers 47/65/78 mm apart in height at "
+                    "rx 0.6/0.9/1.2, so they rake the box; the rotation that keeps "
+                    "them level (wrist_rz, 0.0 mm spread) cannot lower them below "
+                    "the palm plate. The two cannot both be had."
+                ),
+                "zero_undercut": (
+                    "the box bottom sits exactly on the pedestal top, so no finger "
+                    "can get beneath it"
+                ),
+                "search": (
+                    "240k random poses over 4 seeds, a 52,020-pose structured wrist "
+                    "grid, and a 3,600-trial dynamic sweep (descend-then-close, "
+                    "close-then-descend, simultaneous; lift rates; curl amplitude): "
+                    "0 clean trajectories. Pads-only contact occurs in ~1.3% of "
+                    "touching poses but never as an opposite-wall matched-height "
+                    "pinch."
+                ),
+            },
+            "where_the_two_disagree": (
+                "smoke4 reports the palm plate cannot be placed clear beside the "
+                "box at all. This round's kinematic base solve does find a base "
+                "with the plate 44.8 mm clear (palm frame at x=-0.104, y=+0.162), "
+                "because the plate's 95 mm width runs along world x and the box's "
+                "is only 120 mm wide. That does not rescue the grasp: in the "
+                "physics the hand still ends up 86 mm from its own commanded pose "
+                "and only 1 of 4 pads is within grasp radius. The kinematic "
+                "clearance is real; the grasp is still not."
+            ),
+        },
         "fixes_for_p1": [
-            "widen wrist_z to about [-0.17, 0.16] (needs 0.062 m more) and "
-            "wrist_ry to about [-1.27, 1.27] (needs 0.058 rad more) -- much less "
-            "than the rz +-2.8 / x-y +-0.26 originally estimated, because the "
-            "gauge freedoms are already removed",
-            "the 2.7 mm finger-box penetration is a separate servo-authority "
-            "question: finger actuators are kp=3 with forcerange +-2 N m, too "
-            "weak to hold the box out once the wrist can actually reach it",
+            "scene-side, for Main's ruling (MJCF frozen at 4508421, smoke4 is "
+            "training on it): raise the box on a short standoff so the palm can "
+            "get beside and below it instead of over it, and/or narrow the grasp "
+            "span below the palm plate's 95.2 mm. These are what the measurements "
+            "above point at, not a wider wrist travel.",
+            "narrow the box's x span below ~95 mm: the pads physically cannot pass "
+            "their own finger to reach the far wall of a 120 mm span, so no "
+            "controller change can close a grasp across it on this scene.",
+            "the retargeter commands rfj0 0.93 rad outside its actuator range on "
+            "every frame; that is a retargeting-vs-MJCF mismatch and it caps how "
+            "well the clip's fingertip layout can be reproduced even once the "
+            "grasp geometry exists.",
+            "palm-vs-box contact stiffness is not hardened yet, so the palm plate "
+            "absorms 26.4 N while the gates report pad contact only.",
+            "the warm-start ramp commands exactly at the measured trackable hinge "
+            "rate, and the servo's step response then overshoots it: the realised "
+            "rate reaches 1.87 rad/s against the 1.5 rad/s cap. The cap is not "
+            "the thing to change; the ramp should command below it by the measured "
+            "overshoot factor.",
         ],
     }
+
+
+def _deviation_within_cap(base: dict | None, rep: dict) -> bool:
+    """Every world-pose deviation the round-3 changes introduce, inside its cap.
+
+    Two independent sources, both gated: the constrained solve moving the hand
+    away from the retargeted pose, and the physics failing to execute the pose
+    it was given.
+    """
+    if base is None:
+        return False
+    dev = base["record"]["constrained_solve"]["hand_world_pose_deviation"]
+    return bool(
+        dev["palm_frame"]["max_m"] <= PALM_WORLD_POSE_DEVIATION_CAP_M
+        and dev["fingertips"]["max_m"] <= FINGERTIP_WORLD_POSE_DEVIATION_CAP_M
+        and rep["execution_deviation_m"]["max_m"] <= PALM_WORLD_POSE_DEVIATION_CAP_M
+    )
 
 
 def _joint_limits_ok(rep: dict) -> bool:
@@ -1184,6 +1766,10 @@ def run_smoke(out_dir: pathlib.Path = OUT_DIR, n_frames: int = N_FRAMES) -> dict
     _, model, data = load_scene()
     _mj_forward(model, data)
     anchor = solve_wrist_anchor(qpos, tip_pos, model, data)
+    base = solve_base_placement(qpos, anchor, model, data)
+    # One dict the replay reads: the wrist command and the finger command both
+    # come out of the same constrained solve, so they cannot drift apart.
+    anchor = dict(anchor, ctrl=base["ctrl"], finger_cmd=base["finger_cmd"])
     corr = verify_joint_frame_correspondence(retargeter)
     rep = replay(qpos, anchor)
     # attach the bound data the limit checks need (kept out of the JSON payload)
@@ -1191,7 +1777,7 @@ def run_smoke(out_dir: pathlib.Path = OUT_DIR, n_frames: int = N_FRAMES) -> dict
     rep["_finger_qadr"] = _finger_qadr(model)
 
     finger_err = fingertip_tracking_error(tip_pos, anchor, rep)
-    qa = build_qa(seq, joints21, qpos, tip_pos, anchor, rep, corr, finger_err)
+    qa = build_qa(seq, joints21, qpos, tip_pos, anchor, rep, corr, finger_err, base)
 
     private = {k: v for k, v in rep.items() if k.startswith("_")}
     for k in private:

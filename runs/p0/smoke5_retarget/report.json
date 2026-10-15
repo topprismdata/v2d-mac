@@ -4,70 +4,50 @@
   "verdict_checks": {
     "frame_counts_consistent": true,
     "all_finite": true,
-    "joint_limits_ok": false,
-    "joint_velocity_ok": false,
+    "joint_limits_ok": true,
+    "joint_velocity_ok": true,
     "joint_acceleration_ok": true,
-    "penetration_ok": false,
+    "penetration_ok": true,
     "contact_occurred": true,
-    "wrist_continuous": false,
-    "actuator_ctrl_not_saturated": false,
-    "urdf_mjcf_frames_agree": true
+    "wrist_continuous": true,
+    "actuator_ctrl_not_saturated": true,
+    "urdf_mjcf_frames_agree": true,
+    "base_solve_feasible": true,
+    "base_displacement_within_cap": true,
+    "hand_world_pose_deviation_within_cap": false
   },
-  "verdict_reason": "failing G3 criteria: joint_limits_ok, joint_velocity_ok, penetration_ok, wrist_continuous, actuator_ctrl_not_saturated -- see retarget_qa.json",
+  "verdict_reason": "failing G3 criteria: hand_world_pose_deviation_within_cap -- see retarget_qa.json",
   "blocker": {
-    "what": "after gauge fixing, the wrist still cannot fully execute the retargeted pose and the fingers interpenetrate the box proxy, so the G3 penetration/limit/velocity criteria fail on geometry",
-    "gauge_fixing_applied": {
-      "absorbed_yaw_rad": -3.045599544730106,
-      "base_rotation_matrix": [
-        [
-          -0.9953961983671789,
-          -0.09584575252022302,
-          0.0
-        ],
-        [
-          0.09584575252022302,
-          -0.9953961983671789,
-          0.0
-        ],
-        [
-          0.0,
-          0.0,
-          1.0
-        ]
-      ],
-      "base_offset_x_m": -0.1857785980082276,
-      "base_offset_y_m": 0.030927505793837944
+    "what": "the base solve and the constrained solve removed every executability failure -- the command now fits its ctrlrange and joint range and respects all three signed velocity limits -- but the hand still sits 86 mm away from the pose it is commanded to, because the palm collision plate rests on the box and the wrist position servos spend their force budget holding it there instead of closing the fingers. Only one of four fingertips is within grasp radius of the box at the closest-approach frame, so this is a palm-down rest, not the grasp the clip describes.",
+    "root_cause_fixed_this_round": {
+      "was": "the superseded anchor rule placed the mid-clip fingertip centroid on the box's top face, which with the clip's wrist pitch asks for a palm frame below the box top: the commanded hand sat -76 mm inside the box and the replay could only refuse it",
+      "now": "retarget/base_solve.py solves the floating base xyz against the box's grasp geometry (the 120 mm x span) with no hand geom interpenetration and a full pad-radius of palm-plate clearance; the closest fingertip approach is 9.62 mm from the box with 0.000 mm of penetration"
     },
-    "gauge_fitting_result": {
-      "wrist_rz_command_rad": [
-        -0.98976785129857,
-        -0.5327055617199089
-      ],
-      "wrist_rz_overshoot": 0.0,
-      "wrist_x_command_m": [
-        -0.057517833731792534,
-        0.022137940205909645
-      ],
-      "wrist_x_overshoot": 0.0,
-      "wrist_y_command_m": [
-        -0.03152805181754821,
-        0.01801561483578688
-      ],
-      "wrist_y_overshoot": 0.0,
-      "axes_still_out_of_range": [
-        "wrist_ry"
-      ],
-      "note": "the gauge fix removed the global yaw and the in-plane base offset exactly as predicted: wrist_x, wrist_y, wrist_rx and wrist_rz now all fit with ZERO overshoot (before: x 0.063, rz 1.145 rad over). The applied rotation is a single constant Rz for the whole clip, verified by test_gauge_fixing_preserves_the_world_pose, so the hand's pose relative to the object is untouched. Only wrist_z (0.062 m) and wrist_ry (0.058 rad) remain out of range: those carry the hand's vertical drop and pitch swing, which are physical, not convention, and no gauge choice can absorb them."
+    "remaining": {
+      "palm_world_pose_deviation_mm": {
+        "value": 85.89681758791063,
+        "cap_mm": 40.0,
+        "definition": "||palm_world(realised) - (hand_root + slide command)|| per control frame: how far the physics put the hand from the pose the solved command asked for",
+        "rms_mm": 46.15691501761361
+      },
+      "fingertip_world_pose_deviation_mm": {
+        "value": 132.9115320355611,
+        "cap_mm": 139.99999999999997,
+        "note": "the ring finger's base joint is commanded by the retargeter 0.93 rad outside its actuator range, and the constrained solve can only clip it; the clip's own fingertip layout therefore cannot be reproduced here"
+      },
+      "constrained_solve_residual_m": 0.08102534272738862,
+      "constrained_solve_converged": false,
+      "fingertips_within_grasp_radius": 1,
+      "contact_duty": 0.07407407407407407,
+      "palm_plate_gap_mm": 44.78891053262094
     },
-    "wrist_axes_out_of_range": [
-      "wrist_ry"
-    ],
+    "wrist_axes_out_of_range": [],
     "max_overshoot": {
       "wrist_x": 0.0,
       "wrist_y": 0.0,
       "wrist_z": 0.0,
       "wrist_rx": 0.0,
-      "wrist_ry": 0.05703638863055316,
+      "wrist_ry": 0.0,
       "wrist_rz": 0.0
     },
     "ctrlrange": [
@@ -88,18 +68,61 @@
         1.57
       ]
     ],
-    "penetration": {
-      "max_m": 0.0012002206232897832,
-      "tolerance_m": 0.001,
-      "why": "with the wrist now executing the retargeted pose, the fingers reach the box and push into it: the deepest finger-box penetration is several times the tolerance. Position servos kp=3 with forcerange +-2 N m cannot hold the box out, so the hand sinks in."
+    "gauge_freedoms_removed": {
+      "absorbed_yaw_rad": -2.9757863746503337,
+      "base_rotation_matrix": [
+        [
+          -0.9862856015372315,
+          -0.1650476058606759,
+          0.0
+        ],
+        [
+          0.1650476058606759,
+          -0.9862856015372315,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.9999999999999999
+        ]
+      ],
+      "base_offset_x_m": -0.10290067670521913,
+      "base_offset_y_m": -0.00490264607058769
     },
-    "contact_duty": 0.9259259259259259,
-    "measured_fingertip_height_m": 0.8620610310999979,
+    "penetration": {
+      "max_m": 9.644370972176908e-05,
+      "tolerance_m": 0.001,
+      "why": "the fingertips now graze the box rather than driving into it: 0.096 mm against a 1 mm tolerance. The palm-vs-box stiffness hardening is still outstanding, so this number is contact on the pads only."
+    },
+    "measured_fingertip_height_m": 0.8464645379334548,
     "box_top_height_m": 0.8400000000000001,
-    "not_a_threshold_problem": "PENETRATION_TOLERANCE_M, the velocity bound and the wrist-continuity ceiling were not relaxed. The earlier 'no contact' verdict was a detector bug (this MJCF builds every finger geom from an unnamed <default> class, so a name-keyed check could never see a hand contact); with body-ancestry classification contact is real and duty is 0.93.",
+    "not_a_threshold_problem": "PENETRATION_TOLERANCE_M, JOINT_VEL_LIMIT_RAD_S, WRIST_STEP_CEILING_M, the three signed velocity gates and both world-pose caps are all unchanged. Every gate added this round is sized from the frozen MJCF's own geometry (the box's 0.04 / 0.06 / 0.12 m half-dimensions) and from the measured servo behaviour, not from the observed result.",
+    "scene_side_evidence": {
+      "note": "measured on MJCF 4508421, frozen. These are the same scene smoke4 trains on, so every option below changes smoke4's physics too. The second block is smoke4's independent scan (240k random poses over 4 seeds plus a 52,020-pose wrist grid); it is reported here rather than re-derived, and the two agree on the mechanism.",
+      "smoke5_measurements": {
+        "palm_plate_bottom_below_palm_frame_origin_m": 0.0297,
+        "realised_palm_z_floor_m": 0.8687,
+        "box_top_m": 0.8400000000000001,
+        "floor_minus_box_top_mm": 28.699999999999946,
+        "note": "commanding ctrl_z from -0.163 up to -0.020 moves the wrist 1.1 mm: the bottom 60% of the wrist_z ctrlrange is saturated against the palm plate, which is what the old '0.869 m reachability floor' was"
+      },
+      "smoke4_measurements": {
+        "palm_plate_width_mm": 95.2,
+        "palm_overload": "the z position servo (kp 180 N/m, forcerange +-45 N) drives 26.4 N into a 1.47 N box -- an 18x overload, steady state",
+        "pad_cannot_pass_own_finger": "over poses where the box touches the hand, the median is 4 and the max 16 of the 16 finger collision geoms buried inside the box: the 12 mm pad sphere sits at the end of three phalanges and cannot reach the far 120 mm wall without going through its own finger, so every bilateral contact pose is an interpenetration and the solver ejects the box",
+        "level_vs_below_top": "the rotation that lowers pads below the box top (wrist_rx) spreads the three long fingers 47/65/78 mm apart in height at rx 0.6/0.9/1.2, so they rake the box; the rotation that keeps them level (wrist_rz, 0.0 mm spread) cannot lower them below the palm plate. The two cannot both be had.",
+        "zero_undercut": "the box bottom sits exactly on the pedestal top, so no finger can get beneath it",
+        "search": "240k random poses over 4 seeds, a 52,020-pose structured wrist grid, and a 3,600-trial dynamic sweep (descend-then-close, close-then-descend, simultaneous; lift rates; curl amplitude): 0 clean trajectories. Pads-only contact occurs in ~1.3% of touching poses but never as an opposite-wall matched-height pinch."
+      },
+      "where_the_two_disagree": "smoke4 reports the palm plate cannot be placed clear beside the box at all. This round's kinematic base solve does find a base with the plate 44.8 mm clear (palm frame at x=-0.104, y=+0.162), because the plate's 95 mm width runs along world x and the box's is only 120 mm wide. That does not rescue the grasp: in the physics the hand still ends up 86 mm from its own commanded pose and only 1 of 4 pads is within grasp radius. The kinematic clearance is real; the grasp is still not."
+    },
     "fixes_for_p1": [
-      "widen wrist_z to about [-0.17, 0.16] (needs 0.062 m more) and wrist_ry to about [-1.27, 1.27] (needs 0.058 rad more) -- much less than the rz +-2.8 / x-y +-0.26 originally estimated, because the gauge freedoms are already removed",
-      "the 2.7 mm finger-box penetration is a separate servo-authority question: finger actuators are kp=3 with forcerange +-2 N m, too weak to hold the box out once the wrist can actually reach it"
+      "scene-side, for Main's ruling (MJCF frozen at 4508421, smoke4 is training on it): raise the box on a short standoff so the palm can get beside and below it instead of over it, and/or narrow the grasp span below the palm plate's 95.2 mm. These are what the measurements above point at, not a wider wrist travel.",
+      "narrow the box's x span below ~95 mm: the pads physically cannot pass their own finger to reach the far wall of a 120 mm span, so no controller change can close a grasp across it on this scene.",
+      "the retargeter commands rfj0 0.93 rad outside its actuator range on every frame; that is a retargeting-vs-MJCF mismatch and it caps how well the clip's fingertip layout can be reproduced even once the grasp geometry exists.",
+      "palm-vs-box contact stiffness is not hardened yet, so the palm plate absorms 26.4 N while the gates report pad contact only.",
+      "the warm-start ramp commands exactly at the measured trackable hinge rate, and the servo's step response then overshoots it: the realised rate reaches 1.87 rad/s against the 1.5 rad/s cap. The cap is not the thing to change; the ramp should command below it by the measured overshoot factor."
     ]
   },
   "gate_scope": "G3 gates retarget *executability*: the MANO->Allegro sequence must be replayable through the scene's actuators with real finger-object contact, bounded motion and no interpenetration. It says nothing about hand-geometry accuracy, which stays inherited from HaMeR (smoke 6) and is recorded under fingertip_tracking.",
@@ -126,32 +149,30 @@
         ]
       ],
       "command_min": [
-        -0.057517833731792534,
-        -0.03152805181754821,
-        -0.16208822261016353,
-        -0.8982837821086984,
-        -1.316036388630553,
-        -0.98976785129857
+        -0.14507691091877745,
+        0.11718347993812239,
+        -0.08916594391811404,
+        -0.3506334013773994,
+        -0.7795058362312338,
+        -1.57
       ],
       "command_max": [
-        0.022137940205909645,
-        0.01801561483578688,
-        -0.12795907426099762,
-        0.2848785682289151,
-        0.28142205049447266,
-        -0.5327055617199089
+        -0.08940989309306119,
+        0.17553271728431727,
+        -0.07038418701564673,
+        0.5632043670298257,
+        0.39283387025919825,
+        -0.7049883929785291
       ],
       "max_overshoot": [
         0.0,
         0.0,
         0.0,
         0.0,
-        0.05703638863055316,
+        0.0,
         0.0
       ],
-      "axes_out_of_range": [
-        "wrist_ry"
-      ],
+      "axes_out_of_range": [],
       "interpretation": "a non-empty axes_out_of_range means the retargeted wrist pose cannot be executed by this floating wrist; the replay then clips the command, so the executed trajectory differs from the retargeted one and the executed qpos is gated on the MJCF joint range instead"
     },
     "dt_ctrl_s": 0.05,
@@ -160,496 +181,1136 @@
     "contact_sequence": [
       0,
       0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
       1,
       1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1
+      0,
+      0,
+      0,
+      0,
+      0
     ],
-    "contact_duty": 0.9259259259259259,
-    "contact_frames": 25,
+    "contact_duty": 0.07407407407407407,
+    "contact_frames": 2,
     "penetration_sequence_m": [
       0.0,
       0.0,
-      0.0012002206232897832,
-      0.0004499387933289242,
-      0.0005647847940497856,
-      0.0007635526400263119,
-      0.0009776233092699679,
-      0.0009273149264704165,
-      0.0009177850521799795,
-      0.0009107583838386824,
-      0.0009046740672934159,
-      0.0007046956709247673,
-      0.0006925481273111783,
-      0.000660370689565161,
-      0.0006611716775385079,
-      0.0006920469613001772,
-      0.0006257494074583512,
-      0.0006968262454343378,
-      0.00038538960610730284,
-      0.0005614811452880513,
-      0.0007418743744764378,
-      0.0008620909313588914,
-      0.000859033403535122,
-      0.0008718737290605593,
-      0.0008797603752661141,
-      0.000884118177740155,
-      0.0008858969681735589
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      9.644370972176908e-05,
+      1.4117882810856658e-05,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
     ],
-    "max_penetration_m": 0.0012002206232897832,
+    "max_penetration_m": 9.644370972176908e-05,
     "support_contact_penetration_m": 7.004443764266844e-05,
     "ctrl_saturation_sequence": [
-      3,
-      3,
-      3,
-      3,
-      4,
-      3,
-      4,
-      4,
-      4,
-      4,
-      4,
-      4,
-      4,
-      4,
-      4,
-      4,
-      3,
-      3,
-      4,
-      4,
-      4,
-      4,
-      4,
-      4,
-      4,
-      4,
-      4
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
     ],
-    "ctrl_saturation_total": 101,
+    "ctrl_saturation_total": 0,
     "force_saturation_sequence": [
-      9,
-      9,
-      9,
-      9,
-      10,
-      10,
-      11,
-      11,
-      11,
-      11,
-      11,
-      11,
-      11,
-      11,
-      11,
-      11,
-      12,
-      12,
-      10,
-      10,
-      10,
-      10,
-      9,
+      3,
+      7,
+      6,
+      6,
       8,
-      8,
-      8,
-      7
+      9,
+      10,
+      11,
+      10,
+      9,
+      10,
+      9,
+      9,
+      10,
+      10,
+      9,
+      11,
+      10,
+      11,
+      11,
+      10,
+      10,
+      10,
+      9,
+      9,
+      10,
+      9
     ],
-    "force_saturation_total": 270,
-    "joint_velocity_max_rad_s": 4.4107095354527415,
-    "joint_acceleration_max_rad_s2": 70.62691765461217,
+    "force_saturation_total": 246,
+    "joint_velocity_max_rad_s": 1.6046920026969769,
+    "command_velocity": {
+      "finger": {
+        "limit": 3.14,
+        "unit": "rad/s",
+        "max_commanded_rate": 3.139999996860001,
+        "within_limit": true
+      },
+      "wrist_hinge": {
+        "limit": 1.5,
+        "unit": "rad/s",
+        "max_commanded_rate": 1.4999999985000012,
+        "within_limit": true
+      },
+      "wrist_slide": {
+        "limit": 0.2,
+        "unit": "m/s",
+        "max_commanded_rate": 0.19999999980000016,
+        "within_limit": true
+      },
+      "source": {
+        "finger": "URDF velocity=\"3.14\" on all 16 finger joints",
+        "wrist_hinge": "free-space measured trackable rate at 20 Hz (ratio >= 0.9)",
+        "wrist_slide": "free-space measured trackable rate at 20 Hz (ratio >= 0.9)",
+        "measured_quantity": "commanded rate between consecutive control frames, np.diff(ctrl)/0.05, over the warm-start ramp concatenated with the replay",
+        "excludes": "the 3.687 rad/s wrist step-response peak is deliberately not the gate: it is what the servo does on a step, not what it can track"
+      },
+      "command_frames_gated": 148,
+      "command_frames_from_warm_start": 121,
+      "all_within_limit": true,
+      "worst_dof": {
+        "finger": {
+          "dof": "ffj0",
+          "actuator_index": 6,
+          "max_commanded_rate": 3.139999996860001,
+          "unit": "rad/s",
+          "command_frame": 123,
+          "from_warm_start": false
+        },
+        "wrist_hinge": {
+          "dof": "wrist_ry",
+          "actuator_index": 4,
+          "max_commanded_rate": 1.4999999985000012,
+          "unit": "rad/s",
+          "command_frame": 6,
+          "from_warm_start": true
+        },
+        "wrist_slide": {
+          "dof": "wrist_x",
+          "actuator_index": 0,
+          "max_commanded_rate": 0.19999999980000016,
+          "unit": "m/s",
+          "command_frame": 5,
+          "from_warm_start": true
+        }
+      }
+    },
+    "joint_acceleration_max_rad_s2": 21.380482852323546,
     "wrist_step_m": [
-      0.08322952042930233,
-      0.020913862205508095,
-      0.014044732198108532,
-      0.009062897358362337,
-      0.0041305858204395965,
-      0.003285627153042757,
-      0.002578959382653545,
-      0.0016184092678015248,
-      0.0008422261775832778,
-      0.0004093301522462049,
-      0.0010156301843385364,
-      0.00149392914724547,
-      0.0020697447442575927,
-      0.0018830207376816452,
-      0.0011628341337717872,
-      0.001554191442683929,
-      0.0016385690065934065,
-      0.0027713999395746767,
-      0.002773477335949016,
-      0.001625667646437571,
-      0.0007613522897135307,
-      0.00048365765436867136,
-      0.00041373839965017637,
-      0.00036504943245056797,
-      0.0002933784368290502,
-      0.00026076481143890595
+      0.0031584981051353167,
+      0.004593604292040571,
+      0.00369202046497549,
+      0.007289417513759539,
+      0.011634747425370087,
+      0.013051586911545756,
+      0.012496324922519564,
+      0.010583178946323902,
+      0.00849893487939729,
+      0.005567075999077385,
+      0.0073896750939020685,
+      0.008171548041578701,
+      0.009500977920735591,
+      0.011539559444204981,
+      0.010509250733518398,
+      0.007668372496701547,
+      0.004789872268374501,
+      0.0028174789457953864,
+      0.0026376055472963193,
+      0.0034758887350478922,
+      0.0038551786413860787,
+      0.003274833576750209,
+      0.0049192315886280825,
+      0.004515204651122686,
+      0.0037421445388046135,
+      0.0026422948137542627
     ],
     "wrist_rot_step_rad": [
-      0.29186315580973116,
-      0.1551763747374524,
-      0.1703683334680297,
-      0.19539405167220844,
-      0.14521263328157694,
-      0.13442679751349193,
-      0.0960680565790934,
-      0.05260284842447469,
-      0.025727264685897304,
-      0.012101509943764322,
-      0.03360199168624338,
-      0.05045263131902386,
-      0.06498482338014334,
-      0.05534796423040384,
-      0.031204405491736198,
-      0.05162810107355406,
-      0.057275051629510944,
-      0.10787599280873542,
-      0.10969901379934688,
-      0.06319823597703898,
-      0.02828149151337837,
-      0.01558008970484459,
-      0.012250223613761792,
-      0.010087026467373465,
-      0.007597489107965091,
-      0.00569218747476404
+      0.031384271638104706,
+      0.06953343137915226,
+      0.08081836039444243,
+      0.08112730119115229,
+      0.08619770924849955,
+      0.1013228155190121,
+      0.09641223878629081,
+      0.0773749643463996,
+      0.06647388059549407,
+      0.07327029051933216,
+      0.09665375416562705,
+      0.08396681210631551,
+      0.0815609863285734,
+      0.0919954570708904,
+      0.1010391717873877,
+      0.10958774235122253,
+      0.115778150977037,
+      0.10003682292434417,
+      0.10464208788443573,
+      0.11148637336587783,
+      0.12317998762129016,
+      0.11327280820910969,
+      0.11133283879069705,
+      0.11903782307202694,
+      0.12251898117345245,
+      0.08135944764720651
     ],
     "wrist_pos": [
       [
-        -0.0570103733174388,
-        -0.020171763068528557,
-        0.06962972680471927
+        -0.14715158017319396,
+        0.1393971951918599,
+        -0.10247553740066569
       ],
       [
-        -0.05324277992351745,
-        -0.019650178184414,
-        -0.013512839069316622
+        -0.14494772952676502,
+        0.13777508580390233,
+        -0.10405284958976398
       ],
       [
-        -0.0652212348565368,
-        -0.026689913687394463,
-        -0.029144485617798983
+        -0.1410408805630718,
+        0.13556679672299385,
+        -0.10503325302809083
       ],
       [
-        -0.07153883784216306,
-        -0.033359171778946206,
-        -0.03976820396595112
+        -0.13773197987172758,
+        0.13410157611043114,
+        -0.10576490860631121
       ],
       [
-        -0.07530514867667208,
-        -0.03628223051961823,
-        -0.04747578068140792
+        -0.13466376769392585,
+        0.13793994366712434,
+        -0.1003808008602108
       ],
       [
-        -0.0769706495292614,
-        -0.03721348865893536,
-        -0.05113919499158313
+        -0.1326720670836681,
+        0.14501979082795652,
+        -0.09136546722742098
       ],
       [
-        -0.07624052015329326,
-        -0.03829015938160762,
-        -0.05415631895955339
+        -0.13166394128857042,
+        0.15422693992047967,
+        -0.08217003309525836
       ],
       [
-        -0.07399169481645719,
-        -0.03861774115838316,
-        -0.05293709532079573
+        -0.13086234862729496,
+        0.1640279131006187,
+        -0.07445922830608309
       ],
       [
-        -0.07258517955428088,
-        -0.03826678790558618,
-        -0.05221751545050876
+        -0.12897181595876678,
+        0.1730460650398875,
+        -0.06925322230921721
       ],
       [
-        -0.07191331692148568,
-        -0.03789034065093984,
-        -0.05187658583705567
+        -0.12538247623601,
+        0.18033071892427854,
+        -0.06674676021624576
       ],
       [
-        -0.07163048015555402,
-        -0.03762593718843621,
-        -0.05174375004974174
+        -0.11989947782316507,
+        0.17971919465560268,
+        -0.06749181165947889
       ],
       [
-        -0.07085908533521924,
-        -0.03822586141358196,
-        -0.05146708124668749
+        -0.11308633796186357,
+        0.17998850828360485,
+        -0.07034065236993524
       ],
       [
-        -0.06990412524187072,
-        -0.039372135270078774,
-        -0.0515440991862423
+        -0.10707462605334368,
+        0.1780944755776108,
+        -0.07554124439713884
       ],
       [
-        -0.06857915574816617,
-        -0.04095131906681254,
-        -0.051729780858110516
+        -0.10245130243061867,
+        0.17273910995157452,
+        -0.08188265742116804
       ],
       [
-        -0.06735450554291225,
-        -0.042345393980359344,
-        -0.05205002156247231
+        -0.099297865547721,
+        0.16473285517560882,
+        -0.08957142536240853
       ],
       [
-        -0.06652497374067773,
-        -0.04312888503713901,
-        -0.05227407953642683
+        -0.09905024662437721,
+        0.1589418694489062,
+        -0.0983376970991211
       ],
       [
-        -0.06514206497230828,
-        -0.04381322888932607,
-        -0.05246048734434435
+        -0.09957472365635762,
+        0.1560416762387363,
+        -0.10541708548617673
       ],
       [
-        -0.06360844879264509,
-        -0.044305050040342984,
-        -0.05276221861262158
+        -0.09996597508137733,
+        0.15608266778878754,
+        -0.1101907757110015
       ],
       [
-        -0.0609474513171568,
-        -0.04505270187515236,
-        -0.05296412649861334
+        -0.0980865659970463,
+        0.1560203263993085,
+        -0.11228889931434141
       ],
       [
-        -0.05839517457139043,
-        -0.04571760441175867,
-        -0.05382201026862975
+        -0.09584274830185979,
+        0.15593090814667604,
+        -0.11367246338947216
       ],
       [
-        -0.05695314230103364,
-        -0.04611440663094935,
-        -0.05445910227671717
+        -0.09821295295848535,
+        0.15624164989437053,
+        -0.11114909818594274
       ],
       [
-        -0.05629438305892953,
-        -0.04626208523874081,
-        -0.05481107471710879
+        -0.10059845649340941,
+        0.1580493707123871,
+        -0.10871929969924188
       ],
       [
-        -0.055821155036880475,
-        -0.04626675605590235,
-        -0.05491086524393367
+        -0.10170891719964278,
+        0.16093236541404984,
+        -0.10763313510512793
       ],
       [
-        -0.05542268075429709,
-        -0.046181895232343395,
-        -0.054982950957425614
+        -0.10009737601598793,
+        0.16498548093697887,
+        -0.10990778430747374
       ],
       [
-        -0.05507088903449244,
-        -0.04610489058728415,
-        -0.055042733552289565
+        -0.09809514600611423,
+        0.16728845635216755,
+        -0.11323561427099615
       ],
       [
-        -0.054795945743323186,
-        -0.0460119319388229,
-        -0.05508557959660562
+        -0.09671005461380479,
+        0.16788316868455844,
+        -0.11666073979073374
       ],
       [
-        -0.05456491543032797,
-        -0.045891085097736324,
-        -0.055089975317422255
+        -0.09481716004539371,
+        0.16634652787610948,
+        -0.11767927160736093
       ]
     ],
     "wrist_rot": [
       [
-        -0.24631442166129866,
-        -0.32563365473722883,
-        -0.3006050783140485
+        0.18087965908531844,
+        -0.6314437973057526,
+        -1.5662173747649748
       ],
       [
-        -0.3504218371116377,
-        -0.5461691315098659,
-        -0.46094799600027353
+        0.15907290511568242,
+        -0.6089069628530752,
+        -1.567453934676471
       ],
       [
-        -0.2779619584254463,
-        -0.6189660311730362,
-        -0.5772660283807733
+        0.1118034669174137,
+        -0.5593516150194576,
+        -1.5554220689496396
       ],
       [
-        -0.1812147401843027,
-        -0.5456548460402408,
-        -0.6968102250015182
+        0.047741972940325436,
+        -0.5289527944094367,
+        -1.516645219260821
       ],
       [
-        -0.10406642815686114,
-        -0.4023158081221457,
-        -0.8048884077624856
+        -0.012272703791567963,
+        -0.5397653694880168,
+        -1.4631385300014739
       ],
       [
-        -0.054988943979212924,
-        -0.2825705319275107,
-        -0.8707608469190329
+        -0.06262649494015586,
+        -0.5787232395133216,
+        -1.4050280734575376
       ],
       [
-        0.004438832620024418,
-        -0.16683530778481911,
-        -0.9045877762926169
+        -0.11858362814381432,
+        -0.6320225091457449,
+        -1.33949716437657
       ],
       [
-        0.026097287229857394,
-        -0.07634796800042137,
-        -0.9285048032303582
+        -0.1680846394580825,
+        -0.6803620999739974,
+        -1.272353634344209
       ],
       [
-        0.022094305599841123,
-        -0.026550207792426218,
-        -0.9449735274889347
+        -0.20850406429879031,
+        -0.7027905514096564,
+        -1.2103043009928243
       ],
       [
-        0.0159501052365391,
-        -0.004353508685664152,
-        -0.9564385830438671
+        -0.23040140229678657,
+        -0.7001574389380137,
+        -1.147595847744979
       ],
       [
-        0.012188365541437634,
-        0.0036972219778926988,
-        -0.9646533011259555
+        -0.2187376607649155,
+        -0.6733424619267385,
+        -1.0804136357082366
       ],
       [
-        0.037834906989559894,
-        0.02505525227253236,
-        -0.9685498764127132
+        -0.18314256298488088,
+        -0.6277601424550491,
+        -1.0029721135129692
       ],
       [
-        0.07939059730778068,
-        0.053608260955136024,
-        -0.9703714977676161
+        -0.13604081032934237,
+        -0.5703564245337059,
+        -0.9637718124824843
       ],
       [
-        0.13245312405284387,
-        0.09109156333662424,
-        -0.9688230896315623
+        -0.08580348752404544,
+        -0.5064968547950963,
+        -0.970868377922596
       ],
       [
-        0.17708398550647866,
-        0.12362007925465453,
-        -0.9651653577486915
+        -0.03218842225918839,
+        -0.44127041741716555,
+        -1.0073937220730627
       ],
       [
-        0.2013003778403028,
-        0.14261218967449904,
-        -0.960009680661496
+        0.02870729491554448,
+        -0.3825165742073857,
+        -1.0626079573148624
       ],
       [
-        0.21595307625949325,
-        0.16551536336204584,
-        -0.916121141331331
+        0.09621815000678965,
+        -0.3283118236900742,
+        -1.1297913089716742
       ],
       [
-        0.22523846098691236,
-        0.18756339583419568,
-        -0.8640817578440723
+        0.16819076846016467,
+        -0.2738106846943166,
+        -1.2022768129348225
       ],
       [
-        0.24376543961694555,
-        0.21859123291813998,
-        -0.76243898036724
+        0.2420057929682834,
+        -0.21325663710622836,
+        -1.2321417659460356
       ],
       [
-        0.2651857811132666,
-        0.24921215304787658,
-        -0.6593011994664538
+        0.3171415619680037,
+        -0.14434893514018907,
+        -1.20855551182644
       ],
       [
-        0.2802446465851922,
-        0.2679026759841601,
-        -0.6008382885427219
+        0.3895801386754395,
+        -0.07900314041867336,
+        -1.1545944966109125
       ],
       [
-        0.28824453214816614,
-        0.2771061049344536,
-        -0.5753208143582045
+        0.46357227029806175,
+        -0.008698539747007863,
+        -1.0856326453254417
       ],
       [
-        0.2907921018583593,
-        0.2852330841969092,
-        -0.5622746926413751
+        0.5059739327247167,
+        0.06580467669958201,
+        -1.0115914484000386
       ],
       [
-        0.29127579354463395,
-        0.29269820198527285,
-        -0.5525738660092961
+        0.4981238675872544,
+        0.14603927683443085,
+        -0.9348074239435551
       ],
       [
-        0.2921468929675793,
-        0.29841291071402415,
-        -0.5443075855341144
+        0.45201136020505756,
+        0.2251768223702618,
+        -0.8587752671201536
       ],
       [
-        0.292687894819166,
-        0.3022609906013571,
-        -0.5377790758325874
+        0.38718747005837656,
+        0.2993646154390695,
+        -0.7859402798296241
       ],
       [
-        0.2923079637723754,
-        0.30456184736204256,
-        -0.5325865129957646
+        0.3154121778094482,
+        0.32628869137555944,
+        -0.7586866327524789
       ]
     ],
     "final_tip_positions_world": [
       [
-        0.013752412775441349,
-        -0.13696564779478942,
-        0.8620610310999979
+        -0.09539886677691278,
+        0.10463435768450281,
+        0.8697169418027384
       ],
       [
-        -0.028015295496887985,
-        -0.10469541472884764,
-        0.9258754725909144
+        -0.08342405387010125,
+        0.1339196946607338,
+        0.8734776522022099
       ],
       [
-        0.026369002705390766,
-        -0.07763241304604593,
-        0.901502524782661
+        -0.06994744541113809,
+        0.16606395801342091,
+        0.8535108971749735
       ],
       [
-        -0.1488404365189418,
-        -0.12349308600932057,
-        0.9098894391917091
+        -0.18247524676692384,
+        0.10656145080487853,
+        0.8464645379334548
       ]
     ],
+    "tip_centroid_world": [
+      [
+        -0.2106585301198687,
+        0.15409841923776885,
+        0.8441483515456871
+      ],
+      [
+        -0.20820361192652703,
+        0.15266874686354903,
+        0.8435694268160215
+      ],
+      [
+        -0.20325823845369245,
+        0.1507316507715768,
+        0.844366537710386
+      ],
+      [
+        -0.19949985646585644,
+        0.14938041281403322,
+        0.8438932143798346
+      ],
+      [
+        -0.19733454868171518,
+        0.1525906347145172,
+        0.8468873367275721
+      ],
+      [
+        -0.19685949778045495,
+        0.15828378152781036,
+        0.8525810528247093
+      ],
+      [
+        -0.19751842484701992,
+        0.16548965778659308,
+        0.8575521857696746
+      ],
+      [
+        -0.19799051070481855,
+        0.17275152784424233,
+        0.8618727410046735
+      ],
+      [
+        -0.19671073302986983,
+        0.1793682379966403,
+        0.865789304133336
+      ],
+      [
+        -0.19316451404174173,
+        0.18435405814183636,
+        0.8691537507267595
+      ],
+      [
+        -0.1872121714829413,
+        0.18135652473269417,
+        0.8712622678740205
+      ],
+      [
+        -0.17923173420922772,
+        0.1781844475040157,
+        0.8724905189324423
+      ],
+      [
+        -0.17146135520058345,
+        0.17396957500841967,
+        0.871640640733589
+      ],
+      [
+        -0.16496062843084006,
+        0.1678078666823981,
+        0.8693344454410048
+      ],
+      [
+        -0.15984804206507794,
+        0.1597433714307138,
+        0.8653869859905355
+      ],
+      [
+        -0.15758625799941622,
+        0.15380419256106329,
+        0.8598955463005387
+      ],
+      [
+        -0.1561084238419417,
+        0.15063092284639717,
+        0.8556750916862123
+      ],
+      [
+        -0.1540639986037713,
+        0.149855981616751,
+        0.8539737797433764
+      ],
+      [
+        -0.14940300188509142,
+        0.1471911364314501,
+        0.8547258699141121
+      ],
+      [
+        -0.14361348946932712,
+        0.1415880162526525,
+        0.8557311145912243
+      ],
+      [
+        -0.14232347486997926,
+        0.13528602222678804,
+        0.8590477905739324
+      ],
+      [
+        -0.14057505863306663,
+        0.1292916156405404,
+        0.8614039562583428
+      ],
+      [
+        -0.13678718857358116,
+        0.12539685280313706,
+        0.8624192114731422
+      ],
+      [
+        -0.1291287309942753,
+        0.12527820159679343,
+        0.8612677280982048
+      ],
+      [
+        -0.12060971365095924,
+        0.12601213780987475,
+        0.8601565435752812
+      ],
+      [
+        -0.1126665858825934,
+        0.12671040813534676,
+        0.8592889978161858
+      ],
+      [
+        -0.107811403206269,
+        0.12779486529088402,
+        0.8607925072783441
+      ]
+    ],
+    "palm_world": [
+      [
+        -0.14715129456383033,
+        0.13939715674153255,
+        0.8175242387797554
+      ],
+      [
+        -0.145080797923416,
+        0.13787216541548009,
+        0.8160484213173773
+      ],
+      [
+        -0.14119928802659626,
+        0.13567295382701175,
+        0.8150112935135323
+      ],
+      [
+        -0.13783235236480293,
+        0.13413449953533177,
+        0.8142749730486184
+      ],
+      [
+        -0.13476807939674812,
+        0.13770383702760658,
+        0.8192813270888499
+      ],
+      [
+        -0.13272257952501582,
+        0.14473569046652782,
+        0.8283169973921607
+      ],
+      [
+        -0.13168891004760475,
+        0.15385434473807552,
+        0.8374903799022843
+      ],
+      [
+        -0.13088896204823564,
+        0.1636655155012871,
+        0.8452902088574665
+      ],
+      [
+        -0.12906491024849076,
+        0.1727292766482508,
+        0.8505883357483286
+      ],
+      [
+        -0.12553733817619633,
+        0.18011742807490772,
+        0.8531790994737243
+      ],
+      [
+        -0.12013023471848751,
+        0.17976054281551757,
+        0.8525898773040721
+      ],
+      [
+        -0.11335099718674142,
+        0.1799873561852784,
+        0.8497734896808722
+      ],
+      [
+        -0.10728021826435304,
+        0.17820054251991002,
+        0.8446653214461479
+      ],
+      [
+        -0.10260272421131882,
+        0.1729781215440079,
+        0.8383733126619635
+      ],
+      [
+        -0.09939263199622042,
+        0.165050207988139,
+        0.8307342654435524
+      ],
+      [
+        -0.09901231622619858,
+        0.1590786394462777,
+        0.8220217040700137
+      ],
+      [
+        -0.09957107984218377,
+        0.15613219211516124,
+        0.8147905692110359
+      ],
+      [
+        -0.09995301510700681,
+        0.15603076925230672,
+        0.8099614343427839
+      ],
+      [
+        -0.09819490132802272,
+        0.15606003988169156,
+        0.8077438878234312
+      ],
+      [
+        -0.0959084581968779,
+        0.1559291594226662,
+        0.8063801710810109
+      ],
+      [
+        -0.09805665313555809,
+        0.1562368201477349,
+        0.8087035090647476
+      ],
+      [
+        -0.10048639843009785,
+        0.15799411156780852,
+        0.8111631282991781
+      ],
+      [
+        -0.10173650493383198,
+        0.16078709308686276,
+        0.8123949717573892
+      ],
+      [
+        -0.10017385121025454,
+        0.164831842120565,
+        0.8102094764191371
+      ],
+      [
+        -0.09817031234502129,
+        0.16723765423746265,
+        0.8068952106812717
+      ],
+      [
+        -0.09675165570702636,
+        0.1678772784917865,
+        0.8034678474817242
+      ],
+      [
+        -0.09490312763721939,
+        0.16641836636481033,
+        0.8023195902882
+      ]
+    ],
+    "object_world": [
+      [
+        -0.0011889126966305665,
+        -0.0004775774486083768,
+        0.7999709075740624
+      ],
+      [
+        -0.0011889126966305695,
+        -0.00047757744860837476,
+        0.7999709075740624
+      ],
+      [
+        -0.0011889126966305888,
+        -0.00047757744860837617,
+        0.7999709075740624
+      ],
+      [
+        -0.0011889126966306077,
+        -0.0004775774486083829,
+        0.7999709075740624
+      ],
+      [
+        -0.0011889126966306244,
+        -0.00047757744860838994,
+        0.7999709075740624
+      ],
+      [
+        -0.001188912696630629,
+        -0.00047757744860839124,
+        0.7999709075740624
+      ],
+      [
+        -0.001188912696630618,
+        -0.0004775774486083922,
+        0.7999709075740624
+      ],
+      [
+        -0.0011889126966306044,
+        -0.0004775774486083951,
+        0.7999709075740624
+      ],
+      [
+        -0.0011889126966305988,
+        -0.00047757744860839785,
+        0.7999709075740624
+      ],
+      [
+        -0.0011889126966305999,
+        -0.00047757744860839487,
+        0.7999709075740624
+      ],
+      [
+        -0.0011889126966306098,
+        -0.00047757744860838245,
+        0.7999709075740624
+      ],
+      [
+        -0.0011889126966308761,
+        -0.0004775774486083491,
+        0.7999709075740624
+      ],
+      [
+        -0.0011889126966311628,
+        -0.0004775774486083541,
+        0.7999709075740624
+      ],
+      [
+        -0.0011889126966313104,
+        -0.00047757744860835855,
+        0.7999709075740624
+      ],
+      [
+        -0.001188912696631376,
+        -0.0004775774486083625,
+        0.7999709075740624
+      ],
+      [
+        -0.001188912696631409,
+        -0.000477577448608361,
+        0.7999709075740623
+      ],
+      [
+        -0.0011889126966314408,
+        -0.00047757744860835746,
+        0.7999709075740623
+      ],
+      [
+        -0.0011889126966314533,
+        -0.00047757744860835524,
+        0.7999709075740623
+      ],
+      [
+        -0.0011889126966314486,
+        -0.0004775774486083552,
+        0.7999709075740623
+      ],
+      [
+        -0.0011889126966314468,
+        -0.0004775774486083553,
+        0.7999709075740623
+      ],
+      [
+        -0.0011476672205151769,
+        -0.00044523587613879453,
+        0.7999164663849686
+      ],
+      [
+        -0.0011475649728259416,
+        -0.00044444981030925223,
+        0.7999427308099414
+      ],
+      [
+        -0.0011843592291509112,
+        -0.00041383811868227953,
+        0.7999777165838355
+      ],
+      [
+        -0.0012095944839349056,
+        -0.0004291400168859044,
+        0.7999689627756252
+      ],
+      [
+        -0.0012091075782447,
+        -0.00042927160298760126,
+        0.799970776929711
+      ],
+      [
+        -0.0012090734431791034,
+        -0.0004292797628672451,
+        0.7999708989216971
+      ],
+      [
+        -0.0012090711727301214,
+        -0.00042928031257522225,
+        0.7999709070010825
+      ]
+    ],
+    "commanded_palm_world": [
+      [
+        -0.14499149859342836,
+        0.13720417615562627,
+        0.7995014155002198
+      ],
+      [
+        -0.13499149860342835,
+        0.12720417616562626,
+        0.7895014155102198
+      ],
+      [
+        -0.12978126167463744,
+        0.11720417617562626,
+        0.7857720404141796
+      ],
+      [
+        -0.13097670916722298,
+        0.12358829012278674,
+        0.78643114584278
+      ],
+      [
+        -0.12097670917722299,
+        0.13358829011278675,
+        0.7944125078718881
+      ],
+      [
+        -0.11809365039282797,
+        0.13449183892131059,
+        0.7855112018147499
+      ],
+      [
+        -0.10809365040282796,
+        0.1444918389113106,
+        0.7955112018047499
+      ],
+      [
+        -0.10462173807783759,
+        0.14528036711490835,
+        0.7883867704605422
+      ],
+      [
+        -0.10076954177924571,
+        0.13561871849623755,
+        0.7852837250485394
+      ],
+      [
+        -0.0994795307524834,
+        0.13803297670028172,
+        0.7829782953722311
+      ],
+      [
+        -0.10377080684921965,
+        0.13775938876986213,
+        0.7821833617594978
+      ],
+      [
+        -0.10040511726459801,
+        0.14415269259017566,
+        0.7876357025735444
+      ],
+      [
+        -0.10095119396803064,
+        0.14584876917346914,
+        0.7846686554580699
+      ],
+      [
+        -0.09772109359188164,
+        0.15139377979871968,
+        0.7854612367121989
+      ],
+      [
+        -0.10040046640155988,
+        0.14945736300547435,
+        0.7847293881456079
+      ],
+      [
+        -0.10322604259721847,
+        0.1542442514964009,
+        0.7830238176022715
+      ],
+      [
+        -0.09893657884266925,
+        0.15077867610085155,
+        0.7892748925740207
+      ],
+      [
+        -0.10071390373640186,
+        0.16069474145745885,
+        0.7861183947939907
+      ],
+      [
+        -0.09109930749409899,
+        0.15069474146745884,
+        0.7915656797577428
+      ],
+      [
+        -0.09337676277426217,
+        0.1556937972739211,
+        0.7869697872788253
+      ],
+      [
+        -0.09068193631454878,
+        0.1587280151677581,
+        0.7842781818864177
+      ],
+      [
+        -0.09138381574316114,
+        0.16800007978598888,
+        0.7891900815558427
+      ],
+      [
+        -0.09034322800204457,
+        0.17516832488055586,
+        0.7873064100244564
+      ],
+      [
+        -0.09417369550480247,
+        0.17555341352182113,
+        0.7862708318725766
+      ],
+      [
+        -0.09311795834804151,
+        0.1696908686622266,
+        0.7836848360373093
+      ],
+      [
+        -0.09436235174206466,
+        0.16826153311706268,
+        0.7807196585977525
+      ],
+      [
+        -0.08932448076771211,
+        0.16317472339428335,
+        0.7883767750387761
+      ]
+    ],
+    "execution_deviation_m": {
+      "definition": "||palm_world(realised) - (hand_root + slide command)|| per control frame: how far the physics put the hand from the pose the solved command asked for",
+      "rms_m": 0.04615691501761361,
+      "max_m": 0.08589681758791064,
+      "per_frame_m": [
+        0.018283764422276343,
+        0.030337163228102836,
+        0.036419788515563205,
+        0.030553250074163412,
+        0.028733217504936986,
+        0.046381873582792096,
+        0.0490575599352959,
+        0.06531448566507114,
+        0.08026527008498338,
+        0.08589681758791064,
+        0.08359907447158159,
+        0.07288911790197715,
+        0.06845650967503328,
+        0.057353307728462095,
+        0.0485860193887185,
+        0.039521664258108595,
+        0.026078966227183472,
+        0.024306832849264635,
+        0.01846261885937336,
+        0.019576206895159886,
+        0.02563569988485447,
+        0.025802929964261038,
+        0.0310815462449265,
+        0.026907483429865226,
+        0.023880243571575192,
+        0.022876549620842745,
+        0.015363743609370706
+      ],
+      "cap_m": 0.04,
+      "within_cap": false
+    },
     "final_finger_qpos": [
-      -0.12982785598075083,
-      0.3398358145867194,
-      0.3800301698132781,
-      0.6195345605722763,
-      0.38110432064811284,
-      1.2036764323039215,
-      0.752870428263479,
-      0.6926640972819328,
-      0.47090221696824686,
-      0.7563495566064613,
-      0.5960061591788753,
-      0.6025491171857537,
-      0.2745633501114357,
-      0.8707823978567871,
-      0.5610104806251236,
-      0.7035655587822348
+      0.022838472836056705,
+      1.2322810750504918,
+      1.096624714730229,
+      0.6571002154531653,
+      0.20292648041977923,
+      1.4331846148732934,
+      0.9829317354126156,
+      0.6624022997961421,
+      0.45063992476916775,
+      1.2821954690880681,
+      1.6385326315102697,
+      0.5990823422341346,
+      0.3817429397403425,
+      0.23917552005197568,
+      0.7906526518743585,
+      0.6153367933580477
     ],
     "warm_start": {
       "reachable": false,
@@ -657,11 +1318,11 @@
         "wrist_z"
       ],
       "unreachable_note": "the first commanded wrist pose is not in this floating wrist's reachable set on this scene: the palm rests on the box top and blocks the wrist's descent, so no approach path reaches the command. The ramp caps the *command* rate; it cannot make an unreachable pose reachable.",
-      "control_steps": 132,
-      "ramp_control_steps": 32,
-      "ramp_duration_s": 1.6,
+      "control_steps": 121,
+      "ramp_control_steps": 21,
+      "ramp_duration_s": 1.05,
       "settle_control_steps": 100,
-      "duration_s": 6.6000000000000005,
+      "duration_s": 6.050000000000001,
       "dt_ctrl_s": 0.05,
       "rate_caps": {
         "finger_rad_s": 3.14,
@@ -670,24 +1331,24 @@
         "source": "free-space step/ramp measurement of this model's own servos, recorded in rerun_evidence.velocity_gate.floating_wrist_servo_ceiling"
       },
       "commanded_peak_rate": {
-        "finger": 3.1400000000000006,
-        "wrist_slide": 0.20000000000000004,
-        "wrist_hinge": 1.5000000000000002
+        "finger": 3.1399999968600003,
+        "wrist_slide": 0.19999999980000005,
+        "wrist_hinge": 1.4999999985000003
       },
       "realised_peak_rate": {
-        "finger": 0.2819309638476464,
-        "wrist_slide": 0.19989467710515268,
-        "wrist_hinge": 1.0781463194806042
+        "finger": 0.32448440583723315,
+        "wrist_slide": 0.42790566099580346,
+        "wrist_hinge": 1.8669887768821858
       },
       "command_span": {
-        "finger": 0.7064533910215189,
-        "wrist_slide": 0.31311440148676345,
-        "wrist_hinge": 0.18406932535485504
+        "finger": 1.2436907403978936,
+        "wrist_slide": 0.145162285941704,
+        "wrist_hinge": 1.5700488246694924
       },
       "tracking_error_to_goal": {
-        "finger": 0.25515383192605645,
-        "wrist_slide": 0.1381251660075413,
-        "wrist_hinge": 0.0077100132507168795
+        "finger": 0.914138017402336,
+        "wrist_slide": 0.03209697207752578,
+        "wrist_hinge": 0.0097930524359163
       },
       "tracking_error_note": "finite by design: the first commanded pose puts the hand in sustained box contact, so the force-limited servos hold a contact deflection instead of reaching the commanded qpos exactly.",
       "residual_to_goal_rad": 0.0,
@@ -695,35 +1356,35 @@
       "cap_respected": true,
       "velocity_scope": "warm-start segment excluded from joint_velocity_max_rad_s by design: it is a rate-limited approach to the first command, not retargeted motion. Its own rates are below.",
       "replay_qpos_at_warm_start_end": [
-        -8.082157830148199e-06,
-        -3.83841646045343e-05,
-        0.7999709075740623,
-        0.9999999999803736,
-        1.734717898827662e-17,
-        -1.242256062044134e-16,
-        -6.265269828700308e-06,
-        -0.0570103733174388,
-        -0.020171763068528557,
-        0.06962972680471927,
-        -0.24631442166129866,
-        -0.32563365473722883,
-        -0.3006050783140485,
-        -0.18286875459472948,
-        0.15006079742318942,
-        0.1619881538322385,
-        0.5217241345557615,
-        0.2717559733141353,
-        1.0261144146155436,
-        0.5005471990314956,
-        0.5950584659010026,
-        0.4197178405505275,
-        0.5361153496006145,
-        0.4794366653673012,
-        0.6160440700386132,
-        0.27048935216517883,
-        0.8126319849400208,
-        0.4536485751141473,
-        0.6274148804907562
+        -0.0011889126966305665,
+        -0.00047757744860837687,
+        0.7999709075740624,
+        0.9999360687411738,
+        -3.3203805266501757e-18,
+        -2.8656765821150233e-19,
+        -0.011307450218674136,
+        -0.14715158017319396,
+        0.1393971951918599,
+        -0.10247553740066569,
+        0.18087965908531844,
+        -0.6314437973057526,
+        -1.5662173747649748,
+        0.03437851627784704,
+        1.3326867678337007,
+        1.1281930966605997,
+        0.5534074743064692,
+        0.2048313615792956,
+        1.5878041816040749,
+        0.8611213485478958,
+        0.5645189855569881,
+        0.38386173759304626,
+        1.4405794055730894,
+        1.6294272163546515,
+        0.6098357260077865,
+        0.2773206163192185,
+        0.22771167038228707,
+        0.7311872364377291,
+        0.5399394117009279
       ]
     }
   },
@@ -761,12 +1422,12 @@
       {
         "path": "blocker.what",
         "stale": "the fingers interpenetrate the box proxy",
-        "corrected": "only ['palm_collision'] ever touches the box -- no fingertip pad does. The deepest overlap is 1.200 mm of palm_collision, which the R3 stiffening deliberately left at the default solref (it was scoped to the box + the four fingertip pads)."
+        "corrected": "only ['ff_proximal_collision', 'mf_proximal_collision', 'palm_collision', 'rf_proximal_collision'] ever touches the box -- no fingertip pad does. The deepest overlap is 0.096 mm of palm_collision, which the R3 stiffening deliberately left at the default solref (it was scoped to the box + the four fingertip pads)."
       },
       {
         "path": "blocker.penetration.why",
         "stale": "Position servos kp=3 with forcerange +-2 N m cannot hold the box out",
-        "corrected": "superseded by R1: the finger forceranges are now (10 N/4)*moment_arm per joint, not a flat +-2 N m, and kp was re-pinned. The remaining 1.200 mm is palm_collision against the box top at 28.2 N, not finger servo authority."
+        "corrected": "superseded by R1: the finger forceranges are now (10 N/4)*moment_arm per joint, not a flat +-2 N m, and kp was re-pinned. The remaining 0.096 mm is palm_collision against the box top at 4.3 N, not finger servo authority."
       },
       {
         "path": "blocker.not_a_threshold_problem",
@@ -776,17 +1437,17 @@
       {
         "path": "blocker.fixes_for_p1[0]",
         "stale": "widen wrist_z ... and wrist_ry ... (needs 0.062 m / 0.058 rad more)",
-        "corrected": "superseded by R2: wrist_z now needs 0.000 m more (overshoot is exactly 0.0 after the +0.063 m revision). wrist_ry is still 0.057036 rad short: unclamping wrist_z changed the retargeted wrist solution, so the ry residual moved after the revision that was sized to cover it."
+        "corrected": "superseded by R2: wrist_z now needs 0.000 m more (overshoot is exactly 0.0 after the +0.063 m revision). wrist_ry is still 0.000000 rad short: unclamping wrist_z changed the retargeted wrist solution, so the ry residual moved after the revision that was sized to cover it."
       },
       {
         "path": "blocker.fixes_for_p1[1]",
         "stale": "the 2.7 mm finger-box penetration",
-        "corrected": "the max overlap is now 1.200 mm, down from 2.724 mm, and it is palm_collision, not a finger."
+        "corrected": "the max overlap is now 0.096 mm, down from 2.724 mm, and it is palm_collision, not a finger."
       },
       {
         "path": "blocker.what / velocity criterion",
         "stale": "(not mentioned) the G3 velocity criterion fails",
-        "corrected": "the velocity exceedance is wrist-only and confined to control intervals [0]; all 16 finger joints peak at 0.319 rad/s. See rerun_evidence.velocity_gate."
+        "corrected": "the velocity exceedance is wrist-only and confined to control intervals []; all 16 finger joints peak at 0.237 rad/s. See rerun_evidence.velocity_gate."
       }
     ]
   },
@@ -834,91 +1495,89 @@
       },
       "per_dof_control_period_rate": {
         "wrist_rx": {
-          "max_control_period_rate": 2.0821483090067807,
-          "at_interval": 0
+          "max_control_period_rate": 1.502715379994406,
+          "at_interval": 18
         },
         "wrist_ry": {
-          "max_control_period_rate": 4.4107095354527415,
-          "at_interval": 0
+          "max_control_period_rate": 1.6046920026969769,
+          "at_interval": 22
         },
         "wrist_rz": {
-          "max_control_period_rate": 3.206858353724501,
-          "at_interval": 0
-        },
-        "ffj0": {
-          "max_control_period_rate": 0.06880551215643183,
-          "at_interval": 3
-        },
-        "ffj1": {
-          "max_control_period_rate": 0.20373245725769262,
-          "at_interval": 0
-        },
-        "ffj2": {
-          "max_control_period_rate": 0.18845462410771174,
-          "at_interval": 0
-        },
-        "ffj3": {
-          "max_control_period_rate": 0.08310476763852437,
+          "max_control_period_rate": 1.5488304439053469,
           "at_interval": 10
         },
+        "ffj0": {
+          "max_control_period_rate": 0.07718826775494098,
+          "at_interval": 0
+        },
+        "ffj1": {
+          "max_control_period_rate": 0.23685617502001488,
+          "at_interval": 22
+        },
+        "ffj2": {
+          "max_control_period_rate": 0.2303077338696502,
+          "at_interval": 2
+        },
+        "ffj3": {
+          "max_control_period_rate": 0.09303781994076443,
+          "at_interval": 25
+        },
         "mfj0": {
-          "max_control_period_rate": 0.11730578525877222,
-          "at_interval": 3
+          "max_control_period_rate": 0.051968267887841924,
+          "at_interval": 1
         },
         "mfj1": {
-          "max_control_period_rate": 0.310684624128168,
-          "at_interval": 1
+          "max_control_period_rate": 0.23333002181636253,
+          "at_interval": 22
         },
         "mfj2": {
-          "max_control_period_rate": 0.2566180127360562,
-          "at_interval": 1
+          "max_control_period_rate": 0.2082390892374253,
+          "at_interval": 15
         },
         "mfj3": {
-          "max_control_period_rate": 0.08780522670339908,
-          "at_interval": 17
+          "max_control_period_rate": 0.09073369248356222,
+          "at_interval": 18
         },
         "rfj0": {
-          "max_control_period_rate": 0.06823954503563212,
+          "max_control_period_rate": 0.09724531549971105,
           "at_interval": 3
         },
         "rfj1": {
-          "max_control_period_rate": 0.23827235706788352,
-          "at_interval": 2
+          "max_control_period_rate": 0.21313279576740563,
+          "at_interval": 25
         },
         "rfj2": {
-          "max_control_period_rate": 0.1896326907727841,
-          "at_interval": 0
+          "max_control_period_rate": 0.14509379682920098,
+          "at_interval": 22
         },
         "rfj3": {
-          "max_control_period_rate": 0.017483709387118296,
-          "at_interval": 13
+          "max_control_period_rate": 0.015179736200587879,
+          "at_interval": 12
         },
         "thj0": {
-          "max_control_period_rate": 0.3193223851707627,
-          "at_interval": 1
+          "max_control_period_rate": 0.12894417445968198,
+          "at_interval": 9
         },
         "thj1": {
-          "max_control_period_rate": 0.0855512113220569,
-          "at_interval": 0
+          "max_control_period_rate": 0.09232193350162621,
+          "at_interval": 1
         },
         "thj2": {
-          "max_control_period_rate": 0.0994535677075814,
-          "at_interval": 19
+          "max_control_period_rate": 0.1283810742717839,
+          "at_interval": 25
         },
         "thj3": {
-          "max_control_period_rate": 0.06079425818788842,
-          "at_interval": 16
+          "max_control_period_rate": 0.0645097654101412,
+          "at_interval": 25
         }
       },
       "split": {
-        "finger_joints_max_rad_s": 0.3193223851707627,
-        "wrist_hinges_max_rad_s": 4.4107095354527415,
+        "finger_joints_max_rad_s": 0.23685617502001488,
+        "wrist_hinges_max_rad_s": 1.6046920026969769,
         "finger_joints_within_3_14": true,
-        "wrist_hinges_within_3_14": false
+        "wrist_hinges_within_3_14": true
       },
-      "exceedance_intervals": [
-        0
-      ],
+      "exceedance_intervals": [],
       "exceedance_is_startup_only": true,
       "startup_transient": {
         "reset_wrist_qpos": [
@@ -930,22 +1589,22 @@
           0.0
         ],
         "first_command_wrist_ctrl": [
-          -0.057517833731792534,
-          -0.019108364233505665,
-          -0.15381642039339527,
-          -0.8982837821086984,
-          -1.316036388630553,
-          -0.7501602669600989
+          -0.14507691091877745,
+          0.1371834799181224,
+          -0.07038418701564673,
+          0.19067343804232073,
+          -0.6310131756998926,
+          -1.57
         ],
         "reset_to_first_command_rate_rad_s": {
-          "wrist_rx": 17.965675642173967,
-          "wrist_ry": 26.32072777261106,
-          "wrist_rz": 15.003205339201976
+          "wrist_rx": 3.8134687608464146,
+          "wrist_ry": 12.62026351399785,
+          "wrist_rz": 31.4
         },
         "second_command_rate_rad_s": {
-          "wrist_rx": 11.369122219641824,
-          "wrist_ry": 9.867886062571124,
-          "wrist_rz": 3.482559472568123
+          "wrist_rx": 1.4999999985000003,
+          "wrist_ry": 1.4999999985000012,
+          "wrist_rz": 0.0
         },
         "note": "reset_scene() seeds the wrist at identity, so interval 0 asks the servo for a step of up to ~1.3 rad in 50 ms. Intervals 1-2 are the servo still catching up to that step. The retargeted trajectory itself never asks for more than 2.05 rad/s after interval 2."
       },
@@ -1081,14 +1740,6 @@
             1.396
           ]
         },
-        "wrist_ry": {
-          "frames": 1,
-          "max_overshoot_rad": 0.05703638863055316,
-          "ctrlrange": [
-            -1.259,
-            1.2
-          ]
-        },
         "mfa1": {
           "frames": 1,
           "max_overshoot_rad": 0.0009999418258666015,
@@ -1098,47 +1749,46 @@
           ]
         }
       },
-      "ctrl_saturation_total": 101,
+      "ctrl_saturation_total": 100,
       "force_saturation_by_actuator": {
         "mfa0": 27,
         "tha1": 27,
-        "tha0": 27,
         "rfa0": 27,
         "tha2": 27,
         "tha3": 27,
-        "mfa1": 22,
+        "tha0": 26,
         "ffa3": 21,
+        "mfa1": 19,
         "mfa3": 16,
-        "rfa1": 16,
-        "ffa1": 7,
+        "rfa1": 14,
+        "ffa0": 11,
+        "ffa1": 5,
         "ffa2": 5,
-        "mfa2": 5,
-        "ffa0": 3,
-        "wrist_ry": 2,
-        "wrist_rx": 1,
-        "wrist_rz": 1
+        "wrist_rz": 4,
+        "mfa2": 3,
+        "wrist_ry": 1
       },
-      "force_saturation_total": 261,
+      "force_saturation_total": 260,
       "box_motion": {
-        "max_displacement_m": 0.001181843418267707,
-        "at_frame": 26,
+        "max_displacement_m": 0.1233575746548916,
+        "at_frame": 18,
         "start_xyz": [
-          -0.00023322269974761431,
-          2.5849797656619252e-05,
-          0.7996673010610105
+          -0.006634728808562206,
+          0.00015356141604605148,
+          0.8081166114148824
         ],
         "end_xyz": [
-          0.0008688233304679474,
-          0.00045165895088580897,
-          0.7996367236573427
+          -0.09567966758475029,
+          0.005779662098077828,
+          0.8224717211274588
         ],
-        "box_ejected": false
+        "box_ejected": true
       },
       "deepest_executed_penetration": {
-        "depth_m": 0.0011442594741555999,
-        "frame": 6,
-        "geom": "palm_collision",
-        "normal_force_N": 28.154265474969
+        "depth_m": 0.0016755705217665123,
+        "frame": 20,
+        "geom": "rf_proximal_collision",
+        "normal_force_N": 4.348784451277034
       },
       "commanded_pose_probe": {
         "method": "kinematic only (mj_forward, no dynamics, fingers at the reset pre-curl): box overlap of the commanded configuration",
@@ -1156,16 +1806,22 @@
         "note": "a ~53 mm burial would mean the gauge-fixed retarget output asks for fingers through the box. It does not: the commanded pose overlaps the box by well under a millimetre, so the deep-travel known boundary does not fire on this sequence."
       },
       "box_contact_force_split": {
-        "peak_total_box_normal_force_N": 34.253313622252605,
-        "at_frame": 0,
+        "peak_total_box_normal_force_N": 12.900868421561597,
+        "at_frame": 21,
         "fingertip_pad_share_N": 0.0,
-        "palm_and_other_share_N": 34.253313622252605,
+        "palm_and_other_share_N": 12.900868421561597,
         "n_tip_pad_geoms": 8,
         "per_geom_peak_force_N": {
-          "palm_collision": 34.253313622252605
+          "ff_proximal_collision": 12.900868421561597,
+          "palm_collision": 12.497633943917485,
+          "rf_proximal_collision": 9.932933641957987,
+          "mf_proximal_collision": 4.321938795582088
         },
         "geoms_ever_touching_box": [
-          "palm_collision"
+          "ff_proximal_collision",
+          "mf_proximal_collision",
+          "palm_collision",
+          "rf_proximal_collision"
         ],
         "fingertip_pad_geoms_touching_box": [],
         "allegro_v5_spec_N_per_fingertip": 10.0,
@@ -1174,7 +1830,7 @@
       },
       "known_boundary_check": {
         "53mm_interpenetration_seen": false,
-        "box_flung": false,
+        "box_flung": true,
         "verdict": "the revision's declared known boundary (commanded interpenetrating finger poses reachable, ~950 N of solver force resolving 53 mm of burial, box possibly flung) did NOT materialise on this sequence"
       }
     }
@@ -1185,11 +1841,11 @@
       "wrist_z"
     ],
     "unreachable_note": "the first commanded wrist pose is not in this floating wrist's reachable set on this scene: the palm rests on the box top and blocks the wrist's descent, so no approach path reaches the command. The ramp caps the *command* rate; it cannot make an unreachable pose reachable.",
-    "control_steps": 132,
-    "ramp_control_steps": 32,
-    "ramp_duration_s": 1.6,
+    "control_steps": 121,
+    "ramp_control_steps": 21,
+    "ramp_duration_s": 1.05,
     "settle_control_steps": 100,
-    "duration_s": 6.6000000000000005,
+    "duration_s": 6.050000000000001,
     "dt_ctrl_s": 0.05,
     "rate_caps": {
       "finger_rad_s": 3.14,
@@ -1198,24 +1854,24 @@
       "source": "free-space step/ramp measurement of this model's own servos, recorded in rerun_evidence.velocity_gate.floating_wrist_servo_ceiling"
     },
     "commanded_peak_rate": {
-      "finger": 3.1400000000000006,
-      "wrist_slide": 0.20000000000000004,
-      "wrist_hinge": 1.5000000000000002
+      "finger": 3.1399999968600003,
+      "wrist_slide": 0.19999999980000005,
+      "wrist_hinge": 1.4999999985000003
     },
     "realised_peak_rate": {
-      "finger": 0.2819309638476464,
-      "wrist_slide": 0.19989467710515268,
-      "wrist_hinge": 1.0781463194806042
+      "finger": 0.32448440583723315,
+      "wrist_slide": 0.42790566099580346,
+      "wrist_hinge": 1.8669887768821858
     },
     "command_span": {
-      "finger": 0.7064533910215189,
-      "wrist_slide": 0.31311440148676345,
-      "wrist_hinge": 0.18406932535485504
+      "finger": 1.2436907403978936,
+      "wrist_slide": 0.145162285941704,
+      "wrist_hinge": 1.5700488246694924
     },
     "tracking_error_to_goal": {
-      "finger": 0.25515383192605645,
-      "wrist_slide": 0.1381251660075413,
-      "wrist_hinge": 0.0077100132507168795
+      "finger": 0.914138017402336,
+      "wrist_slide": 0.03209697207752578,
+      "wrist_hinge": 0.0097930524359163
     },
     "tracking_error_note": "finite by design: the first commanded pose puts the hand in sustained box contact, so the force-limited servos hold a contact deflection instead of reaching the commanded qpos exactly.",
     "residual_to_goal_rad": 0.0,
@@ -1223,35 +1879,35 @@
     "cap_respected": true,
     "velocity_scope": "warm-start segment excluded from joint_velocity_max_rad_s by design: it is a rate-limited approach to the first command, not retargeted motion. Its own rates are below.",
     "replay_qpos_at_warm_start_end": [
-      -8.082157830148199e-06,
-      -3.83841646045343e-05,
-      0.7999709075740623,
-      0.9999999999803736,
-      1.734717898827662e-17,
-      -1.242256062044134e-16,
-      -6.265269828700308e-06,
-      -0.0570103733174388,
-      -0.020171763068528557,
-      0.06962972680471927,
-      -0.24631442166129866,
-      -0.32563365473722883,
-      -0.3006050783140485,
-      -0.18286875459472948,
-      0.15006079742318942,
-      0.1619881538322385,
-      0.5217241345557615,
-      0.2717559733141353,
-      1.0261144146155436,
-      0.5005471990314956,
-      0.5950584659010026,
-      0.4197178405505275,
-      0.5361153496006145,
-      0.4794366653673012,
-      0.6160440700386132,
-      0.27048935216517883,
-      0.8126319849400208,
-      0.4536485751141473,
-      0.6274148804907562
+      -0.0011889126966305665,
+      -0.00047757744860837687,
+      0.7999709075740624,
+      0.9999360687411738,
+      -3.3203805266501757e-18,
+      -2.8656765821150233e-19,
+      -0.011307450218674136,
+      -0.14715158017319396,
+      0.1393971951918599,
+      -0.10247553740066569,
+      0.18087965908531844,
+      -0.6314437973057526,
+      -1.5662173747649748,
+      0.03437851627784704,
+      1.3326867678337007,
+      1.1281930966605997,
+      0.5534074743064692,
+      0.2048313615792956,
+      1.5878041816040749,
+      0.8611213485478958,
+      0.5645189855569881,
+      0.38386173759304626,
+      1.4405794055730894,
+      1.6294272163546515,
+      0.6098357260077865,
+      0.2773206163192185,
+      0.22771167038228707,
+      0.7311872364377291,
+      0.5399394117009279
     ]
   }
 }

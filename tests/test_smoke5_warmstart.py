@@ -43,9 +43,9 @@ def _first_command():
     joints21, _ = rs.mano_skeleton(seq)
     retargeter, _ = rs.build_retargeter()
     qpos = rs.retarget_sequence(joints21, retargeter)
-    tip = rs.retargeted_tip_positions(qpos, retargeter)
-    anchor = rs.solve_wrist_anchor(qpos, tip, model, data)
-    finger_target = qpos[:, 6:22][:, rs.URDF_TO_MJCF_ACTUATOR_ORDER]
+    # The executed anchor, not a re-derivation: the warm start has to ramp into
+    # the trajectory the report actually contains.
+    anchor = rs.executed_anchor(qpos, model, data)
     f_act = np.arange(6, 22)
     w_act = np.arange(6)
     lo, hi = model.actuator_ctrlrange[:, 0], model.actuator_ctrlrange[:, 1]
@@ -55,7 +55,7 @@ def _first_command():
         np.array([model.jnt_qposadr[rs._joint_id(model, n)]
                   for n in rs.WRIST_JOINTS]),
         f_act, w_act,
-        np.clip(finger_target[0], lo[f_act], hi[f_act]),
+        np.clip(anchor["finger_cmd"][0], lo[f_act], hi[f_act]),
         np.clip(anchor["ctrl"][0], lo[w_act], hi[w_act]),
     )
 

@@ -295,25 +295,41 @@ def test_c9_contact_detector_is_not_vacuous(artifacts):
     assert pen_in > 0.0
 
 
-def test_contact_detector_sees_unnamed_finger_geoms(artifacts):
-    """This MJCF's finger geoms are unnamed; the detector must not key on names.
+def test_contact_detector_keys_on_ancestry_not_names(artifacts):
+    """Hand-geom membership must come from geom->body ancestry, not geom names.
 
-    A name-keyed check returns None for all 42 hand geoms and reports zero
-    contact no matter how deep the hand is buried -- which is exactly the false
-    negative that made an earlier draft of this smoke look "safe".
+    A name-keyed check is the false negative that made an earlier draft of this
+    smoke look "safe": it returns nothing and reports zero contact no matter how
+    deep the hand is buried.  MJCF commit 4508421 ("geom naming") has since named
+    every hand geom in this scene, so the names can no longer be what silently
+    makes the lookup work -- and the ancestry path is what has to hold.  The
+    check is on the shape of the result: every geom whose body is a hand body,
+    and no geom whose body is not.
     """
+    import mujoco
+
     _, model, _ = rs.load_scene()
     hand = rs.hand_geom_ids(model)
     assert len(hand) >= 20, f"hand geom set suspiciously small: {len(hand)}"
-    import mujoco
-
-    unnamed = sum(
+    expected = {
+        g
+        for g in range(model.ngeom)
+        if mujoco.mj_id2name(
+            model, mujoco.mjtObj.mjOBJ_BODY, int(model.geom_bodyid[g])
+        )
+        in set(rs.HAND_BODIES)
+    }
+    assert hand == expected, (
+        "hand geom membership must be exactly the geom->body ancestry set"
+    )
+    named = sum(
         1
         for g in hand
-        if mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, g) is None
+        if mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, g) is not None
     )
-    assert unnamed > 0, (
-        "if every hand geom were named the ancestry path would be untested"
+    assert named == len(hand), (
+        "MJCF 4508421 names every hand geom; if that ever stops being true the "
+        "ancestry path needs re-testing against an unnamed scene"
     )
 
 
@@ -391,15 +407,31 @@ def test_failure_is_physical_not_a_threshold_artefact(artifacts):
         pytest.skip("green run")
     blocker = report["blocker"]
     assert blocker is not None, "a failing run must carry a blocker record"
-    reach = blocker["wrist_axes_out_of_range"]
-    assert reach, "the blocker must name the unreachable wrist axes"
-    assert any(v > 1e-6 for v in blocker["max_overshoot"].values()), (
-        "claimed unreachability must come with a non-zero overshoot number"
-    )
+    assert blocker["fixes_for_p1"], "a blocker must propose concrete fixes"
     assert blocker["measured_fingertip_height_m"] > blocker["box_top_height_m"], (
         "the recorded fingertip height must actually be above the box top face"
     )
-    assert blocker["fixes_for_p1"], "a blocker must propose concrete fixes"
+    # Round 3 removed the executability failure, so the blocker has to name the
+    # quantity that is actually out of bounds now, with its number and its cap.
+    rem = blocker["remaining"]
+    over = [
+        v for v in rem.values()
+        if isinstance(v, dict) and v["value"] > v["cap_mm"]
+    ]
+    assert over, (
+        "the failing criterion must be the one the blocker names, and the "
+        f"blocker's numbers must show it: {rem}"
+    )
+    # ... and every gate this round added must be geometrically sized, not fitted
+    # to whatever the run produced.
+    base = qa["retargeting"]["base_solve"]
+    assert base["palm_frame_world_position_m"][2] > 0.0
+    assert rs.PALM_WORLD_POSE_DEVIATION_CAP_M == 0.04, (
+        "the palm deviation cap is the box's smallest half-dimension"
+    )
+    assert rs.FINGERTIP_WORLD_POSE_DEVIATION_CAP_M == pytest.approx(
+        float(np.linalg.norm([0.06, 0.12, 0.04])), abs=1e-9
+    ), "the fingertip deviation cap is the box's half-diagonal"
     # the frozen thresholds themselves must not have been loosened to get here
     assert rs.PENETRATION_TOLERANCE_M == 1e-3
     assert rs.JOINT_VEL_LIMIT_RAD_S == 3.14
