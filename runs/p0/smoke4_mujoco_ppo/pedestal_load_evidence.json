@@ -1,0 +1,161 @@
+{
+  "purpose": "evidence that W_PEDESTAL_LOAD prices A3b's criterion: the f210f45 corner wedge and the clean rim-hook are separated by the pedestal-borne normal force, on this scene",
+  "mjcf_sha256": "1ea0fdf5c87ce5a161efcda7c597b0fc6647c9fe30bcf2f5d0bcb52402d24b89",
+  "episode_len": 400,
+  "rows": [
+    {
+      "name": "rim_hook_demo0",
+      "return_new_reward": -10776.021,
+      "peak_lift_m": 0.05328,
+      "peak_step": 337,
+      "table_touching_at_peak": true,
+      "A3b_pass": false,
+      "support_force_N_at_peak": 1.0075,
+      "support_force_N_mean_over_lift_window": 21.9992,
+      "support_force_N_max": 51.5243,
+      "support_share_of_box_weight_at_peak": 0.6846,
+      "support_share_of_box_weight_mean_window": 14.9502,
+      "finger_force_N_at_peak": 0.0,
+      "bearing_at_peak": {
+        "hook_up_N": 0.0,
+        "wall_up_N": 0.0,
+        "pedestal_up_N": 0.8221,
+        "hook_N": 0.0,
+        "wall_N": 0.0,
+        "pedestal_N": 1.0321,
+        "upward_total_N": 0.8221,
+        "box_weight_N": 1.4715,
+        "bearing_box_weights": {
+          "hook": 0.0,
+          "wall": 0.0,
+          "pedestal": 0.5587
+        },
+        "bearing_box_weights_total": 0.5587
+      },
+      "frames": 339,
+      "demo_mjcf_commit": "4ee6f1d"
+    },
+    {
+      "name": "rim_hook_demo1",
+      "return_new_reward": -10540.854,
+      "peak_lift_m": 0.05327,
+      "peak_step": 337,
+      "table_touching_at_peak": true,
+      "A3b_pass": false,
+      "support_force_N_at_peak": 0.9882,
+      "support_force_N_mean_over_lift_window": 23.0157,
+      "support_force_N_max": 43.5504,
+      "support_share_of_box_weight_at_peak": 0.6715,
+      "support_share_of_box_weight_mean_window": 15.641,
+      "finger_force_N_at_peak": 0.0,
+      "bearing_at_peak": {
+        "hook_up_N": 0.0,
+        "wall_up_N": 0.0,
+        "pedestal_up_N": 0.8296,
+        "hook_N": 0.0,
+        "wall_N": 0.0,
+        "pedestal_N": 1.0425,
+        "upward_total_N": 0.8296,
+        "box_weight_N": 1.4715,
+        "bearing_box_weights": {
+          "hook": 0.0,
+          "wall": 0.0,
+          "pedestal": 0.5638
+        },
+        "bearing_box_weights_total": 0.5638
+      },
+      "frames": 339,
+      "demo_mjcf_commit": "4ee6f1d"
+    },
+    {
+      "name": "wedge_ppo_ep0",
+      "return_new_reward": -4660.217,
+      "peak_lift_m": 0.09284,
+      "peak_step": 205,
+      "table_touching_at_peak": true,
+      "A3b_pass": false,
+      "support_force_N_at_peak": 26.3686,
+      "support_force_N_mean_over_lift_window": 30.7429,
+      "support_force_N_max": 105.5488,
+      "support_share_of_box_weight_at_peak": 17.9195,
+      "support_share_of_box_weight_mean_window": 20.8922,
+      "finger_force_N_at_peak": 26.5625,
+      "bearing_at_peak": {
+        "hook_up_N": -13.8086,
+        "wall_up_N": 0.0,
+        "pedestal_up_N": 23.0348,
+        "hook_N": 26.8018,
+        "wall_N": 0.0,
+        "pedestal_N": 27.5996,
+        "upward_total_N": 9.2262,
+        "box_weight_N": 1.4715,
+        "bearing_box_weights": {
+          "hook": -9.384,
+          "wall": 0.0,
+          "pedestal": 15.6539
+        },
+        "bearing_box_weights_total": 6.2699
+      },
+      "seed": 10000
+    },
+    {
+      "name": "wedge_ppo_ep1",
+      "return_new_reward": -4661.141,
+      "peak_lift_m": 0.09069,
+      "peak_step": 231,
+      "table_touching_at_peak": true,
+      "A3b_pass": false,
+      "support_force_N_at_peak": 27.0267,
+      "support_force_N_mean_over_lift_window": 29.2095,
+      "support_force_N_max": 148.3204,
+      "support_share_of_box_weight_at_peak": 18.3668,
+      "support_share_of_box_weight_mean_window": 19.8501,
+      "finger_force_N_at_peak": 25.7649,
+      "bearing_at_peak": {
+        "hook_up_N": -10.1718,
+        "wall_up_N": 0.0,
+        "pedestal_up_N": 24.3722,
+        "hook_N": 25.4788,
+        "wall_N": 0.0,
+        "pedestal_N": 26.4552,
+        "upward_total_N": 14.2005,
+        "box_weight_N": 1.4715,
+        "bearing_box_weights": {
+          "hook": -6.9125,
+          "wall": 0.0,
+          "pedestal": 16.5629
+        },
+        "bearing_box_weights_total": 9.6503
+      },
+      "seed": 10001
+    }
+  ],
+  "summary": {
+    "wedge": {
+      "support_share_of_box_weight_at_peak": {
+        "min": 17.9195,
+        "median": 18.14315,
+        "max": 18.3668
+      },
+      "A3b_pass_any": false,
+      "return_new_reward": {
+        "min": -4661.141,
+        "median": -4660.679,
+        "max": -4660.217
+      }
+    },
+    "hook": {
+      "support_share_of_box_weight_at_peak": {
+        "min": 0.6715,
+        "median": 0.67805,
+        "max": 0.6846
+      },
+      "A3b_pass_all": false,
+      "return_new_reward": {
+        "min": -10776.021,
+        "median": -10658.4375,
+        "max": -10540.854
+      }
+    }
+  }
+}

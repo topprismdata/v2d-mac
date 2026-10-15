@@ -13,7 +13,7 @@
 | smoke1_sam2 | SAM2 segmentation on MPS (smoke 1) | pass | 全部冻结判据通过 | N/A — 感知 smoke，不依赖 MJCF | `827f002` |
 | smoke2_vggt | VGGT tracking / geometry on MPS (smoke 2) | pass | 全部冻结判据通过 | N/A — 感知 smoke，不依赖 MJCF | `6dab1de` |
 | smoke3_foundpose | FoundPose 6DoF on MPS (smoke 3) | pass | 全部冻结判据通过 | N/A — 感知 smoke，不依赖 MJCF | `8c1f4c5` |
-| smoke4_mujoco_ppo | MuJoCo PPO lift-and-hold (smoke 4) | **FAIL** | FAIL: A3b_airborne_at_peak（峰值时刻盒子仍接触桌面；MJCF 4508421 上不存在 clean grasp-and-lift） | scene sha `ffb27e9` = MJCF `4508421` | `622d64b` |
+| smoke4_mujoco_ppo | MuJoCo PPO lift-and-hold (smoke 4) | **FAIL** | p0(4e) 奖励对齐轮：W_PEDESTAL_LOAD 已把 A3b 本意写进目标函数并实测能区分两机制；但 1ea0fdf5 上可达类内**不存在全门绿轨迹**（16,200+3,780 姿态 0 通过），故 PPO 收敛到「不碰盒子」（10/10 episode peak lift 0.0） | scene sha `1ea0fdf5` = MJCF `1b0f13f` | 本轮 |
 | smoke5_retarget | MANO->Allegro retarget replay (smoke 5, G3) | **FAIL** | FAIL: failing G3 criteria: hand_world_pose_deviation_within_cap -- see retarget_qa.json | MJCF `4508421` (scene `ffb27e9`) | `a6268c4` |
 | smoke6_hamer | HaMeR hand recovery on MPS (smoke 6) | pass | all frozen criteria met on MPS | N/A — 感知 smoke，不依赖 MJCF | `827f002` |
 
@@ -87,6 +87,64 @@
 
 
 ## MuJoCo PPO lift-and-hold (smoke 4)
+
+### 轮次 p0(4e) —— 奖励对齐（Wave 3.5-G，门阈值一字未动）
+
+**verdict: FAIL** ／ 所依据 scene sha `1ea0fdf5` = MJCF `1b0f13f`
+
+#### 任务 1（奖励对齐）：完成，实测可区分
+
+新增 `W_PEDESTAL_LOAD = 4.0`（每盒重/step，封顶 12 盒重），输入是 `_read_contacts` 在既有接触回路里按
+`pedestal|object` 读出的**法向力**；`support_force_n` 默认 0 ⇒ R1–R6 既有断言逐位不变，接触证据权重一个没动。
+
+实测（`pedestal_load_evidence.json`，同一 MJCF 上）：
+
+| 机制 | 峰值时刻 pedestal 法向力 | 折盒重 | 峰值承载分解（hook / wall / pedestal，盒重为单位） |
+|---|---|---|---|
+| f210f45 角楔 PPO（ep0/ep1） | **26.37 / 27.03 N** | 17.92 / 18.37 | −9.38 / 0.00 / **+15.65**；−6.91 / 0.00 / **+16.56** |
+| 勾边脚本轨迹（arch0/arch1） | 1.01 / 0.99 N | 0.68 / 0.67 | +0.00 / 0.00 / +0.56 |
+
+**指侧承载为负**就是病灶本身：42° 鼻朝下角楔里手在把盒子往基座上压，盒子是被基座顶起来的。
+与裁决预期的 26.2 N 吻合。奖励算术上该项把排序反转为 6.0×（同 120 步 episode：角楔 942 < 真勾边 5674），
+并由 `tests/test_smoke4_reward.py::R7c`（idle < 角楔 < 真勾边）与
+`tests/test_smoke4_pedestal_load.py`（P1 朝向标定 / P2 角楔量级 / P3 两机制分离 / P4 分解完备且带号 / P5 读数同源 / P7-P8 消融干净）钉住。
+
+#### 任务 2（重采示教 + 扰动）：**实测负结果，前提不成立**
+
+- 可达勾边族在 1ea0fdf5 上重扫：**16,200 姿态 0 通过**；补充扫描 1,080 + 2,700 同样 0。
+  peak lift 中位 8.0mm / p90 25.6mm / max 61.7mm；95.6% 峰值仍接触 pedestal；
+  top-10 最高抬升姿态同时被 **A3b 与 A3c（单步 11.8–15.2mm > 10mm 上限）** 拒绝。
+- **A/B 定因**（`hook_scene_ab.json`，同一组 339 步动作、同一份代码、同一套门，只换 XML）：
+  4ee6f1d 上峰值 `support = 0.0 N`（A3b 过）；1b0f13f 上 `support = 0.99–1.01 N`（A3b 红）。
+  Wave 3.5F 近节加硬吃掉了约 1mm 余量。
+- **更根本的一条**：这 2 条勾边轨迹在**两个场景上都只把盒子抬过 5cm 共 3 步**，且**峰值时刻指力 = 0**，
+  前半程最大抬升 0.68mm——**是弹射不是抓取**。p0(4d) 的 A3b「通过」只是弹道顶点单步的巧合，
+  与其自身「通过集测度为零」的裁决一致。
+- 因此**没有可采的示教，也就没有合规的扰动幅度**（±1cm 复用被裁决明确禁止，边界又不存在）。
+  旧集归档为 `reachable_demo_set_f210f45.npz` 并**保留 4ee6f1d 戳**（不改戳），
+  `tests/test_smoke4_reachable_demo.py` 改为在**录制场景**上复现（R2）并显式钉住「同动作在本场景 A3b 红」（R2b）。
+
+#### 任务 3（BC → PPO → 评测）：BC 跳过（无可信示教），PPO 2M 步已跑完
+
+| 判据 | 实测 | 阈值 | 判定 |
+|---|---|---|---|
+| A1_episode_lift_gt_5cm | 1.79e-05（best） | 0.05 | **FAIL** |
+| A2_finger_object_contact_pair | 0 | ≥5 | **FAIL** |
+| A3a_i_finger_force_duty_cycle | 0.0 | 0.5 | **FAIL** |
+| A3a_ii_quasi_static_force_sufficiency | 0.0 N | ≥1.47 N | **FAIL** |
+| A3b_airborne_at_peak | table_touching_at_peak = true | false | **FAIL** |
+| A3c_i_anchored_step_displacement | ~1e-5 | 0.01 | PASS |
+| A3c_ii_free_fall_gravity_consistency | 0.0 | 0.6 | PASS |
+| A3c_iii_separation_contact_driven | true | true | PASS |
+| A4_control_out_of_reach | 5e-04 | 0.05 | PASS |
+
+- 训练 2000896 步（seed 0，n_envs 8，episode 400，wall 12.1 min，**无 BC 预热**）；回报 −1590.8 → −1531.6，
+  但 z_peak 全程 0.0 m，10/10 eval episode 峰值抬升 0.0、指-盒接触步数 0。
+- **per-episode 承载分解（全部 10 条相同）**：hook 0.0 / wall 0.0 / pedestal **1.0 盒重**，support 1.0 盒重。
+- **结论（诚实 FAIL）**：奖励对齐后策略**不再角楔，但也完全不碰盒子**——场景内没有可达的干净抓取时，
+  「别碰」成了新奖励下的最优可达行为。A3b 仍红，且 A1 也红。**这是目标函数修复后暴露出的真实瓶颈，
+  不是奖励没修好。** 消融（`--pedestal-load-weight 0.0`，同种子同无 BC）在 60k 步即已分化：
+  回报 **+859**、grasp 0.44、指-盒接触力 22.9N（旧奖励会主动去抓/弹），对照 W=4 的 −1557 / grasp 0.00。
 
 **verdict: FAIL** ／ 所依据 scene sha `ffb27e9` = MJCF `4508421` ／ report commit: `622d64b`
 

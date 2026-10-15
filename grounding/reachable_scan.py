@@ -40,7 +40,7 @@ if str(REPO) not in sys.path:
 RUN_DIR = REPO / "runs/p0/smoke4_mujoco_ppo"
 OUT_JSON = RUN_DIR / "reachable_scan.json"
 OUT_NPZ = RUN_DIR / "reachable_demo_set.npz"
-MJCF_COMMIT = "4ee6f1d"
+MJCF_COMMIT = "1b0f13f"
 
 N_WRIST = 6
 WRIST_ROT_STEP = 0.10           # rad per unit action (env _apply_action)

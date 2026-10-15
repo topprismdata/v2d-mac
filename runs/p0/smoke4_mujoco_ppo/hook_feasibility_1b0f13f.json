@@ -1,0 +1,3172 @@
+{
+  "question": "does a scripted trajectory in the reachable hook family still clear the frozen acceptance gates, including A3b (airborne at peak), on the current scene?",
+  "mjcf_commit": "1b0f13f",
+  "mjcf_sha256": "1ea0fdf5c87ce5a161efcda7c597b0fc6647c9fe30bcf2f5d0bcb52402d24b89",
+  "n_trials": 16200,
+  "n_pass": 0,
+  "verdict": "no gate-clean reachable-class trajectory exists in this family on this scene",
+  "peak_lift_m_distribution": {
+    "min": 1.7843206895462593e-05,
+    "median": 0.008021257180490737,
+    "p90": 0.02558268168170874,
+    "max": 0.061725842292117195,
+    "n_above_A1_bar_5cm": 149
+  },
+  "A3b": {
+    "table_touching_at_peak_count": 15494,
+    "table_touching_at_peak_fraction": 0.9564197530864198
+  },
+  "finger_force_duty_cycle": {
+    "median": 0.6706231454005934,
+    "max": 0.9506172839506173
+  },
+  "closest_misses": [
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          -0.01,
+          -0.04,
+          0.8
+        ],
+        "rot": [
+          1.8,
+          0.7,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "close_params": [
+          1.0,
+          -0.5,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.061725842292117195,
+        "peak_step": 321,
+        "n_finger_contact_steps": 253,
+        "corr_force_lift_all_contact": -0.2017799107779725,
+        "corr_force_lift_finger_only": -0.09655973677924316,
+        "finger_force_duty_cycle": 0.7515527950310559,
+        "finger_force_mean_N": 7.920687015531537,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.0135199456423023,
+        "max_anchored_step_m": 0.0135199456423023,
+        "max_free_flight_step_m": 0.00031791172135631207,
+        "max_free_fall_gravity_error": 0.1521505608059542,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9628994811654326,
+        "peak_force_N": 1.0690508936990633,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          -0.01,
+          -0.04,
+          0.8
+        ],
+        "rot": [
+          1.9,
+          0.7,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "close_params": [
+          1.0,
+          -0.5,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.061725842292117195,
+        "peak_step": 321,
+        "n_finger_contact_steps": 253,
+        "corr_force_lift_all_contact": -0.2017799107779725,
+        "corr_force_lift_finger_only": -0.09655973677924316,
+        "finger_force_duty_cycle": 0.7515527950310559,
+        "finger_force_mean_N": 7.920687015531537,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.0135199456423023,
+        "max_anchored_step_m": 0.0135199456423023,
+        "max_free_flight_step_m": 0.00031791172135631207,
+        "max_free_fall_gravity_error": 0.1521505608059542,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9628994811654326,
+        "peak_force_N": 1.0690508936990633,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          -0.02,
+          -0.04,
+          0.81
+        ],
+        "rot": [
+          1.8,
+          0.8,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.8,
+          -0.8,
+          -0.8
+        ],
+        "close_params": [
+          1.0,
+          -0.8,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.06072573391471692,
+        "peak_step": 321,
+        "n_finger_contact_steps": 243,
+        "corr_force_lift_all_contact": 0.04247136862008575,
+        "corr_force_lift_finger_only": 0.15551557582433714,
+        "finger_force_duty_cycle": 0.7329192546583851,
+        "finger_force_mean_N": 5.288707184141879,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.015179261859350368,
+        "max_anchored_step_m": 0.015179261859350368,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9683774341560788,
+        "peak_force_N": 9.887183655528563,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          -0.02,
+          -0.04,
+          0.81
+        ],
+        "rot": [
+          1.9,
+          0.8,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.8,
+          -0.8,
+          -0.8
+        ],
+        "close_params": [
+          1.0,
+          -0.8,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.06072573391471692,
+        "peak_step": 321,
+        "n_finger_contact_steps": 243,
+        "corr_force_lift_all_contact": 0.04247136862008575,
+        "corr_force_lift_finger_only": 0.15551557582433714,
+        "finger_force_duty_cycle": 0.7329192546583851,
+        "finger_force_mean_N": 5.288707184141879,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.015179261859350368,
+        "max_anchored_step_m": 0.015179261859350368,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9683774341560788,
+        "peak_force_N": 9.887183655528563,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          0.01,
+          -0.04,
+          0.81
+        ],
+        "rot": [
+          1.8,
+          0.4,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.7,
+          -0.7,
+          -0.7
+        ],
+        "close_params": [
+          1.0,
+          -0.7,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.06021001350510291,
+        "peak_step": 322,
+        "n_finger_contact_steps": 238,
+        "corr_force_lift_all_contact": -0.2071548650859925,
+        "corr_force_lift_finger_only": -0.10854740921488949,
+        "finger_force_duty_cycle": 0.7089783281733746,
+        "finger_force_mean_N": 10.082126546772852,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.012087472802660093,
+        "max_anchored_step_m": 0.012087472802660093,
+        "max_free_flight_step_m": 0.006924946290238099,
+        "max_free_fall_gravity_error": 0.061202872002860204,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9702143781092085,
+        "peak_force_N": 3.507961059934211,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          0.01,
+          -0.04,
+          0.81
+        ],
+        "rot": [
+          1.9,
+          0.4,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.7,
+          -0.7,
+          -0.7
+        ],
+        "close_params": [
+          1.0,
+          -0.7,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.06021001350510291,
+        "peak_step": 322,
+        "n_finger_contact_steps": 238,
+        "corr_force_lift_all_contact": -0.2071548650859925,
+        "corr_force_lift_finger_only": -0.10854740921488949,
+        "finger_force_duty_cycle": 0.7089783281733746,
+        "finger_force_mean_N": 10.082126546772852,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.012087472802660093,
+        "max_anchored_step_m": 0.012087472802660093,
+        "max_free_flight_step_m": 0.006924946290238099,
+        "max_free_fall_gravity_error": 0.061202872002860204,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9702143781092085,
+        "peak_force_N": 3.507961059934211,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          0.01,
+          -0.03,
+          0.8
+        ],
+        "rot": [
+          1.8,
+          0.5,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.8,
+          -0.8,
+          -0.8
+        ],
+        "close_params": [
+          1.0,
+          -0.8,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.05983904629657655,
+        "peak_step": 333,
+        "n_finger_contact_steps": 245,
+        "corr_force_lift_all_contact": -0.009631024021982036,
+        "corr_force_lift_finger_only": 0.22005585553566212,
+        "finger_force_duty_cycle": 0.7275449101796407,
+        "finger_force_mean_N": 10.457418043845717,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.011799746531345523,
+        "max_anchored_step_m": 0.011799746531345523,
+        "max_free_flight_step_m": 0.0013355233794255517,
+        "max_free_fall_gravity_error": 0.144778612806924,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9548404880808972,
+        "peak_force_N": 137.77948110968555,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          0.01,
+          -0.03,
+          0.8
+        ],
+        "rot": [
+          1.9,
+          0.5,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.8,
+          -0.8,
+          -0.8
+        ],
+        "close_params": [
+          1.0,
+          -0.8,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.05983904629657655,
+        "peak_step": 333,
+        "n_finger_contact_steps": 245,
+        "corr_force_lift_all_contact": -0.009631024021982036,
+        "corr_force_lift_finger_only": 0.22005585553566212,
+        "finger_force_duty_cycle": 0.7275449101796407,
+        "finger_force_mean_N": 10.457418043845717,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.011799746531345523,
+        "max_anchored_step_m": 0.011799746531345523,
+        "max_free_flight_step_m": 0.0013355233794255517,
+        "max_free_fall_gravity_error": 0.144778612806924,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9548404880808972,
+        "peak_force_N": 137.77948110968555,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          0.01,
+          -0.04,
+          0.81
+        ],
+        "rot": [
+          1.8,
+          0.4,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.8,
+          -0.8,
+          -0.8
+        ],
+        "close_params": [
+          1.0,
+          -0.8,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.059193610192524115,
+        "peak_step": 320,
+        "n_finger_contact_steps": 239,
+        "corr_force_lift_all_contact": -0.20739607601390062,
+        "corr_force_lift_finger_only": -0.12742391351025645,
+        "finger_force_duty_cycle": 0.7040498442367601,
+        "finger_force_mean_N": 10.040344488382036,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.0136485186262012,
+        "max_anchored_step_m": 0.0136485186262012,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9676989654448375,
+        "peak_force_N": 1.0097340707270992,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          0.01,
+          -0.04,
+          0.81
+        ],
+        "rot": [
+          1.9,
+          0.4,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.8,
+          -0.8,
+          -0.8
+        ],
+        "close_params": [
+          1.0,
+          -0.8,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.059193610192524115,
+        "peak_step": 320,
+        "n_finger_contact_steps": 239,
+        "corr_force_lift_all_contact": -0.20739607601390062,
+        "corr_force_lift_finger_only": -0.12742391351025645,
+        "finger_force_duty_cycle": 0.7040498442367601,
+        "finger_force_mean_N": 10.040344488382036,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.0136485186262012,
+        "max_anchored_step_m": 0.0136485186262012,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9676989654448375,
+        "peak_force_N": 1.0097340707270992,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          -0.02,
+          -0.03,
+          0.8
+        ],
+        "rot": [
+          1.8,
+          0.8,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "close_params": [
+          1.0,
+          -0.5,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.05760016778554922,
+        "peak_step": 321,
+        "n_finger_contact_steps": 253,
+        "corr_force_lift_all_contact": -0.12173569622856442,
+        "corr_force_lift_finger_only": 0.02976478854668265,
+        "finger_force_duty_cycle": 0.7515527950310559,
+        "finger_force_mean_N": 7.040257309718721,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.01286328125563796,
+        "max_anchored_step_m": 0.01286328125563796,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9653650787201932,
+        "peak_force_N": 19.116414141759208,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          -0.02,
+          -0.03,
+          0.8
+        ],
+        "rot": [
+          1.9,
+          0.8,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "close_params": [
+          1.0,
+          -0.5,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.05760016778554922,
+        "peak_step": 321,
+        "n_finger_contact_steps": 253,
+        "corr_force_lift_all_contact": -0.12173569622856442,
+        "corr_force_lift_finger_only": 0.02976478854668265,
+        "finger_force_duty_cycle": 0.7515527950310559,
+        "finger_force_mean_N": 7.040257309718721,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.01286328125563796,
+        "max_anchored_step_m": 0.01286328125563796,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9653650787201932,
+        "peak_force_N": 19.116414141759208,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          0.01,
+          -0.04,
+          0.8
+        ],
+        "rot": [
+          1.7,
+          0.6,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "close_params": [
+          1.0,
+          -0.5,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.05731591453013318,
+        "peak_step": 318,
+        "n_finger_contact_steps": 239,
+        "corr_force_lift_all_contact": -0.17348368002387443,
+        "corr_force_lift_finger_only": -0.07027364606212219,
+        "finger_force_duty_cycle": 0.7304075235109718,
+        "finger_force_mean_N": 12.448771785955698,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.010940077575948948,
+        "max_anchored_step_m": 0.010940077575948948,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9599876782875825,
+        "peak_force_N": 1.1656429837442828,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          0.01,
+          -0.02,
+          0.8
+        ],
+        "rot": [
+          1.8,
+          0.4,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.8,
+          -0.8,
+          -0.8
+        ],
+        "close_params": [
+          1.0,
+          -0.8,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.057079303397894576,
+        "peak_step": 333,
+        "n_finger_contact_steps": 244,
+        "corr_force_lift_all_contact": -0.10598356825591135,
+        "corr_force_lift_finger_only": -0.051149645587303866,
+        "finger_force_duty_cycle": 0.7215568862275449,
+        "finger_force_mean_N": 10.247838662155393,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.01092408520772381,
+        "max_anchored_step_m": 0.01092408520772381,
+        "max_free_flight_step_m": 0.001460580787630339,
+        "max_free_fall_gravity_error": 0.18154368451842917,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9560627437891648,
+        "peak_force_N": 1.4815114968538003,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          0.01,
+          -0.02,
+          0.8
+        ],
+        "rot": [
+          1.9,
+          0.4,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.8,
+          -0.8,
+          -0.8
+        ],
+        "close_params": [
+          1.0,
+          -0.8,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.057079303397894576,
+        "peak_step": 333,
+        "n_finger_contact_steps": 244,
+        "corr_force_lift_all_contact": -0.10598356825591135,
+        "corr_force_lift_finger_only": -0.051149645587303866,
+        "finger_force_duty_cycle": 0.7215568862275449,
+        "finger_force_mean_N": 10.247838662155393,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.01092408520772381,
+        "max_anchored_step_m": 0.01092408520772381,
+        "max_free_flight_step_m": 0.001460580787630339,
+        "max_free_fall_gravity_error": 0.18154368451842917,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9560627437891648,
+        "peak_force_N": 1.4815114968538003,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          0.01,
+          -0.02,
+          0.8
+        ],
+        "rot": [
+          1.8,
+          0.4,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.7,
+          -0.7,
+          -0.7
+        ],
+        "close_params": [
+          1.0,
+          -0.7,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.0570098090235045,
+        "peak_step": 333,
+        "n_finger_contact_steps": 243,
+        "corr_force_lift_all_contact": -0.03482728362431989,
+        "corr_force_lift_finger_only": 0.10801217730240494,
+        "finger_force_duty_cycle": 0.7215568862275449,
+        "finger_force_mean_N": 10.41430220301288,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.010616542700671139,
+        "max_anchored_step_m": 0.010616542700671139,
+        "max_free_flight_step_m": 0.008241996857733414,
+        "max_free_fall_gravity_error": 0.16118475429534362,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9560013608666433,
+        "peak_force_N": 75.25854750106282,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          0.01,
+          -0.02,
+          0.8
+        ],
+        "rot": [
+          1.9,
+          0.4,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.7,
+          -0.7,
+          -0.7
+        ],
+        "close_params": [
+          1.0,
+          -0.7,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.0570098090235045,
+        "peak_step": 333,
+        "n_finger_contact_steps": 243,
+        "corr_force_lift_all_contact": -0.03482728362431989,
+        "corr_force_lift_finger_only": 0.10801217730240494,
+        "finger_force_duty_cycle": 0.7215568862275449,
+        "finger_force_mean_N": 10.41430220301288,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.010616542700671139,
+        "max_anchored_step_m": 0.010616542700671139,
+        "max_free_flight_step_m": 0.008241996857733414,
+        "max_free_fall_gravity_error": 0.16118475429534362,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9560013608666433,
+        "peak_force_N": 75.25854750106282,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          -0.02,
+          -0.04,
+          0.8
+        ],
+        "rot": [
+          1.7,
+          0.5,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.8,
+          -0.8,
+          -0.8
+        ],
+        "close_params": [
+          1.0,
+          -0.8,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.05692258548538187,
+        "peak_step": 334,
+        "n_finger_contact_steps": 234,
+        "corr_force_lift_all_contact": 0.1920481782598942,
+        "corr_force_lift_finger_only": 0.012939934700300205,
+        "finger_force_duty_cycle": 0.6925373134328359,
+        "finger_force_mean_N": 9.356056053182805,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.011790272255946976,
+        "max_anchored_step_m": 0.011790272255946976,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9610198322776219,
+        "peak_force_N": 256.86776304943527,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          0.01,
+          -0.04,
+          0.8
+        ],
+        "rot": [
+          1.7,
+          0.8,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.7,
+          -0.7,
+          -0.7
+        ],
+        "close_params": [
+          1.0,
+          -0.7,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.05685382070174705,
+        "peak_step": 318,
+        "n_finger_contact_steps": 238,
+        "corr_force_lift_all_contact": -0.1193993604491407,
+        "corr_force_lift_finger_only": -0.08714226570558078,
+        "finger_force_duty_cycle": 0.7429467084639498,
+        "finger_force_mean_N": 13.603009538513794,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.015129863530802479,
+        "max_anchored_step_m": 0.015129863530802479,
+        "max_free_flight_step_m": 1.4099007462520241e-05,
+        "max_free_fall_gravity_error": 0.11041483545059289,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9594984693453799,
+        "peak_force_N": 1.0268246400414487,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          -0.01,
+          -0.04,
+          0.8
+        ],
+        "rot": [
+          1.7,
+          0.5,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.8,
+          -0.8,
+          -0.8
+        ],
+        "close_params": [
+          1.0,
+          -0.8,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.056588500397297126,
+        "peak_step": 335,
+        "n_finger_contact_steps": 234,
+        "corr_force_lift_all_contact": -0.15142700726735245,
+        "corr_force_lift_finger_only": -0.11895406606092217,
+        "finger_force_duty_cycle": 0.6934523809523809,
+        "finger_force_mean_N": 11.792867786876817,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.011387901773769693,
+        "max_anchored_step_m": 0.011387901773769693,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9626658286458121,
+        "peak_force_N": 3.4471550629326595,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          0.01,
+          -0.04,
+          0.8
+        ],
+        "rot": [
+          1.8,
+          0.4,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.7,
+          -0.7,
+          -0.7
+        ],
+        "close_params": [
+          1.0,
+          -0.7,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.05652229570652234,
+        "peak_step": 319,
+        "n_finger_contact_steps": 246,
+        "corr_force_lift_all_contact": -0.12519887706083546,
+        "corr_force_lift_finger_only": -0.04661397226729449,
+        "finger_force_duty_cycle": 0.728125,
+        "finger_force_mean_N": 8.56400615138918,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.00927775962774513,
+        "max_anchored_step_m": 0.00927775962774513,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": true,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9596108467294953,
+        "peak_force_N": 0.9673715001604689,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          0.01,
+          -0.04,
+          0.8
+        ],
+        "rot": [
+          1.9,
+          0.4,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.7,
+          -0.7,
+          -0.7
+        ],
+        "close_params": [
+          1.0,
+          -0.7,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.05652229570652234,
+        "peak_step": 319,
+        "n_finger_contact_steps": 246,
+        "corr_force_lift_all_contact": -0.12519887706083546,
+        "corr_force_lift_finger_only": -0.04661397226729449,
+        "finger_force_duty_cycle": 0.728125,
+        "finger_force_mean_N": 8.56400615138918,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.00927775962774513,
+        "max_anchored_step_m": 0.00927775962774513,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": true,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9596108467294953,
+        "peak_force_N": 0.9673715001604689,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          -0.01,
+          -0.04,
+          0.8
+        ],
+        "rot": [
+          1.8,
+          0.6,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.6,
+          -0.6,
+          -0.6
+        ],
+        "close_params": [
+          1.0,
+          -0.6,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.05618358473594798,
+        "peak_step": 319,
+        "n_finger_contact_steps": 250,
+        "corr_force_lift_all_contact": -0.20265214284302271,
+        "corr_force_lift_finger_only": -0.1012974033447253,
+        "finger_force_duty_cycle": 0.75,
+        "finger_force_mean_N": 8.488641600262124,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.010776303811910748,
+        "max_anchored_step_m": 0.010776303811910748,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9560621308132394,
+        "peak_force_N": 0.9934790773586764,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          -0.01,
+          -0.04,
+          0.8
+        ],
+        "rot": [
+          1.9,
+          0.6,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.6,
+          -0.6,
+          -0.6
+        ],
+        "close_params": [
+          1.0,
+          -0.6,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.05618358473594798,
+        "peak_step": 319,
+        "n_finger_contact_steps": 250,
+        "corr_force_lift_all_contact": -0.20265214284302271,
+        "corr_force_lift_finger_only": -0.1012974033447253,
+        "finger_force_duty_cycle": 0.75,
+        "finger_force_mean_N": 8.488641600262124,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.010776303811910748,
+        "max_anchored_step_m": 0.010776303811910748,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9560621308132394,
+        "peak_force_N": 0.9934790773586764,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          0.0,
+          -0.04,
+          0.8
+        ],
+        "rot": [
+          1.8,
+          0.6,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.6,
+          -0.6,
+          -0.6
+        ],
+        "close_params": [
+          1.0,
+          -0.6,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.0560368729260694,
+        "peak_step": 321,
+        "n_finger_contact_steps": 250,
+        "corr_force_lift_all_contact": -0.21314695787109217,
+        "corr_force_lift_finger_only": -0.10171283070029136,
+        "finger_force_duty_cycle": 0.7515527950310559,
+        "finger_force_mean_N": 9.486287357425793,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.010918063304890424,
+        "max_anchored_step_m": 0.010918063304890424,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9605492832798304,
+        "peak_force_N": 6.589406136926838,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          0.0,
+          -0.04,
+          0.8
+        ],
+        "rot": [
+          1.9,
+          0.6,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.6,
+          -0.6,
+          -0.6
+        ],
+        "close_params": [
+          1.0,
+          -0.6,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.0560368729260694,
+        "peak_step": 321,
+        "n_finger_contact_steps": 250,
+        "corr_force_lift_all_contact": -0.21314695787109217,
+        "corr_force_lift_finger_only": -0.10171283070029136,
+        "finger_force_duty_cycle": 0.7515527950310559,
+        "finger_force_mean_N": 9.486287357425793,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.010918063304890424,
+        "max_anchored_step_m": 0.010918063304890424,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9605492832798304,
+        "peak_force_N": 6.589406136926838,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          0.0,
+          -0.03,
+          0.81
+        ],
+        "rot": [
+          1.8,
+          0.6,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.6,
+          -0.6,
+          -0.6
+        ],
+        "close_params": [
+          1.0,
+          -0.6,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.055976539484524745,
+        "peak_step": 338,
+        "n_finger_contact_steps": 234,
+        "corr_force_lift_all_contact": -0.1033874807761494,
+        "corr_force_lift_finger_only": 0.026348725370801605,
+        "finger_force_duty_cycle": 0.6902654867256637,
+        "finger_force_mean_N": 8.716301783836254,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.009102931548909399,
+        "max_anchored_step_m": 0.009102931548909399,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": true,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9688293842775256,
+        "peak_force_N": 19.28698223325201,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          0.0,
+          -0.03,
+          0.81
+        ],
+        "rot": [
+          1.9,
+          0.6,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.6,
+          -0.6,
+          -0.6
+        ],
+        "close_params": [
+          1.0,
+          -0.6,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.055976539484524745,
+        "peak_step": 338,
+        "n_finger_contact_steps": 234,
+        "corr_force_lift_all_contact": -0.1033874807761494,
+        "corr_force_lift_finger_only": 0.026348725370801605,
+        "finger_force_duty_cycle": 0.6902654867256637,
+        "finger_force_mean_N": 8.716301783836254,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.009102931548909399,
+        "max_anchored_step_m": 0.009102931548909399,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": true,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9688293842775256,
+        "peak_force_N": 19.28698223325201,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          0.01,
+          -0.04,
+          0.81
+        ],
+        "rot": [
+          1.7,
+          0.4,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.8,
+          -0.8,
+          -0.8
+        ],
+        "close_params": [
+          1.0,
+          -0.8,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.05596035008993716,
+        "peak_step": 338,
+        "n_finger_contact_steps": 229,
+        "corr_force_lift_all_contact": -0.10262649906910305,
+        "corr_force_lift_finger_only": -0.0894420627254481,
+        "finger_force_duty_cycle": 0.6755162241887905,
+        "finger_force_mean_N": 12.99522991419754,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.010223815082310295,
+        "max_anchored_step_m": 0.010223815082310295,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9632503795885619,
+        "peak_force_N": 49.281645163669836,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          -0.02,
+          -0.04,
+          0.8
+        ],
+        "rot": [
+          1.7,
+          0.5,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.7,
+          -0.7,
+          -0.7
+        ],
+        "close_params": [
+          1.0,
+          -0.7,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.05558398902009276,
+        "peak_step": 335,
+        "n_finger_contact_steps": 232,
+        "corr_force_lift_all_contact": -0.09638175448468903,
+        "corr_force_lift_finger_only": -0.029387438396236247,
+        "finger_force_duty_cycle": 0.6845238095238095,
+        "finger_force_mean_N": 9.32743922621899,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.011482830409272782,
+        "max_anchored_step_m": 0.011482830409272782,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9606098010752973,
+        "peak_force_N": 1.1423334729047587,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          0.0,
+          -0.04,
+          0.8
+        ],
+        "rot": [
+          1.8,
+          0.6,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.7,
+          -0.7,
+          -0.7
+        ],
+        "close_params": [
+          1.0,
+          -0.7,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.05546580567713477,
+        "peak_step": 320,
+        "n_finger_contact_steps": 249,
+        "corr_force_lift_all_contact": -0.20633972084535396,
+        "corr_force_lift_finger_only": -0.09916336713677609,
+        "finger_force_duty_cycle": 0.7476635514018691,
+        "finger_force_mean_N": 9.493937324488055,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.010164940930626809,
+        "max_anchored_step_m": 0.010164940930626809,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9558653291047238,
+        "peak_force_N": 9.652787367194504,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          0.0,
+          -0.04,
+          0.8
+        ],
+        "rot": [
+          1.9,
+          0.6,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.7,
+          -0.7,
+          -0.7
+        ],
+        "close_params": [
+          1.0,
+          -0.7,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.05546580567713477,
+        "peak_step": 320,
+        "n_finger_contact_steps": 249,
+        "corr_force_lift_all_contact": -0.20633972084535396,
+        "corr_force_lift_finger_only": -0.09916336713677609,
+        "finger_force_duty_cycle": 0.7476635514018691,
+        "finger_force_mean_N": 9.493937324488055,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.010164940930626809,
+        "max_anchored_step_m": 0.010164940930626809,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9558653291047238,
+        "peak_force_N": 9.652787367194504,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          -0.01,
+          -0.04,
+          0.8
+        ],
+        "rot": [
+          1.8,
+          0.6,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "close_params": [
+          1.0,
+          -0.5,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.05542613985950384,
+        "peak_step": 320,
+        "n_finger_contact_steps": 252,
+        "corr_force_lift_all_contact": -0.20157613164467958,
+        "corr_force_lift_finger_only": -0.08313364039929216,
+        "finger_force_duty_cycle": 0.7476635514018691,
+        "finger_force_mean_N": 8.491621849770336,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.009673937646551112,
+        "max_anchored_step_m": 0.009673937646551112,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": true,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9620005296353262,
+        "peak_force_N": 13.729386459395087,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          -0.01,
+          -0.04,
+          0.8
+        ],
+        "rot": [
+          1.9,
+          0.6,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "close_params": [
+          1.0,
+          -0.5,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.05542613985950384,
+        "peak_step": 320,
+        "n_finger_contact_steps": 252,
+        "corr_force_lift_all_contact": -0.20157613164467958,
+        "corr_force_lift_finger_only": -0.08313364039929216,
+        "finger_force_duty_cycle": 0.7476635514018691,
+        "finger_force_mean_N": 8.491621849770336,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.009673937646551112,
+        "max_anchored_step_m": 0.009673937646551112,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": true,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9620005296353262,
+        "peak_force_N": 13.729386459395087,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          -0.01,
+          -0.04,
+          0.8
+        ],
+        "rot": [
+          1.8,
+          0.6,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.7,
+          -0.7,
+          -0.7
+        ],
+        "close_params": [
+          1.0,
+          -0.7,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.05527681888288216,
+        "peak_step": 318,
+        "n_finger_contact_steps": 249,
+        "corr_force_lift_all_contact": -0.19583810958177303,
+        "corr_force_lift_finger_only": -0.1005179396150975,
+        "finger_force_duty_cycle": 0.7460815047021944,
+        "finger_force_mean_N": 8.489738737021872,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.011258243523368128,
+        "max_anchored_step_m": 0.011258243523368128,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9527797505973761,
+        "peak_force_N": 1.0912460176566274,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          -0.01,
+          -0.04,
+          0.8
+        ],
+        "rot": [
+          1.9,
+          0.6,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.7,
+          -0.7,
+          -0.7
+        ],
+        "close_params": [
+          1.0,
+          -0.7,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.05527681888288216,
+        "peak_step": 318,
+        "n_finger_contact_steps": 249,
+        "corr_force_lift_all_contact": -0.19583810958177303,
+        "corr_force_lift_finger_only": -0.1005179396150975,
+        "finger_force_duty_cycle": 0.7460815047021944,
+        "finger_force_mean_N": 8.489738737021872,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.011258243523368128,
+        "max_anchored_step_m": 0.011258243523368128,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9527797505973761,
+        "peak_force_N": 1.0912460176566274,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          0.01,
+          -0.04,
+          0.8
+        ],
+        "rot": [
+          1.8,
+          0.4,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.8,
+          -0.8,
+          -0.8
+        ],
+        "close_params": [
+          1.0,
+          -0.8,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.05499142631461029,
+        "peak_step": 320,
+        "n_finger_contact_steps": 243,
+        "corr_force_lift_all_contact": -0.13406425253286797,
+        "corr_force_lift_finger_only": -0.012999619868386434,
+        "finger_force_duty_cycle": 0.7289719626168224,
+        "finger_force_mean_N": 8.544597243411387,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.007860852999512336,
+        "max_anchored_step_m": 0.007860852999512336,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": true,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9624263768631633,
+        "peak_force_N": 12.642547675880813,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          0.01,
+          -0.04,
+          0.8
+        ],
+        "rot": [
+          1.9,
+          0.4,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.8,
+          -0.8,
+          -0.8
+        ],
+        "close_params": [
+          1.0,
+          -0.8,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.05499142631461029,
+        "peak_step": 320,
+        "n_finger_contact_steps": 243,
+        "corr_force_lift_all_contact": -0.13406425253286797,
+        "corr_force_lift_finger_only": -0.012999619868386434,
+        "finger_force_duty_cycle": 0.7289719626168224,
+        "finger_force_mean_N": 8.544597243411387,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.007860852999512336,
+        "max_anchored_step_m": 0.007860852999512336,
+        "max_free_flight_step_m": 0.0,
+        "max_free_fall_gravity_error": 0.0,
+        "separation_contact_driven": true,
+        "anchored_step_ok": true,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9624263768631633,
+        "peak_force_N": 12.642547675880813,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          -0.02,
+          -0.02,
+          0.8
+        ],
+        "rot": [
+          1.8,
+          0.6,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.8,
+          -0.8,
+          -0.8
+        ],
+        "close_params": [
+          1.0,
+          -0.8,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.05476871604324951,
+        "peak_step": 335,
+        "n_finger_contact_steps": 243,
+        "corr_force_lift_all_contact": -0.18667302718471598,
+        "corr_force_lift_finger_only": -0.06705798250378689,
+        "finger_force_duty_cycle": 0.7172619047619048,
+        "finger_force_mean_N": 6.817322300888091,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.011476924881079209,
+        "max_anchored_step_m": 0.011476924881079209,
+        "max_free_flight_step_m": 0.0014069795843228983,
+        "max_free_fall_gravity_error": 0.12922579126133044,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9548227032794474,
+        "peak_force_N": 1.0932438346678204,
+        "gate_pass": false
+      }
+    },
+    {
+      "cfg": {
+        "family": "reachable_hook",
+        "wrist_world": [
+          -0.02,
+          -0.02,
+          0.8
+        ],
+        "rot": [
+          1.9,
+          0.6,
+          0.0
+        ],
+        "close": [
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.3,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -0.8,
+          -0.8,
+          -0.8
+        ],
+        "close_params": [
+          1.0,
+          -0.8,
+          0.0
+        ],
+        "sequence": "descend_then_close",
+        "close_ramp": true,
+        "n_transit": 30,
+        "n_desc": 60,
+        "n_close": 80,
+        "settle": 25,
+        "lift_z": 0.16,
+        "lift_rate": 0.004,
+        "lift_hold": 80
+      },
+      "offset_xy_m": [
+        0.0,
+        0.0
+      ],
+      "yaw_rad": 0.0,
+      "gate": {
+        "peak_lift_m": 0.05476871604324951,
+        "peak_step": 335,
+        "n_finger_contact_steps": 243,
+        "corr_force_lift_all_contact": -0.18667302718471598,
+        "corr_force_lift_finger_only": -0.06705798250378689,
+        "finger_force_duty_cycle": 0.7172619047619048,
+        "finger_force_mean_N": 6.817322300888091,
+        "box_weight_N": 1.4715,
+        "force_duty_ok": true,
+        "force_sufficiency_ok": true,
+        "max_per_step_displacement_m": 0.011476924881079209,
+        "max_anchored_step_m": 0.011476924881079209,
+        "max_free_flight_step_m": 0.0014069795843228983,
+        "max_free_fall_gravity_error": 0.12922579126133044,
+        "separation_contact_driven": true,
+        "anchored_step_ok": false,
+        "free_fall_gravity_ok": true,
+        "separation_ok": true,
+        "table_touching_at_peak": true,
+        "wrist_z_at_peak": 0.9548227032794474,
+        "peak_force_N": 1.0932438346678204,
+        "gate_pass": false
+      }
+    }
+  ],
+  "supplementary_sweeps": {},
+  "scene_ab_same_actions": {
+    "question": "do the round-p0(4d) recorded hook actions still clear A3b on the current scene?",
+    "method": "identical action sequences, identical env code and thresholds, only grounding/assets/allegro_floating.xml differs",
+    "recorded_on": {
+      "commit": "4ee6f1d",
+      "sha256": "dbba3d70d722d529f80d1935e6c22826ac5d9be964c9827c64f3062bc660b934"
+    },
+    "replayed_on": {
+      "commit": "1b0f13f",
+      "sha256": "1ea0fdf5c87ce5a161efcda7c597b0fc6647c9fe30bcf2f5d0bcb52402d24b89"
+    },
+    "lift_bar_m": 0.05,
+    "rows": [
+      {
+        "trajectory": 0,
+        "frames": 339,
+        "scene_4ee6f1d": {
+          "peak_lift_m": 0.05280956247609492,
+          "peak_step": 337,
+          "n_steps": 339,
+          "support_force_N_at_peak": 0.0,
+          "A3b_airborne_at_peak": true,
+          "n_steps_above_5cm": 3,
+          "n_steps_above_5cm_and_airborne": 1,
+          "finger_force_N_at_peak": 0.0,
+          "max_single_step_displacement_m": 0.008981802865995592,
+          "final_lift_m": 0.05075519523298877,
+          "max_lift_over_first_half_m": 0.0006803898442447887,
+          "max_lift_over_last_quarter_m": 0.05280956247609492
+        },
+        "scene_1b0f13f": {
+          "peak_lift_m": 0.05328256847887747,
+          "peak_step": 337,
+          "n_steps": 339,
+          "support_force_N_at_peak": 1.0074580016632242,
+          "A3b_airborne_at_peak": false,
+          "n_steps_above_5cm": 3,
+          "n_steps_above_5cm_and_airborne": 0,
+          "finger_force_N_at_peak": 0.0,
+          "max_single_step_displacement_m": 0.00905766665301877,
+          "final_lift_m": 0.05219609076280096,
+          "max_lift_over_first_half_m": 0.0006803898442447887,
+          "max_lift_over_last_quarter_m": 0.05328256847887747
+        }
+      },
+      {
+        "trajectory": 1,
+        "frames": 339,
+        "scene_4ee6f1d": {
+          "peak_lift_m": 0.0532108577630529,
+          "peak_step": 337,
+          "n_steps": 339,
+          "support_force_N_at_peak": 0.0,
+          "A3b_airborne_at_peak": true,
+          "n_steps_above_5cm": 3,
+          "n_steps_above_5cm_and_airborne": 1,
+          "finger_force_N_at_peak": 0.0,
+          "max_single_step_displacement_m": 0.008155640069761105,
+          "final_lift_m": 0.05143792089102028,
+          "max_lift_over_first_half_m": 6.6641319164229e-05,
+          "max_lift_over_last_quarter_m": 0.0532108577630529
+        },
+        "scene_1b0f13f": {
+          "peak_lift_m": 0.05326975064292783,
+          "peak_step": 337,
+          "n_steps": 339,
+          "support_force_N_at_peak": 0.9881587599224795,
+          "A3b_airborne_at_peak": false,
+          "n_steps_above_5cm": 3,
+          "n_steps_above_5cm_and_airborne": 0,
+          "finger_force_N_at_peak": 0.0,
+          "max_single_step_displacement_m": 0.008111835872873563,
+          "final_lift_m": 0.052018616332182854,
+          "max_lift_over_first_half_m": 6.6641319164229e-05,
+          "max_lift_over_last_quarter_m": 0.05326975064292783
+        }
+      }
+    ],
+    "summary": {
+      "A3b_pass_old": [
+        true,
+        true
+      ],
+      "A3b_pass_new": [
+        false,
+        false
+      ],
+      "steps_above_5cm_old": [
+        3,
+        3
+      ],
+      "steps_above_5cm_new": [
+        3,
+        3
+      ],
+      "finger_force_N_at_peak_old": [
+        0.0,
+        0.0
+      ],
+      "finger_force_N_at_peak_new": [
+        0.0,
+        0.0
+      ],
+      "reading": "the hook raises the box only 3 steps above the 5 cm bar and reaches that peak with ZERO finger force - the box is launched, not carried. Its A3b pass on 4ee6f1d was the apex step of that launch happening to have no contact, i.e. a single-step coincidence, consistent with the p0(4d) adjudication that the passing set has measure ~zero. On 1b0f13f that coincidence is gone: the same actions leave the box in contact with the pedestal at their own peak."
+    }
+  }
+}

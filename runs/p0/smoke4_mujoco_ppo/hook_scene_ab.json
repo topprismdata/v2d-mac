@@ -1,0 +1,106 @@
+{
+  "question": "do the round-p0(4d) recorded hook actions still clear A3b on the current scene?",
+  "method": "identical action sequences, identical env code and thresholds, only grounding/assets/allegro_floating.xml differs",
+  "recorded_on": {
+    "commit": "4ee6f1d",
+    "sha256": "dbba3d70d722d529f80d1935e6c22826ac5d9be964c9827c64f3062bc660b934"
+  },
+  "replayed_on": {
+    "commit": "1b0f13f",
+    "sha256": "1ea0fdf5c87ce5a161efcda7c597b0fc6647c9fe30bcf2f5d0bcb52402d24b89"
+  },
+  "lift_bar_m": 0.05,
+  "rows": [
+    {
+      "trajectory": 0,
+      "frames": 339,
+      "scene_4ee6f1d": {
+        "peak_lift_m": 0.05280956247609492,
+        "peak_step": 337,
+        "n_steps": 339,
+        "support_force_N_at_peak": 0.0,
+        "A3b_airborne_at_peak": true,
+        "n_steps_above_5cm": 3,
+        "n_steps_above_5cm_and_airborne": 1,
+        "finger_force_N_at_peak": 0.0,
+        "max_single_step_displacement_m": 0.008981802865995592,
+        "final_lift_m": 0.05075519523298877,
+        "max_lift_over_first_half_m": 0.0006803898442447887,
+        "max_lift_over_last_quarter_m": 0.05280956247609492
+      },
+      "scene_1b0f13f": {
+        "peak_lift_m": 0.05328256847887747,
+        "peak_step": 337,
+        "n_steps": 339,
+        "support_force_N_at_peak": 1.0074580016632242,
+        "A3b_airborne_at_peak": false,
+        "n_steps_above_5cm": 3,
+        "n_steps_above_5cm_and_airborne": 0,
+        "finger_force_N_at_peak": 0.0,
+        "max_single_step_displacement_m": 0.00905766665301877,
+        "final_lift_m": 0.05219609076280096,
+        "max_lift_over_first_half_m": 0.0006803898442447887,
+        "max_lift_over_last_quarter_m": 0.05328256847887747
+      }
+    },
+    {
+      "trajectory": 1,
+      "frames": 339,
+      "scene_4ee6f1d": {
+        "peak_lift_m": 0.0532108577630529,
+        "peak_step": 337,
+        "n_steps": 339,
+        "support_force_N_at_peak": 0.0,
+        "A3b_airborne_at_peak": true,
+        "n_steps_above_5cm": 3,
+        "n_steps_above_5cm_and_airborne": 1,
+        "finger_force_N_at_peak": 0.0,
+        "max_single_step_displacement_m": 0.008155640069761105,
+        "final_lift_m": 0.05143792089102028,
+        "max_lift_over_first_half_m": 6.6641319164229e-05,
+        "max_lift_over_last_quarter_m": 0.0532108577630529
+      },
+      "scene_1b0f13f": {
+        "peak_lift_m": 0.05326975064292783,
+        "peak_step": 337,
+        "n_steps": 339,
+        "support_force_N_at_peak": 0.9881587599224795,
+        "A3b_airborne_at_peak": false,
+        "n_steps_above_5cm": 3,
+        "n_steps_above_5cm_and_airborne": 0,
+        "finger_force_N_at_peak": 0.0,
+        "max_single_step_displacement_m": 0.008111835872873563,
+        "final_lift_m": 0.052018616332182854,
+        "max_lift_over_first_half_m": 6.6641319164229e-05,
+        "max_lift_over_last_quarter_m": 0.05326975064292783
+      }
+    }
+  ],
+  "summary": {
+    "A3b_pass_old": [
+      true,
+      true
+    ],
+    "A3b_pass_new": [
+      false,
+      false
+    ],
+    "steps_above_5cm_old": [
+      3,
+      3
+    ],
+    "steps_above_5cm_new": [
+      3,
+      3
+    ],
+    "finger_force_N_at_peak_old": [
+      0.0,
+      0.0
+    ],
+    "finger_force_N_at_peak_new": [
+      0.0,
+      0.0
+    ],
+    "reading": "the hook raises the box only 3 steps above the 5 cm bar and reaches that peak with ZERO finger force - the box is launched, not carried. Its A3b pass on 4ee6f1d was the apex step of that launch happening to have no contact, i.e. a single-step coincidence, consistent with the p0(4d) adjudication that the passing set has measure ~zero. On 1b0f13f that coincidence is gone: the same actions leave the box in contact with the pedestal at their own peak."
+  }
+}

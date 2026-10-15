@@ -30,13 +30,17 @@ sys.path.insert(0, str(REPO))
 OUT_DIR = REPO / "runs/p0/smoke4_mujoco_ppo"
 
 
-def _make_env(rank: int, seed: int, episode_len: int):
+def _make_env(rank: int, seed: int, episode_len: int,
+              pedestal_load_weight: float | None = None):
     from stable_baselines3.common.monitor import Monitor  # noqa: PLC0415
 
     from grounding.envs.lift_hold_env import LiftHoldEnv  # noqa: PLC0415
 
+    kwargs = {} if pedestal_load_weight is None else {
+        "pedestal_load_weight": pedestal_load_weight}
+
     def _init():
-        env = LiftHoldEnv(episode_len=episode_len)
+        env = LiftHoldEnv(episode_len=episode_len, **kwargs)
         env = Monitor(env)
         env.reset(seed=seed + rank)
         env.action_space.seed(seed + rank)
@@ -78,7 +82,8 @@ class WindowedCurve:
 def train(total_steps: int, n_envs: int, seed: int, episode_len: int,
           early_stop_lift: float, resume: bool = False,
           out_dir: pathlib.Path = OUT_DIR,
-          init_from_bc: pathlib.Path | None = None) -> dict:
+          init_from_bc: pathlib.Path | None = None,
+          pedestal_load_weight: float | None = None) -> dict:
     from stable_baselines3 import PPO  # noqa: PLC0415
     from stable_baselines3.common.callbacks import BaseCallback  # noqa: PLC0415
     from stable_baselines3.common.vec_env import SubprocVecEnv  # noqa: PLC0415
@@ -125,8 +130,9 @@ def train(total_steps: int, n_envs: int, seed: int, episode_len: int,
         def _on_training_end(self) -> None:
             self.curve.close()
 
-    vec = SubprocVecEnv([_make_env(i, seed, episode_len) for i in range(n_envs)],
-                        start_method="spawn")
+    vec = SubprocVecEnv(
+        [_make_env(i, seed, episode_len, pedestal_load_weight)
+         for i in range(n_envs)], start_method="spawn")
     ckpt = out_dir / "ppo_lift_hold.zip"
     resumed_from = None
     if resume and ckpt.exists():
@@ -180,9 +186,48 @@ def train(total_steps: int, n_envs: int, seed: int, episode_len: int,
         "best_training_episode": cb.best,
         "n_episodes": cb.episode,
         "early_stop_target_m": early_stop_lift,
+        "pedestal_load_weight": pedestal_load_weight,
     }
     (out_dir / "train_summary.json").write_text(json.dumps(summary, indent=2))
     return summary
+
+
+def bearing_summary(trace: dict, peak_i: int, box_weight_n: float) -> dict:
+    """Per-episode bearing decomposition at the peak-lift step.
+
+    Round p0(4e) asks the report for the load carried by each path - top-face
+    hook / side-wall friction / pedestal - so the evidence shows WHERE the box's
+    weight went, not only how high the policy displayed it. Read straight off
+    the eval trace, so no re-simulation is needed. Values are in newtons and in
+    BOX WEIGHTS; the sign matters: a negative path pushes the box DOWN, which is
+    exactly what a corner wedge does with its fingers.
+    """
+    hook = np.asarray(trace["hook_up_N"], dtype=float)
+    wall = np.asarray(trace["wall_up_N"], dtype=float)
+    ped = np.asarray(trace["pedestal_up_N"], dtype=float)
+    i = int(peak_i)
+    sup = np.asarray(trace.get("support_force", []), dtype=float)
+    out = {
+        "peak_step": i,
+        "hook_up_N": float(hook[i]), "wall_up_N": float(wall[i]),
+        "pedestal_up_N": float(ped[i]),
+        "box_weight_N": float(box_weight_n),
+        "bearing_box_weights": {
+            "hook": round(float(hook[i]) / box_weight_n, 4),
+            "wall": round(float(wall[i]) / box_weight_n, 4),
+            "pedestal": round(float(ped[i]) / box_weight_n, 4),
+        },
+    }
+    total = float(hook[i] + wall[i] + ped[i])
+    out["upward_total_N"] = total
+    out["net_box_weights"] = round(total / box_weight_n, 4)
+    if sup.size:
+        out["support_force_N_at_peak"] = float(sup[i])
+        out["support_force_box_weights_at_peak"] = round(
+            float(sup[i]) / box_weight_n, 4)
+        out["support_force_box_weights_mean_window"] = round(
+            float(np.mean(sup[:i + 1])) / box_weight_n, 4)
+    return out
 
 
 def evaluate(n_episodes: int, seed: int, episode_len: int,
@@ -194,6 +239,10 @@ def evaluate(n_episodes: int, seed: int, episode_len: int,
 
     model = PPO.load(out_dir / "ppo_lift_hold", device="cpu")
     env = LiftHoldEnv(episode_len=episode_len)
+    # A3b evidence: record where the box's weight was actually carried on every
+    # step - top-face hook / side-wall friction / pedestal. Off during training
+    # (it needs contact points, not just forces), on for the eval run.
+    env.record_bearing = True
     episodes = []
     for ep in range(n_episodes):
         obs, _ = env.reset(seed=seed + ep)
@@ -205,6 +254,7 @@ def evaluate(n_episodes: int, seed: int, episode_len: int,
             done = term or trunc
         pairs = [sorted(set(tuple(p) for p in step)) for step in env.trace["contact_pairs"]]
         flat = sorted({p for step in pairs for p in step})
+        peak_i = int(np.argmax(env.trace["lift"]))
         episodes.append({
             "episode": ep,
             "seed": seed + ep,
@@ -213,8 +263,11 @@ def evaluate(n_episodes: int, seed: int, episode_len: int,
             "max_lift_m": float(max(env.trace["lift"])),
             "final_lift_m": float(env.trace["lift"][-1]),
             "max_contact_force_N": float(max(env.trace["contact_force"])),
+            "bearing": bearing_summary(
+                env.trace, peak_i,
+                float(env.model.body_mass[env.obj_body]) * 9.81),
             "contact_pairs_any": [list(p) for p in flat],
-            "contact_pairs_at_peak": [list(p) for p in pairs[int(np.argmax(env.trace["lift"]))]],
+            "contact_pairs_at_peak": [list(p) for p in pairs[peak_i]],
             "n_steps_with_finger_contact": int(sum(
                 1 for step in pairs
                 if any(g[0].split("#")[0].startswith(("ff_", "mf_", "rf_", "th_"))
@@ -229,6 +282,10 @@ def evaluate(n_episodes: int, seed: int, episode_len: int,
                 "obj_vz": env.trace["obj_vz"],
                 "supported": env.trace["supported"],
                 "finger_held": env.trace["finger_held"],
+                "support_force": env.trace["support_force"],
+                "hook_up_N": env.trace["hook_up_N"],
+                "wall_up_N": env.trace["wall_up_N"],
+                "pedestal_up_N": env.trace["pedestal_up_N"],
                 "dt": float(env.dt),
             },
         })
@@ -296,12 +353,23 @@ def main() -> None:
     p.add_argument("--init-from-bc", type=pathlib.Path, default=None,
                    help="load a bc_pretrain.py warm start into the fresh policy "
                         "before training (mutually exclusive with --resume)")
+    p.add_argument("--pedestal-load-weight", type=float, default=None,
+                   help="ABLATION ONLY. Overrides W_PEDESTAL_LOAD; 0.0 "
+                        "reproduces the round-p0(4d) reward exactly. Must be "
+                        "paired with --out-dir so the formal evidence is not "
+                        "overwritten.")
     args = p.parse_args()
+
+    if args.pedestal_load_weight is not None and args.out_dir == OUT_DIR:
+        raise SystemExit(
+            "--pedestal-load-weight is an ablation knob and would overwrite the "
+            "formal evidence in " + str(OUT_DIR) + "; pass a distinct --out-dir")
 
     if not args.eval_only:
         s = train(args.total_steps, args.n_envs, args.seed, args.episode_len,
                   args.early_stop_lift, resume=args.resume, out_dir=args.out_dir,
-                  init_from_bc=args.init_from_bc)
+                  init_from_bc=args.init_from_bc,
+                  pedestal_load_weight=args.pedestal_load_weight)
         print(json.dumps(s, indent=2), flush=True)
     res = evaluate(args.eval_episodes, args.seed + 10_000, args.episode_len,
                    out_dir=args.out_dir)

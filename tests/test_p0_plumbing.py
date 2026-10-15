@@ -52,9 +52,16 @@ EVAL_TOP_KEYS = {"n_episodes", "evaluator", "best_episode", "control_out_of_reac
                  "episodes"}
 EVAL_EPISODE_KEYS = {"episode", "seed", "return", "z0", "max_lift_m", "final_lift_m",
                      "max_contact_force_N", "contact_pairs_any",
-                     "contact_pairs_at_peak", "n_steps_with_finger_contact", "trace"}
+                     "contact_pairs_at_peak", "n_steps_with_finger_contact", "trace",
+                     # round p0(4e): the per-episode bearing decomposition, i.e.
+                     # where the box's weight was actually going at its own peak
+                     # (top-face hook / side-wall friction / pedestal).
+                     "bearing"}
 EVAL_TRACE_KEYS = {"obj_z", "lift", "wrist_z", "contact_force", "finger_force",
-                   "contact_pairs", "obj_vz", "supported", "finger_held", "dt"}
+                   "contact_pairs", "obj_vz", "supported", "finger_held", "dt",
+                   # round p0(4e): the pedestal-borne normal force that
+                   # W_PEDESTAL_LOAD prices, plus its three bearing paths.
+                   "support_force", "hook_up_N", "wall_up_N", "pedestal_up_N"}
 CONTROL_KEYS = {"n_episodes", "peak_lift_m", "n_finger_contact_steps",
                 "threshold_m", "pass"}
 

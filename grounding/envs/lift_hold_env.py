@@ -106,6 +106,46 @@ W_VEL = 0.01           # joint velocity penalty
 W_OFF_TABLE = 20.0     # per step while the box is off the table AND not held
 HOLD_SLACK = 0.001     # descent tolerance added on top of max_descent_step_m
 
+# --- W_PEDESTAL_LOAD: the A3b intent, written into the objective -------------
+# Round p0(4d) is the reason this line exists. Acceptance gate A3b is
+# "airborne at peak" (tests/test_smoke4_accept.py::test_a3_lift_is_contact_driven
+# asserts `not table_touching_at_peak`), but NOTHING in the reward asked for it:
+# W_LIFT_HELD pays for altitude however the box got there. PPO therefore
+# converged on a 42-degree nose-down corner wedge that displays 89-95 mm of lift,
+# holds it for 400 steps, and satisfies A1/A2/A3a/A3c/A4 - while the pedestal
+# carries 26.2 N and the fingers only 24.9 N. Measured: the passing set of
+# scripted trajectories (the thumb rim-hook) carries 100% of its weight through
+# top-face contacts and 0% through the pedestal. The reward paid the wedge more
+# than the honest grasp. This term is the difference:
+#
+#   penalty = W_PEDESTAL_LOAD * min(support_force_N / box_weight_N, CAP)
+#
+# i.e. per BOX WEIGHT of normal force the pedestal/table is still supplying to
+# the box, not per newton. Normalising by the box's own weight makes it the
+# "share of the load the base is still carrying" that A3b is about, and makes
+# the term dimensionless in scene units. It is read from the same contact
+# channel the contact-evidence terms already use (`_read_contacts`), so no new
+# sensing path and no new tuning knob is introduced.
+#
+# The CAP is not a free parameter chosen to flatter the numbers - it is what
+# keeps a single squeezed corner contact from dominating the whole return. The
+# f210f45 wedge measures ~17.8 box weights on the pedestal, which at the
+# uncapped rate would cost 71x what an honest hook earns. The cap keeps the
+# penalty decisive without letting one corner contact swamp every other term.
+#
+# The WEIGHT is pinned by the ordering property test (R7c), which requires
+# idle < pedestal-borne lift < clean grasp. Measured on the round's three
+# scenarios over a 120-step episode (tests/test_smoke4_reward.py):
+#     weight   idle   wedge   clean hook
+#      1.5     -180    4542       5878      <- inversion only 1.3x
+#      4.0     -480     942       5578      <- shipped: inversion 5.9x
+#      5.6     -852    -276       5317      <- ordering breaks past here
+# 4.0 is the strongest value that keeps all three orderable, so it is the one
+# that ships; the two neighbours are recorded so the choice is auditable
+# rather than a guess.
+W_PEDESTAL_LOAD = 4.0        # per box-weight of pedestal-borne load, per step
+W_PEDESTAL_LOAD_CAP = 12.0   # ... capped at this many box weights (see above)
+
 
 def _load_evaluator() -> dict[str, float]:
     data = json.loads(EVALUATOR_JSON.read_text())["evaluator"]
@@ -127,12 +167,18 @@ class HoldRewardShaper:
 
     def __init__(self, *, hold_threshold_m: float, lift_threshold_m: float,
                  min_hold_steps: int, max_descent_step_m: float,
-                 box_weight_n: float = BOX_WEIGHT_N) -> None:
+                 box_weight_n: float = BOX_WEIGHT_N,
+                 pedestal_load_weight: float = W_PEDESTAL_LOAD) -> None:
         self.hold_threshold_m = float(hold_threshold_m)
         self.lift_threshold_m = float(lift_threshold_m)
         self.min_hold_steps = int(min_hold_steps)
         self.max_descent_step_m = float(max_descent_step_m)
         self.box_weight_n = float(box_weight_n)
+        # Overridable ONLY to run the ablation that justifies this term: a
+        # shaper with pedestal_load_weight=0 is exactly the round-p0(4d) reward.
+        # It is never the default and nothing in the shipped configuration sets
+        # it, so the pinned ordering properties cannot be weakened by accident.
+        self.pedestal_load_weight = float(pedestal_load_weight)
         self.reset()
 
     def reset(self) -> None:
@@ -145,11 +191,17 @@ class HoldRewardShaper:
     # ------------------------------------------------------------------ step
     def step(self, *, lift: float, finger_force: float, finger_held: bool,
              on_support: bool, align: float, dist_reach: float,
-             act_pen: float = 0.0, vel_pen: float = 0.0) -> tuple[float, dict]:
+             act_pen: float = 0.0, vel_pen: float = 0.0,
+             support_force_n: float = 0.0) -> tuple[float, dict]:
         """Reward one control step. Returns ``(reward, info)``.
 
         ``finger_held`` must be True only when a *finger* geom is actually in
         contact with the box - that is the distinction the flick exploit lives in.
+
+        ``support_force_n`` is the summed NORMAL force the static support
+        geometry (pedestal / table) is still applying to the box on this step.
+        It defaults to 0 so every property test written against the pre-A3b
+        shaping keeps its exact value; the env always passes it.
         """
         held = bool(finger_held)
         held_f = 1.0 if held else 0.0
@@ -216,6 +268,16 @@ class HoldRewardShaper:
         #    0.002-0.018 across all four quarters, versus 0.49 for the config
         #    that produced the real grasp.
         # The continuous gradient is already supplied by W_LIFT_HELD.
+        #
+        # pedestal_load is the share of the box's OWN weight that the base is
+        # still carrying, capped (see W_PEDESTAL_LOAD). It is the one term that
+        # prices the A3b criterion: a wedge that shows 9 cm of lift while the
+        # pedestal carries ~18 box weights pays for all of them, a rim-hook that
+        # carries the box entirely through its top-face contacts pays nothing.
+        # Everything above it - grasp, duty, hold streak, one-shots - is left at
+        # its measured value; the contact evidence is untouched.
+        support_share = min(max(support_force_n, 0.0) / self.box_weight_n,
+                            W_PEDESTAL_LOAD_CAP)
         rew = (
             W_REACH * dist_reach
             + W_ALIGN * align
@@ -227,6 +289,7 @@ class HoldRewardShaper:
             + W_LIFT_BONUS * lift_bonus
             - (W_DROP_BASE + W_DROP_RAMP * min(drop_fraction, 1.0)) * drop
             - W_FREE_FLIGHT * free_flight
+            - self.pedestal_load_weight * support_share
             - act_pen
             - vel_pen
         )
@@ -246,6 +309,10 @@ class HoldRewardShaper:
             "contact_force": float(finger_force),
             "finger_force": float(finger_force),
             "finger_contact": grasp,
+            "support_force": float(support_force_n),
+            "support_share": float(support_share),
+            "pedestal_load_penalty": float(
+                self.pedestal_load_weight * support_share),
             "pairs": [],
         }
         return float(rew), info
@@ -294,6 +361,9 @@ class LiftHoldEnv(gym.Env):
         episode_len: int = 250,
         ctrl_hz: int = 50,
         domain_rand: bool = True,
+        box_offset_xy: tuple[float, float] | None = None,
+        box_yaw: float | None = None,
+        pedestal_load_weight: float = W_PEDESTAL_LOAD,
     ) -> None:
         super().__init__()
         self.evaluator_only = evaluator_only
@@ -314,12 +384,23 @@ class LiftHoldEnv(gym.Env):
             min_hold_steps=int(ev["min_hold_steps"]),
             max_descent_step_m=ev["max_descent_step_m"],
             box_weight_n=BOX_MASS_KG * 9.81,
+            pedestal_load_weight=pedestal_load_weight,
         )
 
         self.model = mujoco.MjModel.from_xml_path(str(MJCF))
         self.data = mujoco.MjData(self.model)
         self.domain_rand = domain_rand
         self.out_of_reach = out_of_reach
+        # Explicit box placement, used by the DAgger-style demonstration
+        # collector (grounding/collect_hook_demos.py) to sweep the perturbation
+        # grid one cell at a time. Both default to None, i.e. the committed
+        # reset behaviour: domain_rand's +-1 cm / +-0.1 rad, or dead centre when
+        # domain_rand is off. Keeping them as init args (rather than writing
+        # qpos from outside) means the placement still goes through reset's
+        # own settle loop, so a perturbed box is settled, not dropped.
+        self.box_offset_xy = (None if box_offset_xy is None
+                              else (float(box_offset_xy[0]), float(box_offset_xy[1])))
+        self.box_yaw = None if box_yaw is None else float(box_yaw)
 
         # timestep 0.002 s -> 0.02 s control step at ctrl_hz=50
         self.frame_skip = max(1, int(round(1.0 / (ctrl_hz * self.model.opt.timestep))))
@@ -418,6 +499,12 @@ class LiftHoldEnv(gym.Env):
         self._rng = np.random.default_rng(0)
         self.last_contact_pairs: list[tuple[str, str]] = []
         self.last_contact_force = 0.0
+        # Per-step bearing decomposition is only recorded when asked for: it needs
+        # the contact POINTS (to tell a top-face hook from side-wall friction),
+        # not just the forces, so it costs more than the rest of the contact
+        # loop. Training leaves it off; the evaluation run switches it on so
+        # every episode can report where the box's weight was actually going.
+        self.record_bearing = False
         self.episode_info: dict[str, Any] = {}
         # full per-step trace of the most recent episode (used by the acceptance test)
         self.trace: dict[str, list] = {}
@@ -480,6 +567,17 @@ class LiftHoldEnv(gym.Env):
             obj_pos[:2] += self._rng.uniform(-0.01, 0.01, 2)
             yaw = float(self._rng.uniform(-0.10, 0.10))
             quat = np.array([np.cos(yaw / 2), 0.0, 0.0, np.sin(yaw / 2)])
+        # explicit placement overrides the stochastic protocol entirely (and is
+        # usable with domain_rand=False, which is how the collector holds the
+        # commanded pose exact and perturbs only the variable under test)
+        if self.box_offset_xy is not None:
+            obj_pos[0] += self.box_offset_xy[0]
+            obj_pos[1] += self.box_offset_xy[1]
+            obj_pos[2] = self._support_height(obj_pos[0], obj_pos[1]) \
+                + float(m.geom_size[self.obj_geom][2])
+        if self.box_yaw is not None:
+            yaw = self.box_yaw
+            quat = np.array([np.cos(yaw / 2), 0.0, 0.0, np.sin(yaw / 2)])
         d.qpos[self.obj_qpos_adr: self.obj_qpos_adr + 7] = np.concatenate([obj_pos, quat])
 
         # --- hand: home pose with a light grasp pre-shape ------------------
@@ -519,9 +617,10 @@ class LiftHoldEnv(gym.Env):
         self.last_contact_pairs = []
         self.last_contact_force = 0.0
         self.trace = {"obj_z": [], "contact_force": [], "finger_force": [],
-                      "contact_pairs": [], "obj_vz": [], "supported": [],
-                      "finger_held": [], "hold_streak": [], "free_flight": [],
-                      "wrist_z": [], "lift": []}
+                      "support_force": [], "hook_up_N": [], "wall_up_N": [],
+                      "pedestal_up_N": [], "contact_pairs": [], "obj_vz": [],
+                      "supported": [], "finger_held": [], "hold_streak": [],
+                      "free_flight": [], "wrist_z": [], "lift": []}
         self._ep: dict[str, list[float]] = {"grasp": [], "hold": [], "streak": []}
 
         return self._obs(), {"obj_z0": self._z0}
@@ -576,14 +675,24 @@ class LiftHoldEnv(gym.Env):
         on_support, held = self._support_and_held(pairs)
         return not on_support and not held
 
-    def _read_contacts(self) -> tuple[list[tuple[str, str]], float, float]:
-        """Geom pairs touching the box, the summed normal force, and the finger-only
-        portion of that force (the latter is what the acceptance test correlates
-        against the box height)."""
+    def _read_contacts(self) -> tuple[list[tuple[str, str]], float, float, float]:
+        """Geom pairs touching the box, the summed normal force, the finger-only
+        portion of that force (what the acceptance test correlates against box
+        height), and the SUPPORT-only portion - the normal force the pedestal /
+        table is still applying to the box.
+
+        The last value is what distinguishes a real lift from a corner wedge. A
+        box that is genuinely off the pedestal has no support contact and reads
+        0 N; the f210f45 wedge, which displays 9 cm of lift while leaning on the
+        pedestal, reads tens of newtons here. It comes out of the same loop and
+        the same ``mj_contactForce`` call as the existing contact evidence - no
+        second sensing path, and no pair that the A2/A3a tests do not already see.
+        """
         m, d = self.model, self.data
         pairs: list[tuple[str, str]] = []
         force = 0.0
         finger_force = 0.0
+        support_force = 0.0
         for i in range(d.ncon):
             con = d.contact[i]
             g1, g2 = int(con.geom1), int(con.geom2)
@@ -597,8 +706,67 @@ class LiftHoldEnv(gym.Env):
             label = self.geom_label[other]
             if other in self.finger_geom_ids:
                 finger_force += mag
+            elif label in self.support_geoms:
+                # support geoms and finger geoms are disjoint by construction
+                # (support_geoms only collects world-body box geoms), so this is
+                # an exact partition of `force`, not a guess.
+                support_force += mag
             pairs.append((label, self.geom_label[self.obj_geom]))
-        return pairs, force, finger_force
+        return pairs, force, finger_force, support_force
+
+    def _bearing(self) -> dict[str, float]:
+        """Upward force (N) on the box this step, split by bearing path.
+
+        Three paths, mutually exclusive and exhaustive over the object geom's
+        contacts:
+
+          hook     a FINGER geom touching the box's TOP face - the rim hook, the
+                   only path a clean lift is supposed to use
+          wall     a FINGER geom touching a SIDE face - wall friction, the second
+                   legitimate bearing path of a real pinch
+          pedestal a STATIC support geom (pedestal / table) - the path A3b
+                   forbids; reading it non-zero means the box is being held up
+                   by the base, whatever height the policy is displaying
+
+        The normal is taken from ``contact.frame[0:3]``, MuJoCo's row-major
+        contact frame whose first row is the normal directed geom1 -> geom2, and
+        flipped to point into the box so ``fn * n`` is the force applied TO it.
+        ``tests/test_smoke4_pedestal_load.py`` pins that orientation with a
+        resting-box calibration (a box at rest must read a positive bearing
+        close to its own weight).
+        """
+        m, d = self.model, self.data
+        bp = d.xpos[self.obj_body]
+        bxm = d.xmat[self.obj_body].reshape(3, 3)
+        half = m.geom_size[self.obj_geom]
+        out = {"hook_up_N": 0.0, "wall_up_N": 0.0, "pedestal_up_N": 0.0}
+        for i in range(d.ncon):
+            con = d.contact[i]
+            g1, g2 = int(con.geom1), int(con.geom2)
+            if self.obj_geom not in (g1, g2):
+                continue
+            other = g2 if g1 == self.obj_geom else g1
+            f = np.zeros(6)
+            mujoco.mj_contactForce(m, d, i, f)
+            if float(f[0]) == 0.0:
+                continue
+            n = np.asarray(con.frame, dtype=np.float64)[0:3]
+            n = n / max(float(np.linalg.norm(n)), 1e-12)
+            if g1 == self.obj_geom:
+                n = -n
+            up = float((n * float(f[0]))[2])
+            label = self.geom_label[other]
+            if label in self.support_geoms:
+                out["pedestal_up_N"] += up
+                continue
+            if other not in self.finger_geom_ids:
+                continue
+            rel = bxm.T @ (np.asarray(con.pos) - bp)
+            on_top = (abs(rel[2] - half[2]) <= max(float(half[2]) * 0.5, 1e-3)
+                      and abs(rel[0]) <= half[0] + 1e-9
+                      and abs(rel[1]) <= half[1] + 1e-9 and rel[2] > 0.0)
+            out["hook_up_N" if on_top else "wall_up_N"] += up
+        return out
 
     # --------------------------------------------------------------- reward
     def _reward(self) -> tuple[float, dict[str, float]]:
@@ -621,7 +789,7 @@ class LiftHoldEnv(gym.Env):
         self._prev_dist = dist
         align = float(np.exp(-40.0 * float(np.linalg.norm(obj_pos[:2] - palm_pos[:2]))))
 
-        pairs, force, finger_force = self._read_contacts()
+        pairs, force, finger_force, support_force = self._read_contacts()
         on_support, finger_held = self._support_and_held(pairs)
 
         qvel = d.qvel[self.finger_dof_adr]
@@ -639,6 +807,7 @@ class LiftHoldEnv(gym.Env):
             dist_reach=dist_reach,
             act_pen=act_pen,
             vel_pen=vel_pen,
+            support_force_n=support_force,
         )
         # Sliding the box off the table used to be a free exploit: once it is off,
         # max(lift, 0) is 0 forever, so PPO learned to shove it over the edge
@@ -694,6 +863,15 @@ class LiftHoldEnv(gym.Env):
         self.trace["wrist_z"].append(float(self.data.xpos[self.hand_root][2]))
         self.trace["contact_force"].append(rinfo["contact_force"])
         self.trace["finger_force"].append(rinfo["finger_force"])
+        # A3b evidence: the pedestal-borne normal force per step. A genuine lift
+        # reads ~0 here; a corner wedge reads tens of newtons while displaying
+        # centimetres of lift. The acceptance report turns this trace into the
+        # per-episode bearing decomposition (hook / wall friction / pedestal).
+        self.trace["support_force"].append(rinfo["support_force"])
+        if self.record_bearing:
+            b = self._bearing()
+            for k, v in b.items():
+                self.trace[k].append(v)
         self.trace["contact_pairs"].append([list(p) for p in rinfo["pairs"]])
         # per-step state the acceptance gates segment on: vertical velocity (for the
         # gravity-consistency check on a free-falling box) and whether the box was
@@ -713,6 +891,7 @@ class LiftHoldEnv(gym.Env):
             "hold": rinfo["min_hold"],
             "z_peak": self._z_peak,
             "contact_force": rinfo["contact_force"],
+            "support_force": rinfo["support_force"],
         }
         if term or trunc:
             info["lifecycle"] = self._episode_stats()
@@ -731,6 +910,8 @@ class LiftHoldEnv(gym.Env):
             if self.trace["free_flight"] else 0.0,
             "z_peak": float(self._z_peak - self._z0),
             "contact_force": float(np.mean(self.trace["contact_force"])),
+            "support_force": float(np.mean(self.trace["support_force"]))
+            if self.trace["support_force"] else 0.0,
             "steps": n,
         }
 

@@ -23,8 +23,8 @@ Evidence-native **Video → Data → Policy** pipeline on Apple Silicon (MPS/Met
 ## 证据门控方法论
 
 - **阈值冻结**：验收门数值改动必须留痕；MJCF 产物盖 provenance 印章（工作区漂移拒盖）。
-- **诚实 FAIL**：不换 episode、不放宽门、不造数据。本月在管线中杀掉 **5 个假绿**（检测器与 MPS 同错 / pedestal 接触冒充手接触 / 弹射冒充抬升 / 压住冒充抓取 / 棱边撬冒充提升）。
-- **修订记账**：每次物理修订（Wave 3 / 3.5）附实测依据 + 回归测试 pin，见 `grounding/assets/REVISION.md`。
+- **诚实 FAIL**：不换 episode、不放宽门、不造数据。本月在管线中杀掉 **6 个假绿**（检测器与 MPS 同错 / pedestal 接触冒充手接触 / 弹射冒充抬升 / 压住冒充抓取 / 棱边撬冒充提升 / **基座承重冒充手承重**——奖励按抬升付费时 42° 角楔也能交抬升分，A3b 的本意已写进目标函数 `W_PEDESTAL_LOAD`）。
+- **修订记账**：每次物理修订（Wave 3 / 3.5）附实测依据 + 回归测试 pin，见 `grounding/assets/REVISION.md`；奖励修订（Wave 3.5-G）附实测承重分解 + `tests/test_smoke4_reward.py::R7*` 与 `tests/test_smoke4_pedestal_load.py` 的 pin。
 
 ## P1 升级（已批准）
 

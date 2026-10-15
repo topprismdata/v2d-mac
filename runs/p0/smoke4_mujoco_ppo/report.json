@@ -21,21 +21,22 @@
   },
   "model": {
     "xml": "grounding/assets/allegro_floating.xml",
-    "mjcf_commit": "4ee6f1d",
+    "mjcf_commit": "1b0f13f",
     "upstream": "google-deepmind/mujoco_menagerie wonik_allegro @ d7b481bac63d3d600ab404ee74f7474c5efe8a67",
-    "xml_sha256": "dbba3d70d722d529f80d1935e6c22826ac5d9be964c9827c64f3062bc660b934",
+    "xml_sha256": "1ea0fdf5c87ce5a161efcda7c597b0fc6647c9fe30bcf2f5d0bcb52402d24b89",
+    "xml_sha256_declared": "1ea0fdf5c87ce5a161efcda7c597b0fc6647c9fe30bcf2f5d0bcb52402d24b89",
     "nq": 29,
     "nv": 28,
     "nu": 22,
     "weights_file": "runs/p0/smoke4_mujoco_ppo/ppo_lift_hold.zip",
-    "weights_sha256": "ad0d3d215a6417af5dbe5881bb8d32de92651521418b4c5e5c2a9a6a9a3283f8"
+    "weights_sha256": "bf57b81c8c4c653907f143b3bd72f6d8a1dd82d14d9246bad68ced9c37a4d5e0"
   },
   "training": {
     "total_steps_requested": 2000000,
     "cumulative_timesteps": 2000896,
     "resumed_from_timesteps": null,
-    "init_from_bc": "runs/p0/smoke4_mujoco_ppo/reachable_bc_policy.pt",
-    "wall_seconds": 946.8105401992798,
+    "init_from_bc": null,
+    "wall_seconds": 726.8672969341278,
     "seed": 0,
     "n_envs": 8,
     "episode_len": 400,
@@ -52,8 +53,8 @@
     "n_windows": 4981,
     "first_global_step": 9600,
     "last_global_step": 2000000,
-    "reward_first_half_mean": 4404.986985933454,
-    "reward_second_half_mean": 8702.939398687153,
+    "reward_first_half_mean": -1590.7654584593374,
+    "reward_second_half_mean": -1531.6448792082697,
     "reward_improved": true,
     "z_peak_first_half_mean": 0.0,
     "z_peak_second_half_mean": 0.0,
@@ -80,109 +81,68 @@
     "min_finger_contact_steps": 5
   },
   "contact_evidence": {
-    "best_episode": 3,
-    "best_episode_seed": 10003,
-    "peak_lift_m": 0.09467670314223997,
-    "peak_step": 216,
-    "peak_force_N": 52.63545205920576,
-    "wrist_z_at_peak_m": 0.8539262104574646,
-    "n_finger_contact_steps": 386,
-    "finger_object_geom_pairs": [
-      [
-        "ff_distal_collision",
-        "object_geom"
-      ],
-      [
-        "ff_medial_collision",
-        "object_geom"
-      ],
-      [
-        "ff_proximal_collision",
-        "object_geom"
-      ],
-      [
-        "ff_tip_collision",
-        "object_geom"
-      ],
-      [
-        "th_distal_collision",
-        "object_geom"
-      ],
-      [
-        "th_medial_collision",
-        "object_geom"
-      ],
-      [
-        "th_tip_collision",
-        "object_geom"
-      ]
-    ],
-    "finger_force_duty_cycle": 0.9354838709677419,
-    "finger_force_mean_N": 28.52254161017744,
+    "best_episode": 2,
+    "best_episode_seed": 10002,
+    "peak_lift_m": 1.790388589473224e-05,
+    "peak_step": 19,
+    "peak_force_N": 1.471500000000038,
+    "wrist_z_at_peak_m": 0.9744084230339707,
+    "n_finger_contact_steps": 0,
+    "finger_object_geom_pairs": [],
+    "finger_force_duty_cycle": 0.0,
+    "finger_force_mean_N": 0.0,
     "box_weight_N": 1.4715,
-    "pearson_r_finger_force_vs_lift_evidence_only": 0.4060263726259311,
-    "max_anchored_step_m": 0.004837820310276131,
+    "pearson_r_finger_force_vs_lift_evidence_only": null,
+    "max_anchored_step_m": 1.4005680247897168e-05,
     "max_free_flight_step_m_evidence": 0.0,
     "max_free_fall_gravity_error_m_s": 0.0,
     "separation_contact_driven": true,
-    "table_touching_at_peak": true
+    "table_touching_at_peak": true,
+    "bearing_at_peak": {
+      "peak_step": 19,
+      "hook_up_N": 0.0,
+      "wall_up_N": 0.0,
+      "pedestal_up_N": 1.471500000000038,
+      "box_weight_N": 1.4715,
+      "bearing_box_weights": {
+        "hook": 0.0,
+        "wall": 0.0,
+        "pedestal": 1.0
+      },
+      "upward_total_N": 1.471500000000038,
+      "net_box_weights": 1.0,
+      "support_force_N_at_peak": 1.471500000000038,
+      "support_force_box_weights_at_peak": 1.0,
+      "support_force_box_weights_mean_window": 0.9998
+    }
   },
   "criteria": {
     "A1_episode_lift_gt_5cm": {
-      "value_m": 0.09467670314223997,
+      "value_m": 1.790388589473224e-05,
       "threshold_m": 0.05,
-      "pass": true
+      "pass": false
     },
     "A2_finger_object_contact_pair": {
-      "n_finger_contact_steps": 386,
-      "pairs": [
-        [
-          "ff_distal_collision",
-          "object_geom"
-        ],
-        [
-          "ff_medial_collision",
-          "object_geom"
-        ],
-        [
-          "ff_proximal_collision",
-          "object_geom"
-        ],
-        [
-          "ff_tip_collision",
-          "object_geom"
-        ],
-        [
-          "th_distal_collision",
-          "object_geom"
-        ],
-        [
-          "th_medial_collision",
-          "object_geom"
-        ],
-        [
-          "th_tip_collision",
-          "object_geom"
-        ]
-      ],
-      "pass": true
+      "n_finger_contact_steps": 0,
+      "pairs": [],
+      "pass": false
     },
     "A3a_i_finger_force_duty_cycle": {
-      "duty_cycle": 0.9354838709677419,
+      "duty_cycle": 0.0,
       "threshold": 0.5,
-      "pass": true
+      "pass": false
     },
     "A3a_ii_quasi_static_force_sufficiency": {
-      "mean_finger_force_N": 28.52254161017744,
+      "mean_finger_force_N": 0.0,
       "box_weight_N": 1.4715,
-      "pass": true
+      "pass": false
     },
     "A3b_airborne_at_peak": {
       "table_touching_at_peak": true,
       "pass": false
     },
     "A3c_i_anchored_step_displacement": {
-      "max_anchored_step_m": 0.004837820310276131,
+      "max_anchored_step_m": 1.4005680247897168e-05,
       "threshold_m": 0.01,
       "pass": true
     },
@@ -168915,49 +168875,20 @@
     {
       "episode": 0,
       "seed": 10000,
-      "return": 14097.135322697468,
-      "peak_lift_m": 0.09294494498850592,
-      "peak_step": 208,
-      "n_finger_contact_steps": 387,
-      "finger_pairs": [
-        [
-          "ff_distal_collision",
-          "object_geom"
-        ],
-        [
-          "ff_medial_collision",
-          "object_geom"
-        ],
-        [
-          "ff_proximal_collision",
-          "object_geom"
-        ],
-        [
-          "ff_tip_collision",
-          "object_geom"
-        ],
-        [
-          "th_distal_collision",
-          "object_geom"
-        ],
-        [
-          "th_medial_collision",
-          "object_geom"
-        ],
-        [
-          "th_proximal_collision",
-          "object_geom"
-        ]
-      ],
-      "corr_force_lift_all_contact": -0.10640330816387482,
-      "corr_force_lift_finger_only": 0.6171281943338882,
-      "finger_force_duty_cycle": 0.937799043062201,
-      "finger_force_mean_N": 28.733643512732105,
+      "return": -1444.8227678540802,
+      "peak_lift_m": 1.7770177190401526e-05,
+      "peak_step": 19,
+      "n_finger_contact_steps": 0,
+      "finger_pairs": [],
+      "corr_force_lift_all_contact": 0.2075631481824147,
+      "corr_force_lift_finger_only": NaN,
+      "finger_force_duty_cycle": 0.0,
+      "finger_force_mean_N": 0.0,
       "box_weight_N": 1.4715,
-      "force_duty_ok": true,
-      "force_sufficiency_ok": true,
-      "max_per_step_displacement_m": 0.0058596109116964,
-      "max_anchored_step_m": 0.0058596109116964,
+      "force_duty_ok": false,
+      "force_sufficiency_ok": false,
+      "max_per_step_displacement_m": 1.4726461098346633e-05,
+      "max_anchored_step_m": 1.4726461098346633e-05,
       "max_free_flight_step_m": 0.0,
       "max_free_fall_gravity_error": 0.0,
       "separation_contact_driven": true,
@@ -168965,63 +168896,43 @@
       "free_fall_gravity_ok": true,
       "separation_ok": true,
       "table_touching_at_peak": true,
-      "wrist_z_at_peak": 0.8565457043062782,
-      "peak_force_N": 53.101114221690054
+      "wrist_z_at_peak": 0.9730799940931136,
+      "peak_force_N": 1.471499999998845,
+      "bearing": {
+        "peak_step": 19,
+        "hook_up_N": 0.0,
+        "wall_up_N": 0.0,
+        "pedestal_up_N": 1.471499999998845,
+        "box_weight_N": 1.4715,
+        "bearing_box_weights": {
+          "hook": 0.0,
+          "wall": 0.0,
+          "pedestal": 1.0
+        },
+        "upward_total_N": 1.471499999998845,
+        "net_box_weights": 1.0,
+        "support_force_N_at_peak": 1.471499999998845,
+        "support_force_box_weights_at_peak": 1.0,
+        "support_force_box_weights_mean_window": 0.9998
+      }
     },
     {
       "episode": 1,
       "seed": 10001,
-      "return": 13915.153580664724,
-      "peak_lift_m": 0.09160246733391797,
-      "peak_step": 229,
-      "n_finger_contact_steps": 385,
-      "finger_pairs": [
-        [
-          "ff_base_collision",
-          "object_geom"
-        ],
-        [
-          "ff_distal_collision",
-          "object_geom"
-        ],
-        [
-          "ff_medial_collision",
-          "object_geom"
-        ],
-        [
-          "ff_proximal_collision",
-          "object_geom"
-        ],
-        [
-          "ff_tip_collision",
-          "object_geom"
-        ],
-        [
-          "th_distal_collision",
-          "object_geom"
-        ],
-        [
-          "th_medial_collision",
-          "object_geom"
-        ],
-        [
-          "th_proximal_collision",
-          "object_geom"
-        ],
-        [
-          "th_tip_collision",
-          "object_geom"
-        ]
-      ],
-      "corr_force_lift_all_contact": 0.05834175007511852,
-      "corr_force_lift_finger_only": 0.40308269470228214,
-      "finger_force_duty_cycle": 0.9347826086956522,
-      "finger_force_mean_N": 28.968049984153975,
+      "return": -1480.8256227760583,
+      "peak_lift_m": 1.7791099090946894e-05,
+      "peak_step": 19,
+      "n_finger_contact_steps": 0,
+      "finger_pairs": [],
+      "corr_force_lift_all_contact": 0.26998881809230424,
+      "corr_force_lift_finger_only": NaN,
+      "finger_force_duty_cycle": 0.0,
+      "finger_force_mean_N": 0.0,
       "box_weight_N": 1.4715,
-      "force_duty_ok": true,
-      "force_sufficiency_ok": true,
-      "max_per_step_displacement_m": 0.004767942181789775,
-      "max_anchored_step_m": 0.004767942181789775,
+      "force_duty_ok": false,
+      "force_sufficiency_ok": false,
+      "max_per_step_displacement_m": 1.3982687720792697e-05,
+      "max_anchored_step_m": 1.3982687720792697e-05,
       "max_free_flight_step_m": 0.0,
       "max_free_fall_gravity_error": 0.0,
       "separation_contact_driven": true,
@@ -169029,55 +168940,43 @@
       "free_fall_gravity_ok": true,
       "separation_ok": true,
       "table_touching_at_peak": true,
-      "wrist_z_at_peak": 0.8584032733852036,
-      "peak_force_N": 54.02036696273045
+      "wrist_z_at_peak": 0.9744696692545708,
+      "peak_force_N": 1.471500000000004,
+      "bearing": {
+        "peak_step": 19,
+        "hook_up_N": 0.0,
+        "wall_up_N": 0.0,
+        "pedestal_up_N": 1.471500000000004,
+        "box_weight_N": 1.4715,
+        "bearing_box_weights": {
+          "hook": 0.0,
+          "wall": 0.0,
+          "pedestal": 1.0
+        },
+        "upward_total_N": 1.471500000000004,
+        "net_box_weights": 1.0,
+        "support_force_N_at_peak": 1.471500000000004,
+        "support_force_box_weights_at_peak": 1.0,
+        "support_force_box_weights_mean_window": 0.9998
+      }
     },
     {
       "episode": 2,
       "seed": 10002,
-      "return": 14234.10942251502,
-      "peak_lift_m": 0.09308442786191451,
-      "peak_step": 196,
-      "n_finger_contact_steps": 388,
-      "finger_pairs": [
-        [
-          "ff_distal_collision",
-          "object_geom"
-        ],
-        [
-          "ff_medial_collision",
-          "object_geom"
-        ],
-        [
-          "ff_proximal_collision",
-          "object_geom"
-        ],
-        [
-          "ff_tip_collision",
-          "object_geom"
-        ],
-        [
-          "th_distal_collision",
-          "object_geom"
-        ],
-        [
-          "th_medial_collision",
-          "object_geom"
-        ],
-        [
-          "th_proximal_collision",
-          "object_geom"
-        ]
-      ],
-      "corr_force_lift_all_contact": -0.1831304458303749,
-      "corr_force_lift_finger_only": 0.5439197169748052,
-      "finger_force_duty_cycle": 0.9390862944162437,
-      "finger_force_mean_N": 29.336937195200953,
+      "return": -1460.5702918683105,
+      "peak_lift_m": 1.790388589473224e-05,
+      "peak_step": 19,
+      "n_finger_contact_steps": 0,
+      "finger_pairs": [],
+      "corr_force_lift_all_contact": 0.2697352827038624,
+      "corr_force_lift_finger_only": NaN,
+      "finger_force_duty_cycle": 0.0,
+      "finger_force_mean_N": 0.0,
       "box_weight_N": 1.4715,
-      "force_duty_ok": true,
-      "force_sufficiency_ok": true,
-      "max_per_step_displacement_m": 0.004998046848359805,
-      "max_anchored_step_m": 0.004998046848359805,
+      "force_duty_ok": false,
+      "force_sufficiency_ok": false,
+      "max_per_step_displacement_m": 1.4005680247897168e-05,
+      "max_anchored_step_m": 1.4005680247897168e-05,
       "max_free_flight_step_m": 0.0,
       "max_free_fall_gravity_error": 0.0,
       "separation_contact_driven": true,
@@ -169085,55 +168984,43 @@
       "free_fall_gravity_ok": true,
       "separation_ok": true,
       "table_touching_at_peak": true,
-      "wrist_z_at_peak": 0.8563045963095367,
-      "peak_force_N": 52.54074046739219
+      "wrist_z_at_peak": 0.9744084230339707,
+      "peak_force_N": 1.471500000000038,
+      "bearing": {
+        "peak_step": 19,
+        "hook_up_N": 0.0,
+        "wall_up_N": 0.0,
+        "pedestal_up_N": 1.471500000000038,
+        "box_weight_N": 1.4715,
+        "bearing_box_weights": {
+          "hook": 0.0,
+          "wall": 0.0,
+          "pedestal": 1.0
+        },
+        "upward_total_N": 1.471500000000038,
+        "net_box_weights": 1.0,
+        "support_force_N_at_peak": 1.471500000000038,
+        "support_force_box_weights_at_peak": 1.0,
+        "support_force_box_weights_mean_window": 0.9998
+      }
     },
     {
       "episode": 3,
       "seed": 10003,
-      "return": 14185.640568712273,
-      "peak_lift_m": 0.09467670314223997,
-      "peak_step": 216,
-      "n_finger_contact_steps": 386,
-      "finger_pairs": [
-        [
-          "ff_distal_collision",
-          "object_geom"
-        ],
-        [
-          "ff_medial_collision",
-          "object_geom"
-        ],
-        [
-          "ff_proximal_collision",
-          "object_geom"
-        ],
-        [
-          "ff_tip_collision",
-          "object_geom"
-        ],
-        [
-          "th_distal_collision",
-          "object_geom"
-        ],
-        [
-          "th_medial_collision",
-          "object_geom"
-        ],
-        [
-          "th_tip_collision",
-          "object_geom"
-        ]
-      ],
-      "corr_force_lift_all_contact": -0.14567639308782218,
-      "corr_force_lift_finger_only": 0.4060263726259311,
-      "finger_force_duty_cycle": 0.9354838709677419,
-      "finger_force_mean_N": 28.52254161017744,
+      "return": -1507.85584856653,
+      "peak_lift_m": 1.7791266652467108e-05,
+      "peak_step": 19,
+      "n_finger_contact_steps": 0,
+      "finger_pairs": [],
+      "corr_force_lift_all_contact": 0.18302298269126213,
+      "corr_force_lift_finger_only": NaN,
+      "finger_force_duty_cycle": 0.0,
+      "finger_force_mean_N": 0.0,
       "box_weight_N": 1.4715,
-      "force_duty_ok": true,
-      "force_sufficiency_ok": true,
-      "max_per_step_displacement_m": 0.004837820310276131,
-      "max_anchored_step_m": 0.004837820310276131,
+      "force_duty_ok": false,
+      "force_sufficiency_ok": false,
+      "max_per_step_displacement_m": 1.5070676452233478e-05,
+      "max_anchored_step_m": 1.5070676452233478e-05,
       "max_free_flight_step_m": 0.0,
       "max_free_fall_gravity_error": 0.0,
       "separation_contact_driven": true,
@@ -169141,55 +169028,43 @@
       "free_fall_gravity_ok": true,
       "separation_ok": true,
       "table_touching_at_peak": true,
-      "wrist_z_at_peak": 0.8539262104574646,
-      "peak_force_N": 52.63545205920576
+      "wrist_z_at_peak": 0.9498912660101588,
+      "peak_force_N": 1.4715000000001126,
+      "bearing": {
+        "peak_step": 19,
+        "hook_up_N": 0.0,
+        "wall_up_N": 0.0,
+        "pedestal_up_N": 1.4715000000001126,
+        "box_weight_N": 1.4715,
+        "bearing_box_weights": {
+          "hook": 0.0,
+          "wall": 0.0,
+          "pedestal": 1.0
+        },
+        "upward_total_N": 1.4715000000001126,
+        "net_box_weights": 1.0,
+        "support_force_N_at_peak": 1.4715000000001126,
+        "support_force_box_weights_at_peak": 1.0,
+        "support_force_box_weights_mean_window": 0.9998
+      }
     },
     {
       "episode": 4,
       "seed": 10004,
-      "return": 14145.067072493024,
-      "peak_lift_m": 0.09260179722623552,
-      "peak_step": 189,
-      "n_finger_contact_steps": 386,
-      "finger_pairs": [
-        [
-          "ff_distal_collision",
-          "object_geom"
-        ],
-        [
-          "ff_medial_collision",
-          "object_geom"
-        ],
-        [
-          "ff_proximal_collision",
-          "object_geom"
-        ],
-        [
-          "ff_tip_collision",
-          "object_geom"
-        ],
-        [
-          "th_distal_collision",
-          "object_geom"
-        ],
-        [
-          "th_medial_collision",
-          "object_geom"
-        ],
-        [
-          "th_proximal_collision",
-          "object_geom"
-        ]
-      ],
-      "corr_force_lift_all_contact": -0.016189682367466606,
-      "corr_force_lift_finger_only": 0.5531380634552872,
-      "finger_force_duty_cycle": 0.9263157894736842,
-      "finger_force_mean_N": 29.477810197006864,
+      "return": -1459.1531177787028,
+      "peak_lift_m": 1.7770337562783567e-05,
+      "peak_step": 19,
+      "n_finger_contact_steps": 0,
+      "finger_pairs": [],
+      "corr_force_lift_all_contact": 0.17256952551636345,
+      "corr_force_lift_finger_only": NaN,
+      "finger_force_duty_cycle": 0.0,
+      "finger_force_mean_N": 0.0,
       "box_weight_N": 1.4715,
-      "force_duty_ok": true,
-      "force_sufficiency_ok": true,
-      "max_per_step_displacement_m": 0.005901543754236127,
-      "max_anchored_step_m": 0.005901543754236127,
+      "force_duty_ok": false,
+      "force_sufficiency_ok": false,
+      "max_per_step_displacement_m": 1.5142804919765496e-05,
+      "max_anchored_step_m": 1.5142804919765496e-05,
       "max_free_flight_step_m": 0.0,
       "max_free_fall_gravity_error": 0.0,
       "separation_contact_driven": true,
@@ -169197,55 +169072,43 @@
       "free_fall_gravity_ok": true,
       "separation_ok": true,
       "table_touching_at_peak": true,
-      "wrist_z_at_peak": 0.8594440049108234,
-      "peak_force_N": 53.48032113376549
+      "wrist_z_at_peak": 0.9743924834655378,
+      "peak_force_N": 1.4715000000001068,
+      "bearing": {
+        "peak_step": 19,
+        "hook_up_N": 0.0,
+        "wall_up_N": 0.0,
+        "pedestal_up_N": 1.4715000000001068,
+        "box_weight_N": 1.4715,
+        "bearing_box_weights": {
+          "hook": 0.0,
+          "wall": 0.0,
+          "pedestal": 1.0
+        },
+        "upward_total_N": 1.4715000000001068,
+        "net_box_weights": 1.0,
+        "support_force_N_at_peak": 1.4715000000001068,
+        "support_force_box_weights_at_peak": 1.0,
+        "support_force_box_weights_mean_window": 0.9998
+      }
     },
     {
       "episode": 5,
       "seed": 10005,
-      "return": 14193.342070178489,
-      "peak_lift_m": 0.09420715977574179,
-      "peak_step": 222,
-      "n_finger_contact_steps": 385,
-      "finger_pairs": [
-        [
-          "ff_base_collision",
-          "object_geom"
-        ],
-        [
-          "ff_distal_collision",
-          "object_geom"
-        ],
-        [
-          "ff_medial_collision",
-          "object_geom"
-        ],
-        [
-          "ff_proximal_collision",
-          "object_geom"
-        ],
-        [
-          "ff_tip_collision",
-          "object_geom"
-        ],
-        [
-          "th_distal_collision",
-          "object_geom"
-        ],
-        [
-          "th_medial_collision",
-          "object_geom"
-        ]
-      ],
-      "corr_force_lift_all_contact": -0.011757611128606845,
-      "corr_force_lift_finger_only": 0.5480453684278886,
-      "finger_force_duty_cycle": 0.9327354260089686,
-      "finger_force_mean_N": 29.835660382711723,
+      "return": -1485.5517672060687,
+      "peak_lift_m": 1.7903492655069186e-05,
+      "peak_step": 19,
+      "n_finger_contact_steps": 0,
+      "finger_pairs": [],
+      "corr_force_lift_all_contact": 0.4596681291205868,
+      "corr_force_lift_finger_only": NaN,
+      "finger_force_duty_cycle": 0.0,
+      "finger_force_mean_N": 0.0,
       "box_weight_N": 1.4715,
-      "force_duty_ok": true,
-      "force_sufficiency_ok": true,
-      "max_per_step_displacement_m": 0.005952009759317756,
-      "max_anchored_step_m": 0.005952009759317756,
+      "force_duty_ok": false,
+      "force_sufficiency_ok": false,
+      "max_per_step_displacement_m": 1.2069780732315571e-05,
+      "max_anchored_step_m": 1.2069780732315571e-05,
       "max_free_flight_step_m": 0.0,
       "max_free_fall_gravity_error": 0.0,
       "separation_contact_driven": true,
@@ -169253,51 +169116,43 @@
       "free_fall_gravity_ok": true,
       "separation_ok": true,
       "table_touching_at_peak": true,
-      "wrist_z_at_peak": 0.859119846860179,
-      "peak_force_N": 52.90275959661839
+      "wrist_z_at_peak": 0.9742352517450638,
+      "peak_force_N": 1.4714999999991187,
+      "bearing": {
+        "peak_step": 19,
+        "hook_up_N": 0.0,
+        "wall_up_N": 0.0,
+        "pedestal_up_N": 1.4714999999991187,
+        "box_weight_N": 1.4715,
+        "bearing_box_weights": {
+          "hook": 0.0,
+          "wall": 0.0,
+          "pedestal": 1.0
+        },
+        "upward_total_N": 1.4714999999991187,
+        "net_box_weights": 1.0,
+        "support_force_N_at_peak": 1.4714999999991187,
+        "support_force_box_weights_at_peak": 1.0,
+        "support_force_box_weights_mean_window": 0.9998
+      }
     },
     {
       "episode": 6,
       "seed": 10006,
-      "return": 13482.448462661805,
-      "peak_lift_m": 0.08938343500323498,
-      "peak_step": 237,
-      "n_finger_contact_steps": 386,
-      "finger_pairs": [
-        [
-          "ff_distal_collision",
-          "object_geom"
-        ],
-        [
-          "ff_medial_collision",
-          "object_geom"
-        ],
-        [
-          "ff_proximal_collision",
-          "object_geom"
-        ],
-        [
-          "ff_tip_collision",
-          "object_geom"
-        ],
-        [
-          "th_distal_collision",
-          "object_geom"
-        ],
-        [
-          "th_medial_collision",
-          "object_geom"
-        ]
-      ],
-      "corr_force_lift_all_contact": -0.1806795251052282,
-      "corr_force_lift_finger_only": 0.4337681391890272,
-      "finger_force_duty_cycle": 0.9411764705882353,
-      "finger_force_mean_N": 29.240995571133773,
+      "return": -1515.612988368958,
+      "peak_lift_m": 1.7822366476738516e-05,
+      "peak_step": 19,
+      "n_finger_contact_steps": 0,
+      "finger_pairs": [],
+      "corr_force_lift_all_contact": 0.5582388974158273,
+      "corr_force_lift_finger_only": NaN,
+      "finger_force_duty_cycle": 0.0,
+      "finger_force_mean_N": 0.0,
       "box_weight_N": 1.4715,
-      "force_duty_ok": true,
-      "force_sufficiency_ok": true,
-      "max_per_step_displacement_m": 0.005527544665188122,
-      "max_anchored_step_m": 0.005527544665188122,
+      "force_duty_ok": false,
+      "force_sufficiency_ok": false,
+      "max_per_step_displacement_m": 1.118968225022332e-05,
+      "max_anchored_step_m": 1.118968225022332e-05,
       "max_free_flight_step_m": 0.0,
       "max_free_fall_gravity_error": 0.0,
       "separation_contact_driven": true,
@@ -169305,55 +169160,43 @@
       "free_fall_gravity_ok": true,
       "separation_ok": true,
       "table_touching_at_peak": true,
-      "wrist_z_at_peak": 0.863231657034516,
-      "peak_force_N": 54.65727873133349
+      "wrist_z_at_peak": 0.9696127372185481,
+      "peak_force_N": 1.4715000000002125,
+      "bearing": {
+        "peak_step": 19,
+        "hook_up_N": 0.0,
+        "wall_up_N": 0.0,
+        "pedestal_up_N": 1.4715000000002125,
+        "box_weight_N": 1.4715,
+        "bearing_box_weights": {
+          "hook": 0.0,
+          "wall": 0.0,
+          "pedestal": 1.0
+        },
+        "upward_total_N": 1.4715000000002125,
+        "net_box_weights": 1.0,
+        "support_force_N_at_peak": 1.4715000000002125,
+        "support_force_box_weights_at_peak": 1.0,
+        "support_force_box_weights_mean_window": 0.9998
+      }
     },
     {
       "episode": 7,
       "seed": 10007,
-      "return": 14127.40590463318,
-      "peak_lift_m": 0.09259105158096759,
-      "peak_step": 183,
-      "n_finger_contact_steps": 388,
-      "finger_pairs": [
-        [
-          "ff_distal_collision",
-          "object_geom"
-        ],
-        [
-          "ff_medial_collision",
-          "object_geom"
-        ],
-        [
-          "ff_proximal_collision",
-          "object_geom"
-        ],
-        [
-          "ff_tip_collision",
-          "object_geom"
-        ],
-        [
-          "th_distal_collision",
-          "object_geom"
-        ],
-        [
-          "th_medial_collision",
-          "object_geom"
-        ],
-        [
-          "th_proximal_collision",
-          "object_geom"
-        ]
-      ],
-      "corr_force_lift_all_contact": 0.1884090186280269,
-      "corr_force_lift_finger_only": 0.6258506964284865,
-      "finger_force_duty_cycle": 0.9347826086956522,
-      "finger_force_mean_N": 28.78532010763921,
+      "return": -1463.4076643821415,
+      "peak_lift_m": 1.7827799828729063e-05,
+      "peak_step": 19,
+      "n_finger_contact_steps": 0,
+      "finger_pairs": [],
+      "corr_force_lift_all_contact": 0.1753851784489495,
+      "corr_force_lift_finger_only": NaN,
+      "finger_force_duty_cycle": 0.0,
+      "finger_force_mean_N": 0.0,
       "box_weight_N": 1.4715,
-      "force_duty_ok": true,
-      "force_sufficiency_ok": true,
-      "max_per_step_displacement_m": 0.005245118395596604,
-      "max_anchored_step_m": 0.005245118395596604,
+      "force_duty_ok": false,
+      "force_sufficiency_ok": false,
+      "max_per_step_displacement_m": 1.514906105748448e-05,
+      "max_anchored_step_m": 1.514906105748448e-05,
       "max_free_flight_step_m": 0.0,
       "max_free_fall_gravity_error": 0.0,
       "separation_contact_driven": true,
@@ -169361,55 +169204,43 @@
       "free_fall_gravity_ok": true,
       "separation_ok": true,
       "table_touching_at_peak": true,
-      "wrist_z_at_peak": 0.8532516923841557,
-      "peak_force_N": 52.76437063824338
+      "wrist_z_at_peak": 0.9743032841009266,
+      "peak_force_N": 1.4715000000001066,
+      "bearing": {
+        "peak_step": 19,
+        "hook_up_N": 0.0,
+        "wall_up_N": 0.0,
+        "pedestal_up_N": 1.4715000000001066,
+        "box_weight_N": 1.4715,
+        "bearing_box_weights": {
+          "hook": 0.0,
+          "wall": 0.0,
+          "pedestal": 1.0
+        },
+        "upward_total_N": 1.4715000000001066,
+        "net_box_weights": 1.0,
+        "support_force_N_at_peak": 1.4715000000001066,
+        "support_force_box_weights_at_peak": 1.0,
+        "support_force_box_weights_mean_window": 0.9998
+      }
     },
     {
       "episode": 8,
       "seed": 10008,
-      "return": 14088.64254727644,
-      "peak_lift_m": 0.0923757284178518,
-      "peak_step": 196,
-      "n_finger_contact_steps": 387,
-      "finger_pairs": [
-        [
-          "ff_distal_collision",
-          "object_geom"
-        ],
-        [
-          "ff_medial_collision",
-          "object_geom"
-        ],
-        [
-          "ff_proximal_collision",
-          "object_geom"
-        ],
-        [
-          "ff_tip_collision",
-          "object_geom"
-        ],
-        [
-          "th_distal_collision",
-          "object_geom"
-        ],
-        [
-          "th_medial_collision",
-          "object_geom"
-        ],
-        [
-          "th_proximal_collision",
-          "object_geom"
-        ]
-      ],
-      "corr_force_lift_all_contact": -0.29483998795710337,
-      "corr_force_lift_finger_only": 0.5296143466985345,
-      "finger_force_duty_cycle": 0.934010152284264,
-      "finger_force_mean_N": 28.74094714099614,
+      "return": -1456.2224604019802,
+      "peak_lift_m": 1.7819168755650594e-05,
+      "peak_step": 19,
+      "n_finger_contact_steps": 0,
+      "finger_pairs": [],
+      "corr_force_lift_all_contact": 0.19581170233481124,
+      "corr_force_lift_finger_only": NaN,
+      "finger_force_duty_cycle": 0.0,
+      "finger_force_mean_N": 0.0,
       "box_weight_N": 1.4715,
-      "force_duty_ok": true,
-      "force_sufficiency_ok": true,
-      "max_per_step_displacement_m": 0.00563730235992288,
-      "max_anchored_step_m": 0.00563730235992288,
+      "force_duty_ok": false,
+      "force_sufficiency_ok": false,
+      "max_per_step_displacement_m": 1.4909910440952245e-05,
+      "max_anchored_step_m": 1.4909910440952245e-05,
       "max_free_flight_step_m": 0.0,
       "max_free_fall_gravity_error": 0.0,
       "separation_contact_driven": true,
@@ -169417,55 +169248,43 @@
       "free_fall_gravity_ok": true,
       "separation_ok": true,
       "table_touching_at_peak": true,
-      "wrist_z_at_peak": 0.8583971131798354,
-      "peak_force_N": 52.99263939078021
+      "wrist_z_at_peak": 0.9744201055295991,
+      "peak_force_N": 1.4715000000001137,
+      "bearing": {
+        "peak_step": 19,
+        "hook_up_N": 0.0,
+        "wall_up_N": 0.0,
+        "pedestal_up_N": 1.4715000000001137,
+        "box_weight_N": 1.4715,
+        "bearing_box_weights": {
+          "hook": 0.0,
+          "wall": 0.0,
+          "pedestal": 1.0
+        },
+        "upward_total_N": 1.4715000000001137,
+        "net_box_weights": 1.0,
+        "support_force_N_at_peak": 1.4715000000001137,
+        "support_force_box_weights_at_peak": 1.0,
+        "support_force_box_weights_mean_window": 0.9998
+      }
     },
     {
       "episode": 9,
       "seed": 10009,
-      "return": 14211.861794915685,
-      "peak_lift_m": 0.09351354684078361,
-      "peak_step": 276,
-      "n_finger_contact_steps": 385,
-      "finger_pairs": [
-        [
-          "ff_base_collision",
-          "object_geom"
-        ],
-        [
-          "ff_distal_collision",
-          "object_geom"
-        ],
-        [
-          "ff_medial_collision",
-          "object_geom"
-        ],
-        [
-          "ff_proximal_collision",
-          "object_geom"
-        ],
-        [
-          "ff_tip_collision",
-          "object_geom"
-        ],
-        [
-          "th_distal_collision",
-          "object_geom"
-        ],
-        [
-          "th_medial_collision",
-          "object_geom"
-        ]
-      ],
-      "corr_force_lift_all_contact": -0.09991658621106661,
-      "corr_force_lift_finger_only": 0.4445549948774285,
-      "finger_force_duty_cycle": 0.9458483754512635,
-      "finger_force_mean_N": 28.14784058935792,
+      "return": -1482.0760398091577,
+      "peak_lift_m": 1.7747678422441737e-05,
+      "peak_step": 19,
+      "n_finger_contact_steps": 0,
+      "finger_pairs": [],
+      "corr_force_lift_all_contact": 0.20121636994645395,
+      "corr_force_lift_finger_only": NaN,
+      "finger_force_duty_cycle": 0.0,
+      "finger_force_mean_N": 0.0,
       "box_weight_N": 1.4715,
-      "force_duty_ok": true,
-      "force_sufficiency_ok": true,
-      "max_per_step_displacement_m": 0.005477112849156973,
-      "max_anchored_step_m": 0.005477112849156973,
+      "force_duty_ok": false,
+      "force_sufficiency_ok": false,
+      "max_per_step_displacement_m": 1.4788767033868666e-05,
+      "max_anchored_step_m": 1.4788767033868666e-05,
       "max_free_flight_step_m": 0.0,
       "max_free_fall_gravity_error": 0.0,
       "separation_contact_driven": true,
@@ -169473,8 +169292,25 @@
       "free_fall_gravity_ok": true,
       "separation_ok": true,
       "table_touching_at_peak": true,
-      "wrist_z_at_peak": 0.8521118649237529,
-      "peak_force_N": 51.56095192189606
+      "wrist_z_at_peak": 0.9732504505721743,
+      "peak_force_N": 1.471499999998836,
+      "bearing": {
+        "peak_step": 19,
+        "hook_up_N": 0.0,
+        "wall_up_N": 0.0,
+        "pedestal_up_N": 1.471499999998836,
+        "box_weight_N": 1.4715,
+        "bearing_box_weights": {
+          "hook": 0.0,
+          "wall": 0.0,
+          "pedestal": 1.0
+        },
+        "upward_total_N": 1.471499999998836,
+        "net_box_weights": 1.0,
+        "support_force_N_at_peak": 1.471499999998836,
+        "support_force_box_weights_at_peak": 1.0,
+        "support_force_box_weights_mean_window": 0.9998
+      }
     }
   ],
   "design_deviations": [
@@ -169483,13 +169319,18 @@
     "The tissue-box long axis (0.24 m) is aligned with the palm long axis (y) because all three fingers flex in the x-z plane; with the long axis on x the 0.24 m extent would point away from the fingers.",
     "PLAN task 4.1 cites github.com/mujoco/mujoco_menagerie, which does not exist; the real upstream is google-deepmind/mujoco_menagerie and the Allegro hand now lives under wonik_allegro/.",
     "The box rests on a 60 mm pedestal rather than flush on the table. Scripted open-loop grasp search (~5800 samples over three independent searches) showed that with the box flush on the slab EVERY grasp caps at 3.2-3.6 cm - below the 5 cm acceptance bar, i.e. the task was geometrically unsolvable rather than merely hard for PPO. With 60 mm of clearance the fingers slide underneath and form a real power grasp: 169/700 sampled poses exceed 5 cm, best 11.5 cm, above the official evaluator's own 0.10 m lift threshold.",
-    "A3a RE-FROZEN (Main ruling): was Pearson r(force, lift) > 0.3, measured r = 0.089 on the best eval episode - a FAIL. That is the wrong statistic for a real grasp: the hand builds force FIRST, then lifts, so once the grip saturates the box rises roughly linearly while force plateaus and instantaneous correlation is low by construction. Re-frozen into two STRONGER gates: (i) finger-force duty cycle >= 50% over the lift window, (ii) quasi-static sufficiency - mean finger force >= m_box*g = 1.47 N, the force physically needed to support/accelerate the box. A teleported lift has zero contact force and fails both. corr_force_lift_finger_only is retained as UNGATED evidence (measured r = 0.406).",
-    "A3c RE-FROZEN (Main ruling): was a flat max per-step displacement < 0.01 m, measured 0.0683 m - a FAIL. A box knocked off the pedestal is in LEGAL free fall, where a per-step displacement cap is meaningless; what must be forbidden is energy injection. Re-frozen by segment: (i) supported-or-finger-held segment keeps the 0.01 m/step cap, (ii) free-flight segment is checked for gravity consistency |dv_z + g*dt| < 0.60 m/s instead, with the per-step displacement kept as evidence, (iii) the box may only leave its support while a finger is in contact with it. Both gates are anchored on the physical support state, not on a proxy."
+    "A3a RE-FROZEN (Main ruling): was Pearson r(force, lift) > 0.3, measured r = 0.089 on the best eval episode - a FAIL. That is the wrong statistic for a real grasp: the hand builds force FIRST, then lifts, so once the grip saturates the box rises roughly linearly while force plateaus and instantaneous correlation is low by construction. Re-frozen into two STRONGER gates: (i) finger-force duty cycle >= 50% over the lift window, (ii) quasi-static sufficiency - mean finger force >= m_box*g = 1.47 N, the force physically needed to support/accelerate the box. A teleported lift has zero contact force and fails both. corr_force_lift_finger_only is retained as UNGATED evidence (measured r = nan).",
+    "A3c RE-FROZEN (Main ruling): was a flat max per-step displacement < 0.01 m, measured 0.0683 m - a FAIL. A box knocked off the pedestal is in LEGAL free fall, where a per-step displacement cap is meaningless; what must be forbidden is energy injection. Re-frozen by segment: (i) supported-or-finger-held segment keeps the 0.01 m/step cap, (ii) free-flight segment is checked for gravity consistency |dv_z + g*dt| < 0.60 m/s instead, with the per-step displacement kept as evidence instead, (iii) the box may only leave its support while a finger is in contact with it. Both gates are anchored on the physical support state, not on a proxy.",
+    "REWARD ALIGNED WITH A3b (round p0(4e), gate THRESHOLDS untouched): round p0(4d) trained a 42-degree nose-down corner wedge that passed A1/A2/A3a/A3c/A4 and failed A3b 10/10, because nothing in the reward asked for the box to leave the pedestal - W_LIFT_HELD pays for altitude however the box got there. Measured on that policy, replayed on this scene: pedestal 26.4-27.0 N (17.9-18.4 box weights) at peak, with the FINGER bearing NEGATIVE (-6.9 to -9.4 box weights) - the hand presses the box down into the base while the base holds it up. W_PEDESTAL_LOAD = 4 per box-weight of pedestal-borne normal force (cap 12 box weights) now prices that, read from the same contact loop the A2/A3a evidence already uses. The ordering it must produce - idle < pedestal-borne lift < clean grasp - is pinned in tests/test_smoke4_reward.py R7c; the measurement that separates the two mechanisms is pinned in tests/test_smoke4_pedestal_load.py. Every other reward weight is unchanged, and support_force_n defaults to 0 so the pre-A3b properties keep their exact values."
   ],
   "evidence_files": {
     "curve": "runs/p0/smoke4_mujoco_ppo/curve.csv",
     "eval_episodes": "runs/p0/smoke4_mujoco_ppo/eval_episodes.json",
     "train_log": "runs/p0/smoke4_mujoco_ppo/train.log",
-    "train_summary": "runs/p0/smoke4_mujoco_ppo/train_summary.json"
+    "train_summary": "runs/p0/smoke4_mujoco_ppo/train_summary.json",
+    "pedestal_load_evidence": "runs/p0/smoke4_mujoco_ppo/pedestal_load_evidence.json",
+    "hook_scene_ab": "runs/p0/smoke4_mujoco_ppo/hook_scene_ab.json",
+    "hook_feasibility_current_scene": "runs/p0/smoke4_mujoco_ppo/hook_feasibility_1b0f13f.json",
+    "archived_demo_set": "runs/p0/smoke4_mujoco_ppo/reachable_demo_set_f210f45.npz"
   }
 }

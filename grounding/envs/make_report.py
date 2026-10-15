@@ -19,6 +19,17 @@ import numpy as np
 REPO = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 
+from grounding.collect_clean_demos import MJCF_COMMIT, MJCF_SHA256  # noqa: E402
+from grounding.envs.lift_hold_env import (  # noqa: E402
+    W_PEDESTAL_LOAD,
+    W_PEDESTAL_LOAD_CAP,
+)
+
+
+def _w(v: float) -> str:
+    """Format a reward weight into the report without scientific notation."""
+    return f"{v:g}"
+
 RUN_DIR = REPO / "runs/p0/smoke4_mujoco_ppo"
 LIFT_THRESHOLD = 0.05
 MAX_STEP_DISPLACEMENT = 0.01
@@ -92,7 +103,8 @@ def main() -> None:
     for ep in ev["episodes"]:
         a = _analyse_episode(ep)
         per_ep.append({"episode": ep["episode"], "seed": ep["seed"],
-                       "return": ep["return"], **a})
+                       "return": ep["return"], **a,
+                       "bearing": ep.get("bearing", {})})
 
     best = max(per_ep, key=lambda e: e["peak_lift_m"])
 
@@ -191,10 +203,11 @@ def main() -> None:
         },
         "model": {
             "xml": "grounding/assets/allegro_floating.xml",
-            "mjcf_commit": "4ee6f1d",
+            "mjcf_commit": MJCF_COMMIT,
             "upstream": "google-deepmind/mujoco_menagerie wonik_allegro "
                         "@ d7b481bac63d3d600ab404ee74f7474c5efe8a67",
             "xml_sha256": _sha256(REPO / "grounding/assets/allegro_floating.xml"),
+            "xml_sha256_declared": MJCF_SHA256,
             "nq": 29, "nv": 28, "nu": 22,
             "weights_file": "runs/p0/smoke4_mujoco_ppo/ppo_lift_hold.zip",
             "weights_sha256": _sha256(model_path),
@@ -229,6 +242,11 @@ def main() -> None:
             "max_free_fall_gravity_error_m_s": best["max_free_fall_gravity_error"],
             "separation_contact_driven": best["separation_contact_driven"],
             "table_touching_at_peak": best["table_touching_at_peak"],
+            # A3b's physical content: what was carrying the box at its own peak.
+            # A clean lift has pedestal ~0 and its weight coming through the
+            # top-face hook; a wedge has the pedestal positive and the finger
+            # bearing negative (the hand presses the box DOWN into the base).
+            "bearing_at_peak": best.get("bearing", {}),
         },
         "criteria": criteria,
         "clean_lift_feasibility": _clean_lift_feasibility(),
@@ -276,15 +294,40 @@ def main() -> None:
             "(i) supported-or-finger-held segment keeps the 0.01 m/step cap, "
             "(ii) free-flight segment is checked for gravity consistency "
             "|dv_z + g*dt| < 0.60 m/s instead, with the per-step displacement kept as "
-            "evidence, (iii) the box may only leave its support while a finger is in "
+            "evidence instead, (iii) the box may only leave its support while a finger is in "
             "contact with it. Both gates are anchored on the physical support state, "
             "not on a proxy.",
+            "REWARD ALIGNED WITH A3b (round p0(4e), gate THRESHOLDS untouched): "
+            "round p0(4d) trained a 42-degree nose-down corner wedge that passed "
+            "A1/A2/A3a/A3c/A4 and failed A3b 10/10, because nothing in the reward "
+            "asked for the box to leave the pedestal - W_LIFT_HELD pays for "
+            "altitude however the box got there. Measured on that policy, "
+            "replayed on this scene: pedestal 26.4-27.0 N (17.9-18.4 box weights) "
+            "at peak, with the FINGER bearing NEGATIVE (-6.9 to -9.4 box "
+            "weights) - the hand presses the box down into the base while the "
+            "base holds it up. W_PEDESTAL_LOAD = "
+            f"{_w(W_PEDESTAL_LOAD)} per box-weight of pedestal-borne normal "
+            f"force (cap {_w(W_PEDESTAL_LOAD_CAP)} box weights) now prices that, "
+            "read from the same contact loop the A2/A3a evidence already uses. "
+            "The ordering it must produce - idle < pedestal-borne lift < clean "
+            "grasp - is pinned in tests/test_smoke4_reward.py R7c; the "
+            "measurement that separates the two mechanisms is pinned in "
+            "tests/test_smoke4_pedestal_load.py. Every other reward weight is "
+            "unchanged, and support_force_n defaults to 0 so the pre-A3b "
+            "properties keep their exact values.",
         ],
         "evidence_files": {
             "curve": "runs/p0/smoke4_mujoco_ppo/curve.csv",
             "eval_episodes": "runs/p0/smoke4_mujoco_ppo/eval_episodes.json",
             "train_log": "runs/p0/smoke4_mujoco_ppo/train.log",
             "train_summary": "runs/p0/smoke4_mujoco_ppo/train_summary.json",
+            "pedestal_load_evidence":
+                "runs/p0/smoke4_mujoco_ppo/pedestal_load_evidence.json",
+            "hook_scene_ab": "runs/p0/smoke4_mujoco_ppo/hook_scene_ab.json",
+            "hook_feasibility_current_scene":
+                "runs/p0/smoke4_mujoco_ppo/hook_feasibility_1b0f13f.json",
+            "archived_demo_set":
+                "runs/p0/smoke4_mujoco_ppo/reachable_demo_set_f210f45.npz",
         },
     }
     (RUN_DIR / "report.json").write_text(json.dumps(report, indent=2))
