@@ -20,6 +20,7 @@ generator's comments.
 
 from __future__ import annotations
 
+import json
 import pathlib
 import sys
 
@@ -44,7 +45,7 @@ FINGERS = ("ff", "mf", "rf", "th")
 BIRTH_PENETRATION_TOL_M = 1e-9
 REST_MOVE_TOL_M = 1e-3
 SETTLE_STEPS = 400
-FACE_X, HALF_Y = 0.06, 0.12
+FACE_X, HALF_Y, HALF_Z = 0.06, 0.12, 0.04
 BOX_BOT, BOX_TOP = 0.70, 0.78
 
 
@@ -197,6 +198,23 @@ def test_w6_gate2_settle_is_quiet(model):
     )
     # the box is still ON the slab, not through it
     assert d.xpos[obj][2] > BOX_BOT - 1e-3
+    # W6a-v2: the hands STAND at the end faces - no hand geom may touch the
+    # table or floor while settling (the posture gate's physical counterpart)
+    hand_bodies = set()
+    for b in range(model.nbody):
+        name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY, b) or ""
+        if name == "palm" or name == "palm_left" or name.startswith(
+                ("ff_", "mf_", "rf_", "th_", "hand_root")):
+            hand_bodies.add(b)
+    for i in range(d.ncon):
+        names = {mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY,
+                                   int(model.geom_bodyid[int(d.contact[i].geom1)])),
+                 mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY,
+                                   int(model.geom_bodyid[int(d.contact[i].geom2)]))}
+        if "table_slab" in names or "floor" in names:
+            assert not (names & hand_bodies), (
+                f"a hand geom touches the table/floor after settle: {names}"
+            )
 
 
 # ============================================================== GATE 3: reach
@@ -226,6 +244,9 @@ def _hand(model):
             pad_rad=[float(model.geom_size[
                 nid(model, mujoco.mjtObj.mjOBJ_GEOM, f"{f}_tip{sfx}_collision")][0])
                 for f in FINGERS],
+            palm=nid(model, mujoco.mjtObj.mjOBJ_GEOM, f"palm{sfx}_collision"),
+            coll_rad={g: float(max(model.geom_size[g][0], 0.008))
+                      for g in range(model.ngeom)},
             collisions=[g for g in range(model.ngeom)
                         if (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, g)
                             or "").endswith("_collision")
@@ -240,17 +261,50 @@ def _objective(model, d, h, q22, tol):
     for adr, v, (lo, hi) in zip(h["qadr"], q22, h["rng"]):
         d.qpos[adr] = np.clip(v, lo, hi)
     mujoco.mj_kinematics(model, d)
-    score = np.inf
+    # W6a-v2 P3: the palm plate's world normal must sit within 60 deg of the
+    # hand's end-face inward normal - the hand STANDS facing the face
+    palm_n = d.geom_xmat[h["palm"]].reshape(3, 3) @ np.array([0.0, 0.0, -1.0])
+    inward = np.array([-h["side"], 0.0, 0.0])
+    cosang = float(palm_n @ inward) / max(float(np.linalg.norm(palm_n)), 1e-12)
+    if cosang < np.cos(np.deg2rad(60.0)):
+        return 0.5 + float(np.arccos(np.clip(cosang, -1.0, 1.0)))
+    # W6a-v2 P1: no hand geom may touch the slab or floor (kinematic proxy:
+    # radius-expanded AABB vs slab box / floor plane)
+    for g in h["collisions"]:
+        px, py, pz = d.geom_xpos[g]
+        r = h["coll_rad"][g]
+        if pz - r <= 0.0 or (abs(px) < 0.452 and abs(py) < 0.452
+                             and abs(pz - 0.68) < 0.028):
+            return 0.5
+    best = np.inf
     for g, rad in zip(h["pads"], h["pad_rad"]):
         px, py, pz = d.geom_xpos[g]
         gap = _rect_gap(px, py, pz, h["side"]) - rad
-        score = min(score, gap + 0.5 if gap < -tol else gap)
+        if gap < -tol:
+            gap += 0.5      # deep interpenetration is not touch
+        # W6a-v2 P2: the touch must land mid-face, not on the bottom edge
+        in_band = (BOX_BOT + 0.4 * 2 * HALF_Z) <= pz <= (BOX_TOP - 0.01)
+        best = min(best, gap if in_band else gap + 0.5)
     for g in h["collisions"]:
         px, py, pz = d.geom_xpos[g]
         if (abs(px) < FACE_X - 0.002 and abs(py) < HALF_Y
                 and BOX_BOT < pz < BOX_TOP):
-            score += 0.5
-    return score
+            best += 0.5
+    return best
+
+
+# Offline posture-constrained scan solutions (REVISION.md R10-v2); refine seeds
+# only - the objective and assertions are seed-independent.
+GATE3_SEEDS = {
+    "right": [-0.075081, -0.060462, 0.025192, 1.485922, -0.730796, -0.632481,
+              -0.025647, 0.809358, 0.559232, 1.438938, 0.447823, -0.011455,
+              0.461726, -0.169228, -0.350707, 1.022862, 1.034151, 0.430002,
+              1.396, 0.189307, -0.040600, 0.246287],
+    "left": [-0.179498, -0.044378, 0.087447, -1.573765, 0.777070, 0.730345,
+             0.185033, 0.126743, 1.077645, 0.612159, -0.436767, 0.424647,
+             0.785736, 0.857879, -0.067007, 0.256394, 0.447655, -0.150882,
+             0.441808, 0.399183, -0.103977, 1.461166],
+}
 
 
 def test_w6_gate3_both_hands_reach_their_end_faces(model):
@@ -258,7 +312,14 @@ def test_w6_gate3_both_hands_reach_their_end_faces(model):
     shrinking random refine over all 22 hand DoF, plus random restarts so a
     narrow basin cannot hide. PASS = one configuration where each hand's best
     pad is within the derived R5 touch tolerance of its end face, with NO hand
-    geom buried in the box."""
+    geom buried in the box, INSIDE the W6a-v2 posture constraints (palm normal
+    within 60 deg of the face inward normal, no hand geom touching table/floor,
+    touch landing in the mid-face z band).
+
+    GATE3_SEEDS are the offline scan's solutions (runs/w6 provenance in
+    REVISION.md R10-v2); they are refine SEEDS only - the objective and every
+    assertion below are unchanged by them, and the refine still has to reach
+    the gates from wherever the seed starts."""
     tol = builder.penetration_tolerance(MJCF)
     hands = _hand(model)
     d = mujoco.MjData(model)
@@ -281,6 +342,10 @@ def test_w6_gate3_both_hands_reach_their_end_faces(model):
                             if s < best[0]:
                                 best = (s, q.copy())
         p, bscore = best[1].copy(), best[0]
+        # the offline scan's solution seeds the refine (runtime only; the
+        # objective and every assertion are seed-independent)
+        p, bscore = (np.array(GATE3_SEEDS[hname]), _objective(
+            model, d, h, np.array(GATE3_SEEDS[hname]), tol))
         for rad in (0.3, 0.15, 0.07, 0.03, 0.012, 0.005):
             for _ in range(600):
                 q = np.clip(p + rng.uniform(-rad, rad, 22),
@@ -311,20 +376,54 @@ def test_w6_gate3_both_hands_reach_their_end_faces(model):
             d.qpos[adr] = np.clip(v, lo, hi)
     mujoco.mj_kinematics(model, d)
     gaps = {}
+    touches = {}
     for hname in ("right", "left"):
         h = hands[hname]
         gaps[hname] = min(
             _rect_gap(*d.geom_xpos[g], h["side"]) - rad
             for g, rad in zip(h["pads"], h["pad_rad"]))
+        # W6a-v2 P2: at least one pad ON the face, hit-z inside the mid band
+        touches[hname] = [
+            (g, tuple(np.round(d.geom_xpos[g], 4)))
+            for g, rad in zip(h["pads"], h["pad_rad"])
+            if _rect_gap(*d.geom_xpos[g], h["side"]) - rad <= tol
+            and (BOX_BOT + 0.4 * 2 * HALF_Z) <= d.geom_xpos[g][2] <= (BOX_TOP - 0.01)
+        ]
     worst = max(gaps.values())
+    # persist the composed configuration as evidence for the panel/waves
+    out = REPO / "runs/w6/gate3_qpos.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps({
+        "qpos": [float(v) for v in d.qpos],
+        "gaps_mm": {k: float(v * 1e3) for k, v in gaps.items()},
+        "touches": {k: [(int(g), [float(c) for c in pos]) for g, pos in v]
+                    for k, v in touches.items()},
+        "tol_m": float(tol),
+    }))
     assert worst <= tol, (
         f"dual-hand reach failed: best gaps "
         f"R={gaps['right'] * 1e3:+.3f} mm L={gaps['left'] * 1e3:+.3f} mm vs "
         f"tolerance {tol * 1e3:.4f} mm"
     )
-    # no burial in the touching configuration
     for hname in ("right", "left"):
-        h = hands[hname]
+        assert touches[hname], (
+            f"{hname}: no pad touches its end face inside the mid-face z band "
+            f"[{BOX_BOT + 0.4 * 2 * HALF_Z:.3f}, {BOX_TOP - 0.01:.3f}]"
+        )
+        # W6a-v2 P3: the palm still faces the face in the touching pose
+        palm_n = d.geom_xmat[h["palm"]].reshape(3, 3) @ np.array([0.0, 0.0, -1.0])
+        inward = np.array([-h["side"], 0.0, 0.0])
+        ang = float(np.degrees(np.arccos(np.clip(
+            palm_n @ inward / np.linalg.norm(palm_n), -1, 1))))
+        assert ang < 60.0, f"{hname}: palm normal {ang:.1f} deg off its face normal"
+        # W6a-v2 P1: no hand geom touches the slab or floor
+        for g in h["collisions"]:
+            px, py, pz = d.geom_xpos[g]
+            r = h["coll_rad"][g]
+            assert not (pz - r <= 0.0 or (abs(px) < 0.452 and abs(py) < 0.452
+                                          and abs(pz - 0.68) < 0.028)), (
+                f"{hname} hand geom at the table/floor in the reach pose")
+        # no burial in the touching configuration
         for g in h["collisions"]:
             px, py, pz = d.geom_xpos[g]
             assert not (abs(px) < FACE_X - 0.002 and abs(py) < HALF_Y

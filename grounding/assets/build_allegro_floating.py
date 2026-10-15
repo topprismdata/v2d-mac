@@ -196,10 +196,26 @@ PEDESTAL_H = PEDESTAL_H_M
 # palm "facing the end face" (task wording) while leaving flexion a usable
 # hook-over path. Birth is penetration-free at these homes: right fingertips at
 # (+0.326, y, 1.026), left at (-0.174, y, 0.874), all clear of box and slab.
-HAND_HOME_RIGHT = "0.25 0 0.95"     # +x end, outside the face
-HAND_HOME_LEFT = "-0.25 0 0.95"     # -x end, mirrored
-HAND_EULER_RIGHT = "0 -0.785398163397 0"   # Ry(-45 deg): palm faces (+x,-z)
-HAND_EULER_LEFT = "0 0.785398163397 0"     # Ry(+45 deg): palm faces (-x,-z)
+# Orientation (W6a-v2, measured off the built model): the upstream palm body
+# carries quat="0 1 0 1" (180 deg about (1,0,1)/sqrt2), so the palm collision
+# plate is VERTICAL in the hand's natural frame and its face normal is
+# hand-frame (-1,0,0) - the palm faces opposite the extended fingers, and
+# flexion curls the fingertips back toward the palm face. Consequence: at
+# body euler 0 the RIGHT hand already stands upright with its palm facing
+# exactly -x (its end-face inward normal, 0 deg off); the fingers extend
+# +x over the box end and curl down the end face toward the palm. The left
+# hand takes the same stance mirrored: euler "0 0 pi" (palm faces +x, fingers
+# extend -x over its end). The v1 45-deg body pitch was built on the wrong
+# premise (palm facing down) and produced the lunging posture Main rejected;
+# euler 0/pi is the video posture: hands standing at the end faces, palms to
+# the faces, fingers over the ends, thumbs free for the top face.
+# Birth safety at these homes (measured): palm plates hover 10 mm above the
+# box top (palm bottom z 0.790 vs box top 0.78), fingertips at z ~0.835 over
+# the ends, zero birth contacts, settle quiet (box 0.03 mm, roots <0.5 mm).
+HAND_HOME_RIGHT = "0.185 0 0.795"   # +x end: palm plate beside the face, 30 mm clear
+HAND_HOME_LEFT = "-0.185 0 0.795"   # -x end, mirrored
+HAND_EULER_RIGHT = "0 0 0"                 # palm faces -x = its face inward normal
+HAND_EULER_LEFT = "0 0 3.141592653590"     # Rz(180): palm faces +x
 HAND_HOME = HAND_HOME_RIGHT  # backwards-compatible alias (single-hand era)
 
 # --- R1: the real machine's fingertip force budget --------------------------
@@ -1235,18 +1251,24 @@ def build(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
     excludes = _exclude_lines(exclude_pairs)
     excludes_left = _exclude_lines(exclude_pairs, suffix="_left")
 
+    # W6a-v2 hygiene: pass 1 (placeholder forceranges, kp=1) must NEVER sit on
+    # the canonical path, not even transiently - a process dying between the
+    # passes would leave placeholder="-0 0" kp="1" committed as the scene
+    # (this is exactly what interrupted W6ServoTol's verification). Pass 1
+    # writes a scratch sibling; only pass 2's final XML touches `out`.
+    scratch = out.with_name(out.stem + ".placeholder.xml")
     placeholder = _emit(assets, defaults, palm, excludes, hand_acts,
                         palm_left=palm_left, excludes_left=excludes_left,
                         measured=None,
                         lip_overhang_m=lip_overhang_m, lip_h_m=lip_h_m,
                         chamfer_m=chamfer_m)
-    out.write_text(placeholder)
-    _verify_out(placeholder, out)
+    scratch.write_text(placeholder)
+    _verify_out(placeholder, scratch)
 
-    model = _load(out)
-    arms = moment_arm_table(out)
-    gravity = gravity_torque_table(out)
-    inertia = effective_inertia_table(out)
+    model = _load(scratch)
+    arms = moment_arm_table(scratch)
+    gravity = gravity_torque_table(scratch)
+    inertia = effective_inertia_table(scratch)
     mujoco = _mujoco()
     spans = {}
     for n in FINGER_JOINTS:
@@ -1261,6 +1283,7 @@ def build(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
                   chamfer_m=chamfer_m)
     out.write_text(final)
     _verify_out(final, out)
+    scratch.unlink(missing_ok=True)
 
     if verbose:
         print(f"wrote {out} ({len(final)} bytes, upstream commit {UPSTREAM_COMMIT})")
