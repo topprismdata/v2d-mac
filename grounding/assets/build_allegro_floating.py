@@ -184,6 +184,15 @@ CONTACT_SOLREF = (0.004, 1.0)
 CONTACT_SOLIMP = (0.95, 0.99, 0.001, 0.5, 2)
 DEFAULT_SOLREF = (0.02, 1.0)
 
+# --- Wave 3.5-B: explicit palm <-> box contact pair --------------------------
+# The palm's collision box carries no R3 stamp (scope fix from the R3 lesson), so
+# an implicit palm-vs-box pair mixed two sides: MuJoCo averages positive solref
+# across a pair, and 10 N on the palm pressed 0.359 mm into the box - 1.7x the
+# fingertip budget at the same load. One explicit <pair> for exactly this contact
+# removes the mixing, and only this contact: the palm-vs-pedestal graze peak force
+# is identical before and after (14.694 N both ways, runs/w35/palm_probe.json).
+PALM_BOX_PAIR = ("palm_collision", "object_geom")
+
 # --- R5: penetration tolerance derived from the resting sink -----------------
 # k >= 3 by contract: the tolerance must sit clear of MuJoCo's own resting
 # numerical tolerance so a real interpenetration cannot hide under it, while staying
@@ -211,7 +220,8 @@ TEMPLATE_HEAD = """<mujoco model="allegro_floating">
        tissue-box proxy (freejoint), fixed cameras cam_overhead / cam_wrist.
        Wave 3 revision: finger forcerange derived from the measured moment arm to
        the fingertip at the Allegro V5 10 N/finger limit, widened wrist_z/wrist_ry
-       travel, stiffened box<->finger contacts, named hand geoms. -->
+       travel, stiffened box<->finger contacts, named hand geoms, and an explicit
+       stiff palm<->box contact pair (Wave 3.5-B). -->
   <compiler angle="radian" meshdir="{meshdir}" autolimits="true"/>
 
   <option cone="elliptic" impratio="10" timestep="0.002" integrator="implicitfast"/>
@@ -257,6 +267,7 @@ TEMPLATE_HEAD = """<mujoco model="allegro_floating">
 
   <contact>
 {excludes}
+{pairs}
   </contact>
 
   <actuator>
@@ -781,6 +792,8 @@ def main() -> None:
         print(f"    {n:6s} arm={arms[n] * 1e3:7.3f} mm  tau=+/-{finger_forcerange(arms[n]):.4f}  "
               f"kp={kp[n]:.4f}  gravity={gravity[n]:.4f} N*m  I={inertia[n]:.3e}")
     print(f"R3 contact solref={CONTACT_SOLREF} solimp={CONTACT_SOLIMP[:2]}")
+    print(f"W3.5-B explicit pair {PALM_BOX_PAIR[0]}<->{PALM_BOX_PAIR[1]} "
+          f"solref={_fmt_pair(CONTACT_SOLREF)}")
     sink = measure_resting_sink()
     print(f"R5 resting sink = {sink:.4e} m -> tolerance = {PENETRATION_TOLERANCE_K} x "
           f"sink = {PENETRATION_TOLERANCE_K * sink:.4e} m")
@@ -820,6 +833,11 @@ def _emit(assets: str, defaults: str, palm: str, excludes: str,
             hand_actuator_lines.append(
                 f'    <position name="{name}" joint="{joint}" class="{cls}" '
                 f'kp="{kp[joint]:g}" forcerange="{-tau:.5f} {tau:.5f}"/>')
+    palm_box_pair = (
+        f'    <pair geom1="{PALM_BOX_PAIR[0]}" geom2="{PALM_BOX_PAIR[1]}" '
+        f'solref="{_fmt_pair(CONTACT_SOLREF)}" solimp="{_fmt_pair(CONTACT_SOLIMP)}" '
+        f'condim="4"/>'
+    )
     return TEMPLATE_HEAD.format(
         repo=UPSTREAM_REPO,
         commit=UPSTREAM_COMMIT,
@@ -837,6 +855,7 @@ def _emit(assets: str, defaults: str, palm: str, excludes: str,
         wrist_joints="\n".join(_wrist_joint_lines()),
         palm=palm,
         excludes=excludes,
+        pairs=palm_box_pair,
         wrist_actuators="\n".join(_wrist_actuator_lines()),
         hand_actuators="\n".join(hand_actuator_lines),
     )

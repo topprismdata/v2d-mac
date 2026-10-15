@@ -251,6 +251,45 @@ number to move — a function that returned a constant would fail both.
 
 ---
 
+## Wave 3.5-B — explicit palm↔box contact pair
+
+**Defect.** R3's scope fix deliberately left the palm's collision box unstamped,
+so an implicit palm-vs-box pair *mixed* two sides: MuJoCo averages positive
+`solref` across a pair, so the palm's default 20 ms and the box's 4 ms became a
+12 ms blend. Measured (`runs/w35/palm_probe.py` → `runs/w35/palm_probe.json`): a
+10 N palm press sank **0.359 mm** into the box — 1.7× the fingertip budget at the
+same load, and 5× the R5 tolerance. The box's floor under the palm was softer than
+the same floor under a fingertip.
+
+**Change.** One explicit pair in the generated XML, emitted by the generator
+(`PALM_BOX_PAIR`), not hand-written:
+
+```
+<pair geom1="palm_collision" geom2="object_geom"
+  solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4"/>
+```
+
+Measured on the regenerated XML, 10 N palm press: **0.359 mm → 0.035 mm (10.4×)**,
+now 3.4× *inside* the R5 tolerance.
+
+**Why this cannot repeat R3's 77 kN blow-up — scope, by construction.** R3's
+amplification came from stamping stiffness on a *side* (every colliding hand
+geom), which silently re-governed every pair that side belonged to — including the
+palm-vs-pedestal graze nobody was measuring. An explicit `<pair>` names exactly
+one geom pair; MuJoCo uses it for that pair alone and every other pair keeps its
+implicit mixing. The probe's P2 guard drives the palm onto the bare pedestal with
+the box disabled: peak force **14.694 N before and after, bit-identical**
+(`palm_probe.json`, both scenes) — vs 77 kN when R3 first overreached. The stiff
+side of the new pair (`palm_collision`) is also the same geom the graze touches,
+which is precisely why the pair — not a side-wide stamp — is the correct tool:
+the graze pair (palm↔pedestal) is untouched.
+
+The probe script itself moved with the baseline: its "stiff" variant is now the
+committed XML verbatim, and its "soft" variant strips the pair line — so re-running
+it against any future rebuild still measures both scenes.
+
+---
+
 ## Frozen, and verified unchanged
 
 Box 0.24 × 0.12 × 0.08 m and 0.15 kg; pedestal 60 mm; 20 Hz control; 22-D action

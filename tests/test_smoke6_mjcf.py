@@ -361,10 +361,12 @@ def test_r1_kp_does_not_destabilise_the_finger(model):
 # ===================================================================== R2
 def test_r2_wrist_z_travel_covers_the_measured_residual(model):
     """smoke5 measured 0.062088 m of wrist_z travel still needed after the gauge
-    fixing. The low end must come down by at least that much."""
+    fixing, and R2 widened the low end for it. The 5c base solve has since removed
+    that residual at the source (overshoot_after == 0), so the gate is now: the
+    residual stays solved, and the widened travel still covers the command minimum."""
     qa = json.loads(SMOKE5_QA.read_text())
     overshoot = qa["retargeting"]["wrist_anchor"]["gauge_fixing"]["overshoot_after"][2]
-    assert overshoot == pytest.approx(0.06209, abs=5e-4), "smoke5 evidence moved"
+    assert overshoot == pytest.approx(0.0, abs=5e-4), "gauge residual is back"
     jid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, "wrist_z")
     bid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, "wrist_az")
     lo, hi = model.jnt_range[jid]
@@ -379,10 +381,12 @@ def test_r2_wrist_z_travel_covers_the_measured_residual(model):
 
 
 def test_r2_wrist_ry_travel_covers_the_measured_residual(model):
-    """Same for wrist_ry: 0.058449 rad of pitch travel was still needed."""
+    """Same for wrist_ry: smoke5 measured 0.058449 rad of pitch travel still
+    needed and R2 widened the low end for it. The 5c base solve removed the
+    residual at the source (overshoot_after == 0); the widened travel stays."""
     qa = json.loads(SMOKE5_QA.read_text())
     overshoot = qa["retargeting"]["wrist_anchor"]["gauge_fixing"]["overshoot_after"][4]
-    assert overshoot == pytest.approx(0.05845, abs=5e-4), "smoke5 evidence moved"
+    assert overshoot == pytest.approx(0.0, abs=5e-4), "gauge residual is back"
     jid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, "wrist_ry")
     bid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, "wrist_ry")
     lo, hi = model.jnt_range[jid]
