@@ -23,20 +23,20 @@
     "xml": "grounding/assets/allegro_floating.xml",
     "mjcf_commit": "1b0f13f",
     "upstream": "google-deepmind/mujoco_menagerie wonik_allegro @ d7b481bac63d3d600ab404ee74f7474c5efe8a67",
-    "xml_sha256": "1ea0fdf5c87ce5a161efcda7c597b0fc6647c9fe30bcf2f5d0bcb52402d24b89",
+    "xml_sha256": "d61dc0de3ca313f2eaf9971ac5eef550642073a5ea8386fc4c46aa787ea0823e",
     "xml_sha256_declared": "1ea0fdf5c87ce5a161efcda7c597b0fc6647c9fe30bcf2f5d0bcb52402d24b89",
     "nq": 29,
     "nv": 28,
     "nu": 22,
     "weights_file": "runs/p0/smoke4_mujoco_ppo/ppo_lift_hold.zip",
-    "weights_sha256": "bf57b81c8c4c653907f143b3bd72f6d8a1dd82d14d9246bad68ced9c37a4d5e0"
+    "weights_sha256": "7d43f0b20e352b0b06635cd5684ceeb01641dc2f5bcae72243188a4995f5571f"
   },
   "training": {
     "total_steps_requested": 2000000,
     "cumulative_timesteps": 2000896,
     "resumed_from_timesteps": null,
-    "init_from_bc": null,
-    "wall_seconds": 726.8672969341278,
+    "init_from_bc": "runs/p0/smoke4_mujoco_ppo/reachable_bc_policy_c7c6dac.pt",
+    "wall_seconds": 964.1145007610321,
     "seed": 0,
     "n_envs": 8,
     "episode_len": 400,
@@ -46,15 +46,17 @@
       "global_step": 3200
     },
     "n_episodes": 5000,
-    "early_stop_target_m": 0.1
+    "early_stop_target_m": 0.1,
+    "pedestal_load_weight": null,
+    "log_std_init": -1.0
   },
   "curve_summary": {
     "path": "runs/p0/smoke4_mujoco_ppo/curve.csv",
     "n_windows": 4981,
     "first_global_step": 9600,
     "last_global_step": 2000000,
-    "reward_first_half_mean": -1590.7654584593374,
-    "reward_second_half_mean": -1531.6448792082697,
+    "reward_first_half_mean": 3336.864087597309,
+    "reward_second_half_mean": 9757.808533101002,
     "reward_improved": true,
     "z_peak_first_half_mean": 0.0,
     "z_peak_second_half_mean": 0.0,
@@ -81,83 +83,160 @@
     "min_finger_contact_steps": 5
   },
   "contact_evidence": {
-    "best_episode": 2,
-    "best_episode_seed": 10002,
-    "peak_lift_m": 1.790388589473224e-05,
-    "peak_step": 19,
-    "peak_force_N": 1.471500000000038,
-    "wrist_z_at_peak_m": 0.9744084230339707,
-    "n_finger_contact_steps": 0,
-    "finger_object_geom_pairs": [],
-    "finger_force_duty_cycle": 0.0,
-    "finger_force_mean_N": 0.0,
+    "best_episode": 5,
+    "best_episode_seed": 10005,
+    "peak_lift_m": 0.05800357616263874,
+    "peak_step": 94,
+    "peak_force_N": 52.20657136342575,
+    "wrist_z_at_peak_m": 0.9935669211939488,
+    "n_finger_contact_steps": 376,
+    "finger_object_geom_pairs": [
+      [
+        "th_medial_collision",
+        "object_geom"
+      ],
+      [
+        "th_proximal_collision",
+        "object_geom"
+      ]
+    ],
+    "finger_force_duty_cycle": 0.7473684210526316,
+    "finger_force_mean_N": 21.208779468364455,
     "box_weight_N": 1.4715,
-    "pearson_r_finger_force_vs_lift_evidence_only": null,
-    "max_anchored_step_m": 1.4005680247897168e-05,
-    "max_free_flight_step_m_evidence": 0.0,
-    "max_free_fall_gravity_error_m_s": 0.0,
-    "separation_contact_driven": true,
-    "table_touching_at_peak": true,
+    "pearson_r_finger_force_vs_lift_evidence_only": 0.7881556855508356,
+    "max_anchored_step_m": 0.006603023689686349,
+    "max_free_flight_step_m_evidence": 0.0036137194877305934,
+    "max_free_fall_gravity_error_m_s": 0.18742327287041627,
+    "separation_contact_driven": false,
+    "table_touching_at_peak": false,
     "bearing_at_peak": {
-      "peak_step": 19,
-      "hook_up_N": 0.0,
-      "wall_up_N": 0.0,
-      "pedestal_up_N": 1.471500000000038,
-      "box_weight_N": 1.4715,
+      "peak_step": 94,
+      "box_weight_N": 1.4714999999999998,
+      "caliber": {
+        "hold": "mean over evaluator-valid hold steps of the control-step sample; quasi-static caliber; resolution 20 ms (1 control step, 10 x 2 ms sim substeps)",
+        "peak_control_step": "max over the lift window of the control-step sample; resolution 20 ms; CANNOT see a frame-internal spike",
+        "peak_substep": "max over the lift window of the intra-frame maximum; resolution 2 ms (the sim timestep), sampled at the END of each completed mj_step",
+        "alignment": "a probe that samples BEFORE mj_step instead of after is offset by one substep (2 ms): its index i corresponds to ours i-1"
+      },
+      "hold": {
+        "hook": {
+          "n_steps": 57,
+          "mean": 0.0,
+          "max": 0.0,
+          "max_step": 38
+        },
+        "wall": {
+          "n_steps": 57,
+          "mean": -13.5127,
+          "max": -8.4145,
+          "max_step": 47
+        },
+        "pedestal": {
+          "n_steps": 57,
+          "mean": 0.0,
+          "max": 0.0,
+          "max_step": 38
+        }
+      },
+      "peak_control_step": {
+        "hook": {
+          "at_peak_step": 0.0,
+          "mean_over_lift_window": 0.0,
+          "max_over_lift_window": 0.0
+        },
+        "wall": {
+          "at_peak_step": -11.0908,
+          "mean_over_lift_window": -9.2347,
+          "max_over_lift_window": 0.0
+        },
+        "pedestal": {
+          "at_peak_step": 0.0,
+          "mean_over_lift_window": 1.2408,
+          "max_over_lift_window": 21.5257
+        }
+      },
+      "peak_substep": {
+        "resolution_m_s": 0.002,
+        "sampling": "end of each completed mj_step",
+        "hook": {
+          "at_peak_step": 0.0,
+          "mean_over_lift_window": 0.0,
+          "max_over_lift_window": 0.0
+        },
+        "wall": {
+          "at_peak_step": -11.0908,
+          "mean_over_lift_window": -8.4666,
+          "max_over_lift_window": 0.0
+        },
+        "pedestal": {
+          "at_peak_step": 0.0,
+          "mean_over_lift_window": 2.7614,
+          "max_over_lift_window": 30.9522
+        }
+      },
       "bearing_box_weights": {
         "hook": 0.0,
-        "wall": 0.0,
-        "pedestal": 1.0
+        "wall": -11.0908,
+        "pedestal": 0.0
       },
-      "upward_total_N": 1.471500000000038,
-      "net_box_weights": 1.0,
-      "support_force_N_at_peak": 1.471500000000038,
-      "support_force_box_weights_at_peak": 1.0,
-      "support_force_box_weights_mean_window": 0.9998
+      "upward_total_N": -16.320052652807682,
+      "net_box_weights": -11.0908,
+      "support_force_N_at_peak": 0.0,
+      "support_force_box_weights_at_peak": 0.0,
+      "support_force_box_weights_mean_window": 1.7352
     }
   },
   "criteria": {
     "A1_episode_lift_gt_5cm": {
-      "value_m": 1.790388589473224e-05,
+      "value_m": 0.05800357616263874,
       "threshold_m": 0.05,
-      "pass": false
+      "pass": true
     },
     "A2_finger_object_contact_pair": {
-      "n_finger_contact_steps": 0,
-      "pairs": [],
-      "pass": false
+      "n_finger_contact_steps": 376,
+      "pairs": [
+        [
+          "th_medial_collision",
+          "object_geom"
+        ],
+        [
+          "th_proximal_collision",
+          "object_geom"
+        ]
+      ],
+      "pass": true
     },
     "A3a_i_finger_force_duty_cycle": {
-      "duty_cycle": 0.0,
+      "duty_cycle": 0.7473684210526316,
       "threshold": 0.5,
-      "pass": false
+      "pass": true
     },
     "A3a_ii_quasi_static_force_sufficiency": {
-      "mean_finger_force_N": 0.0,
+      "mean_finger_force_N": 21.208779468364455,
       "box_weight_N": 1.4715,
-      "pass": false
+      "pass": true
     },
     "A3b_airborne_at_peak": {
-      "table_touching_at_peak": true,
-      "pass": false
+      "table_touching_at_peak": false,
+      "pass": true
     },
     "A3c_i_anchored_step_displacement": {
-      "max_anchored_step_m": 1.4005680247897168e-05,
+      "max_anchored_step_m": 0.006603023689686349,
       "threshold_m": 0.01,
       "pass": true
     },
     "A3c_ii_free_fall_gravity_consistency": {
-      "max_dvz_gravity_error_m_s": 0.0,
+      "max_dvz_gravity_error_m_s": 0.18742327287041627,
       "threshold_m_s": 0.6,
-      "max_free_flight_step_m_evidence": 0.0,
+      "max_free_flight_step_m_evidence": 0.0036137194877305934,
       "pass": true
     },
     "A3c_iii_separation_contact_driven": {
-      "separation_contact_driven": true,
-      "pass": true
+      "separation_contact_driven": false,
+      "pass": false
     },
     "A4_control_out_of_reach": {
-      "peak_lift_m": 0.0005444106920591482,
+      "peak_lift_m": 0.0,
       "threshold_m": 0.05,
       "pass": true
     }
@@ -168875,441 +168954,1121 @@
     {
       "episode": 0,
       "seed": 10000,
-      "return": -1444.8227678540802,
-      "peak_lift_m": 1.7770177190401526e-05,
-      "peak_step": 19,
-      "n_finger_contact_steps": 0,
-      "finger_pairs": [],
-      "corr_force_lift_all_contact": 0.2075631481824147,
-      "corr_force_lift_finger_only": NaN,
-      "finger_force_duty_cycle": 0.0,
-      "finger_force_mean_N": 0.0,
+      "return": 12641.79611402348,
+      "peak_lift_m": 0.05505868430940197,
+      "peak_step": 100,
+      "n_finger_contact_steps": 376,
+      "finger_pairs": [
+        [
+          "th_medial_collision",
+          "object_geom"
+        ],
+        [
+          "th_proximal_collision",
+          "object_geom"
+        ]
+      ],
+      "corr_force_lift_all_contact": 0.6585118170993007,
+      "corr_force_lift_finger_only": 0.7962007549408814,
+      "finger_force_duty_cycle": 0.7623762376237624,
+      "finger_force_mean_N": 23.793691809726976,
       "box_weight_N": 1.4715,
-      "force_duty_ok": false,
-      "force_sufficiency_ok": false,
-      "max_per_step_displacement_m": 1.4726461098346633e-05,
-      "max_anchored_step_m": 1.4726461098346633e-05,
-      "max_free_flight_step_m": 0.0,
-      "max_free_fall_gravity_error": 0.0,
-      "separation_contact_driven": true,
+      "force_duty_ok": true,
+      "force_sufficiency_ok": true,
+      "max_per_step_displacement_m": 0.006508680585378235,
+      "max_anchored_step_m": 0.006508680585378235,
+      "max_free_flight_step_m": 0.002883363839684905,
+      "max_free_fall_gravity_error": 0.6230615475862002,
+      "separation_contact_driven": false,
       "anchored_step_ok": true,
-      "free_fall_gravity_ok": true,
-      "separation_ok": true,
-      "table_touching_at_peak": true,
-      "wrist_z_at_peak": 0.9730799940931136,
-      "peak_force_N": 1.471499999998845,
+      "free_fall_gravity_ok": false,
+      "separation_ok": false,
+      "table_touching_at_peak": false,
+      "wrist_z_at_peak": 0.9916037739791603,
+      "peak_force_N": 52.273734893175,
       "bearing": {
-        "peak_step": 19,
-        "hook_up_N": 0.0,
-        "wall_up_N": 0.0,
-        "pedestal_up_N": 1.471499999998845,
-        "box_weight_N": 1.4715,
+        "peak_step": 100,
+        "box_weight_N": 1.4714999999999998,
+        "caliber": {
+          "hold": "mean over evaluator-valid hold steps of the control-step sample; quasi-static caliber; resolution 20 ms (1 control step, 10 x 2 ms sim substeps)",
+          "peak_control_step": "max over the lift window of the control-step sample; resolution 20 ms; CANNOT see a frame-internal spike",
+          "peak_substep": "max over the lift window of the intra-frame maximum; resolution 2 ms (the sim timestep), sampled at the END of each completed mj_step",
+          "alignment": "a probe that samples BEFORE mj_step instead of after is offset by one substep (2 ms): its index i corresponds to ours i-1"
+        },
+        "hold": {
+          "hook": {
+            "n_steps": 61,
+            "mean": 0.0,
+            "max": 0.0,
+            "max_step": 40
+          },
+          "wall": {
+            "n_steps": 61,
+            "mean": -14.6231,
+            "max": -9.343,
+            "max_step": 46
+          },
+          "pedestal": {
+            "n_steps": 61,
+            "mean": 0.0,
+            "max": 0.0,
+            "max_step": 40
+          }
+        },
+        "peak_control_step": {
+          "hook": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 0.0,
+            "max_over_lift_window": 0.0
+          },
+          "wall": {
+            "at_peak_step": -11.4478,
+            "mean_over_lift_window": -10.3389,
+            "max_over_lift_window": 0.0
+          },
+          "pedestal": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 1.5678,
+            "max_over_lift_window": 31.4606
+          }
+        },
+        "peak_substep": {
+          "resolution_m_s": 0.002,
+          "sampling": "end of each completed mj_step",
+          "hook": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 0.0,
+            "max_over_lift_window": 0.0
+          },
+          "wall": {
+            "at_peak_step": -11.4478,
+            "mean_over_lift_window": -9.6185,
+            "max_over_lift_window": 0.0
+          },
+          "pedestal": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 2.6163,
+            "max_over_lift_window": 31.4606
+          }
+        },
         "bearing_box_weights": {
           "hook": 0.0,
-          "wall": 0.0,
-          "pedestal": 1.0
+          "wall": -11.4478,
+          "pedestal": 0.0
         },
-        "upward_total_N": 1.471499999998845,
-        "net_box_weights": 1.0,
-        "support_force_N_at_peak": 1.471499999998845,
-        "support_force_box_weights_at_peak": 1.0,
-        "support_force_box_weights_mean_window": 0.9998
+        "upward_total_N": -16.845460762267027,
+        "net_box_weights": -11.4478,
+        "support_force_N_at_peak": 0.0,
+        "support_force_box_weights_at_peak": 0.0,
+        "support_force_box_weights_mean_window": 2.1388
       }
     },
     {
       "episode": 1,
       "seed": 10001,
-      "return": -1480.8256227760583,
-      "peak_lift_m": 1.7791099090946894e-05,
-      "peak_step": 19,
-      "n_finger_contact_steps": 0,
-      "finger_pairs": [],
-      "corr_force_lift_all_contact": 0.26998881809230424,
-      "corr_force_lift_finger_only": NaN,
-      "finger_force_duty_cycle": 0.0,
-      "finger_force_mean_N": 0.0,
+      "return": 13633.626572922118,
+      "peak_lift_m": 0.0536068644397939,
+      "peak_step": 140,
+      "n_finger_contact_steps": 378,
+      "finger_pairs": [
+        [
+          "th_medial_collision",
+          "object_geom"
+        ],
+        [
+          "th_proximal_collision",
+          "object_geom"
+        ]
+      ],
+      "corr_force_lift_all_contact": 0.6175964719724382,
+      "corr_force_lift_finger_only": 0.7298928863500673,
+      "finger_force_duty_cycle": 0.8439716312056738,
+      "finger_force_mean_N": 20.865242253382647,
       "box_weight_N": 1.4715,
-      "force_duty_ok": false,
-      "force_sufficiency_ok": false,
-      "max_per_step_displacement_m": 1.3982687720792697e-05,
-      "max_anchored_step_m": 1.3982687720792697e-05,
-      "max_free_flight_step_m": 0.0,
-      "max_free_fall_gravity_error": 0.0,
+      "force_duty_ok": true,
+      "force_sufficiency_ok": true,
+      "max_per_step_displacement_m": 0.006212179855316746,
+      "max_anchored_step_m": 0.006212179855316746,
+      "max_free_flight_step_m": 0.0025281800668582877,
+      "max_free_fall_gravity_error": 0.18358143317240527,
       "separation_contact_driven": true,
       "anchored_step_ok": true,
       "free_fall_gravity_ok": true,
       "separation_ok": true,
-      "table_touching_at_peak": true,
-      "wrist_z_at_peak": 0.9744696692545708,
-      "peak_force_N": 1.471500000000004,
+      "table_touching_at_peak": false,
+      "wrist_z_at_peak": 0.9840575503587455,
+      "peak_force_N": 49.27067608612091,
       "bearing": {
-        "peak_step": 19,
-        "hook_up_N": 0.0,
-        "wall_up_N": 0.0,
-        "pedestal_up_N": 1.471500000000004,
-        "box_weight_N": 1.4715,
+        "peak_step": 140,
+        "box_weight_N": 1.4714999999999998,
+        "caliber": {
+          "hold": "mean over evaluator-valid hold steps of the control-step sample; quasi-static caliber; resolution 20 ms (1 control step, 10 x 2 ms sim substeps)",
+          "peak_control_step": "max over the lift window of the control-step sample; resolution 20 ms; CANNOT see a frame-internal spike",
+          "peak_substep": "max over the lift window of the intra-frame maximum; resolution 2 ms (the sim timestep), sampled at the END of each completed mj_step",
+          "alignment": "a probe that samples BEFORE mj_step instead of after is offset by one substep (2 ms): its index i corresponds to ours i-1"
+        },
+        "hold": {
+          "hook": {
+            "n_steps": 89,
+            "mean": 0.0,
+            "max": 0.0,
+            "max_step": 39
+          },
+          "wall": {
+            "n_steps": 89,
+            "mean": -11.4832,
+            "max": -2.538,
+            "max_step": 47
+          },
+          "pedestal": {
+            "n_steps": 89,
+            "mean": 0.0,
+            "max": 0.0,
+            "max_step": 39
+          }
+        },
+        "peak_control_step": {
+          "hook": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 0.0,
+            "max_over_lift_window": 0.0
+          },
+          "wall": {
+            "at_peak_step": -8.6859,
+            "mean_over_lift_window": -9.4789,
+            "max_over_lift_window": 0.0
+          },
+          "pedestal": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 1.06,
+            "max_over_lift_window": 27.7406
+          }
+        },
+        "peak_substep": {
+          "resolution_m_s": 0.002,
+          "sampling": "end of each completed mj_step",
+          "hook": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 0.0,
+            "max_over_lift_window": 0.0
+          },
+          "wall": {
+            "at_peak_step": -8.3747,
+            "mean_over_lift_window": -8.7158,
+            "max_over_lift_window": 0.0
+          },
+          "pedestal": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 1.9677,
+            "max_over_lift_window": 27.7406
+          }
+        },
         "bearing_box_weights": {
           "hook": 0.0,
-          "wall": 0.0,
-          "pedestal": 1.0
+          "wall": -8.6859,
+          "pedestal": 0.0
         },
-        "upward_total_N": 1.471500000000004,
-        "net_box_weights": 1.0,
-        "support_force_N_at_peak": 1.471500000000004,
-        "support_force_box_weights_at_peak": 1.0,
-        "support_force_box_weights_mean_window": 0.9998
+        "upward_total_N": -12.78134354039545,
+        "net_box_weights": -8.6859,
+        "support_force_N_at_peak": 0.0,
+        "support_force_box_weights_at_peak": 0.0,
+        "support_force_box_weights_mean_window": 1.5716
       }
     },
     {
       "episode": 2,
       "seed": 10002,
-      "return": -1460.5702918683105,
-      "peak_lift_m": 1.790388589473224e-05,
-      "peak_step": 19,
-      "n_finger_contact_steps": 0,
-      "finger_pairs": [],
-      "corr_force_lift_all_contact": 0.2697352827038624,
-      "corr_force_lift_finger_only": NaN,
-      "finger_force_duty_cycle": 0.0,
-      "finger_force_mean_N": 0.0,
+      "return": 14276.976318711859,
+      "peak_lift_m": 0.05537413820299053,
+      "peak_step": 118,
+      "n_finger_contact_steps": 377,
+      "finger_pairs": [
+        [
+          "th_medial_collision",
+          "object_geom"
+        ],
+        [
+          "th_proximal_collision",
+          "object_geom"
+        ]
+      ],
+      "corr_force_lift_all_contact": 0.6976504643781825,
+      "corr_force_lift_finger_only": 0.7568988067846265,
+      "finger_force_duty_cycle": 0.8067226890756303,
+      "finger_force_mean_N": 22.141228474535474,
       "box_weight_N": 1.4715,
-      "force_duty_ok": false,
-      "force_sufficiency_ok": false,
-      "max_per_step_displacement_m": 1.4005680247897168e-05,
-      "max_anchored_step_m": 1.4005680247897168e-05,
-      "max_free_flight_step_m": 0.0,
-      "max_free_fall_gravity_error": 0.0,
-      "separation_contact_driven": true,
+      "force_duty_ok": true,
+      "force_sufficiency_ok": true,
+      "max_per_step_displacement_m": 0.005829054203499884,
+      "max_anchored_step_m": 0.005829054203499884,
+      "max_free_flight_step_m": 0.0030143608513125697,
+      "max_free_fall_gravity_error": 0.1811409172010219,
+      "separation_contact_driven": false,
       "anchored_step_ok": true,
       "free_fall_gravity_ok": true,
-      "separation_ok": true,
-      "table_touching_at_peak": true,
-      "wrist_z_at_peak": 0.9744084230339707,
-      "peak_force_N": 1.471500000000038,
+      "separation_ok": false,
+      "table_touching_at_peak": false,
+      "wrist_z_at_peak": 0.9924923434440103,
+      "peak_force_N": 52.096931617045314,
       "bearing": {
-        "peak_step": 19,
-        "hook_up_N": 0.0,
-        "wall_up_N": 0.0,
-        "pedestal_up_N": 1.471500000000038,
-        "box_weight_N": 1.4715,
+        "peak_step": 118,
+        "box_weight_N": 1.4714999999999998,
+        "caliber": {
+          "hold": "mean over evaluator-valid hold steps of the control-step sample; quasi-static caliber; resolution 20 ms (1 control step, 10 x 2 ms sim substeps)",
+          "peak_control_step": "max over the lift window of the control-step sample; resolution 20 ms; CANNOT see a frame-internal spike",
+          "peak_substep": "max over the lift window of the intra-frame maximum; resolution 2 ms (the sim timestep), sampled at the END of each completed mj_step",
+          "alignment": "a probe that samples BEFORE mj_step instead of after is offset by one substep (2 ms): its index i corresponds to ours i-1"
+        },
+        "hold": {
+          "hook": {
+            "n_steps": 81,
+            "mean": 0.0,
+            "max": 0.0,
+            "max_step": 38
+          },
+          "wall": {
+            "n_steps": 81,
+            "mean": -13.2215,
+            "max": -7.0446,
+            "max_step": 47
+          },
+          "pedestal": {
+            "n_steps": 81,
+            "mean": 0.0,
+            "max": 0.0,
+            "max_step": 38
+          }
+        },
+        "peak_control_step": {
+          "hook": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 0.0,
+            "max_over_lift_window": 0.0
+          },
+          "wall": {
+            "at_peak_step": -9.9162,
+            "mean_over_lift_window": -9.9748,
+            "max_over_lift_window": 0.0
+          },
+          "pedestal": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 0.9794,
+            "max_over_lift_window": 19.8832
+          }
+        },
+        "peak_substep": {
+          "resolution_m_s": 0.002,
+          "sampling": "end of each completed mj_step",
+          "hook": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 0.0,
+            "max_over_lift_window": 0.0
+          },
+          "wall": {
+            "at_peak_step": -9.9162,
+            "mean_over_lift_window": -9.2927,
+            "max_over_lift_window": 0.0
+          },
+          "pedestal": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 2.2561,
+            "max_over_lift_window": 29.4692
+          }
+        },
         "bearing_box_weights": {
           "hook": 0.0,
-          "wall": 0.0,
-          "pedestal": 1.0
+          "wall": -9.9162,
+          "pedestal": 0.0
         },
-        "upward_total_N": 1.471500000000038,
-        "net_box_weights": 1.0,
-        "support_force_N_at_peak": 1.471500000000038,
-        "support_force_box_weights_at_peak": 1.0,
-        "support_force_box_weights_mean_window": 0.9998
+        "upward_total_N": -14.591711342820787,
+        "net_box_weights": -9.9162,
+        "support_force_N_at_peak": 0.0,
+        "support_force_box_weights_at_peak": 0.0,
+        "support_force_box_weights_mean_window": 1.4406
       }
     },
     {
       "episode": 3,
       "seed": 10003,
-      "return": -1507.85584856653,
-      "peak_lift_m": 1.7791266652467108e-05,
-      "peak_step": 19,
-      "n_finger_contact_steps": 0,
-      "finger_pairs": [],
-      "corr_force_lift_all_contact": 0.18302298269126213,
-      "corr_force_lift_finger_only": NaN,
-      "finger_force_duty_cycle": 0.0,
-      "finger_force_mean_N": 0.0,
+      "return": 12523.82483237547,
+      "peak_lift_m": 0.057504567222519065,
+      "peak_step": 54,
+      "n_finger_contact_steps": 347,
+      "finger_pairs": [
+        [
+          "th_medial_collision",
+          "object_geom"
+        ],
+        [
+          "th_proximal_collision",
+          "object_geom"
+        ]
+      ],
+      "corr_force_lift_all_contact": 0.3429256543288452,
+      "corr_force_lift_finger_only": 0.3646118116549737,
+      "finger_force_duty_cycle": 0.36363636363636365,
+      "finger_force_mean_N": 9.966333105360892,
       "box_weight_N": 1.4715,
       "force_duty_ok": false,
-      "force_sufficiency_ok": false,
-      "max_per_step_displacement_m": 1.5070676452233478e-05,
-      "max_anchored_step_m": 1.5070676452233478e-05,
-      "max_free_flight_step_m": 0.0,
-      "max_free_fall_gravity_error": 0.0,
-      "separation_contact_driven": true,
+      "force_sufficiency_ok": true,
+      "max_per_step_displacement_m": 0.0061828020997412025,
+      "max_anchored_step_m": 0.0061828020997412025,
+      "max_free_flight_step_m": 0.0024483282835064957,
+      "max_free_fall_gravity_error": 0.23952478073790046,
+      "separation_contact_driven": false,
       "anchored_step_ok": true,
       "free_fall_gravity_ok": true,
-      "separation_ok": true,
-      "table_touching_at_peak": true,
-      "wrist_z_at_peak": 0.9498912660101588,
-      "peak_force_N": 1.4715000000001126,
+      "separation_ok": false,
+      "table_touching_at_peak": false,
+      "wrist_z_at_peak": 0.9882870840445643,
+      "peak_force_N": 42.65217490562537,
       "bearing": {
-        "peak_step": 19,
-        "hook_up_N": 0.0,
-        "wall_up_N": 0.0,
-        "pedestal_up_N": 1.4715000000001126,
-        "box_weight_N": 1.4715,
+        "peak_step": 54,
+        "box_weight_N": 1.4714999999999998,
+        "caliber": {
+          "hold": "mean over evaluator-valid hold steps of the control-step sample; quasi-static caliber; resolution 20 ms (1 control step, 10 x 2 ms sim substeps)",
+          "peak_control_step": "max over the lift window of the control-step sample; resolution 20 ms; CANNOT see a frame-internal spike",
+          "peak_substep": "max over the lift window of the intra-frame maximum; resolution 2 ms (the sim timestep), sampled at the END of each completed mj_step",
+          "alignment": "a probe that samples BEFORE mj_step instead of after is offset by one substep (2 ms): its index i corresponds to ours i-1"
+        },
+        "hold": {
+          "hook": {
+            "n_steps": 2,
+            "mean": 0.0,
+            "max": 0.0,
+            "max_step": 37
+          },
+          "wall": {
+            "n_steps": 2,
+            "mean": -14.7277,
+            "max": -7.6382,
+            "max_step": 37
+          },
+          "pedestal": {
+            "n_steps": 2,
+            "mean": 0.0,
+            "max": 0.0,
+            "max_step": 37
+          }
+        },
+        "peak_control_step": {
+          "hook": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 0.0,
+            "max_over_lift_window": 0.0
+          },
+          "wall": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": -4.995,
+            "max_over_lift_window": 0.0
+          },
+          "pedestal": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 2.7239,
+            "max_over_lift_window": 35.7574
+          }
+        },
+        "peak_substep": {
+          "resolution_m_s": 0.002,
+          "sampling": "end of each completed mj_step",
+          "hook": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 0.0,
+            "max_over_lift_window": 0.0
+          },
+          "wall": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": -2.3339,
+            "max_over_lift_window": 0.0
+          },
+          "pedestal": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 5.5238,
+            "max_over_lift_window": 35.7574
+          }
+        },
         "bearing_box_weights": {
           "hook": 0.0,
           "wall": 0.0,
-          "pedestal": 1.0
+          "pedestal": 0.0
         },
-        "upward_total_N": 1.4715000000001126,
-        "net_box_weights": 1.0,
-        "support_force_N_at_peak": 1.4715000000001126,
-        "support_force_box_weights_at_peak": 1.0,
-        "support_force_box_weights_mean_window": 0.9998
+        "upward_total_N": 0.0,
+        "net_box_weights": 0.0,
+        "support_force_N_at_peak": 0.0,
+        "support_force_box_weights_at_peak": 0.0,
+        "support_force_box_weights_mean_window": 3.6511
       }
     },
     {
       "episode": 4,
       "seed": 10004,
-      "return": -1459.1531177787028,
-      "peak_lift_m": 1.7770337562783567e-05,
-      "peak_step": 19,
-      "n_finger_contact_steps": 0,
-      "finger_pairs": [],
-      "corr_force_lift_all_contact": 0.17256952551636345,
-      "corr_force_lift_finger_only": NaN,
-      "finger_force_duty_cycle": 0.0,
-      "finger_force_mean_N": 0.0,
+      "return": 13575.286585151409,
+      "peak_lift_m": 0.05483437364660382,
+      "peak_step": 127,
+      "n_finger_contact_steps": 370,
+      "finger_pairs": [
+        [
+          "th_medial_collision",
+          "object_geom"
+        ],
+        [
+          "th_proximal_collision",
+          "object_geom"
+        ]
+      ],
+      "corr_force_lift_all_contact": 0.7689401170880446,
+      "corr_force_lift_finger_only": 0.68675879952158,
+      "finger_force_duty_cycle": 0.765625,
+      "finger_force_mean_N": 16.826913295968673,
       "box_weight_N": 1.4715,
-      "force_duty_ok": false,
-      "force_sufficiency_ok": false,
-      "max_per_step_displacement_m": 1.5142804919765496e-05,
-      "max_anchored_step_m": 1.5142804919765496e-05,
-      "max_free_flight_step_m": 0.0,
-      "max_free_fall_gravity_error": 0.0,
-      "separation_contact_driven": true,
+      "force_duty_ok": true,
+      "force_sufficiency_ok": true,
+      "max_per_step_displacement_m": 0.006441380772350458,
+      "max_anchored_step_m": 0.006441380772350458,
+      "max_free_flight_step_m": 0.004046605125428426,
+      "max_free_fall_gravity_error": 0.20060151660211445,
+      "separation_contact_driven": false,
       "anchored_step_ok": true,
       "free_fall_gravity_ok": true,
-      "separation_ok": true,
-      "table_touching_at_peak": true,
-      "wrist_z_at_peak": 0.9743924834655378,
-      "peak_force_N": 1.4715000000001068,
+      "separation_ok": false,
+      "table_touching_at_peak": false,
+      "wrist_z_at_peak": 0.9909597298794609,
+      "peak_force_N": 50.82935028171738,
       "bearing": {
-        "peak_step": 19,
-        "hook_up_N": 0.0,
-        "wall_up_N": 0.0,
-        "pedestal_up_N": 1.4715000000001068,
-        "box_weight_N": 1.4715,
+        "peak_step": 127,
+        "box_weight_N": 1.4714999999999998,
+        "caliber": {
+          "hold": "mean over evaluator-valid hold steps of the control-step sample; quasi-static caliber; resolution 20 ms (1 control step, 10 x 2 ms sim substeps)",
+          "peak_control_step": "max over the lift window of the control-step sample; resolution 20 ms; CANNOT see a frame-internal spike",
+          "peak_substep": "max over the lift window of the intra-frame maximum; resolution 2 ms (the sim timestep), sampled at the END of each completed mj_step",
+          "alignment": "a probe that samples BEFORE mj_step instead of after is offset by one substep (2 ms): its index i corresponds to ours i-1"
+        },
+        "hold": {
+          "hook": {
+            "n_steps": 83,
+            "mean": 0.0,
+            "max": 0.0,
+            "max_step": 44
+          },
+          "wall": {
+            "n_steps": 83,
+            "mean": -9.6487,
+            "max": -6.3106,
+            "max_step": 127
+          },
+          "pedestal": {
+            "n_steps": 83,
+            "mean": 0.0,
+            "max": 0.0,
+            "max_step": 44
+          }
+        },
+        "peak_control_step": {
+          "hook": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 0.0,
+            "max_over_lift_window": 0.0
+          },
+          "wall": {
+            "at_peak_step": -6.3106,
+            "mean_over_lift_window": -7.5168,
+            "max_over_lift_window": 0.0
+          },
+          "pedestal": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 0.8018,
+            "max_over_lift_window": 19.9596
+          }
+        },
+        "peak_substep": {
+          "resolution_m_s": 0.002,
+          "sampling": "end of each completed mj_step",
+          "hook": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 0.0,
+            "max_over_lift_window": 0.0
+          },
+          "wall": {
+            "at_peak_step": -6.3106,
+            "mean_over_lift_window": -6.714,
+            "max_over_lift_window": 0.0
+          },
+          "pedestal": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 2.1753,
+            "max_over_lift_window": 32.5637
+          }
+        },
         "bearing_box_weights": {
           "hook": 0.0,
-          "wall": 0.0,
-          "pedestal": 1.0
+          "wall": -6.3106,
+          "pedestal": 0.0
         },
-        "upward_total_N": 1.4715000000001068,
-        "net_box_weights": 1.0,
-        "support_force_N_at_peak": 1.4715000000001068,
-        "support_force_box_weights_at_peak": 1.0,
-        "support_force_box_weights_mean_window": 0.9998
+        "upward_total_N": -9.28611025526704,
+        "net_box_weights": -6.3106,
+        "support_force_N_at_peak": 0.0,
+        "support_force_box_weights_at_peak": 0.0,
+        "support_force_box_weights_mean_window": 1.1816
       }
     },
     {
       "episode": 5,
       "seed": 10005,
-      "return": -1485.5517672060687,
-      "peak_lift_m": 1.7903492655069186e-05,
-      "peak_step": 19,
-      "n_finger_contact_steps": 0,
-      "finger_pairs": [],
-      "corr_force_lift_all_contact": 0.4596681291205868,
-      "corr_force_lift_finger_only": NaN,
-      "finger_force_duty_cycle": 0.0,
-      "finger_force_mean_N": 0.0,
+      "return": 14022.947832287351,
+      "peak_lift_m": 0.05800357616263874,
+      "peak_step": 94,
+      "n_finger_contact_steps": 376,
+      "finger_pairs": [
+        [
+          "th_medial_collision",
+          "object_geom"
+        ],
+        [
+          "th_proximal_collision",
+          "object_geom"
+        ]
+      ],
+      "corr_force_lift_all_contact": 0.758454395812633,
+      "corr_force_lift_finger_only": 0.7881556855508356,
+      "finger_force_duty_cycle": 0.7473684210526316,
+      "finger_force_mean_N": 21.208779468364455,
       "box_weight_N": 1.4715,
-      "force_duty_ok": false,
-      "force_sufficiency_ok": false,
-      "max_per_step_displacement_m": 1.2069780732315571e-05,
-      "max_anchored_step_m": 1.2069780732315571e-05,
-      "max_free_flight_step_m": 0.0,
-      "max_free_fall_gravity_error": 0.0,
-      "separation_contact_driven": true,
+      "force_duty_ok": true,
+      "force_sufficiency_ok": true,
+      "max_per_step_displacement_m": 0.006603023689686349,
+      "max_anchored_step_m": 0.006603023689686349,
+      "max_free_flight_step_m": 0.0036137194877305934,
+      "max_free_fall_gravity_error": 0.18742327287041627,
+      "separation_contact_driven": false,
       "anchored_step_ok": true,
       "free_fall_gravity_ok": true,
-      "separation_ok": true,
-      "table_touching_at_peak": true,
-      "wrist_z_at_peak": 0.9742352517450638,
-      "peak_force_N": 1.4714999999991187,
+      "separation_ok": false,
+      "table_touching_at_peak": false,
+      "wrist_z_at_peak": 0.9935669211939488,
+      "peak_force_N": 52.20657136342575,
       "bearing": {
-        "peak_step": 19,
-        "hook_up_N": 0.0,
-        "wall_up_N": 0.0,
-        "pedestal_up_N": 1.4714999999991187,
-        "box_weight_N": 1.4715,
+        "peak_step": 94,
+        "box_weight_N": 1.4714999999999998,
+        "caliber": {
+          "hold": "mean over evaluator-valid hold steps of the control-step sample; quasi-static caliber; resolution 20 ms (1 control step, 10 x 2 ms sim substeps)",
+          "peak_control_step": "max over the lift window of the control-step sample; resolution 20 ms; CANNOT see a frame-internal spike",
+          "peak_substep": "max over the lift window of the intra-frame maximum; resolution 2 ms (the sim timestep), sampled at the END of each completed mj_step",
+          "alignment": "a probe that samples BEFORE mj_step instead of after is offset by one substep (2 ms): its index i corresponds to ours i-1"
+        },
+        "hold": {
+          "hook": {
+            "n_steps": 57,
+            "mean": 0.0,
+            "max": 0.0,
+            "max_step": 38
+          },
+          "wall": {
+            "n_steps": 57,
+            "mean": -13.5127,
+            "max": -8.4145,
+            "max_step": 47
+          },
+          "pedestal": {
+            "n_steps": 57,
+            "mean": 0.0,
+            "max": 0.0,
+            "max_step": 38
+          }
+        },
+        "peak_control_step": {
+          "hook": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 0.0,
+            "max_over_lift_window": 0.0
+          },
+          "wall": {
+            "at_peak_step": -11.0908,
+            "mean_over_lift_window": -9.2347,
+            "max_over_lift_window": 0.0
+          },
+          "pedestal": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 1.2408,
+            "max_over_lift_window": 21.5257
+          }
+        },
+        "peak_substep": {
+          "resolution_m_s": 0.002,
+          "sampling": "end of each completed mj_step",
+          "hook": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 0.0,
+            "max_over_lift_window": 0.0
+          },
+          "wall": {
+            "at_peak_step": -11.0908,
+            "mean_over_lift_window": -8.4666,
+            "max_over_lift_window": 0.0
+          },
+          "pedestal": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 2.7614,
+            "max_over_lift_window": 30.9522
+          }
+        },
         "bearing_box_weights": {
           "hook": 0.0,
-          "wall": 0.0,
-          "pedestal": 1.0
+          "wall": -11.0908,
+          "pedestal": 0.0
         },
-        "upward_total_N": 1.4714999999991187,
-        "net_box_weights": 1.0,
-        "support_force_N_at_peak": 1.4714999999991187,
-        "support_force_box_weights_at_peak": 1.0,
-        "support_force_box_weights_mean_window": 0.9998
+        "upward_total_N": -16.320052652807682,
+        "net_box_weights": -11.0908,
+        "support_force_N_at_peak": 0.0,
+        "support_force_box_weights_at_peak": 0.0,
+        "support_force_box_weights_mean_window": 1.7352
       }
     },
     {
       "episode": 6,
       "seed": 10006,
-      "return": -1515.612988368958,
-      "peak_lift_m": 1.7822366476738516e-05,
-      "peak_step": 19,
-      "n_finger_contact_steps": 0,
-      "finger_pairs": [],
-      "corr_force_lift_all_contact": 0.5582388974158273,
-      "corr_force_lift_finger_only": NaN,
-      "finger_force_duty_cycle": 0.0,
-      "finger_force_mean_N": 0.0,
+      "return": 17956.730822789148,
+      "peak_lift_m": 0.05565901570955589,
+      "peak_step": 140,
+      "n_finger_contact_steps": 378,
+      "finger_pairs": [
+        [
+          "th_medial_collision",
+          "object_geom"
+        ],
+        [
+          "th_proximal_collision",
+          "object_geom"
+        ]
+      ],
+      "corr_force_lift_all_contact": 0.5941014614924907,
+      "corr_force_lift_finger_only": 0.7547152619174329,
+      "finger_force_duty_cycle": 0.8439716312056738,
+      "finger_force_mean_N": 21.343690949266332,
       "box_weight_N": 1.4715,
-      "force_duty_ok": false,
-      "force_sufficiency_ok": false,
-      "max_per_step_displacement_m": 1.118968225022332e-05,
-      "max_anchored_step_m": 1.118968225022332e-05,
-      "max_free_flight_step_m": 0.0,
-      "max_free_fall_gravity_error": 0.0,
-      "separation_contact_driven": true,
+      "force_duty_ok": true,
+      "force_sufficiency_ok": true,
+      "max_per_step_displacement_m": 0.005097158265083723,
+      "max_anchored_step_m": 0.005097158265083723,
+      "max_free_flight_step_m": 0.006679150826418678,
+      "max_free_fall_gravity_error": 0.47370121674819354,
+      "separation_contact_driven": false,
       "anchored_step_ok": true,
       "free_fall_gravity_ok": true,
-      "separation_ok": true,
-      "table_touching_at_peak": true,
-      "wrist_z_at_peak": 0.9696127372185481,
-      "peak_force_N": 1.4715000000002125,
+      "separation_ok": false,
+      "table_touching_at_peak": false,
+      "wrist_z_at_peak": 0.9861773487314138,
+      "peak_force_N": 50.15734528192048,
       "bearing": {
-        "peak_step": 19,
-        "hook_up_N": 0.0,
-        "wall_up_N": 0.0,
-        "pedestal_up_N": 1.4715000000002125,
-        "box_weight_N": 1.4715,
+        "peak_step": 140,
+        "box_weight_N": 1.4714999999999998,
+        "caliber": {
+          "hold": "mean over evaluator-valid hold steps of the control-step sample; quasi-static caliber; resolution 20 ms (1 control step, 10 x 2 ms sim substeps)",
+          "peak_control_step": "max over the lift window of the control-step sample; resolution 20 ms; CANNOT see a frame-internal spike",
+          "peak_substep": "max over the lift window of the intra-frame maximum; resolution 2 ms (the sim timestep), sampled at the END of each completed mj_step",
+          "alignment": "a probe that samples BEFORE mj_step instead of after is offset by one substep (2 ms): its index i corresponds to ours i-1"
+        },
+        "hold": {
+          "hook": {
+            "n_steps": 103,
+            "mean": 0.0,
+            "max": 0.0,
+            "max_step": 38
+          },
+          "wall": {
+            "n_steps": 103,
+            "mean": -11.7167,
+            "max": -6.5917,
+            "max_step": 49
+          },
+          "pedestal": {
+            "n_steps": 103,
+            "mean": 0.0,
+            "max": 0.0,
+            "max_step": 38
+          }
+        },
+        "peak_control_step": {
+          "hook": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 0.0,
+            "max_over_lift_window": 0.0
+          },
+          "wall": {
+            "at_peak_step": -8.5283,
+            "mean_over_lift_window": -9.3593,
+            "max_over_lift_window": 0.0
+          },
+          "pedestal": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 1.0812,
+            "max_over_lift_window": 22.7108
+          }
+        },
+        "peak_substep": {
+          "resolution_m_s": 0.002,
+          "sampling": "end of each completed mj_step",
+          "hook": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 0.0,
+            "max_over_lift_window": 0.0
+          },
+          "wall": {
+            "at_peak_step": -8.5257,
+            "mean_over_lift_window": -8.7452,
+            "max_over_lift_window": 0.0
+          },
+          "pedestal": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 2.1084,
+            "max_over_lift_window": 44.1787
+          }
+        },
         "bearing_box_weights": {
           "hook": 0.0,
-          "wall": 0.0,
-          "pedestal": 1.0
+          "wall": -8.5283,
+          "pedestal": 0.0
         },
-        "upward_total_N": 1.4715000000002125,
-        "net_box_weights": 1.0,
-        "support_force_N_at_peak": 1.4715000000002125,
-        "support_force_box_weights_at_peak": 1.0,
-        "support_force_box_weights_mean_window": 0.9998
+        "upward_total_N": -12.549411201513095,
+        "net_box_weights": -8.5283,
+        "support_force_N_at_peak": 0.0,
+        "support_force_box_weights_at_peak": 0.0,
+        "support_force_box_weights_mean_window": 1.5904
       }
     },
     {
       "episode": 7,
       "seed": 10007,
-      "return": -1463.4076643821415,
-      "peak_lift_m": 1.7827799828729063e-05,
-      "peak_step": 19,
-      "n_finger_contact_steps": 0,
-      "finger_pairs": [],
-      "corr_force_lift_all_contact": 0.1753851784489495,
-      "corr_force_lift_finger_only": NaN,
-      "finger_force_duty_cycle": 0.0,
-      "finger_force_mean_N": 0.0,
+      "return": 12679.695367056569,
+      "peak_lift_m": 0.05348592589886736,
+      "peak_step": 100,
+      "n_finger_contact_steps": 377,
+      "finger_pairs": [
+        [
+          "th_medial_collision",
+          "object_geom"
+        ],
+        [
+          "th_proximal_collision",
+          "object_geom"
+        ]
+      ],
+      "corr_force_lift_all_contact": 0.672975516720912,
+      "corr_force_lift_finger_only": 0.7660792099789382,
+      "finger_force_duty_cycle": 0.7722772277227723,
+      "finger_force_mean_N": 23.110141700976854,
       "box_weight_N": 1.4715,
-      "force_duty_ok": false,
-      "force_sufficiency_ok": false,
-      "max_per_step_displacement_m": 1.514906105748448e-05,
-      "max_anchored_step_m": 1.514906105748448e-05,
-      "max_free_flight_step_m": 0.0,
-      "max_free_fall_gravity_error": 0.0,
-      "separation_contact_driven": true,
+      "force_duty_ok": true,
+      "force_sufficiency_ok": true,
+      "max_per_step_displacement_m": 0.004770211218500742,
+      "max_anchored_step_m": 0.004770211218500742,
+      "max_free_flight_step_m": 0.006431848193287015,
+      "max_free_fall_gravity_error": 0.45659034473096727,
+      "separation_contact_driven": false,
       "anchored_step_ok": true,
       "free_fall_gravity_ok": true,
-      "separation_ok": true,
-      "table_touching_at_peak": true,
-      "wrist_z_at_peak": 0.9743032841009266,
-      "peak_force_N": 1.4715000000001066,
+      "separation_ok": false,
+      "table_touching_at_peak": false,
+      "wrist_z_at_peak": 0.9953145733550802,
+      "peak_force_N": 52.947152033866246,
       "bearing": {
-        "peak_step": 19,
-        "hook_up_N": 0.0,
-        "wall_up_N": 0.0,
-        "pedestal_up_N": 1.4715000000001066,
-        "box_weight_N": 1.4715,
+        "peak_step": 100,
+        "box_weight_N": 1.4714999999999998,
+        "caliber": {
+          "hold": "mean over evaluator-valid hold steps of the control-step sample; quasi-static caliber; resolution 20 ms (1 control step, 10 x 2 ms sim substeps)",
+          "peak_control_step": "max over the lift window of the control-step sample; resolution 20 ms; CANNOT see a frame-internal spike",
+          "peak_substep": "max over the lift window of the intra-frame maximum; resolution 2 ms (the sim timestep), sampled at the END of each completed mj_step",
+          "alignment": "a probe that samples BEFORE mj_step instead of after is offset by one substep (2 ms): its index i corresponds to ours i-1"
+        },
+        "hold": {
+          "hook": {
+            "n_steps": 48,
+            "mean": 0.0,
+            "max": 0.0,
+            "max_step": 48
+          },
+          "wall": {
+            "n_steps": 48,
+            "mean": -14.1554,
+            "max": -10.9239,
+            "max_step": 100
+          },
+          "pedestal": {
+            "n_steps": 48,
+            "mean": 0.0,
+            "max": 0.0,
+            "max_step": 48
+          }
+        },
+        "peak_control_step": {
+          "hook": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 0.0,
+            "max_over_lift_window": 0.0
+          },
+          "wall": {
+            "at_peak_step": -10.9239,
+            "mean_over_lift_window": -10.2605,
+            "max_over_lift_window": 0.0
+          },
+          "pedestal": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 1.4345,
+            "max_over_lift_window": 21.8737
+          }
+        },
+        "peak_substep": {
+          "resolution_m_s": 0.002,
+          "sampling": "end of each completed mj_step",
+          "hook": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 0.0,
+            "max_over_lift_window": 0.0
+          },
+          "wall": {
+            "at_peak_step": -10.9239,
+            "mean_over_lift_window": -9.4162,
+            "max_over_lift_window": 0.0
+          },
+          "pedestal": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 2.5233,
+            "max_over_lift_window": 37.9245
+          }
+        },
         "bearing_box_weights": {
           "hook": 0.0,
-          "wall": 0.0,
-          "pedestal": 1.0
+          "wall": -10.9239,
+          "pedestal": 0.0
         },
-        "upward_total_N": 1.4715000000001066,
-        "net_box_weights": 1.0,
-        "support_force_N_at_peak": 1.4715000000001066,
-        "support_force_box_weights_at_peak": 1.0,
-        "support_force_box_weights_mean_window": 0.9998
+        "upward_total_N": -16.074551500448898,
+        "net_box_weights": -10.9239,
+        "support_force_N_at_peak": 0.0,
+        "support_force_box_weights_at_peak": 0.0,
+        "support_force_box_weights_mean_window": 1.9885
       }
     },
     {
       "episode": 8,
       "seed": 10008,
-      "return": -1456.2224604019802,
-      "peak_lift_m": 1.7819168755650594e-05,
-      "peak_step": 19,
-      "n_finger_contact_steps": 0,
-      "finger_pairs": [],
-      "corr_force_lift_all_contact": 0.19581170233481124,
-      "corr_force_lift_finger_only": NaN,
-      "finger_force_duty_cycle": 0.0,
-      "finger_force_mean_N": 0.0,
+      "return": 15461.468114520194,
+      "peak_lift_m": 0.05538019283112117,
+      "peak_step": 101,
+      "n_finger_contact_steps": 378,
+      "finger_pairs": [
+        [
+          "th_medial_collision",
+          "object_geom"
+        ],
+        [
+          "th_proximal_collision",
+          "object_geom"
+        ]
+      ],
+      "corr_force_lift_all_contact": 0.6266701914215217,
+      "corr_force_lift_finger_only": 0.7695270659044161,
+      "finger_force_duty_cycle": 0.7843137254901961,
+      "finger_force_mean_N": 21.338881300828643,
       "box_weight_N": 1.4715,
-      "force_duty_ok": false,
-      "force_sufficiency_ok": false,
-      "max_per_step_displacement_m": 1.4909910440952245e-05,
-      "max_anchored_step_m": 1.4909910440952245e-05,
-      "max_free_flight_step_m": 0.0,
-      "max_free_fall_gravity_error": 0.0,
-      "separation_contact_driven": true,
+      "force_duty_ok": true,
+      "force_sufficiency_ok": true,
+      "max_per_step_displacement_m": 0.004816857231017213,
+      "max_anchored_step_m": 0.004816857231017213,
+      "max_free_flight_step_m": 0.006364634551037751,
+      "max_free_fall_gravity_error": 0.17320807321173426,
+      "separation_contact_driven": false,
       "anchored_step_ok": true,
       "free_fall_gravity_ok": true,
-      "separation_ok": true,
-      "table_touching_at_peak": true,
-      "wrist_z_at_peak": 0.9744201055295991,
-      "peak_force_N": 1.4715000000001137,
+      "separation_ok": false,
+      "table_touching_at_peak": false,
+      "wrist_z_at_peak": 0.9922131618689833,
+      "peak_force_N": 51.38938374411797,
       "bearing": {
-        "peak_step": 19,
-        "hook_up_N": 0.0,
-        "wall_up_N": 0.0,
-        "pedestal_up_N": 1.4715000000001137,
-        "box_weight_N": 1.4715,
+        "peak_step": 101,
+        "box_weight_N": 1.4714999999999998,
+        "caliber": {
+          "hold": "mean over evaluator-valid hold steps of the control-step sample; quasi-static caliber; resolution 20 ms (1 control step, 10 x 2 ms sim substeps)",
+          "peak_control_step": "max over the lift window of the control-step sample; resolution 20 ms; CANNOT see a frame-internal spike",
+          "peak_substep": "max over the lift window of the intra-frame maximum; resolution 2 ms (the sim timestep), sampled at the END of each completed mj_step",
+          "alignment": "a probe that samples BEFORE mj_step instead of after is offset by one substep (2 ms): its index i corresponds to ours i-1"
+        },
+        "hold": {
+          "hook": {
+            "n_steps": 64,
+            "mean": 0.0,
+            "max": 0.0,
+            "max_step": 38
+          },
+          "wall": {
+            "n_steps": 64,
+            "mean": -13.099,
+            "max": -7.7715,
+            "max_step": 48
+          },
+          "pedestal": {
+            "n_steps": 64,
+            "mean": 0.0,
+            "max": 0.0,
+            "max_step": 38
+          }
+        },
+        "peak_control_step": {
+          "hook": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 0.0,
+            "max_over_lift_window": 0.0
+          },
+          "wall": {
+            "at_peak_step": -11.1706,
+            "mean_over_lift_window": -9.4342,
+            "max_over_lift_window": 0.0
+          },
+          "pedestal": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 1.3387,
+            "max_over_lift_window": 34.8827
+          }
+        },
+        "peak_substep": {
+          "resolution_m_s": 0.002,
+          "sampling": "end of each completed mj_step",
+          "hook": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 0.0,
+            "max_over_lift_window": 0.0
+          },
+          "wall": {
+            "at_peak_step": -11.1706,
+            "mean_over_lift_window": -8.7475,
+            "max_over_lift_window": 0.0
+          },
+          "pedestal": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 2.6859,
+            "max_over_lift_window": 34.8827
+          }
+        },
         "bearing_box_weights": {
           "hook": 0.0,
-          "wall": 0.0,
-          "pedestal": 1.0
+          "wall": -11.1706,
+          "pedestal": 0.0
         },
-        "upward_total_N": 1.4715000000001137,
-        "net_box_weights": 1.0,
-        "support_force_N_at_peak": 1.4715000000001137,
-        "support_force_box_weights_at_peak": 1.0,
-        "support_force_box_weights_mean_window": 0.9998
+        "upward_total_N": -16.437518774145502,
+        "net_box_weights": -11.1706,
+        "support_force_N_at_peak": 0.0,
+        "support_force_box_weights_at_peak": 0.0,
+        "support_force_box_weights_mean_window": 1.7939
       }
     },
     {
       "episode": 9,
       "seed": 10009,
-      "return": -1482.0760398091577,
-      "peak_lift_m": 1.7747678422441737e-05,
-      "peak_step": 19,
-      "n_finger_contact_steps": 0,
-      "finger_pairs": [],
-      "corr_force_lift_all_contact": 0.20121636994645395,
-      "corr_force_lift_finger_only": NaN,
-      "finger_force_duty_cycle": 0.0,
-      "finger_force_mean_N": 0.0,
+      "return": 13517.293819985907,
+      "peak_lift_m": 0.05640595274933469,
+      "peak_step": 117,
+      "n_finger_contact_steps": 376,
+      "finger_pairs": [
+        [
+          "th_medial_collision",
+          "object_geom"
+        ],
+        [
+          "th_proximal_collision",
+          "object_geom"
+        ]
+      ],
+      "corr_force_lift_all_contact": 0.5594833979061455,
+      "corr_force_lift_finger_only": 0.7095146065344156,
+      "finger_force_duty_cycle": 0.7966101694915254,
+      "finger_force_mean_N": 20.362442929258496,
       "box_weight_N": 1.4715,
-      "force_duty_ok": false,
-      "force_sufficiency_ok": false,
-      "max_per_step_displacement_m": 1.4788767033868666e-05,
-      "max_anchored_step_m": 1.4788767033868666e-05,
-      "max_free_flight_step_m": 0.0,
-      "max_free_fall_gravity_error": 0.0,
-      "separation_contact_driven": true,
+      "force_duty_ok": true,
+      "force_sufficiency_ok": true,
+      "max_per_step_displacement_m": 0.00601974999782473,
+      "max_anchored_step_m": 0.00601974999782473,
+      "max_free_flight_step_m": 0.004477456659451651,
+      "max_free_fall_gravity_error": 0.19031003260542456,
+      "separation_contact_driven": false,
       "anchored_step_ok": true,
       "free_fall_gravity_ok": true,
-      "separation_ok": true,
-      "table_touching_at_peak": true,
-      "wrist_z_at_peak": 0.9732504505721743,
-      "peak_force_N": 1.471499999998836,
+      "separation_ok": false,
+      "table_touching_at_peak": false,
+      "wrist_z_at_peak": 0.9891986697176787,
+      "peak_force_N": 50.75577013887797,
       "bearing": {
-        "peak_step": 19,
-        "hook_up_N": 0.0,
-        "wall_up_N": 0.0,
-        "pedestal_up_N": 1.471499999998836,
-        "box_weight_N": 1.4715,
+        "peak_step": 117,
+        "box_weight_N": 1.4714999999999998,
+        "caliber": {
+          "hold": "mean over evaluator-valid hold steps of the control-step sample; quasi-static caliber; resolution 20 ms (1 control step, 10 x 2 ms sim substeps)",
+          "peak_control_step": "max over the lift window of the control-step sample; resolution 20 ms; CANNOT see a frame-internal spike",
+          "peak_substep": "max over the lift window of the intra-frame maximum; resolution 2 ms (the sim timestep), sampled at the END of each completed mj_step",
+          "alignment": "a probe that samples BEFORE mj_step instead of after is offset by one substep (2 ms): its index i corresponds to ours i-1"
+        },
+        "hold": {
+          "hook": {
+            "n_steps": 80,
+            "mean": 0.0,
+            "max": 0.0,
+            "max_step": 37
+          },
+          "wall": {
+            "n_steps": 80,
+            "mean": -11.986,
+            "max": -6.0065,
+            "max_step": 48
+          },
+          "pedestal": {
+            "n_steps": 80,
+            "mean": 0.0,
+            "max": 0.0,
+            "max_step": 37
+          }
+        },
+        "peak_control_step": {
+          "hook": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 0.0,
+            "max_over_lift_window": 0.0
+          },
+          "wall": {
+            "at_peak_step": -7.8777,
+            "mean_over_lift_window": -8.9919,
+            "max_over_lift_window": 0.0
+          },
+          "pedestal": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 1.5888,
+            "max_over_lift_window": 31.3262
+          }
+        },
+        "peak_substep": {
+          "resolution_m_s": 0.002,
+          "sampling": "end of each completed mj_step",
+          "hook": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 0.0,
+            "max_over_lift_window": 0.0
+          },
+          "wall": {
+            "at_peak_step": -7.8777,
+            "mean_over_lift_window": -8.1619,
+            "max_over_lift_window": 0.0
+          },
+          "pedestal": {
+            "at_peak_step": 0.0,
+            "mean_over_lift_window": 2.3789,
+            "max_over_lift_window": 31.3262
+          }
+        },
         "bearing_box_weights": {
           "hook": 0.0,
-          "wall": 0.0,
-          "pedestal": 1.0
+          "wall": -7.8777,
+          "pedestal": 0.0
         },
-        "upward_total_N": 1.471499999998836,
-        "net_box_weights": 1.0,
-        "support_force_N_at_peak": 1.471499999998836,
-        "support_force_box_weights_at_peak": 1.0,
-        "support_force_box_weights_mean_window": 0.9998
+        "upward_total_N": -11.592099207732115,
+        "net_box_weights": -7.8777,
+        "support_force_N_at_peak": 0.0,
+        "support_force_box_weights_at_peak": 0.0,
+        "support_force_box_weights_mean_window": 2.2493
       }
     }
   ],
@@ -169319,7 +170078,7 @@
     "The tissue-box long axis (0.24 m) is aligned with the palm long axis (y) because all three fingers flex in the x-z plane; with the long axis on x the 0.24 m extent would point away from the fingers.",
     "PLAN task 4.1 cites github.com/mujoco/mujoco_menagerie, which does not exist; the real upstream is google-deepmind/mujoco_menagerie and the Allegro hand now lives under wonik_allegro/.",
     "The box rests on a 60 mm pedestal rather than flush on the table. Scripted open-loop grasp search (~5800 samples over three independent searches) showed that with the box flush on the slab EVERY grasp caps at 3.2-3.6 cm - below the 5 cm acceptance bar, i.e. the task was geometrically unsolvable rather than merely hard for PPO. With 60 mm of clearance the fingers slide underneath and form a real power grasp: 169/700 sampled poses exceed 5 cm, best 11.5 cm, above the official evaluator's own 0.10 m lift threshold.",
-    "A3a RE-FROZEN (Main ruling): was Pearson r(force, lift) > 0.3, measured r = 0.089 on the best eval episode - a FAIL. That is the wrong statistic for a real grasp: the hand builds force FIRST, then lifts, so once the grip saturates the box rises roughly linearly while force plateaus and instantaneous correlation is low by construction. Re-frozen into two STRONGER gates: (i) finger-force duty cycle >= 50% over the lift window, (ii) quasi-static sufficiency - mean finger force >= m_box*g = 1.47 N, the force physically needed to support/accelerate the box. A teleported lift has zero contact force and fails both. corr_force_lift_finger_only is retained as UNGATED evidence (measured r = nan).",
+    "A3a RE-FROZEN (Main ruling): was Pearson r(force, lift) > 0.3, measured r = 0.089 on the best eval episode - a FAIL. That is the wrong statistic for a real grasp: the hand builds force FIRST, then lifts, so once the grip saturates the box rises roughly linearly while force plateaus and instantaneous correlation is low by construction. Re-frozen into two STRONGER gates: (i) finger-force duty cycle >= 50% over the lift window, (ii) quasi-static sufficiency - mean finger force >= m_box*g = 1.47 N, the force physically needed to support/accelerate the box. A teleported lift has zero contact force and fails both. corr_force_lift_finger_only is retained as UNGATED evidence (measured r = 0.7882).",
     "A3c RE-FROZEN (Main ruling): was a flat max per-step displacement < 0.01 m, measured 0.0683 m - a FAIL. A box knocked off the pedestal is in LEGAL free fall, where a per-step displacement cap is meaningless; what must be forbidden is energy injection. Re-frozen by segment: (i) supported-or-finger-held segment keeps the 0.01 m/step cap, (ii) free-flight segment is checked for gravity consistency |dv_z + g*dt| < 0.60 m/s instead, with the per-step displacement kept as evidence instead, (iii) the box may only leave its support while a finger is in contact with it. Both gates are anchored on the physical support state, not on a proxy.",
     "REWARD ALIGNED WITH A3b (round p0(4e), gate THRESHOLDS untouched): round p0(4d) trained a 42-degree nose-down corner wedge that passed A1/A2/A3a/A3c/A4 and failed A3b 10/10, because nothing in the reward asked for the box to leave the pedestal - W_LIFT_HELD pays for altitude however the box got there. Measured on that policy, replayed on this scene: pedestal 26.4-27.0 N (17.9-18.4 box weights) at peak, with the FINGER bearing NEGATIVE (-6.9 to -9.4 box weights) - the hand presses the box down into the base while the base holds it up. W_PEDESTAL_LOAD = 4 per box-weight of pedestal-borne normal force (cap 12 box weights) now prices that, read from the same contact loop the A2/A3a evidence already uses. The ordering it must produce - idle < pedestal-borne lift < clean grasp - is pinned in tests/test_smoke4_reward.py R7c; the measurement that separates the two mechanisms is pinned in tests/test_smoke4_pedestal_load.py. Every other reward weight is unchanged, and support_force_n defaults to 0 so the pre-A3b properties keep their exact values."
   ],
@@ -169332,5 +170091,28 @@
     "hook_scene_ab": "runs/p0/smoke4_mujoco_ppo/hook_scene_ab.json",
     "hook_feasibility_current_scene": "runs/p0/smoke4_mujoco_ppo/hook_feasibility_1b0f13f.json",
     "archived_demo_set": "runs/p0/smoke4_mujoco_ppo/reachable_demo_set_f210f45.npz"
+  },
+  "mjcf_commit": "c7c6dac",
+  "xml_sha256_declared": "d61dc0de3ca313f2eaf9971ac5eef550642073a5ea8386fc4c46aa787ea0823e",
+  "provenance_stamp": {
+    "corrected_by": "runs/p0/smoke4_mujoco_ppo/stamp_report_provenance.py",
+    "corrections": {
+      "mjcf_commit": {
+        "from": null,
+        "to": "c7c6dac"
+      },
+      "xml_sha256_declared": {
+        "from": null,
+        "to": "d61dc0de3ca313f2eaf9971ac5eef550642073a5ea8386fc4c46aa787ea0823e"
+      }
+    },
+    "reason": "collect_clean_demos.MJCF_COMMIT/xml_sha256_declared went stale at c7c6dac (chamfer + 9dp masses); the live blob hash is the authority",
+    "xml_sha256_matches_working_tree": true
+  },
+  "failure_mode": {
+    "red_criteria": [
+      "A3c_iii_separation_contact_driven"
+    ],
+    "classification": "palm-launch separation. The policy opens every episode by pressing the palm on the box's -x top-edge chamfer ramp (object_chamfer_negx|palm_collision 17-25 N), which converts the push into a +x slide (~11 cm across the pedestal) and a ~30 mm vertical flick; the box's first supported->free transition (t~=16) therefore happens under PALM-only contact, so A3c(iii)'s finger-contact precondition reads False. The thumb then catches the box and carries it to 53.5-58.0 mm (A3b clean 10/10, pedestal 0 at peak). Bearing at peak: wall -11.1 box-weights (down-press), hook 0, pedestal 0 - the box coasts ballistically at its peak. For calibration, the gate-clean demo trajectories themselves read wall -1.2..-1.7 box-weights at peak (also ballistic, mildly), so the mechanism family (-x wall, no pedestal) matches the demos; the deviation is the palm-launch preamble and a 7x harder down-press at peak. The reward cannot see A3c(iii): the flick front-loads held-altitude reward, so PPO converges to it from the BC warm start regardless of exploration noise (run ledger: runs/p0/smoke4_mujoco_ppo/p0_4_run_ledger.json)."
   }
 }

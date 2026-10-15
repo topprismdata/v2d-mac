@@ -2,8 +2,8 @@
   "total_steps_requested": 2000000,
   "cumulative_timesteps": 2000896,
   "resumed_from_timesteps": null,
-  "init_from_bc": null,
-  "wall_seconds": 726.8672969341278,
+  "init_from_bc": "runs/p0/smoke4_mujoco_ppo/reachable_bc_policy_c7c6dac.pt",
+  "wall_seconds": 964.1145007610321,
   "seed": 0,
   "n_envs": 8,
   "episode_len": 400,
@@ -13,5 +13,7 @@
     "global_step": 3200
   },
   "n_episodes": 5000,
-  "early_stop_target_m": 0.1
+  "early_stop_target_m": 0.1,
+  "pedestal_load_weight": null,
+  "log_std_init": -1.0
 }

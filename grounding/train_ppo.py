@@ -83,7 +83,9 @@ def train(total_steps: int, n_envs: int, seed: int, episode_len: int,
           early_stop_lift: float, resume: bool = False,
           out_dir: pathlib.Path = OUT_DIR,
           init_from_bc: pathlib.Path | None = None,
-          pedestal_load_weight: float | None = None) -> dict:
+          pedestal_load_weight: float | None = None,
+          log_std_init: float = 0.0,
+          ent_coef: float = 0.01) -> dict:
     from stable_baselines3 import PPO  # noqa: PLC0415
     from stable_baselines3.common.callbacks import BaseCallback  # noqa: PLC0415
     from stable_baselines3.common.vec_env import SubprocVecEnv  # noqa: PLC0415
@@ -152,13 +154,23 @@ def train(total_steps: int, n_envs: int, seed: int, episode_len: int,
             n_epochs=10,
             gae_lambda=0.95,
             gamma=0.99,
-            # a little entropy helps: the grasp is only reachable by coordinated
-            # 22-dim motion, and a deterministic policy gets stuck in the
-            # "never touch the box" local optimum.
-            ent_coef=0.01,
+            # ent_coef: the from-scratch protocol's "a little entropy helps"
+            # comment. On a BC warm start an entropy BONUS actively pushes the
+            # policy OFF the (gate-clean) BC manifold toward whatever exploits
+            # reward structure first, so a fine-tune run can set it to 0 via
+            # --ent-coef. Default 0.01 preserves the from-scratch protocol.
+            ent_coef=ent_coef,
             learning_rate=3e-4,
             clip_range=0.2,
-            policy_kwargs={"net_arch": [256, 256]},
+            # log_std_init: exploration noise around the policy mean. SB3's
+            # default 0.0 (std = 1.0 across all 22 action dims) is calibrated
+            # for from-scratch training; on a BC warm start it destroys the
+            # knife-edge grasp in every rollout, so PPO only ever sees the
+            # "never touch the box" region and walks away from the demos
+            # (measured: 5000 episodes, z_peak 0.0 with the BC grasp scoring
+            # +3400..+4100 when executed cleanly). A moderate std keeps
+            # exploration inside the grasp basin while still sampling.
+            policy_kwargs={"net_arch": [256, 256], "log_std_init": log_std_init},
         )
         if init_from_bc is not None:
             from grounding.bc_pretrain import load_into_sb3  # noqa: PLC0415
@@ -187,6 +199,8 @@ def train(total_steps: int, n_envs: int, seed: int, episode_len: int,
         "n_episodes": cb.episode,
         "early_stop_target_m": early_stop_lift,
         "pedestal_load_weight": pedestal_load_weight,
+        "log_std_init": log_std_init,
+        "ent_coef": ent_coef,
     }
     (out_dir / "train_summary.json").write_text(json.dumps(summary, indent=2))
     return summary
@@ -434,6 +448,16 @@ def main() -> None:
                         "reproduces the round-p0(4d) reward exactly. Must be "
                         "paired with --out-dir so the formal evidence is not "
                         "overwritten.")
+    p.add_argument("--ent-coef", type=float, default=0.01,
+                   help="PPO entropy bonus coefficient. Default 0.01 "
+                        "preserves the from-scratch protocol; BC warm-start "
+                        "fine-tunes set 0.0 so the bonus does not push the "
+                        "policy off the gate-clean BC manifold.")
+    p.add_argument("--log-std-init", type=float, default=0.0,
+                   help="initial exploration log-std of the Gaussian policy "
+                        "head. Default 0.0 preserves the from-scratch "
+                        "protocol; BC warm starts need a lower value "
+                        "(e.g. -1.0) or rollout noise destroys the grasp.")
     args = p.parse_args()
 
     if args.pedestal_load_weight is not None and args.out_dir == OUT_DIR:
@@ -445,7 +469,9 @@ def main() -> None:
         s = train(args.total_steps, args.n_envs, args.seed, args.episode_len,
                   args.early_stop_lift, resume=args.resume, out_dir=args.out_dir,
                   init_from_bc=args.init_from_bc,
-                  pedestal_load_weight=args.pedestal_load_weight)
+                  pedestal_load_weight=args.pedestal_load_weight,
+                  log_std_init=args.log_std_init,
+                  ent_coef=args.ent_coef)
         print(json.dumps(s, indent=2), flush=True)
     res = evaluate(args.eval_episodes, args.seed + 10_000, args.episode_len,
                    out_dir=args.out_dir)

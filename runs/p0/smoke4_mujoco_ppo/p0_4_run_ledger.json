@@ -1,0 +1,48 @@
+{
+  "round": "p0(4) final slice - chamfered scene (c7c6dac, xml d61dc0de), 22-cell diverse demos + BC + PPO",
+  "protocol": {
+    "bc": {"epochs": 30, "frames": 7458, "trajectories": 22,
+           "warm_start": "reachable_bc_policy_c7c6dac.pt (not committed: *.pt is gitignored; regenerate deterministically via grounding/bc_pretrain.py --demos reachable_demo_set_c7c6dac.npz --out reachable_bc_policy_c7c6dac.pt, seed 0)",
+           "final_loss": 0.0139},
+    "ppo": {"total_steps": 2000896, "n_envs": 8, "episode_len": 400,
+            "hyperparameters_frozen": ["gate thresholds", "W_PEDESTAL_LOAD=4",
+                                       "MJCF (byte-identical build verified)"],
+            "knobs_added_this_round": ["--log-std-init", "--ent-coef"]}
+  },
+  "eval_context": "all PPO evaluations ran in git worktree /tmp/w4f_eval @ c7c6dac (main tree's assets were being revised to a dual-hand scene by a concurrent sibling; Main arbitration: worktree instead of file swap)",
+  "runs": [
+    {"id": "A_from_protocol", "log": "train_p04_chamfer.log",
+     "config": {"log_std_init": 0.0, "ent_coef": 0.01, "seed": 0},
+     "outcome": "COLLAPSE: SB3's default exploration std 1.0 destroys the knife-edge grasp in every rollout; policy learns to never touch the box. 5000 training episodes z_peak 0.0; eval best 0.4 mm. BC-only control on the same cells: 53-56 mm, return +3445..+4102, proving the collapse is the noise, not the demos."},
+    {"id": "B_flick_FORMAL", "log": "train_p04_chamfer_ls-1.log",
+     "config": {"log_std_init": -1.0, "ent_coef": 0.01, "seed": 0},
+     "artifacts": {"policy": "ppo_lift_hold.zip", "curve": "curve.csv",
+                   "summary": "train_summary.json", "eval": "eval_episodes.json",
+                   "report": "report.json"},
+     "training": {"reward_first_half": -2810, "reward_second_half": 12151,
+                  "max_windowed_lift": "51.7 mm"},
+     "eval": {"episodes": 10, "peaks_mm": [55.1, 53.6, 55.4, 57.5, 54.8, 58.0, 55.7, 53.5, 55.4, 56.4],
+              "a1_10_of_10_over_50mm": true,
+              "a3b_airborne_at_peak_10_of_10": true,
+              "a4_control_clean": true,
+              "bearing_at_peak": {"hook": 0.0, "wall": -11.09, "pedestal": 0.0,
+                                  "unit": "box weights; support force 0 N"},
+              "red": ["A3c_iii_separation_contact_driven (9/10 episodes)"]},
+     "failure_mode": "palm-launch separation - see report.json failure_mode block"},
+    {"id": "C_warm_tune", "log": "warm_tune/train.log",
+     "config": {"log_std_init": -1.5, "ent_coef": 0.0, "seed": 1},
+     "outcome": "REJECTED as formal. Peaks 35.5-76.7 mm (8/10 over 50 mm) but best episode is a pedestal-assisted throw: duty 0.49 (<0.50), A3b RED (pedestal +5.34 box-weights at peak, support 8.2 N - the W4 wedge signature), anchored step 11.0 mm (>=10 mm), separation red. 9/10 episodes A3b-dirty. Keeping the policy near the BC manifold removed the flick but landed on the pedestal-priced throw instead."},
+    {"id": "BC_only_baseline", "probe": "deterministic BC policy, 10 domain_rand episodes, seeds 10000-10009",
+     "outcome": {"peaks_mm": [55.5, 50.4, 52.1, 48.0, 53.3, 63.0, 36.1, 52.1, 55.4, 50.0],
+                 "strictly_over_50mm": "7/10", "a3b_clean": "10/10",
+                 "a3c_iii_pass": "5/10",
+                 "note": "approach nudges produce transient early free steps on half the randomized placements; the acceptance suite only analyses the best episode, which is not selectable"}},
+    {"id": "demo_set", "probe": "collect_chamfer_demos.py + tests/test_smoke4_chamfer_demos.py",
+     "outcome": {"survivors_on_committed_scene": "22/91",
+                 "pre_fix_scan_boundary": "27/91 (measured on 6dp-mass predecessor 2179ec0b; the 9dp fix (c7c6dac) moves the knife-edge grid - grid-winner cell (0,0) now peaks 47.7 mm < 50 mm and is honestly absent)",
+                 "bearing": "x_neg = 1.0 on every recorded cell, top/pedestal 0",
+                 "replay": "bit-exact (np.array_equal) on all 22 trajectories; every replay passes the frozen gate; 7/7 pinning tests green"}
+    }
+  ],
+  "verdict": "p0(4f) - 8/9 frozen acceptance criteria green; A3c(iii) red with mechanism classified; demo set + 91-cell boundary re-measured and pinned"
+}

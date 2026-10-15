@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
+import subprocess
 import sys
 
 import numpy as np
@@ -43,6 +44,22 @@ ACT_DIM = 22
 NET_ARCH = (256, 256)
 
 REQUIRED_NPZ_KEYS = ("bc_obs", "bc_act", "bc_trajectory_len", "bc_pose", "mjcf_commit")
+
+
+def _committed_xml_sha256() -> str:
+    """sha256 of the allegro_floating.xml blob this git tree actually ships.
+
+    The authoritative scene identity: MJCF_COMMIT-style constants go stale
+    whenever a scene commit forgets to bump them (c7c6dac did), but the blob
+    cannot lie.
+    """
+    import hashlib
+    import subprocess
+
+    raw = subprocess.run(
+        ["git", "show", "HEAD:grounding/assets/allegro_floating.xml"],
+        cwd=REPO, check=True, capture_output=True).stdout
+    return hashlib.sha256(raw).hexdigest()
 
 
 def load_bc_dataset(path: str | pathlib.Path) -> dict:
@@ -72,6 +89,7 @@ def load_bc_dataset(path: str | pathlib.Path) -> dict:
         "act": torch.from_numpy(act),
         "lens": lens,
         "mjcf_commit": str(z["mjcf_commit"]),
+        "mjcf_sha256": str(z["mjcf_sha256"]) if "mjcf_sha256" in z else None,
         "n_trajectories": int(len(lens)),
     }
 
@@ -111,7 +129,21 @@ def train_bc(demos: str | pathlib.Path, out: str | pathlib.Path, *, epochs: int 
     import torch  # noqa: PLC0415
 
     data = load_bc_dataset(demos)
-    if data["mjcf_commit"] != MJCF_COMMIT:
+    # Provenance against the scene this tree ACTUALLY ships. The old constant
+    # import (collect_clean_demos.MJCF_COMMIT == "1b0f13f") went stale when
+    # c7c6dac committed the chamfered XML without bumping it, which would
+    # reject every demo set recorded on the current scene. The committed
+    # blob's sha256 is the authority (same caliber as the assignment: git show
+    # HEAD:grounding/assets/allegro_floating.xml | shasum -a 256); the npz
+    # stamps the same digest at collection time. Sets recorded before that
+    # stamp existed (no mjcf_sha256 key) keep the legacy constant check.
+    xml_sha = _committed_xml_sha256()
+    if data["mjcf_sha256"] is not None:
+        if str(data["mjcf_sha256"]) != xml_sha:
+            raise ValueError(
+                f"demo set recorded against XML sha {data['mjcf_sha256']}, "
+                f"this tree ships {xml_sha}")
+    elif data["mjcf_commit"] != MJCF_COMMIT:
         raise ValueError(f"demo set recorded against MJCF {data['mjcf_commit']}, "
                          f"this tree is {MJCF_COMMIT}")
     torch.manual_seed(seed)
@@ -146,6 +178,10 @@ def train_bc(demos: str | pathlib.Path, out: str | pathlib.Path, *, epochs: int 
         "activation": "tanh",
         "target": "sb3 MlpPolicy mlp_extractor.policy_net + action_net",
         "mjcf_commit": MJCF_COMMIT,
+        "mjcf_commit_live": subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"], cwd=REPO, check=True,
+            capture_output=True).stdout.decode().strip(),
+        "xml_sha256": xml_sha,
         "demo_path": str(demos),
         "n_frames": int(data["obs"].shape[0]),
         "n_trajectories": data["n_trajectories"],
