@@ -92,7 +92,15 @@ def test_d1_finger_action_minus_one_is_extended_not_curled(env):
 
 
 def test_d1_mid_range_action_puts_a_pad_on_the_box_wall(env):
-    """The useful grasp amplitude is interior, not at either stop."""
+    """The useful grasp amplitude is interior, not at either stop.
+
+    SUPERSEDED by W6a: this pins the OLD single-hand-above-box layout's
+    pad-at-the-+x-wall geometry; the dual-hand scene parks the hands at the
+    +-x end faces instead (R10). The property that survives - a=0 is extended,
+    increasing action curls the fingers - is pinned by the neighbouring
+    monotonicity property, re-pointed at the right hand's own reach in
+    test_d1_action_sweep_moves_pads_monotonically_inward."""
+    pytest.skip("SUPERSEDED by W6a: old palm-over-box layout is gone (see R10)")
     e = env
     e.reset(seed=0)
     box = e.data.xpos[e.obj_body].copy()
@@ -108,6 +116,10 @@ def test_d1_mid_range_action_puts_a_pad_on_the_box_wall(env):
 def test_d1_action_sweep_moves_pads_monotonically_inward(env):
     """Across the curling half of the range the pad must move monotonically inward.
 
+    W6a: measured on the RIGHT hand against its own wrist frame (fingertip
+    distance to the hand root replaces box-relative x - the box is no longer
+    under this hand in the dual-hand scene).
+
     The last few samples near a=-1 are excluded deliberately: at the fully
     extended stop the finger swings slightly OUT before curling, so demanding
     strict monotonicity over the whole range would be asserting something the
@@ -118,14 +130,19 @@ def test_d1_action_sweep_moves_pads_monotonically_inward(env):
     e.reset(seed=0)
     box = e.data.xpos[e.obj_body].copy()
     kin = _kin_setup(e)
-    xs = []
+    root = e.data.xpos[e.hand_root].copy()
+    ds = []
     for a in np.linspace(-0.5, 1.0, 7):
         fk_state(e, kin, box, np.array([0, 0, -0.02, 0, 0, 0]), np.full(16, a))
-        xs.append(float(e.data.xpos[e.tip_bodies[0]][0] - box[0]))
-    assert all(xs[i] >= xs[i + 1] - 1e-9 for i in range(len(xs) - 1)), (
-        f"ff tip x should decrease monotonically with the action, got {np.round(xs, 4)}")
-    assert xs[-1] < xs[0] - 0.05, (
-        f"curling should draw the pad in by >50 mm, moved {abs(xs[-1]-xs[0])*1000:.1f} mm")
+        # W6a: the pad's distance to its own hand root replaces box-relative x -
+        # the box is no longer under this hand in the dual-hand scene, and the
+        # property that matters (curling draws the pad in, never out) is a
+        # property of the finger chain, not of where the box sits
+        ds.append(float(np.linalg.norm(e.data.xpos[e.tip_bodies[0]] - root)))
+    assert all(ds[i] >= ds[i + 1] - 1e-9 for i in range(len(ds) - 1)), (
+        f"ff tip should draw monotonically toward the hand with the action, got {np.round(ds, 4)}")
+    assert ds[-1] < ds[0] - 0.03, (
+        f"curling should draw the pad in by >30 mm, moved {abs(ds[-1]-ds[0])*1000:.1f} mm")
 
 
 # ------------------------------------------------------------------ D2: joints
@@ -133,12 +150,13 @@ def test_d2_finger_joint_indices_are_distinct(env):
     """Eight of the sixteen once aliased onto thj3, blinding the policy to half the hand."""
     e = env
     adr = e.finger_qpos_adr.tolist()
-    assert len(set(adr)) == 16, (
+    # W6a: two hands -> 32 finger joints, still all distinct
+    assert len(set(adr)) == 32, (
         f"finger joint indices alias: {adr}. Note the MJCF names the ACTUATORS "
         "ffa*/mfa*/rfa*/tha* but the JOINTS ffj*/mfj*/rfj*/thj*; looking a joint "
         "up by actuator name returns -1 and indexes the last element.")
     dof = e.finger_dof_adr.tolist()
-    assert len(set(dof)) == 16, f"finger dof indices alias: {dof}"
+    assert len(set(dof)) == 32, f"finger dof indices alias: {dof}"
 
 
 def test_d2_observation_slot_reads_its_own_joint(env):
@@ -148,8 +166,13 @@ def test_d2_observation_slot_reads_its_own_joint(env):
     e.reset(seed=0)
     obs = e._obs()
     q = e.data.qpos[e.finger_qpos_adr]
-    assert np.allclose(obs[20:36], q.astype(np.float32), atol=1e-6), (
-        "observation finger block does not match qpos at the finger joint indices")
+    # W6a obs layout: 13 object fields, then per hand (3 wrist-pos + 4 quat +
+    # 16 finger q + 16 finger v + 4 tip dist) -> right fingers at 20:36, left
+    # fingers at 13 + 43 + 7 = 63:79
+    assert np.allclose(obs[20:36], q[:16].astype(np.float32), atol=1e-6), (
+        "observation right-finger block does not match qpos at its indices")
+    assert np.allclose(obs[63:79], q[16:].astype(np.float32), atol=1e-6), (
+        "observation left-finger block does not match qpos at its indices")
 
 
 def test_d2_unknown_joint_name_raises_instead_of_indexing_minus_one():
@@ -325,40 +348,19 @@ needs_verdict = pytest.mark.skipif(
 def test_a_box_on_a_corner_is_not_a_lift(env):
     """The reason a large "lift" can still be a rejection.
 
-    `max_lift` is measured on the box's centre of mass, so a box pivoted onto one
-    corner raises its centre a long way while one corner stays welded to the
-    pedestal. A3b rejects exactly this, and it is the dominant failure mode once
-    the observation bug is fixed - the policy learned to stand the box up on an
-    edge, reporting ~93 mm of lift with the box at 40-58 degrees of tilt and its
-    lowest corner 0.8 mm BELOW the pedestal top.
-    """
-    e = env
-    e.reset(seed=0)
-    m, d = e.model, e.data
-    half = np.asarray(m.geom_size[e.obj_geom])
+    `max_lift` is measured on the box's centre of mass, so a box pivoted onto
+    one corner raises its centre a long way while one corner stays welded to
+    the support. A3b rejects exactly this.
 
-    # The centre of a rigid box can rise at most the distance from its centre to a
-    # corner while that corner stays welded to the support. If the measured lift is
-    # below that bound, the trace is consistent with a corner lever and proves
-    # nothing about a lift.
-    corner_dist = float(np.linalg.norm(half))
-    assert corner_dist * 1000 > 90.0, (
-        f"corner distance {corner_dist*1000:.0f} mm must exceed the largest observed "
-        "'lift' (~95 mm) for the corner-lever reading to hold; if the box got "
-        "smaller this argument must be re-derived")
-
-    # and confirm it against the actual evaluation traces: every episode that
-    # reports >50 mm of lift must also be in pedestal contact at its peak step
-    ev = EVAL_JSON
-    if ev.exists():
-        data = json.loads(ev.read_text())
-        high = [ep for ep in data.get("episodes", []) if ep["max_lift_m"] > 0.05]
-        for ep in high:
-            pairs = ep["trace"]["contact_pairs"][int(np.argmax(ep["trace"]["lift"]))]
-            assert any(g[0] in ("pedestal", "table_slab") for g in pairs), (
-                f"episode {ep['episode']} reports {ep['max_lift_m']*1000:.1f} mm with "
-                "no support contact at peak - if that is a genuine lift the "
-                "corner-lever conclusion must be revisited")
+    SUPERSEDED by W6a: the archived corner-lever episodes were recorded on the
+    pedestal scene; with the pedestal removed (R10) their recorded
+    "box_on_support_at_peak" flags no longer classify (the pedestal geom does
+    not exist), so the old evidence re-reads as an unexplained lift. The
+    corner-lever rejection itself is a PERMANENT gate definition (A3b /
+    `table_touching_at_peak`), which stays live in tests/test_smoke4_accept.py
+    and will re-gate on W6-scene evidence."""
+    pytest.skip("SUPERSEDED by W6a: pedestal-scene evidence no longer "
+                "classifies on the dual-hand scene (see R10)")
 
 
 @needs_verdict
