@@ -83,6 +83,13 @@ URDF_TO_MJCF_ACTUATOR_ORDER = [
     MJCF_FINGER_JOINTS.index(mjcf) for _urdf, mjcf in URDF_MJCF_JOINT_PAIRS
 ]
 WRIST_JOINTS = ["wrist_x", "wrist_y", "wrist_z", "wrist_rx", "wrist_ry", "wrist_rz"]
+# The W6a scene (MJCF_COMMIT 2e7c26a, sha256 ff4d4355...) carries a second,
+# mirrored hand: identical upstream naming with a "_left" suffix.  nu 22 -> 44,
+# nq/nv 29/28 -> 51/50.  Smoke 5 is single-hand *input*: the right hand executes
+# the retargeted clip and the left hand is frozen at its initial pose (its
+# servos are simply never commanded, so ctrl stays 0 = its reset pose).
+MJCF_FINGER_JOINTS_LEFT = [n + "_left" for n in MJCF_FINGER_JOINTS]
+WRIST_JOINTS_LEFT = [n + "_left" for n in WRIST_JOINTS]
 URDF_TIP_FRAMES = ["link_3.0_tip", "link_7.0_tip", "link_11.0_tip", "link_15.0_tip"]
 MJCF_TIP_BODIES = ["ff_tip", "mf_tip", "rf_tip", "th_tip"]
 # Scene geoms the hand must never be credited with touching the box through.
@@ -135,7 +142,11 @@ JOINT_ACC_LIMIT_RAD_S2 = 200.0  # 64x the velocity limit over one 20 Hz frame
 # runs/p0/smoke5_retarget/report.json -> rerun_evidence.velocity_gate.
 # floating_wrist_servo_ceiling):
 #   wrist hinges  kp=14  N m/rad, +-6  N m -> trackable to 1.5  rad/s
-#   wrist slides  kp=180 N/m,    +-45 N  -> trackable to 0.2  m/s
+#   wrist slides  kp=180 N/m,    +-45 N  -> trackable to 0.2  m/s   (wrist_y;
+#                 unchanged by W6a) -- but the W6a re-scale gave x/z
+#                 kp=15000/damping=280, whose own derived allowance
+#                 45/280 = 0.1607 m/s is the tighter line there
+#                 (WARM_START_SLIDE_RATE_XZ_M_S)
 #   finger joints URDF velocity="3.14" rad/s, and they execute at 0.34 rad/s,
 #   so the ramp is not what limits them; it is capped at the URDF figure anyway.
 WARM_START_HINGE_RATE_RAD_S = 1.5
@@ -234,38 +245,101 @@ WRIST_ROT_CEILING_RAD = 0.5
 # Hardcoded on purpose: the tables are what the gates were signed against.
 # tests/test_smoke5_winding_tolerance.py recomputes every entry from the model
 # (forcerange / kp, forcerange / dof_damping) and fails if the tables drift.
+#
+# Re-derived on the dual-hand scene (W6a, MJCF_COMMIT 2e7c26a, blob sha256
+# ff4d4355...): every finger joint of BOTH hands, every wrist hinge of BOTH
+# hands and every wrist slide of BOTH hands, read straight off the model.
+# Left/right symmetry is a measured fact, not an assumption: the mirror pairs
+# returned bit-identical forcerange / kp / dof_damping, and the derivation test
+# asserts it, so a future asymmetric edit cannot hide behind this table.
+#
+# What W6a changed against the single-hand tables this replaces:
+#   * finger kp on the abducted/base joints dropped with the 45-degree tilt
+#     (measured off the two models: ffj0 kp 0.3261 -> 0.2706 N m/rad, mfj0
+#     0.3278 -> 0.2318 N m/rad), so the position caps widened accordingly;
+#   * the wrist slides were re-scaled: x/z are now kp=15000 N/m with
+#     dof_damping=280, so their winding allowance tightened 1.8 -> 45/280 =
+#     0.1607 m/s, while wrist_y keeps kp=180, damping 25 -> 45/25 = 1.8 m/s.
+#     The slide table is per-axis for exactly this reason;
+#   * the wrist hinges are untouched (kp 14, damping 1.2 -> 5.0 rad/s).
 SERVO_WINDING_POSITION_CAP_RAD = {
-    "ffj0": 0.09199632014719411,
-    "ffj1": 0.14501306919796397,
+    # right hand (the hand the retargeted clip drives)
+    "ffj0": 0.11086474501108647,
+    "ffj1": 0.17007099064214262,
     "ffj2": 0.39902044293015326,
     "ffj3": 0.9396436525612472,
-    "mfj0": 0.09151921903599756,
-    "mfj1": 0.14290824047324255,
+    "mfj0": 0.12942191544434856,
+    "mfj1": 0.16800905709202654,
     "mfj2": 0.40034071550255534,
     "mfj3": 0.943207126948775,
-    "rfj0": 0.091324200913242,
-    "rfj1": 0.14569226534544452,
+    "rfj0": 0.11025358324145534,
+    "rfj1": 0.17076947894821745,
     "rfj2": 0.3995741056218058,
     "rfj3": 0.9396436525612472,
-    "thj0": 0.09529885829415716,
-    "thj1": 0.07409771667075865,
-    "thj2": 0.12424749163879598,
-    "thj3": 0.3100206611570248,
+    "thj0": 0.10411555203798971,
+    "thj1": 0.09342883836810963,
+    "thj2": 0.1228099173553719,
+    "thj3": 0.30938144329896905,
+    # left hand (frozen at the reset pose in smoke 5; gated identically if
+    # ever driven -- the values are the mirror hand's own derivation)
+    "ffj0_left": 0.11086474501108647,
+    "ffj1_left": 0.17007099064214262,
+    "ffj2_left": 0.39902044293015326,
+    "ffj3_left": 0.9396436525612472,
+    "mfj0_left": 0.12942191544434856,
+    "mfj1_left": 0.16800905709202654,
+    "mfj2_left": 0.40034071550255534,
+    "mfj3_left": 0.943207126948775,
+    "rfj0_left": 0.11025358324145534,
+    "rfj1_left": 0.17076947894821745,
+    "rfj2_left": 0.3995741056218058,
+    "rfj3_left": 0.9396436525612472,
+    "thj0_left": 0.10411555203798971,
+    "thj1_left": 0.09342883836810963,
+    "thj2_left": 0.1228099173553719,
+    "thj3_left": 0.30938144329896905,
 }
 SERVO_WINDING_RATE_CAP_RAD_S = {
     "wrist_rx": 5.0,
     "wrist_ry": 5.0,
     "wrist_rz": 5.0,
+    "wrist_rx_left": 5.0,
+    "wrist_ry_left": 5.0,
+    "wrist_rz_left": 5.0,
 }
 # Same derivation, one DoF class over: the slides' realised rate is judged
-# against |forcerange| / dof_damping too.  Measured off the model: 45 N / 25
-# = 1.8 m/s (the hinges are 6 / 1.2 = 5.0 rad/s).  Kept as an explicit table
-# rather than folded into the rad/s one so the units cannot be silently mixed.
+# against |forcerange| / dof_damping too.  Per axis, not one number: the W6a
+# re-scale gave x/z kp=15000/damping=280 (45/280 = 0.1607 m/s) while y keeps
+# kp=180/damping=25 (45/25 = 1.8 m/s).  Kept as an explicit table rather than
+# folded into the rad/s one so the units cannot be silently mixed.
 SERVO_WINDING_RATE_CAP_M_S = {
-    "wrist_x": 1.8,
+    "wrist_x": 0.16071428571428573,
     "wrist_y": 1.8,
-    "wrist_z": 1.8,
+    "wrist_z": 0.16071428571428573,
+    "wrist_x_left": 0.16071428571428573,
+    "wrist_y_left": 1.8,
+    "wrist_z_left": 0.16071428571428573,
 }
+# The warm-start ramp may not command a DoF faster than that DoF's own servo
+# can deliver.  For the re-scaled x/z slides the derived winding allowance
+# 45/280 = 0.1607 m/s is now BELOW the old free-space measured trackable rate
+# of 0.2 m/s, and a ramp commanding 0.2 m/s drove the realised rate past the
+# allowance for 15 consecutive intervals (measured on this scene).  Each slide
+# is therefore commanded at the tighter of the two lines; wrist_y (kp 180,
+# damping 25) keeps the measured 0.2 m/s.  Derived from the table above, whose
+# model derivation the winding-tolerance tests recompute every run.
+#
+# The x/z command additionally sits 1% below the allowance: the kp=15000 servo
+# tracks a ramp with ~0.08% velocity ripple (measured: commanded 0.160714,
+# realised peak 0.160836 over 9 intervals), so a command exactly AT the
+# allowance pokes the realised rate past it.  This is command-side input-
+# shaping headroom per the recorded w1 ruling ("the ramp should command below
+# it by the measured overshoot factor"); the winding GATE itself stays the
+# unfitted |forcerange| / dof_damping.
+WARM_START_SLIDE_TRACK_MARGIN = 1e-2
+WARM_START_SLIDE_RATE_XZ_M_S = min(
+    WARM_START_SLIDE_RATE_M_S, SERVO_WINDING_RATE_CAP_M_S["wrist_x"]
+) * (1.0 - WARM_START_SLIDE_TRACK_MARGIN)
 WINDING_MAX_FRAMES = 3
 # Part 3 of the position gate.  Two conditions:
 #   * a contact torque must exist on the DoF -- below this floor the DoF is not
@@ -943,7 +1017,11 @@ def warm_start(
         finger_caps[finger_slide] = WARM_START_SLIDE_RATE_M_S
     caps = np.concatenate([
         finger_caps,
-        np.full(3, WARM_START_SLIDE_RATE_M_S),
+        # per axis, not one number: the W6a re-scale put x/z's own allowance
+        # below the measured 0.2 m/s trackable rate (see the derivation note
+        # above WARM_START_SLIDE_RATE_XZ_M_S); the order is x, y, z.
+        np.array([WARM_START_SLIDE_RATE_XZ_M_S, WARM_START_SLIDE_RATE_M_S,
+                  WARM_START_SLIDE_RATE_XZ_M_S]),
         np.full(3, WARM_START_HINGE_RATE_RAD_S),
     ])
 
@@ -953,7 +1031,11 @@ def warm_start(
     start = cur.copy()
 
     steps = 0
-    peak_cmd = np.zeros(model.nu)
+    # Sized to the commanded block (fingers + 6 right-wrist DoF), not model.nu:
+    # since W6a the scene carries 44 actuators (two hands) and only the right
+    # hand's 22 are ever commanded here, so a model.nu-shaped accumulator would
+    # not broadcast against the per-step command deltas.
+    peak_cmd = np.zeros(n_f + 6)
     hist: list[np.ndarray] = []
     ctrl_hist: list[np.ndarray] = []
     prev_q = np.concatenate([
@@ -1009,21 +1091,51 @@ def warm_start(
     idx = {"finger": slice(0, n_f), "wrist_slide": slice(n_f, n_f + 3),
            "wrist_hinge": slice(n_f + 3, n_f + 6)}
 
+    # Reachability is a per-DoF verdict, so the report has to name WHICH DoF
+    # fell short.  ``reachable`` is the conjunction over every commanded DoF;
+    # on the single-hand scene the shortfall was the wrist descent, on the
+    # dual-hand scene the wrist arrives and what misses is a finger holding
+    # its contact deflection.  ``unreachable_dofs`` therefore spans fingers
+    # and wrist alike.
+    unreachable_dofs = [
+        str(name) for name, ok in zip(
+            MJCF_FINGER_JOINTS + WRIST_JOINTS,
+            tracking <= WARM_START_REACHABLE_TOL)
+        if not ok
+    ]
+    wrist_unreachable = [n for n in unreachable_dofs if n in WRIST_JOINTS]
+
     # Did the servos actually get there, or did the world stop them?  The
     # tracking error is the honest discriminator: the ramp caps the *command*
     # rate, but a hand that jams on the box never arrives no matter how slowly
     # it is driven, and reporting the shortfall keeps "the warm start failed"
     # from being ambiguous.
     return {
-        "reachable": bool(np.max(tracking) <= WARM_START_REACHABLE_TOL),
-        "unreachable_dofs": [
-            str(rs_name)
-            for rs_name, ok in zip(WRIST_JOINTS,
-                                   tracking[n_f:] <= WARM_START_REACHABLE_TOL)
-            if not ok
-        ],
+        "reachable": bool(not unreachable_dofs),
+        "unreachable_dofs": unreachable_dofs,
         "unreachable_note": (
-            "the first commanded wrist pose is not in this floating wrist's "
+            "a DoF counted here holds a tracking error above the tolerance at "
+            "the first commanded pose, which on this scene is sustained box "
+            "contact: a finger in contact holds a contact-deflection error "
+            "rather than the commanded value, and a wrist slide on the list "
+            "means the commanded descent itself is outside the floating "
+            "wrist's reachable set -- no approach path reaches it. The ramp "
+            "caps the *command* rate; it cannot make an unreachable pose "
+            "reachable."
+        )
+        + (
+            "" if wrist_unreachable else
+            " On this run every wrist DoF delivered the commanded pose; the "
+            "shortfall is on the finger joints only."
+        ),
+        "wrist_reachable_note": (
+            "per-DoF reachability, dual-hand scene: on the superseded "
+            "single-hand scene the finding was the opposite -- the palm rested "
+            "on the box top and the commanded wrist descent was unreachable "
+            "outright. Kept as a recorded finding so the change of scene is "
+            "visible rather than silent."
+        ) if not wrist_unreachable else (
+            "the commanded wrist pose is not in this floating wrist's "
             "reachable set on this scene: the palm rests on the box top and "
             "blocks the wrist's descent, so no approach path reaches the "
             "command. The ramp caps the *command* rate; it cannot make an "
@@ -1037,16 +1149,31 @@ def warm_start(
         "dt_ctrl_s": float(dt_ctrl),
         "rate_caps": {
             "finger_rad_s": WARM_START_FINGER_RATE_RAD_S,
+            # wrist_y's cap, and the binding one for the aggregate W1 check;
+            # the per-axis dict is the authority.
             "wrist_slide_m_s": WARM_START_SLIDE_RATE_M_S,
+            "wrist_slide_m_s_per_axis": {
+                "wrist_x": WARM_START_SLIDE_RATE_XZ_M_S,
+                "wrist_y": WARM_START_SLIDE_RATE_M_S,
+                "wrist_z": WARM_START_SLIDE_RATE_XZ_M_S,
+            },
             "wrist_hinge_rad_s": WARM_START_HINGE_RATE_RAD_S,
             "source": (
-                "free-space step/ramp measurement of this model's own servos, "
-                "recorded in rerun_evidence.velocity_gate."
-                "floating_wrist_servo_ceiling"
+                "free-space step/ramp measurement of this model's own servos "
+                "(hinges 1.5 rad/s, wrist_y 0.2 m/s), tightened per axis to "
+                "the servo's own derived winding allowance where the W6a "
+                "re-scale put that below the measurement "
+                "(x/z: 45 N / 280 = 0.1607 m/s); recorded in "
+                "rerun_evidence.velocity_gate.floating_wrist_servo_ceiling"
             ),
         },
         "commanded_peak_rate": {
             k: float(np.max(peak_cmd[v])) for k, v in idx.items()
+        },
+        "commanded_peak_rate_slide_per_axis": {
+            "wrist_x": float(peak_cmd[n_f + 0]),
+            "wrist_y": float(peak_cmd[n_f + 1]),
+            "wrist_z": float(peak_cmd[n_f + 2]),
         },
         "realised_peak_rate": {
             k: float(np.max(realised_arr[:, v])) if realised_arr.size else 0.0
@@ -1102,7 +1229,11 @@ def warm_start(
 
 
 def replay(qpos: np.ndarray, anchor: dict, seed: int = 0) -> dict[str, Any]:
-    """Replay the retargeted sequence through the 22 position actuators.
+    """Replay the retargeted sequence through the position actuators.
+
+    Single-hand input on the dual-hand scene: the right hand's 22 servos are
+    commanded; the left hand's 22 are never written, so ctrl stays 0 and the
+    left hand stays frozen at its reset pose.
 
     ``reset`` writes qpos once (allowed); from then on only ``data.ctrl`` is
     written and only ``mj_step`` integrates.  Recorded per control frame: the
@@ -1695,8 +1826,9 @@ def build_qa(
             "velocity_within_limit": rep["command_velocity"]["all_within_limit"],
             "velocity_max_rad_s": rep["joint_velocity_max_rad_s"],
             "velocity_max_rad_s_note": (
-                "realised qpos rate over all 22 DoFs, evidence only; it is not "
-                "the gate"
+                "realised qpos rate over all velocity DoFs (both hands plus the "
+                "box's free joint; only the right hand is commanded), evidence "
+                "only; it is not the gate"
             ),
             "acceleration_limit_rad_s2": JOINT_ACC_LIMIT_RAD_S2,
             "acceleration_max_rad_s2": rep["joint_acceleration_max_rad_s2"],
@@ -1704,7 +1836,13 @@ def build_qa(
             <= JOINT_ACC_LIMIT_RAD_S2,
         },
         "actuators": {
-            "n_actuators": 22,
+            "n_actuators": 44,
+            "n_actuators_note": (
+                "the W6a dual-hand scene carries 44 position servos (two hands); "
+                "smoke 5 commands the right hand's 22 and leaves the left hand's "
+                "servos at ctrl 0, which holds it frozen at its initial pose"
+            ),
+            "n_actuators_commanded": 22,
             "ctrl_saturation_frames": rep["ctrl_saturation_total"],
             "force_saturation_events": rep["force_saturation_total"],
             "ctrl_saturation_rule": "any |command - clipped ctrl| > 1e-9 in a frame",
@@ -1745,11 +1883,13 @@ def _failure_reason(qa: dict) -> str:
 def _blocker(qa: dict, rep: dict) -> dict[str, Any]:
     """The physical reason the remaining criteria cannot be met on this scene.
 
-    Round 3 moved this: the failure used to be that the wrist could not execute
-    the retargeted pose at all.  It now is that the retargeted pose *is*
-    executable and the hand still does not execute it in the world -- the servos
-    hold the palm against the box instead of closing the fingers on it.  Every
-    number below is measured on this run.
+    On the dual-hand W6a scene the executability failure is gone (the base and
+    constrained solves both succeed) and the shortfall is three-fold: the
+    executed palm pose drifts past its 40 mm cap, the replay never touches the
+    box (the clip closes to a sub-millimetre gap and the position servos stop
+    there), and a few finger joints ride mrad-scale boundary dust past jnt_range
+    beyond the winding gate's mandatory-explanation clause.  Every number below
+    is measured on this run.
     """
     base = qa["retargeting"]["base_solve"]
     traj = base["constrained_solve"]
@@ -1762,15 +1902,27 @@ def _blocker(qa: dict, rep: dict) -> dict[str, Any]:
     )
     return {
         "what": (
-            "the base solve and the constrained solve removed every executability "
-            "failure -- the command now fits its ctrlrange and joint range and "
-            "respects all three signed velocity limits -- but the hand still sits "
-            f"{rep['execution_deviation_m']['max_m'] * 1000:.0f} mm away from the "
-            "pose it is commanded to, because the palm collision plate rests on "
-            "the box and the wrist position servos spend their force budget "
-            "holding it there instead of closing the fingers. Only one of four "
-            "fingertips is within grasp radius of the box at the closest-approach "
-            "frame, so this is a palm-down rest, not the grasp the clip describes."
+            "dual-hand W6a scene, single-hand-input mode (right hand executes "
+            "the retargeted clip, left hand frozen at its reset pose): the base "
+            "solve and the constrained solve solved -- the commanded hand sits "
+            f"{base['gap_m'] * 1000:.2f} mm short of the box at the closest "
+            f"fingertip with {base['tips_within_radius']} of four tips inside "
+            f"the grasp radius and {base['palm_plate_gap_m'] * 1000:.1f} mm of "
+            "palm-plate clearance -- but the executed replay falls short of the "
+            "frozen G3 contract on three gates. (1) The physics holds the palm "
+            f"{rep['execution_deviation_m']['max_m'] * 1000:.0f} mm away from "
+            "the pose it is commanded (cap 40 mm): the servos do not track the "
+            "solved pose in the world. (2) No finger/palm-vs-box contact occurs "
+            "in any frame: the clip closes to a "
+            f"{base['gap_m'] * 1000:.2f} mm gap and the position servos stop "
+            "there, so the contact criterion is unproven on this scene rather "
+            "than satisfied by a palm resting on the box, as on the superseded "
+            "single-hand scene. (3) Three finger joints (the joints listed in "
+            "servo_winding_tolerance.joints_with_excursion) sit up to a few "
+            "mrad past jnt_range at the commanded boundary for up to 14 "
+            "consecutive frames with a mN*m torque imbalance -- sub-tolerance "
+            "boundary dust that fails the mandatory explanation clause, not "
+            "saturation and not an amplitude violation."
         ),
         "root_cause_fixed_this_round": {
             "was": (

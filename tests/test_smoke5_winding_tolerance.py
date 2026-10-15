@@ -53,10 +53,12 @@ def model():
 # ---------------------------------------------------------------- 1. derivation
 def test_position_cap_table_is_the_mjcf_derivation(model):
     """Every entry is |forcerange| / kp read off the model, to the last bit."""
-    assert set(rs.SERVO_WINDING_POSITION_CAP_RAD) == set(rs.MJCF_FINGER_JOINTS), (
-        "the position table must cover exactly the 16 finger joints"
+    both = rs.MJCF_FINGER_JOINTS + rs.MJCF_FINGER_JOINTS_LEFT
+    assert set(rs.SERVO_WINDING_POSITION_CAP_RAD) == set(both), (
+        "the position table must cover exactly the 32 finger joints "
+        "(16 per hand on the dual-hand scene)"
     )
-    for name in rs.MJCF_FINGER_JOINTS:
+    for name in both:
         a = rs._joint_actuator_id(model, name)
         fr = float(np.max(np.abs(model.actuator_forcerange[a])))
         kp = float(model.actuator_gainprm[a, 0])
@@ -69,11 +71,44 @@ def test_position_cap_table_is_the_mjcf_derivation(model):
             rs.SERVO_WINDING_POSITION_CAP_RAD[name], rel=1e-12)
 
 
+def test_position_cap_table_is_left_right_symmetric(model):
+    """Mirror joints carry identical forcerange/kp, so identical table values.
+
+    W6a claimed the mirrored hand is parameter-identical; this is the check
+    that keeps the claim honest.  If a future edit makes one hand different,
+    this fails and the two hands have to be listed separately in the table
+    (and in the report) instead of one hand silently borrowing the other's
+    numbers.
+    """
+    for name in rs.MJCF_FINGER_JOINTS:
+        a_r = rs._joint_actuator_id(model, name)
+        a_l = rs._joint_actuator_id(model, name + "_left")
+        fr_r = float(np.max(np.abs(model.actuator_forcerange[a_r])))
+        fr_l = float(np.max(np.abs(model.actuator_forcerange[a_l])))
+        kp_r = float(model.actuator_gainprm[a_r, 0])
+        kp_l = float(model.actuator_gainprm[a_l, 0])
+        assert (fr_r, kp_r) == (fr_l, kp_l), (
+            f"{name}: the mirrored hand is not parameter-identical "
+            f"(right {fr_r}/{kp_r} vs left {fr_l}/{kp_l}) -- the table and the "
+            "report must list the two hands separately"
+        )
+        assert (
+            rs.SERVO_WINDING_POSITION_CAP_RAD[name]
+            == rs.SERVO_WINDING_POSITION_CAP_RAD[name + "_left"]
+        )
+
+
 def test_rate_cap_table_is_the_mjcf_derivation(model):
     """Every entry is |forcerange| / dof_damping read off the model."""
-    hinges = rs.WRIST_JOINTS[3:]
+    hinges = rs.WRIST_JOINTS[3:] + rs.WRIST_JOINTS_LEFT[3:]
+    slides = rs.WRIST_JOINTS[:3] + rs.WRIST_JOINTS_LEFT[:3]
     assert set(rs.SERVO_WINDING_RATE_CAP_RAD_S) == set(hinges), (
-        "the rate table must cover exactly the three wrist hinges"
+        "the rad/s rate table must cover exactly the six wrist hinges "
+        "(three per hand on the dual-hand scene)"
+    )
+    assert set(rs.SERVO_WINDING_RATE_CAP_M_S) == set(slides), (
+        "the m/s rate table must cover exactly the six wrist slides -- the "
+        "dual-hand scene has three per hand, not three in total"
     )
     for name in hinges:
         adr = int(model.jnt_dofadr[rs._joint_id(model, name)])
@@ -85,6 +120,58 @@ def test_rate_cap_table_is_the_mjcf_derivation(model):
             f"{name}: table says {rs.SERVO_WINDING_RATE_CAP_RAD_S[name]}, the "
             f"MJCF says {fr}/{b} = {fr / b}"
         )
+    for name in slides:
+        adr = int(model.jnt_dofadr[rs._joint_id(model, name)])
+        fr = float(np.max(
+            np.abs(model.actuator_forcerange[rs._joint_actuator_id(model, name)])))
+        b = float(model.dof_damping[adr])
+        assert rs.SERVO_WINDING_RATE_CAP_M_S[name] == pytest.approx(
+            fr / b, rel=1e-12), (
+            f"{name}: table says {rs.SERVO_WINDING_RATE_CAP_M_S[name]}, the "
+            f"MJCF says {fr}/{b} = {fr / b}"
+        )
+
+
+def test_rate_cap_tables_are_left_right_symmetric(model):
+    """Mirror wrist DoFs carry identical forcerange/damping -> identical caps.
+
+    Same discipline as the finger table: W6a claims the mirrored hand is
+    parameter-identical, and this is what makes a silent one-sided edit fail
+    instead of borrowing the other hand's numbers.  The W6a slide re-scale is
+    per axis, not per hand: x/z (kp 15000, damping 280 -> 45/280 = 0.1607 m/s)
+    differ from y (kp 180, damping 25 -> 45/25 = 1.8 m/s) on BOTH hands.
+    """
+    for name in rs.WRIST_JOINTS[3:]:
+        adr_r = int(model.jnt_dofadr[rs._joint_id(model, name)])
+        adr_l = int(model.jnt_dofadr[rs._joint_id(model, name + "_left")])
+        a_r = rs._joint_actuator_id(model, name)
+        a_l = rs._joint_actuator_id(model, name + "_left")
+        fr_r = float(np.max(np.abs(model.actuator_forcerange[a_r])))
+        fr_l = float(np.max(np.abs(model.actuator_forcerange[a_l])))
+        assert fr_r == fr_l
+        assert model.dof_damping[adr_r] == model.dof_damping[adr_l], (
+            f"{name}: the mirrored wrist hinge is not parameter-identical -- "
+            "list the two hands separately"
+        )
+        assert (rs.SERVO_WINDING_RATE_CAP_RAD_S[name]
+                == rs.SERVO_WINDING_RATE_CAP_RAD_S[name + "_left"])
+    for name in rs.WRIST_JOINTS[:3]:
+        a_r = rs._joint_actuator_id(model, name)
+        a_l = rs._joint_actuator_id(model, name + "_left")
+        fr_r = float(np.max(np.abs(model.actuator_forcerange[a_r])))
+        fr_l = float(np.max(np.abs(model.actuator_forcerange[a_l])))
+        assert fr_r == fr_l
+        assert (rs.SERVO_WINDING_RATE_CAP_M_S[name]
+                == rs.SERVO_WINDING_RATE_CAP_M_S[name + "_left"])
+    # the per-axis split itself, on both hands: the W6a x/z re-scale must not
+    # be read as a per-hand property
+    for hand in ("", "_left"):
+        assert rs.SERVO_WINDING_RATE_CAP_M_S[f"wrist_x{hand}"] == pytest.approx(
+            45.0 / 280.0, rel=1e-12)
+        assert rs.SERVO_WINDING_RATE_CAP_M_S[f"wrist_z{hand}"] == pytest.approx(
+            45.0 / 280.0, rel=1e-12)
+        assert rs.SERVO_WINDING_RATE_CAP_M_S[f"wrist_y{hand}"] == pytest.approx(
+            45.0 / 25.0, rel=1e-12)
 
 
 def test_rate_bound_does_not_depend_on_kv_but_does_on_dof_damping(model):
@@ -95,7 +182,7 @@ def test_rate_bound_does_not_depend_on_kv_but_does_on_dof_damping(model):
     and there is no finite sustained-rate bound at all -- which is why the gate
     closes on dof_damping and not on a velocity feedback.
     """
-    for name in rs.WRIST_JOINTS[3:]:
+    for name in rs.WRIST_JOINTS[3:] + rs.WRIST_JOINTS_LEFT[3:]:
         a = rs._joint_actuator_id(model, name)
         adr = int(model.jnt_dofadr[rs._joint_id(model, name)])
         kv = float(model.actuator_biasprm[a, 2])

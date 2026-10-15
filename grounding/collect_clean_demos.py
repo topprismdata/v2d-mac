@@ -96,11 +96,15 @@ VERDICT_JSON = OUT_DIR / "clean_lift_verdict.json"
 # Scene provenance stamp written into every demo npz this module produces, and
 # checked by grounding/bc_pretrain.py against the demo set it is asked to load -
 # a BC warm start must never be fitted on frames recorded against a different
-# scene. Bumped 4ee6f1d -> 1b0f13f with Wave 3.5F (finger-PROXIMAL contact
-# stiffening, sha256 1ea0fdf5...), which changed the box<->finger response the
-# rim hook engages: penetration 0.40-1.19 mm -> 0.05-0.10 mm.
-MJCF_COMMIT = "1b0f13f"
-MJCF_SHA256 = "1ea0fdf5c87ce5a161efcda7c597b0fc6647c9fe30bcf2f5d0bcb52402d24b89"
+# scene. Bumped 1b0f13f -> 2e7c26a with W6a (dual-hand scene, mirrored hand at
+# each end face, sha256 ff4d4355...), which doubled the actuator set and
+# re-scaled the wrist slides. HONESTY NOTE: the committed demo npz artefacts
+# under smoke4_mujoco_ppo/ were recorded on the superseded single-hand XML
+# (1b0f13f, blob 1ea0fdf5...) -- this pin describes the XML the generator now
+# runs on, and the artefacts must not be mixed with a run made after this bump
+# without a re-record.
+MJCF_COMMIT = "2e7c26a"
+MJCF_SHA256 = "ff4d4355337cb2d9e59f70ba67bac865576ef36a9c5158f51e53eeff771ee691"
 N_WRIST = 6
 N_FINGER = 16
 

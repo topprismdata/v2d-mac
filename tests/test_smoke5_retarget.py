@@ -307,7 +307,7 @@ def test_c9_contact_detector_is_not_vacuous(artifacts):
     data.qpos[finger_qadr] = pre
     data.qpos[wrist_qadr] = 0.0
     data.qpos[wrist_qadr[2]] = 0.16  # as high as the wrist can go
-    data.ctrl[6:] = pre
+    data.ctrl[6:22] = pre  # right-hand finger servos; the left hand stays frozen
     data.ctrl[2] = 0.16
     data.qvel[:] = 0.0
     for _ in range(600):

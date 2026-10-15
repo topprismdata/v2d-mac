@@ -105,10 +105,20 @@ def _score(model, data, ctx, base: np.ndarray, frames) -> dict[str, Any]:
                base, ctx["slide_cmd"], ctx["hinge"], ctx["finger_cmd"], t)
         # penetration straight off MuJoCo's contact list: a hand geom buried in
         # the box shows up as a negative contact distance, which is exactly the
-        # quantity the penetration criterion is stated in.
+        # quantity the penetration criterion is stated in.  Keyed on the SOLVED
+        # hand's geoms (ancestry of the other contact party), because on the
+        # W6a dual-hand scene the box also carries its pedestal-resting contact
+        # (dist ~ -6e-17 at qpos0) and the frozen left hand at its end face --
+        # neither is this hand, and counting them rejects every base candidate
+        # as "penetrating".
         for i in range(data.ncon):
             c = data.contact[i]
-            if box in (int(c.geom1), int(c.geom2)) and -c.dist > pen:
+            if box not in (int(c.geom1), int(c.geom2)):
+                continue
+            other = int(c.geom2) if int(c.geom1) == box else int(c.geom1)
+            if other not in hand:
+                continue
+            if -c.dist > pen:
                 pen = -float(c.dist)
         for g in plate:
             d = _geom_distance(model, data, g, box)

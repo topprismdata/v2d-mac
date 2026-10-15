@@ -15,11 +15,14 @@ step physics; they do not read the committed JSON):
       This is what stops a "helpful" ramp from quietly relocating the hand or
       the box on the way in.
 
-Neither test asserts that the warm start *succeeds*.  On the current scene it
-does not: the first commanded wrist pose is outside this floating wrist's
-reachable set (the palm rests on the box top and blocks the wrist's descent),
-which is why ``test_w2_first_command_is_unreachable_on_this_scene`` records
-that as a finding rather than pretending otherwise.
+Neither test asserts that the warm start *succeeds*.  On the superseded
+single-hand scene it did not: the first commanded wrist pose was outside that
+floating wrist's reachable set (the palm rested on the box top and blocked the
+wrist's descent).  On the W6a dual-hand scene the re-scaled wrist slides
+deliver the commanded pose and the residual tracking error sits on the finger
+joints holding their contact deflection --
+``test_w2c_first_command_reachability_is_recorded_per_dof`` records whichever
+way the current scene falls, per DoF, rather than pretending either way.
 """
 
 from __future__ import annotations
@@ -85,6 +88,18 @@ def test_w1_warm_start_never_exceeds_the_trackable_rate():
     assert peak["wrist_hinge"] <= caps["wrist_hinge_rad_s"] + 1e-9
     assert peak["wrist_slide"] <= caps["wrist_slide_m_s"] + 1e-9
     assert peak["finger"] <= caps["finger_rad_s"] + 1e-9
+    # Per axis, not just per class: the W6a re-scale put the x/z slides' own
+    # derived winding allowance (45/280 = 0.1607 m/s) below the old measured
+    # 0.2 m/s, and a ramp commanding at the stale figure drove the realised
+    # rate past the allowance.  The ramp must command each axis at the tighter
+    # of its two lines.
+    slide_caps = caps["wrist_slide_m_s_per_axis"]
+    axis_peak = info["commanded_peak_rate_slide_per_axis"]
+    for axis in ("wrist_x", "wrist_y", "wrist_z"):
+        assert axis_peak[axis] <= slide_caps[axis] + 1e-9, axis
+    xz = (45.0 / 280.0) * (1.0 - rs.WARM_START_SLIDE_TRACK_MARGIN)
+    assert slide_caps["wrist_x"] == pytest.approx(xz)
+    assert slide_caps["wrist_z"] == pytest.approx(xz)
     assert info["cap_respected"], "the ramp overshot its own cap"
 
 
@@ -141,10 +156,12 @@ def test_w1b_realised_rates_within_caps():
     assert realised["finger"] <= caps["finger_rad_s"] + 1e-9
 
     # The slides get the same three-part winding gate, on their own derived
-    # table: 45 N / 25 = 1.8 m/s per slide (the 0.2 m/s figure is the command
-    # cap, w1/w1c -- a force-limited servo can exceed it while releasing
-    # wind-up, exactly like the hinges).  Measured on this clip: 0.344 m/s,
-    # 5.2x inside the derived allowance.
+    # table -- per axis, read off the W6a dual-hand model: x/z are kp=15000,
+    # damping 280 -> 45/280 = 0.1607 m/s, y keeps kp=180, damping 25 ->
+    # 45/25 = 1.8 m/s.  (The 0.2 m/s figure is the command cap, w1/w1c -- a
+    # force-limited servo can exceed it while releasing wind-up, exactly like
+    # the hinges; on the re-scaled x/z servos the derived allowance is now the
+    # *tighter* line and the command cap must not lean on it.)
     slide_gate = info["servo_winding_rate_slide"]
     # ``command_side_cap_rad_s`` / ``cap_rad_s`` are the machinery's historical
     # key names; for the slide table they hold m/s.  ``cap_units`` asserts it.
@@ -159,11 +176,12 @@ def test_w1b_realised_rates_within_caps():
             f"explained={r['explanation_ok']}"
             for n, r in slide_gate["joints"].items() if not r["ok"])
     )
+    expected_slide_damping = {"wrist_x": 280.0, "wrist_y": 25.0, "wrist_z": 280.0}
     for name, rec in slide_gate["joints"].items():
         assert rec["cap_units"] == "m/s"
         assert rec["cap_rad_s"] == rs.SERVO_WINDING_RATE_CAP_M_S[name]
         assert rec["cap_formula"] == "|forcerange| / dof_damping"
-        assert rec["dof_damping"] == pytest.approx(25.0)
+        assert rec["dof_damping"] == pytest.approx(expected_slide_damping[name])
         assert rec["peak_realised_rad_s"] <= rec["cap_rad_s"], name
         assert rec["max_consecutive_intervals"] <= rs.WINDING_MAX_FRAMES, name
         for ev in rec["events"]:
@@ -187,10 +205,28 @@ def test_w1c_caps_are_the_measured_trackable_rates():
     assert rs.WARM_START_HINGE_RATE_RAD_S == 1.5
     assert rs.WARM_START_SLIDE_RATE_M_S == 0.2
     assert rs.WARM_START_FINGER_RATE_RAD_S == rs.JOINT_VEL_LIMIT_RAD_S
+    # the re-scaled x/z slides are commanded just below their own derived
+    # allowance -- the 1% tracking headroom, not the stale measured figure
+    assert rs.WARM_START_SLIDE_TRACK_MARGIN == 1e-2
+    assert rs.WARM_START_SLIDE_RATE_XZ_M_S == pytest.approx(
+        (45.0 / 280.0) * (1.0 - rs.WARM_START_SLIDE_TRACK_MARGIN))
+    assert rs.WARM_START_SLIDE_RATE_XZ_M_S < rs.SERVO_WINDING_RATE_CAP_M_S["wrist_x"]
+    assert rs.WARM_START_SLIDE_RATE_XZ_M_S == min(
+        rs.WARM_START_SLIDE_RATE_M_S, rs.SERVO_WINDING_RATE_CAP_M_S["wrist_x"]
+    ) * (1.0 - rs.WARM_START_SLIDE_TRACK_MARGIN)
     # the realised-rate ceiling is a separate, derived table; the 1.5 rad/s
-    # command-side figure is not it and must not be reused as one
+    # command-side figure is not it and must not be reused as one.  On the W6a
+    # dual-hand scene the tables carry both hands (6 hinges, 6 slides); the
+    # warm start only ever gates the right hand's, which the left-hand keys
+    # sitting in the tables cannot shortcut.
     assert rs.SERVO_WINDING_RATE_CAP_RAD_S == {
-        "wrist_rx": 5.0, "wrist_ry": 5.0, "wrist_rz": 5.0}
+        "wrist_rx": 5.0, "wrist_ry": 5.0, "wrist_rz": 5.0,
+        "wrist_rx_left": 5.0, "wrist_ry_left": 5.0, "wrist_rz_left": 5.0}
+    assert rs.SERVO_WINDING_RATE_CAP_M_S == {
+        "wrist_x": 45.0 / 280.0, "wrist_y": 45.0 / 25.0,
+        "wrist_z": 45.0 / 280.0,
+        "wrist_x_left": 45.0 / 280.0, "wrist_y_left": 45.0 / 25.0,
+        "wrist_z_left": 45.0 / 280.0}
     if REPORT_PATH.exists():
         rep = json.loads(REPORT_PATH.read_text())
         ceil = rep.get("rerun_evidence", {}).get(
@@ -265,23 +301,46 @@ def test_w2b_warm_start_writes_no_qpos():
 
 
 # ------------------------------------------------------- the recorded finding
-def test_w2c_first_command_is_unreachable_on_this_scene():
-    """Record, do not hide: the frame-0 wrist pose is outside the reachable set.
+def test_w2c_first_command_reachability_is_recorded_per_dof():
+    """Record, do not hide: which DoFs the ramp cannot deliver, and why.
 
-    The ramp is correct but it cannot manufacture reachability.  This test
-    exists so the shortfall stays a *measurement* in the report rather than a
-    mystery, and so that a future scene which does make the pose reachable
-    turns this red and forces a look at the numbers.
+    On the superseded single-hand scene the finding was the wrist: the palm
+    rested on the box top and no approach path reached the commanded descent.
+    On the W6a dual-hand scene the re-scaled wrist slides deliver the
+    commanded pose; the residual tracking error sits on the finger joints,
+    which are in sustained box contact at the first command -- a
+    contact-deflection shortfall, not an unreachable command.  Whichever way
+    a scene falls, ``reachable`` and ``unreachable_dofs`` must agree and the
+    report must name the DoFs it could not deliver.
     """
     *_, info = _run_warm_start()
     track = info["tracking_error_to_goal"]
+    assert bool(info["reachable"]) == (not info["unreachable_dofs"]), (
+        "the reachable flag and the named DoF list must agree")
+    assert set(info["unreachable_dofs"]) <= (
+        set(rs.MJCF_FINGER_JOINTS) | set(rs.WRIST_JOINTS))
     if info["reachable"]:
         assert track["wrist_slide"] <= rs.WARM_START_REACHABLE_TOL
         assert track["wrist_hinge"] <= rs.WARM_START_REACHABLE_TOL
     else:
         assert info["unreachable_dofs"], "unreachable but no DoF named"
-        assert track["wrist_slide"] > rs.WARM_START_REACHABLE_TOL
         assert "reachable set" in info["unreachable_note"]
+        wrist_missing = [n for n in info["unreachable_dofs"]
+                         if n in rs.WRIST_JOINTS]
+        if wrist_missing:
+            # the original single-hand finding, restated: a wrist DoF that
+            # misses means the commanded pose itself is out of reach
+            assert (track["wrist_slide"] > rs.WARM_START_REACHABLE_TOL
+                    or track["wrist_hinge"] > rs.WARM_START_REACHABLE_TOL)
+            assert "reachable set" in info["wrist_reachable_note"]
+        else:
+            # the dual-hand finding: the wrist delivers; what misses is a
+            # finger holding its contact deflection -- recorded, not folded
+            # into a wrist claim
+            assert track["wrist_slide"] <= rs.WARM_START_REACHABLE_TOL
+            assert track["wrist_hinge"] <= rs.WARM_START_REACHABLE_TOL
+            assert all(n in rs.MJCF_FINGER_JOINTS
+                       for n in info["unreachable_dofs"])
 
 
 def test_w2d_warm_start_is_reported_in_the_artefact():

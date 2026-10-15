@@ -36,17 +36,17 @@ if str(REPO) not in sys.path:
 
 from retarget import retarget_smoke as rs  # noqa: E402
 
-#: The MJCF revision this re-run is accounted against.  Wave 3.5-E (the
-#: finger-proximal <pair> block) landed in 1b0f13f and that is the XML in the
-#: tree, but the pin was still on 4508421 -- so every rerun restamped the
-#: artefact with a commit whose blob does not match the tree and a false
-#: "does not match" guard.  Verified: blob(1b0f13f) == sha256 of the tree.
-MJCF_COMMIT = "1b0f13f"
+#: The MJCF revision this re-run is accounted against.  W6a landed the dual-hand
+#: scene in 59385ec (box on the table, a mirrored hand at each end face; nu 44,
+#: nq/nv/nu = 51/50/44) and HEAD 2e7c26a is the commit whose blob matches the
+#: tree.  Verified: blob(2e7c26a) == sha256 of the working-tree XML
+#: (ff4d4355...).
+MJCF_COMMIT = "2e7c26a"
 #: The MJCF revision the *previous* smoke-5 numbers were taken on. Kept so the
-#: two data sets can never be silently mixed.  4ee6f1d is the last commit
-#: before the proximal pairs -- the superseded physics the artefacts were
-#: already stamped against.
-MJCF_COMMIT_BASELINE = "4ee6f1d"
+#: two data sets can never be silently mixed.  1b0f13f is the last single-hand
+#: generation (blob 1ea0fdf5...) -- the superseded physics the artefacts were
+#: stamped against before the dual-hand scene landed.
+MJCF_COMMIT_BASELINE = "1b0f13f"
 
 OUT_DIR = REPO / "runs/p0/smoke5_retarget"
 REPORT_PATH = OUT_DIR / "report.json"
@@ -315,8 +315,9 @@ def _commanded_pose_probe(model, rep, anchor, finger_target) -> dict[str, Any]:
     """
     import mujoco
 
-    lo = model.actuator_ctrlrange[:, 0]
-    hi = model.actuator_ctrlrange[:, 1]
+    # the commanded block is the right hand's first 22 actuators
+    lo = model.actuator_ctrlrange[:22, 0]
+    hi = model.actuator_ctrlrange[:22, 1]
     wrist_qadr = np.array([
         model.jnt_qposadr[rs._joint_id(model, n)] for n in rs.WRIST_JOINTS
     ])
@@ -330,7 +331,12 @@ def _commanded_pose_probe(model, rep, anchor, finger_target) -> dict[str, Any]:
         rs.reset_scene(model, d, finger_qadr, wrist_qadr, np.arange(6, 22), np.arange(6))
         worst = (0.0, -1, None)
         for t in range(rep["n_frames"]):
-            d.ctrl[:] = raw_ctrl_fn(t)
+            # The dual-hand scene has 44 actuators; only the right hand's first
+            # 22 are commanded.  A full-slice assignment of the 22-wide command
+            # would raise; the left hand's servos stay at ctrl 0 = frozen.
+            cmd = raw_ctrl_fn(t)
+            d.ctrl[:] = 0.0
+            d.ctrl[:cmd.size] = cmd
             d.qpos[finger_qadr] = pre_curl
             mujoco.mj_forward(model, d)
             for c in range(d.ncon):
@@ -388,8 +394,9 @@ def _box_contact_force_split(model, rep, anchor, finger_target) -> dict[str, Any
         mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, b) for b in rs.MJCF_TIP_BODIES
     }
     tip_geoms = {g for g in hand if int(model.geom_bodyid[g]) in tip_bodies}
-    lo = model.actuator_ctrlrange[:, 0]
-    hi = model.actuator_ctrlrange[:, 1]
+    # the commanded block is the right hand's first 22 actuators
+    lo = model.actuator_ctrlrange[:22, 0]
+    hi = model.actuator_ctrlrange[:22, 1]
     d = mujoco.MjData(model)
     rs.reset_scene(model, d, rs._finger_qadr(model), wrist_qadr,
                    np.arange(6, 22), np.arange(6))
@@ -399,8 +406,11 @@ def _box_contact_force_split(model, rep, anchor, finger_target) -> dict[str, Any
     peak_frame = -1
     per_geom: dict[str, float] = {}
     for t in range(rep["n_frames"]):
-        d.ctrl[:] = np.clip(
+        # right-hand block only (actuators 0..21 on the dual-hand scene)
+        cmd = np.clip(
             np.concatenate([anchor["ctrl"][t], finger_target[t]]), lo, hi)
+        d.ctrl[:] = 0.0
+        d.ctrl[:cmd.size] = cmd
         for _ in range(rep["steps_per_frame"]):
             mujoco.mj_step(model, d)
         tip_f = np.zeros(3)
@@ -469,11 +479,15 @@ def saturation_evidence() -> dict[str, Any]:
     names = [mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_ACTUATOR, i)
              for i in range(model.nu)]
     finger_target = qpos[:, 6:22][:, rs.URDF_TO_MJCF_ACTUATOR_ORDER]
-    lo = model.actuator_ctrlrange[:, 0]
-    hi = model.actuator_ctrlrange[:, 1]
+    # the commanded block is the right hand's first 22 actuators; the dual-hand
+    # scene's left-hand ctrlrange must not be broadcast against a 22-wide command
+    lo = model.actuator_ctrlrange[:22, 0]
+    hi = model.actuator_ctrlrange[:22, 1]
 
-    frames = np.zeros(model.nu)
-    amount = np.zeros(model.nu)
+    # accumulators span the COMMANDED block (the right hand's 22 actuators);
+    # model.nu would be the dual-hand scene's 44 and never see a 22-wide delta
+    frames = np.zeros(22)
+    amount = np.zeros(22)
     for t in range(rep["n_frames"]):
         raw = np.concatenate([anchor["ctrl"][t], finger_target[t]])
         d = np.abs(raw - np.clip(raw, lo, hi))
@@ -500,8 +514,11 @@ def saturation_evidence() -> dict[str, Any]:
     hand = rs.hand_geom_ids(model)
     box_traj, fcount, deepest = [], np.zeros(model.nu), (0.0, -1, None, 0.0)
     for t in range(rep["n_frames"]):
-        d2.ctrl[:] = np.clip(
+        # right-hand block only (actuators 0..21 on the dual-hand scene)
+        cmd = np.clip(
             np.concatenate([anchor["ctrl"][t], finger_target[t]]), lo, hi)
+        d2.ctrl[:] = 0.0
+        d2.ctrl[:cmd.size] = cmd
         for _ in range(rep["steps_per_frame"]):
             mujoco.mj_step(model, d2)
         box_traj.append(d2.xpos[box_body].copy())
