@@ -354,6 +354,14 @@ def evaluate(n_episodes: int, seed: int, episode_len: int,
                 "hook_up_N": env.trace["hook_up_N"],
                 "wall_up_N": env.trace["wall_up_N"],
                 "pedestal_up_N": env.trace["pedestal_up_N"],
+                # Intra-frame maxima: the only series that can show a stiffened
+                # contact's frame-internal spike. Recorded here too, not just in
+                # the env, or the eval artefact silently ships control-step
+                # resolution while its report claims a peak column.
+                "hook_up_N_peak": env.trace["hook_up_N_peak"],
+                "wall_up_N_peak": env.trace["wall_up_N_peak"],
+                "pedestal_up_N_peak": env.trace["pedestal_up_N_peak"],
+                "hold_streak": env.trace["hold_streak"],
                 "dt": float(env.dt),
             },
         })

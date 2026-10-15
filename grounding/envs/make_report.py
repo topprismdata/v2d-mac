@@ -246,6 +246,9 @@ def main() -> None:
             # A clean lift has pedestal ~0 and its weight coming through the
             # top-face hook; a wedge has the pedestal positive and the finger
             # bearing negative (the hand presses the box DOWN into the base).
+            # Carries its own caliber block (resolution + sampling point per
+            # column), so a reader of report.json alone cannot mistake the
+            # control-step column for a frame-internal peak.
             "bearing_at_peak": best.get("bearing", {}),
         },
         "criteria": criteria,

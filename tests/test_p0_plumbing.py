@@ -65,7 +65,22 @@ EVAL_TRACE_KEYS = {"obj_z", "lift", "wrist_z", "contact_force", "finger_force",
                    # _peak keys -- a stiffened contact's spike lives inside a
                    # control step and is invisible without them).
                    "support_force", "hook_up_N", "wall_up_N", "pedestal_up_N",
-                   "hook_up_N_peak", "wall_up_N_peak", "pedestal_up_N_peak"}
+                   "hook_up_N_peak", "wall_up_N_peak", "pedestal_up_N_peak",
+                   # bearing_summary's `hold` column segments on this; if the
+                   # eval artefact stops shipping it the column silently becomes
+                   # empty rather than wrong.
+                   "hold_streak"}
+# The bearing block's own shape is pinned too, not just its presence: the three
+# columns and their resolution/sampling caliber are the round's deliverable, and
+# a schema check that only asserts the key `bearing` exists would let the caliber
+# disappear silently - which is exactly how the *_peak keys were dropped once.
+BEARING_KEYS = {"peak_step", "box_weight_N", "caliber", "hold",
+                "peak_control_step", "peak_substep", "bearing_box_weights",
+                "upward_total_N", "net_box_weights", "support_force_N_at_peak",
+                "support_force_box_weights_at_peak",
+                "support_force_box_weights_mean_window"}
+BEARING_PATHS = {"hook", "wall", "pedestal"}
+CALIBER_KEYS = {"hold", "peak_control_step", "peak_substep", "alignment"}
 CONTROL_KEYS = {"n_episodes", "peak_lift_m", "n_finger_contact_steps",
                 "threshold_m", "pass"}
 
@@ -243,6 +258,25 @@ def test_p4_eval_writes_formal_schema(trained_out: pathlib.Path):
     for ep in res["episodes"]:
         assert set(ep) == EVAL_EPISODE_KEYS
         assert set(ep["trace"]) == EVAL_TRACE_KEYS
+
+        # the three bearing columns and their caliber travel with the artefact
+        b = ep["bearing"]
+        assert set(b) == BEARING_KEYS, f"bearing schema drifted: {sorted(b)}"
+        assert set(b["caliber"]) == CALIBER_KEYS
+        for col in ("hold", "peak_control_step", "peak_substep"):
+            assert set(b[col]) >= BEARING_PATHS, (
+                f"bearing column {col!r} is missing a path; the decomposition is "
+                "only meaningful when all three are present")
+        # the caliber must say what resolution each column actually has, and it
+        # must say the control-step column cannot see a frame-internal spike -
+        # that caveat is the whole reason the third column exists. Compared
+        # case-insensitively: the assertion is about the caveat being present,
+        # not about how it is capitalised.
+        assert "cannot see a frame-internal spike" in (
+            b["caliber"]["peak_control_step"].lower())
+        assert "2 ms" in b["caliber"]["peak_substep"]
+        assert "2 ms" in b["caliber"]["alignment"]
+
         assert len(ep["trace"]["lift"]) == len(ep["trace"]["contact_pairs"])
         for p in ep["contact_pairs_at_peak"]:
             assert len(p) == 2 and all(isinstance(x, str) for x in p)
