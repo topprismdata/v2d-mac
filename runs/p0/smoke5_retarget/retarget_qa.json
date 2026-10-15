@@ -6,7 +6,7 @@
     "joint_limits_ok": false,
     "joint_velocity_ok": true,
     "joint_acceleration_ok": true,
-    "penetration_ok": false,
+    "penetration_ok": true,
     "contact_occurred": true,
     "wrist_continuous": true,
     "actuator_ctrl_not_saturated": true,
@@ -2091,22 +2091,22 @@
       1,
       1,
       1,
+      0,
+      1,
+      1,
       1,
       1,
       0,
       1,
       1,
       1,
-      1,
-      1,
-      1,
-      0
+      1
     ],
     "duty": 0.6666666666666666,
     "frames_with_contact": 18
   },
   "penetration": {
-    "max_m": 0.001188276655594685,
+    "max_m": 0.00010669545984098167,
     "tolerance_m": 0.001,
     "tolerance_rationale": "MuJoCo's default solref/solimp lets a resting body sink a small fraction of a millimetre; the measured box-on-pedestal resting sink in this very scene is 7.067e-05 m, so 1e-3 m is ~9x the solver's own resting tolerance and still 3 orders of magnitude below the 40 mm box half-height",
     "support_contact_penetration_m": 7.066718486057005e-05,
@@ -2126,18 +2126,18 @@
       1.9855790992260453e-05,
       4.725928870944235e-05,
       5.059388642936699e-05,
-      0.0006179540695279723,
-      0.0004025177674992497,
-      0.001188276655594685,
-      0.00046419276605543544,
+      6.938128449027626e-05,
+      5.5136328531197806e-05,
       0.0,
-      0.00026927704463500533,
-      0.0005053076486838985,
-      4.753423354703166e-05,
-      0.00017749976493134707,
-      3.1682150325945105e-05,
-      8.72192214313448e-06,
-      0.0
+      4.707989454467922e-05,
+      7.399903366095309e-06,
+      4.300632317326162e-05,
+      1.2499858380622106e-05,
+      0.0,
+      1.1365044850409006e-05,
+      1.5193643148873553e-06,
+      9.497473929016625e-05,
+      7.289726138985653e-05
     ]
   },
   "joint_limits": {
@@ -2211,13 +2211,13 @@
     "velocity_max_rad_s": 1.8979991103769422,
     "velocity_max_rad_s_note": "realised qpos rate over all 22 DoFs, evidence only; it is not the gate",
     "acceleration_limit_rad_s2": 200.0,
-    "acceleration_max_rad_s2": 20.095839240451774,
+    "acceleration_max_rad_s2": 25.455236044307682,
     "acceleration_within_limit": true
   },
   "actuators": {
     "n_actuators": 22,
     "ctrl_saturation_frames": 0,
-    "force_saturation_events": 261,
+    "force_saturation_events": 259,
     "ctrl_saturation_rule": "any |command - clipped ctrl| > 1e-9 in a frame",
     "force_saturation_rule": "actuator_force on its forcerange bound (1e-6 rel tol)",
     "wrist_reachability": {
@@ -2271,10 +2271,10 @@
     "ceiling_m": 0.05,
     "ceiling_rad": 0.5,
     "ceiling_rationale": "physically anchored, same rule as smoke 2: a jump must exceed BOTH 3x the median inter-frame step AND an absolute per-frame ceiling. The ceiling comes from the wrist actuator authority -- force-limited position servos (slides +-45 N, hinges +-6 N m) on a ~0.15 kg hand over a 50 ms control period reach ~0.11 m of single-step travel, so the ceiling is set at 0.05 m (and 0.5 rad on the rotation axes) to keep margin",
-    "step_median_m": 0.00741568209651922,
+    "step_median_m": 0.007332549145941392,
     "step_max_m": 0.014269885054232696,
     "threshold_m": 0.05,
-    "rot_step_median_rad": 0.09466789320570557,
+    "rot_step_median_rad": 0.09532853977481039,
     "rot_step_max_rad": 0.13344743729836664,
     "rot_threshold_rad": 0.5,
     "position_trajectory_m": [
@@ -2349,94 +2349,94 @@
         -0.07008289847941859
       ],
       [
-        -0.12597848603117925,
-        0.14590460926671692,
-        -0.07247387001332611
+        -0.12603081670152358,
+        0.145912160873482,
+        -0.07244294159995646
       ],
       [
-        -0.12971391827957207,
-        0.1469893137291586,
-        -0.07446404204309819
+        -0.1297549929849878,
+        0.14693173833878506,
+        -0.07457920156500297
       ],
       [
-        -0.13085622883967832,
-        0.14932829416870785,
-        -0.07315815934336033
+        -0.12839513031456862,
+        0.15129379384690111,
+        -0.07484555767063747
       ],
       [
-        -0.13104418474037652,
-        0.15233724541538649,
-        -0.07180381384285027
+        -0.1263923040895735,
+        0.15596106447810013,
+        -0.07474802841210672
       ],
       [
-        -0.12576553832470755,
-        0.15643810766858635,
-        -0.07062592289867858
+        -0.12045087591476698,
+        0.16064438537394685,
+        -0.07681581596486128
       ],
       [
-        -0.11933463871194287,
-        0.15730433706395808,
-        -0.0731674647360087
+        -0.11610022194322897,
+        0.16092387580687217,
+        -0.0793415550036081
       ],
       [
-        -0.11311977534164588,
-        0.15701269009002797,
-        -0.07308971237052865
+        -0.11214099780155089,
+        0.160778084995029,
+        -0.07791362694150039
       ],
       [
-        -0.10825354565231668,
-        0.1610897953601326,
-        -0.06899166475877007
+        -0.10747367837706605,
+        0.1658125872065433,
+        -0.07528361820123444
       ],
       [
-        -0.10347580467923088,
-        0.16762957886022992,
-        -0.0668482775600295
+        -0.10229529902868274,
+        0.17220705369203024,
+        -0.0755743507660397
       ],
       [
-        -0.09815117167999013,
-        0.17356963350358895,
-        -0.06660724108531862
+        -0.09713412194652826,
+        0.17748561776650532,
+        -0.0775448822210894
       ],
       [
-        -0.09315965896252566,
-        0.17700005590213722,
-        -0.0669173705543964
+        -0.09212465762110109,
+        0.18036587673685664,
+        -0.07934878785618775
       ],
       [
-        -0.0893778023247616,
-        0.17734771686220083,
-        -0.07023146522899071
+        -0.08822958936588729,
+        0.17769642795059648,
+        -0.08188738294855796
       ],
       [
-        -0.08692151336775712,
-        0.17427383824325807,
-        -0.07689098458152155
+        -0.08532033157416287,
+        0.17397706364130056,
+        -0.08127689122635881
       ]
     ]
   },
   "fingertip_tracking": {
     "per_tip_final_error_m": [
-      0.13567675879997956,
-      0.12564707422671875,
-      0.1453388414320873,
-      0.07615359773315586
+      0.13661996686378913,
+      0.12527275852881734,
+      0.14676247419435415,
+      0.07620128671868506
     ],
-    "final_mean_error_m": 0.12070406804798536,
-    "final_max_error_m": 0.1453388414320873,
+    "final_mean_error_m": 0.12121412157641143,
+    "final_max_error_m": 0.14676247419435415,
     "hand_span_m": 0.030539083373840755,
     "interpretation": "evidence only, not a gate: smoke 6 measured HaMeR's own fingertip error at mean 45.6 px / p90 111.6 px under occluded grasping, so this term inherits that uncertainty and is recorded rather than thresholded"
   },
   "physics_provenance": {
-    "mjcf_commit": "4ee6f1d",
-    "mjcf_commit_message": "p0(w3.5c): wrist pitch travel \u00b11.2\u2192\u00b11.8 \u2014 necessary but insufficient",
+    "mjcf_commit": "1b0f13f",
+    "mjcf_commit_message": "p0(w3.5f): finger-proximal contact stiffening \u2014 penetration 1.19\u21920.095mm, non-target pairs bit-identical",
     "scene": "grounding/assets/allegro_floating.xml",
-    "scene_sha256": "dbba3d70d722d529f80d1935e6c22826ac5d9be964c9827c64f3062bc660b934",
-    "scene_sha256_at_mjcf_commit": "dbba3d70d722d529f80d1935e6c22826ac5d9be964c9827c64f3062bc660b934",
-    "scene_sha256_at_baseline_commit": "ffb27e97070eba7c1bcc40ab0f695f34611159053cb02b6935778104800afc44",
+    "scene_sha256": "1ea0fdf5c87ce5a161efcda7c597b0fc6647c9fe30bcf2f5d0bcb52402d24b89",
+    "scene_sha256_at_mjcf_commit": "1ea0fdf5c87ce5a161efcda7c597b0fc6647c9fe30bcf2f5d0bcb52402d24b89",
+    "scene_sha256_at_baseline_commit": "dbba3d70d722d529f80d1935e6c22826ac5d9be964c9827c64f3062bc660b934",
     "scene_matches_mjcf_commit": true,
     "scene_differs_from_baseline": true,
-    "accounting_rule": "every number in this report was produced on scene_sha256 == dbba3d70d722, i.e. commit 4ee6f1d. Numbers produced on commit 4508421 (scene_sha256 ffb27e97070e) belong to the superseded physics and must not be mixed with these."
+    "accounting_rule": "every number in this report was produced on scene_sha256 == 1ea0fdf5c87c, i.e. commit 1b0f13f. Numbers produced on commit 4ee6f1d (scene_sha256 dbba3d70d722) belong to the superseded physics and must not be mixed with these."
   },
   "velocity_gate_evidence": {
     "gate_definition": {
@@ -2485,19 +2485,19 @@
         "at_interval": 5
       },
       "wrist_ry": {
-        "max_control_period_rate": 1.7760575855418248,
+        "max_control_period_rate": 1.7760036155244663,
         "at_interval": 13
       },
       "wrist_rz": {
-        "max_control_period_rate": 1.4311260028142314,
+        "max_control_period_rate": 1.4218735036504726,
         "at_interval": 23
       },
       "ffj0": {
-        "max_control_period_rate": 0.2856674166125528,
-        "at_interval": 18
+        "max_control_period_rate": 0.1917219502214007,
+        "at_interval": 17
       },
       "ffj1": {
-        "max_control_period_rate": 0.22729602491415424,
+        "max_control_period_rate": 0.22641573620501454,
         "at_interval": 20
       },
       "ffj2": {
@@ -2505,15 +2505,15 @@
         "at_interval": 6
       },
       "ffj3": {
-        "max_control_period_rate": 0.09044010312764916,
-        "at_interval": 19
+        "max_control_period_rate": 0.09487240764478377,
+        "at_interval": 25
       },
       "mfj0": {
-        "max_control_period_rate": 0.17032179795722024,
+        "max_control_period_rate": 0.2191950491454056,
         "at_interval": 16
       },
       "mfj1": {
-        "max_control_period_rate": 0.20711806184208648,
+        "max_control_period_rate": 0.20568352346483465,
         "at_interval": 20
       },
       "mfj2": {
@@ -2521,16 +2521,16 @@
         "at_interval": 12
       },
       "mfj3": {
-        "max_control_period_rate": 0.09056155740320815,
+        "max_control_period_rate": 0.08963940117430624,
         "at_interval": 19
       },
       "rfj0": {
-        "max_control_period_rate": 0.0842558539825386,
-        "at_interval": 15
+        "max_control_period_rate": 0.23940756554565762,
+        "at_interval": 20
       },
       "rfj1": {
-        "max_control_period_rate": 0.32413350091766713,
-        "at_interval": 22
+        "max_control_period_rate": 0.2609077067826293,
+        "at_interval": 6
       },
       "rfj2": {
         "max_control_period_rate": 0.052465390175204796,
@@ -2545,7 +2545,7 @@
         "at_interval": 0
       },
       "thj1": {
-        "max_control_period_rate": 0.09452471036448307,
+        "max_control_period_rate": 0.08984427239256076,
         "at_interval": 19
       },
       "thj2": {
@@ -2553,12 +2553,12 @@
         "at_interval": 0
       },
       "thj3": {
-        "max_control_period_rate": 0.06798563300894012,
+        "max_control_period_rate": 0.06849948623492308,
         "at_interval": 23
       }
     },
     "split": {
-      "finger_joints_max_rad_s": 0.32413350091766713,
+      "finger_joints_max_rad_s": 0.2609077067826293,
       "wrist_hinges_max_rad_s": 1.8979991103769422,
       "finger_joints_within_3_14": true,
       "wrist_hinges_within_3_14": true
@@ -2747,34 +2747,34 @@
       "mfa1": 18,
       "mfa3": 16,
       "rfa1": 12,
-      "ffa0": 11,
+      "ffa0": 5,
       "ffa2": 5,
       "ffa1": 4,
       "mfa2": 3,
       "wrist_rx": 3,
       "wrist_rz": 2
     },
-    "force_saturation_total": 257,
+    "force_saturation_total": 251,
     "box_motion": {
-      "max_displacement_m": 0.1197424016020839,
-      "at_frame": 15,
+      "max_displacement_m": 0.11681521433725656,
+      "at_frame": 12,
       "start_xyz": [
         -0.005723758086839647,
         8.668385600748382e-05,
         0.806760357439551
       ],
       "end_xyz": [
-        -0.0989559651432629,
-        0.029815825951803678,
-        0.8312121690330735
+        -0.09122952218631523,
+        0.023655834858778937,
+        0.8320549463505883
       ],
       "box_ejected": true
     },
     "deepest_executed_penetration": {
-      "depth_m": 0.000884207673650449,
-      "frame": 21,
-      "geom": "rf_proximal_collision",
-      "normal_force_N": 9.671377818459828
+      "depth_m": 0.00021506927297920497,
+      "frame": 22,
+      "geom": "mf_proximal_collision",
+      "normal_force_N": 5.699002673215866
     },
     "commanded_pose_probe": {
       "method": "kinematic only (mj_forward, no dynamics, fingers at the reset pre-curl): box overlap of the commanded configuration",
@@ -2799,14 +2799,14 @@
       "n_tip_pad_geoms": 8,
       "per_geom_peak_force_N": {
         "palm_collision": 52.54846403426261,
-        "ff_proximal_collision": 11.03465674579491,
-        "mf_proximal_collision": 10.518443710982913,
-        "rf_proximal_collision": 9.671377818459828
+        "mf_proximal_collision": 5.699002673215866,
+        "rf_proximal_collision": 4.693725877007188,
+        "rf_medial_collision": 0.22522726399875656
       },
       "geoms_ever_touching_box": [
-        "ff_proximal_collision",
         "mf_proximal_collision",
         "palm_collision",
+        "rf_medial_collision",
         "rf_proximal_collision"
       ],
       "fingertip_pad_geoms_touching_box": [],
@@ -2826,12 +2826,12 @@
       {
         "path": "blocker.what",
         "stale": "the fingers interpenetrate the box proxy",
-        "corrected": "only ['ff_proximal_collision', 'mf_proximal_collision', 'palm_collision', 'rf_proximal_collision'] ever touches the box -- no fingertip pad does. The deepest overlap is 1.188 mm of palm_collision, which the R3 stiffening deliberately left at the default solref (it was scoped to the box + the four fingertip pads)."
+        "corrected": "only ['mf_proximal_collision', 'palm_collision', 'rf_medial_collision', 'rf_proximal_collision'] ever touches the box -- no fingertip pad does. The deepest overlap is 0.107 mm of palm_collision, which the R3 stiffening deliberately left at the default solref (it was scoped to the box + the four fingertip pads)."
       },
       {
         "path": "blocker.penetration.why",
         "stale": "Position servos kp=3 with forcerange +-2 N m cannot hold the box out",
-        "corrected": "superseded by R1: the finger forceranges are now (10 N/4)*moment_arm per joint, not a flat +-2 N m, and kp was re-pinned. The remaining 1.188 mm is palm_collision against the box top at 9.7 N, not finger servo authority."
+        "corrected": "superseded by R1: the finger forceranges are now (10 N/4)*moment_arm per joint, not a flat +-2 N m, and kp was re-pinned. The remaining 0.107 mm is palm_collision against the box top at 5.7 N, not finger servo authority."
       },
       {
         "path": "blocker.not_a_threshold_problem",
@@ -2846,12 +2846,12 @@
       {
         "path": "blocker.fixes_for_p1[1]",
         "stale": "the 2.7 mm finger-box penetration",
-        "corrected": "the max overlap is now 1.188 mm, down from 2.724 mm, and it is palm_collision, not a finger."
+        "corrected": "the max overlap is now 0.107 mm, down from 2.724 mm, and it is palm_collision, not a finger."
       },
       {
         "path": "blocker.what / velocity criterion",
         "stale": "(not mentioned) the G3 velocity criterion fails",
-        "corrected": "the velocity exceedance is wrist-only and confined to control intervals []; all 16 finger joints peak at 0.324 rad/s. See rerun_evidence.velocity_gate."
+        "corrected": "the velocity exceedance is wrist-only and confined to control intervals []; all 16 finger joints peak at 0.261 rad/s. See rerun_evidence.velocity_gate."
       }
     ]
   }
