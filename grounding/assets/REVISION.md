@@ -326,3 +326,8 @@ void — and smoke5 must re-run. Both are the next round's job.
 - **效果（诚实记账）**：拇指下探可行位姿 0% → 1279/53,624（0.70%，随 +rx 单调上升）；联合指标 13.702mm → **0.089mm**（154×）
 - **K1 双侧接触仍为 0**（263 万位姿全局 + 50 万局部致密 + rx=±2.2/2.6 外推）：拇指入盒顶下的位姿族与长指触壁位姿族**互斥**（互斥间隙 ≥14.5mm 局部 / ≥27.6mm 全局）；外推 rx 恶化（joint 指标 14.3→20.2mm）→ 残余是**转轴几何耦合**，非行程量问题
 - 新 XML sha256 `dbba3d70…`；证据 runs/w35/rx_widen_scan / rx_coupling_diag / rx_local_dense；下一杠杆：拇指对向锥建模保真度（对照 Allegro URDF 实有范围）、手姿态或盒-手相对滚转（rz）解耦
+
+### 勘误（2026-10-15）
+- 4ee6f1d 的 commit message 误写"wrist pitch ±1.2→±1.8"，实际改动为 **wrist_rx（roll）**；真 pitch（wrist_ry）保持 -1.259..1.2 未动。诊断（runs/w35/w35d_diag.json）证明放宽真 pitch 亦无法开启 K1，无需后续修订。
+- 波段 3.5-C 报告的"联合指标 0.089mm"经复核为**端面/平面延拓度量伪影**（ff 垫距 +y 端面、拇指距壁外 82mm 的顶平面延拓），非壁接触。后续轮次采用 w35d_diag.json 的严格壁接触判据（最近点须落在侧面矩形内）。
+- Wave 3.5-D 结论：K1 双侧壁捏为 **B 类（真实形态×场景）结构性不可行**（~19M 位姿穷举 + 100 次 descent；正 pitch 拇指锥轴离 -x 143.6° / 负 pitch 手指扇出通道，全俯仰圆反相关）；MJCF 无可修目标。
