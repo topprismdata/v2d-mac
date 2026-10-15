@@ -251,6 +251,25 @@ class HoldRewardShaper:
         return float(rew), info
 
 
+def _joint_id(m, name: str, role: str) -> int:
+    """Resolve a joint name, refusing to return -1.
+
+    ``mj_name2id`` returns -1 for an unknown name, and every downstream use here
+    is an array index - so ``jnt_qposadr[-1]`` silently reads the LAST joint and a
+    typo degrades into wrong-but-plausible numbers instead of an error. This MJCF
+    names joints ``mfj*``/``thj*`` and actuators ``mfa*``/``tha*``, so mixing the
+    two vocabularies is easy and silent; see the finger-joint lookup in
+    :class:`LiftHoldEnv`, which this guard exists to protect.
+    """
+    jid = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT, name)
+    if jid < 0:
+        raise KeyError(
+            f"{role} joint {name!r} not found in the model; joints and actuators "
+            "use different names in this MJCF (joints ffj*/mfj*/rfj*/thj*, "
+            "actuators ffa*/mfa*/rfa*/tha*)")
+    return jid
+
+
 class _ModelOnly:
     """Tiny helper for test_c1: expose the model without a full gym env."""
 
@@ -324,16 +343,27 @@ class LiftHoldEnv(gym.Env):
         self.wrist_dof_adr = [int(m.jnt_dofadr[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT, n)])
                               for n in ("wrist_x", "wrist_y", "wrist_z",
                                         "wrist_rx", "wrist_ry", "wrist_rz")]
+        # JOINT names are ffj*/mfj*/rfj*/thj*. The MJCF names the ACTUATORS
+        # ffa*/mfa*/rfa*/tha*, and looking a joint up by an actuator name returns
+        # -1, which then indexes the LAST element of jnt_qposadr - so all eight
+        # middle-finger and thumb entries silently collapsed onto thj3. The reset
+        # pre-shape never reached those eight joints and the observation carried
+        # 7 duplicated values instead of 16 distinct angles, blinding any policy
+        # to half the hand. `_joint_id` makes that failure loud instead.
+        finger_joint_names = ("ffj0", "ffj1", "ffj2", "ffj3",
+                              "mfj0", "mfj1", "mfj2", "mfj3",
+                              "rfj0", "rfj1", "rfj2", "rfj3",
+                              "thj0", "thj1", "thj2", "thj3")
+        self.finger_joint_names = finger_joint_names
         self.finger_qpos_adr = np.array(
-            [m.jnt_qposadr[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT, n)]
-             for n in ("ffj0", "ffj1", "ffj2", "ffj3", "mfa0", "mfa1", "mfa2", "mfa3",
-                       "rfj0", "rfj1", "rfj2", "rfj3", "tha0", "tha1", "tha2", "tha3")],
+            [m.jnt_qposadr[_joint_id(m, n, "finger")] for n in finger_joint_names],
             dtype=int)
         self.finger_dof_adr = np.array(
-            [m.jnt_dofadr[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT, n)]
-             for n in ("ffj0", "ffj1", "ffj2", "ffj3", "mfa0", "mfa1", "mfa2", "mfa3",
-                       "rfj0", "rfj1", "rfj2", "rfj3", "tha0", "tha1", "tha2", "tha3")],
+            [m.jnt_dofadr[_joint_id(m, n, "finger")] for n in finger_joint_names],
             dtype=int)
+        assert len(set(self.finger_qpos_adr.tolist())) == N_FINGER, (
+            "finger joint qpos indices alias each other - a joint name did not "
+            f"resolve: {self.finger_qpos_adr.tolist()}")
         self.tip_bodies = [mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, n)
                            for n in ("ff_tip", "mf_tip", "rf_tip", "th_tip")]
         self.finger_geom_ids = {

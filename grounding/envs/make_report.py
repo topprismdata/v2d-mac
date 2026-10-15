@@ -37,6 +37,41 @@ def _sha256(path: pathlib.Path) -> str | None:
     return h.hexdigest()
 
 
+def _clean_lift_feasibility() -> dict:
+    """Was a clean grasp-and-lift possible at all in this scene?
+
+    Carries the geometric verdict next to the acceptance criteria, because A3b
+    failing is only interpretable next to "no pad-only grasp exists on this box".
+    """
+    out: dict = {"recorded": False}
+    for name, key in (("clean_lift_verdict.json", "verdict"),
+                      ("clean_lift_sweep.json", "sweep"),
+                      ("clean_lift_diagnose.json", "diagnosis")):
+        p = RUN_DIR / name
+        if p.exists():
+            out[key] = json.loads(p.read_text())
+            out["recorded"] = True
+    v = out.get("verdict", {})
+    sw = out.get("sweep", {})
+    out["summary"] = {
+        "mjcf_commit": v.get("mjcf_commit"),
+        "clean_lift_exists": v.get("clean_lift_exists"),
+        "random_poses_with_finger_contact": v.get("poses_with_finger_contact"),
+        "random_poses_touching_with_pads_only": v.get("poses_touching_with_pads_only"),
+        "random_poses_with_opposite_wall_pad_pinch": v.get(
+            "poses_with_opposite_wall_pad_pinch"),
+        "median_finger_geoms_buried_in_box": v.get(
+            "median_buried_geoms_when_contacting"),
+        "palm_force_into_box_N": v.get("palm_force_into_box_N"),
+        "box_weight_N": v.get("box_weight_N"),
+        "palm_overload_ratio": v.get("palm_overload_ratio"),
+        "scripted_kinematic_candidates": sw.get("n_candidates"),
+        "scripted_dynamic_trials": sw.get("n_trials"),
+        "scripted_clean_trials": sw.get("n_clean"),
+    }
+    return out
+
+
 def main() -> None:
     import mujoco  # noqa: PLC0415
     import stable_baselines3  # noqa: PLC0415
@@ -195,6 +230,7 @@ def main() -> None:
             "table_touching_at_peak": best["table_touching_at_peak"],
         },
         "criteria": criteria,
+        "clean_lift_feasibility": _clean_lift_feasibility(),
         "per_episode": per_ep,
         "design_deviations": [
             "MuJoCo forbids actuators on a <freejoint>, so the hand's floating base "

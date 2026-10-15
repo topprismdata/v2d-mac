@@ -1,0 +1,16 @@
+{
+  "total_steps_requested": 2000000,
+  "cumulative_timesteps": 2000896,
+  "resumed_from_timesteps": null,
+  "wall_seconds": 953.0791301727295,
+  "seed": 0,
+  "n_envs": 8,
+  "episode_len": 600,
+  "best_training_episode": {
+    "z_peak": 0.0,
+    "episode": 1,
+    "global_step": 4800
+  },
+  "n_episodes": 3328,
+  "early_stop_target_m": 0.1
+}
