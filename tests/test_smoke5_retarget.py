@@ -462,8 +462,17 @@ def test_failure_is_physical_not_a_threshold_artefact(artifacts):
     blocker = report["blocker"]
     assert blocker is not None, "a failing run must carry a blocker record"
     assert blocker["fixes_for_p1"], "a blocker must propose concrete fixes"
-    assert blocker["measured_fingertip_height_m"] > blocker["box_top_height_m"], (
-        "the recorded fingertip height must actually be above the box top face"
+    # The height anchor is the box's own vertical extent, read off the scene:
+    # a side-face reach (W6a-v2 upright hands at the end faces) arrives at
+    # box mid-height, BELOW the top face -- the old "above the box top" fact
+    # was a property of the superseded palm-down scene, not of the detector.
+    box_top = blocker["box_top_height_m"]
+    box_half_z = qa["retargeting"]["wrist_anchor"]["box_half_size"][2]
+    height = blocker["measured_fingertip_height_m"]
+    assert box_top - 2.0 * box_half_z < height < box_top, (
+        "the recorded fingertip height must sit inside the box's own vertical "
+        f"extent ({box_top - 2 * box_half_z:.3f}..{box_top:.3f} m), got "
+        f"{height:.3f} m -- outside it the reach claim is not about this box"
     )
     # Round 3 removed the executability failure, so the blocker has to name the
     # quantity that is actually out of bounds now, with its number and its cap.

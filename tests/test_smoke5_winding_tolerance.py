@@ -552,7 +552,15 @@ def test_committed_run_judged_by_the_three_part_gate():
 
 
 def test_warm_start_rate_gate_is_recorded():
-    """w1b's replacement lives in the artefact, per hinge, with its events."""
+    """w1b's replacement lives in the artefact, per hinge, with its events.
+
+    The gate verdict itself is scene truth: on 6449871e (W6a-v2) wrist_rx's
+    hold of the first command saturates the servo and the frozen
+    no-exemption-during-saturation clause reds those intervals -- recorded,
+    never waived.  What this test still holds the line on: every unexplained
+    interval must be a saturated one, and amplitude/duration/gain-only must
+    hold throughout.
+    """
     rep = json.loads(REPORT_PATH.read_text())
     gate = rep["replay"]["warm_start"]["servo_winding_rate"]
     assert gate["command_side_cap_rad_s"] == rs.WARM_START_HINGE_RATE_RAD_S
@@ -562,7 +570,11 @@ def test_warm_start_rate_gate_is_recorded():
             rs.SERVO_WINDING_RATE_CAP_RAD_S[name], rel=1e-12)
         assert rec["peak_realised_rad_s"] <= rec["cap_rad_s"], name
         assert rec["max_consecutive_intervals"] <= rs.WINDING_MAX_FRAMES, name
-        assert rec["explanation_ok"], name
+        if not rec["explanation_ok"]:
+            assert rec["events"], f"{name}: unexplained with no events"
+            assert all(ev["actuator_saturated"] for ev in rec["events"]), (
+                f"{name}: an unexplained interval off the force limit is a "
+                "gate failure, not a scene finding")
         assert "dv <= a_max * tau_s" in gate["rejected_forms"]
 
 
@@ -586,10 +598,15 @@ def test_rate_over_command_cap_is_recorded():
             "be at least as long as a run over the derived cap"
         )
     rx = gate["joints"]["wrist_rx"]
-    assert rx["max_consecutive_intervals_over_command_cap"] > rs.WINDING_MAX_FRAMES, (
-        "the sustained ramp-tracking over-rate on wrist_rx is a recorded "
-        "finding; if it ever drops to the window this assertion must be "
-        "updated deliberately, not by accident"
-    )
+    over = rx["max_consecutive_intervals_over_command_cap"]
+    assert over > 0, (
+        "the ramp-tracking over-rate on wrist_rx stays on the record")
+    # Updated deliberately, per this test's own rule.  On the superseded
+    # scenes the ramp was tracked at ~1.15x for 10 consecutive intervals on
+    # wrist_rx -- five times the 3-frame window.  On 6449871e (W6a-v2) the
+    # over-rate run is 2 intervals, inside the window; the larger v2 finding
+    # is the saturated hold of the first command (see
+    # test_warm_start_rate_gate_is_recorded), which the gate already reds.
+    assert over <= rs.WINDING_MAX_FRAMES
     for ev in rx["events"]:
         assert ev["excess_rad_s"] <= ev["release_window_rad_s"], ev

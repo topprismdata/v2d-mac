@@ -36,17 +36,18 @@ if str(REPO) not in sys.path:
 
 from retarget import retarget_smoke as rs  # noqa: E402
 
-#: The MJCF revision this re-run is accounted against.  W6a landed the dual-hand
-#: scene in 59385ec (box on the table, a mirrored hand at each end face; nu 44,
-#: nq/nv/nu = 51/50/44) and HEAD 2e7c26a is the commit whose blob matches the
-#: tree.  Verified: blob(2e7c26a) == sha256 of the working-tree XML
-#: (ff4d4355...).
-MJCF_COMMIT = "2e7c26a"
+#: The MJCF revision this re-run is accounted against.  W6a-v2 landed in
+#: 9a5c384: the v1 45-degree hand pitch was refuted and the hands posed upright
+#: at the end faces (homes +-0.185/0.795, right euler 0, left euler 0-0-pi),
+#: which returned the finger kps bit-identical to the single-hand generation's
+#: table.  Verified: blob(9a5c384) == sha256 of the working-tree XML
+#: (6449871e...).
+MJCF_COMMIT = "9a5c384"
 #: The MJCF revision the *previous* smoke-5 numbers were taken on. Kept so the
-#: two data sets can never be silently mixed.  1b0f13f is the last single-hand
-#: generation (blob 1ea0fdf5...) -- the superseded physics the artefacts were
-#: stamped against before the dual-hand scene landed.
-MJCF_COMMIT_BASELINE = "1b0f13f"
+#: two data sets can never be silently mixed.  2e7c26a is the W6a-v1 dual-hand
+#: generation (blob ff4d4355..., 45-degree hand pitch) -- the superseded
+#: physics the artefacts were stamped against before v2 landed.
+MJCF_COMMIT_BASELINE = "2e7c26a"
 
 OUT_DIR = REPO / "runs/p0/smoke5_retarget"
 REPORT_PATH = OUT_DIR / "report.json"

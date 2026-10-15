@@ -83,7 +83,7 @@ URDF_TO_MJCF_ACTUATOR_ORDER = [
     MJCF_FINGER_JOINTS.index(mjcf) for _urdf, mjcf in URDF_MJCF_JOINT_PAIRS
 ]
 WRIST_JOINTS = ["wrist_x", "wrist_y", "wrist_z", "wrist_rx", "wrist_ry", "wrist_rz"]
-# The W6a scene (MJCF_COMMIT 2e7c26a, sha256 ff4d4355...) carries a second,
+# The W6a-v2 scene (MJCF_COMMIT 9a5c384, sha256 6449871e...) carries a second,
 # mirrored hand: identical upstream naming with a "_left" suffix.  nu 22 -> 44,
 # nq/nv 29/28 -> 51/50.  Smoke 5 is single-hand *input*: the right hand executes
 # the retargeted clip and the left hand is frozen at its initial pose (its
@@ -246,58 +246,59 @@ WRIST_ROT_CEILING_RAD = 0.5
 # tests/test_smoke5_winding_tolerance.py recomputes every entry from the model
 # (forcerange / kp, forcerange / dof_damping) and fails if the tables drift.
 #
-# Re-derived on the dual-hand scene (W6a, MJCF_COMMIT 2e7c26a, blob sha256
-# ff4d4355...): every finger joint of BOTH hands, every wrist hinge of BOTH
+# Re-derived on the dual-hand scene (W6a-v2, MJCF_COMMIT 9a5c384, blob sha256
+# 6449871e...): every finger joint of BOTH hands, every wrist hinge of BOTH
 # hands and every wrist slide of BOTH hands, read straight off the model.
 # Left/right symmetry is a measured fact, not an assumption: the mirror pairs
 # returned bit-identical forcerange / kp / dof_damping, and the derivation test
 # asserts it, so a future asymmetric edit cannot hide behind this table.
 #
-# What W6a changed against the single-hand tables this replaces:
-#   * finger kp on the abducted/base joints dropped with the 45-degree tilt
-#     (measured off the two models: ffj0 kp 0.3261 -> 0.2706 N m/rad, mfj0
-#     0.3278 -> 0.2318 N m/rad), so the position caps widened accordingly;
-#   * the wrist slides were re-scaled: x/z are now kp=15000 N/m with
-#     dof_damping=280, so their winding allowance tightened 1.8 -> 45/280 =
-#     0.1607 m/s, while wrist_y keeps kp=180, damping 25 -> 45/25 = 1.8 m/s.
-#     The slide table is per-axis for exactly this reason;
-#   * the wrist hinges are untouched (kp 14, damping 1.2 -> 5.0 rad/s).
+# History of this table, so nobody "simplifies" it back:
+#   * single-hand generation: finger kps gravity/geometry-derived upright;
+#   * W6a-v1 (2e7c26a, blob ff4d4355...) posed the hands at a 45-degree pitch,
+#     which moved the finger kp table (ffj0 0.3261 -> 0.2706 N m/rad etc.);
+#   * W6a-v2 (9a5c384) refuted the tilt and posed the hands upright at the end
+#     faces -- the finger kps returned BIT-IDENTICAL to the single-hand
+#     generation's table.  The wrist slides keep their W6a re-scale
+#     (x/z kp=15000/damping=280, y kp=180/damping=25) and the hinges are
+#     untouched (kp 14, damping 1.2), so the rate tables are unchanged across
+#     all three generations.
 SERVO_WINDING_POSITION_CAP_RAD = {
     # right hand (the hand the retargeted clip drives)
-    "ffj0": 0.11086474501108647,
-    "ffj1": 0.17007099064214262,
+    "ffj0": 0.09199632014719411,
+    "ffj1": 0.14501306919796397,
     "ffj2": 0.39902044293015326,
     "ffj3": 0.9396436525612472,
-    "mfj0": 0.12942191544434856,
-    "mfj1": 0.16800905709202654,
+    "mfj0": 0.09151921903599756,
+    "mfj1": 0.14290824047324255,
     "mfj2": 0.40034071550255534,
     "mfj3": 0.943207126948775,
-    "rfj0": 0.11025358324145534,
-    "rfj1": 0.17076947894821745,
+    "rfj0": 0.091324200913242,
+    "rfj1": 0.14569226534544452,
     "rfj2": 0.3995741056218058,
     "rfj3": 0.9396436525612472,
-    "thj0": 0.10411555203798971,
-    "thj1": 0.09342883836810963,
-    "thj2": 0.1228099173553719,
-    "thj3": 0.30938144329896905,
+    "thj0": 0.09529885829415716,
+    "thj1": 0.07409771667075865,
+    "thj2": 0.12424749163879598,
+    "thj3": 0.3100206611570248,
     # left hand (frozen at the reset pose in smoke 5; gated identically if
     # ever driven -- the values are the mirror hand's own derivation)
-    "ffj0_left": 0.11086474501108647,
-    "ffj1_left": 0.17007099064214262,
+    "ffj0_left": 0.09199632014719411,
+    "ffj1_left": 0.14501306919796397,
     "ffj2_left": 0.39902044293015326,
     "ffj3_left": 0.9396436525612472,
-    "mfj0_left": 0.12942191544434856,
-    "mfj1_left": 0.16800905709202654,
+    "mfj0_left": 0.09151921903599756,
+    "mfj1_left": 0.14290824047324255,
     "mfj2_left": 0.40034071550255534,
     "mfj3_left": 0.943207126948775,
-    "rfj0_left": 0.11025358324145534,
-    "rfj1_left": 0.17076947894821745,
+    "rfj0_left": 0.091324200913242,
+    "rfj1_left": 0.14569226534544452,
     "rfj2_left": 0.3995741056218058,
     "rfj3_left": 0.9396436525612472,
-    "thj0_left": 0.10411555203798971,
-    "thj1_left": 0.09342883836810963,
-    "thj2_left": 0.1228099173553719,
-    "thj3_left": 0.30938144329896905,
+    "thj0_left": 0.09529885829415716,
+    "thj1_left": 0.07409771667075865,
+    "thj2_left": 0.12424749163879598,
+    "thj3_left": 0.3100206611570248,
 }
 SERVO_WINDING_RATE_CAP_RAD_S = {
     "wrist_rx": 5.0,
@@ -1135,11 +1136,13 @@ def warm_start(
             "outright. Kept as a recorded finding so the change of scene is "
             "visible rather than silent."
         ) if not wrist_unreachable else (
-            "the commanded wrist pose is not in this floating wrist's "
-            "reachable set on this scene: the palm rests on the box top and "
-            "blocks the wrist's descent, so no approach path reaches the "
-            "command. The ramp caps the *command* rate; it cannot make an "
-            "unreachable pose reachable."
+            "the commanded wrist pose is not HELD by this scene: on the "
+            "superseded scenes the palm blocked the wrist's descent outright, "
+            "on the W6a-v2 upright posture the servos saturate against gravity "
+            "trying to hold it (wrist_rx demanded torque beyond its +-6 N m "
+            "budget) and the pose sags. Either way no approach path makes the "
+            "command stick -- the ramp caps the *command* rate; it cannot "
+            "make an unholdable pose holdable."
         ),
         "control_steps": int(steps),
         "ramp_control_steps": int(ramp_done_at),
