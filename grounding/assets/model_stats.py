@@ -39,20 +39,22 @@ def main() -> None:
 
     obj = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "object_geom")
     obj_body = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "object")
-    ped = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "pedestal")
+    # W6a: the pedestal geom is gone; the only static support is the table slab
+    ped = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "table_slab")
 
     wrists = {}
     for jname, aname in builder.WRIST_ACTUATOR_OF.items():
-        jid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, jname)
-        aid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, aname)
-        lo, hi = model.jnt_range[jid]
-        wrists[jname] = {
-            "actuator": aname,
-            "range": [float(lo), float(hi)],
-            "ctrlrange": [float(v) for v in model.actuator_ctrlrange[aid]],
-            "kp": float(model.actuator_gainprm[aid][0]),
-            "travel_added": builder.WRIST_TRAVEL_ADD_M.get(jname, (0.0, 0.0, 0.0))[2],
-        }
+        for sfx in ("", "_left"):    # W6a: report both hands
+            jid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, jname + sfx)
+            aid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, aname + sfx)
+            lo, hi = model.jnt_range[jid]
+            wrists[jname + sfx] = {
+                "actuator": aname + sfx,
+                "range": [float(lo), float(hi)],
+                "ctrlrange": [float(v) for v in model.actuator_ctrlrange[aid]],
+                "kp": float(model.actuator_gainprm[aid][0]),
+                "travel_added": builder.WRIST_TRAVEL_ADD_M.get(jname, (0.0, 0.0, 0.0))[2],
+            }
 
     arms = builder.moment_arm_table()
     gravity = builder.gravity_torque_table()
@@ -86,8 +88,10 @@ def main() -> None:
         "geometry": {
             "box_half_extent_m": [float(v) for v in model.geom_size[obj]],
             "box_mass_kg": float(model.body_mass[obj_body]),
-            "pedestal_half_height_m": float(model.geom_size[ped][2]),
-            "pedestal_top_z_m": float(model.geom_pos[ped][2] + model.geom_size[ped][2]),
+            "support_half_height_m": float(model.geom_size[ped][2]),
+            "support_top_z_m": float(model.geom_pos[ped][2] + model.geom_size[ped][2]),
+            "pedestal_half_height_m": 0.0,
+            "pedestal_top_z_m": None,
         },
         "wrists": wrists,
         "fingers": fingers,
@@ -107,7 +111,7 @@ def main() -> None:
                 1 for g in range(model.ngeom)
                 if (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY,
                                      int(model.geom_bodyid[g])) or "")
-                in ("palm",) or
+                in ("palm", "palm_left") or
                 (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY,
                                    int(model.geom_bodyid[g])) or "")
                 .startswith(builder.FINGER_PREFIXES))),
@@ -115,7 +119,7 @@ def main() -> None:
                 1 for g in range(model.ngeom)
                 if not mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, g)
                 and ((mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY,
-                                        int(model.geom_bodyid[g])) or "") == "palm"
+                                        int(model.geom_bodyid[g])) or "") in ("palm", "palm_left")
                      or (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY,
                                            int(model.geom_bodyid[g])) or "")
                      .startswith(builder.FINGER_PREFIXES)))),

@@ -95,19 +95,25 @@ def birth_contact_table(env, pos, quat=(1.0, 0.0, 0.0, 0.0)) -> list[tuple[str, 
 
 # ------------------------------------------------------------------ (a) no overlap
 def test_support_height_uses_the_whole_footprint(probe):
-    """The pinned regression for the centre-only sampler.
+    """The pinned regression for the centre-only sampler, W6a edition.
 
-    At the control's requested park pose the box overlaps the pedestal, so the
-    support height must be the pedestal top - the table top is 60 mm lower and
-    is what produced the birth overlap.
+    W6a removed the pedestal, so the discriminating geometry is now the SLAB
+    EDGE: a footprint centred at y = 0.42 straddles the slab boundary
+    (slab half-width 0.45), and the footprint-aware `_support_height` must
+    still report the slab top for it (the box overlaps the slab), while a
+    centre-only sampler reading the support under the CENTRE would give the
+    same slab top here - the distinction that remains testable on a single
+    face is that the RESOLVER refuses to park an overhanging footprint there
+    (asserted in test_control_clearance_never_trades_away_stability via
+    _face_fit's edge margin). The footprint itself must span the edge.
     """
-    pedestal = support_top(probe, "pedestal")
     slab = support_top(probe, "table_slab")
     hx, hy = probe.box_half_xy
-    assert probe._support_height(0.0, 0.35) == pytest.approx(pedestal)
-    assert probe._support_height(0.0, 0.35) > slab
-    # ... and the footprint really does straddle the pedestal edge there
-    assert 0.35 - hy < 0.30 < 0.35 + hy, "park pose no longer straddles the pedestal"
+    assert probe._support_height(0.0, 0.42) == pytest.approx(slab)
+    # ... and the footprint really does straddle the slab edge there
+    assert 0.42 + hy > 0.45 and 0.42 - hy < 0.45, (
+        "park pose no longer straddles the slab edge"
+    )
     assert hx > 0.0 and hy > 0.0
 
 
@@ -239,7 +245,7 @@ def test_control_box_stays_on_the_table_under_flail(env_cls):
     rng = np.random.default_rng(3)
     contacts = 0
     for _ in range(100):
-        env.step(rng.uniform(-1, 1, 22).astype(np.float32))
+        env.step(rng.uniform(-1, 1, 44).astype(np.float32))
         contacts += any(p[0].split("#")[0].startswith(("ff_", "mf_", "rf_", "th_"))
                         for p in u.trace["contact_pairs"][-1])
     assert contacts == 0, f"hand touched the parked box {contacts} times"

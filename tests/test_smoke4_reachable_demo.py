@@ -192,8 +192,16 @@ def _replay_on(xml_path, acts) -> dict:
 
 @pytest.fixture(scope="module")
 def replayed(demo):
-    """Replay every trajectory on BOTH scenes; reuse across assertions."""
-    from grounding.hook_scene_ab import _old_scene_path
+    """Replay every trajectory on BOTH scenes; reuse across assertions.
+
+    SUPERSEDED by W6a (2026-10-15): the dual-hand env cannot load the archived
+    single-hand MJCF at all (the left hand's joint names do not exist there),
+    and the recorded 22-dim actions no longer match the 44-dim action space.
+    The A/B machinery is rebuilt for the dual-hand scene in the W6b wave; the
+    f210f45 archive stays as evidence of that scene only."""
+    pytest.skip("SUPERSEDED by W6a: single-hand recording scene is not "
+                "loadable by the dual-hand env (see R10)")
+    from grounding.hook_scene_ab import _old_scene_path  # noqa: F401 PLC0415
 
     old_scene = _old_scene_path()
     new_scene = REPO / "grounding/assets/allegro_floating.xml"

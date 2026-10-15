@@ -39,8 +39,15 @@ if str(REPO) not in sys.path:
 
 from grounding.collect_clean_demos import MJCF_COMMIT  # noqa: E402
 
-OBS_DIM = 64
-ACT_DIM = 22
+def _env_dims() -> tuple[int, int]:
+    """W6a: obs/act dims come from the env, not a constant - the dual-hand
+    scene changed them (107 / 44) and a hardcoded 64/22 would silently
+    mis-shape every downstream net. Same import the env itself uses."""
+    from grounding.envs.lift_hold_env import N_ACT, N_OBS  # noqa: PLC0415
+    return N_OBS, N_ACT
+
+
+OBS_DIM, ACT_DIM = _env_dims()
 NET_ARCH = (256, 256)
 
 REQUIRED_NPZ_KEYS = ("bc_obs", "bc_act", "bc_trajectory_len", "bc_pose", "mjcf_commit")

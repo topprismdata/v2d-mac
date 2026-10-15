@@ -1,14 +1,26 @@
 """Task 4.2 - floating-Allegro lift & hold gymnasium.Env.
 
-Action (22) = [d_wrist_pos(3), d_wrist_rot(3), finger_joint_targets(16)]
-Observation     = object pose+vel, wrist pose, finger joint angles+velocities,
-                  per-fingertip distance to the box, and a 4-frame history of the
-                  object z / wrist z.
+Action (44) = two per-hand blocks [d_wrist_pos(3), d_wrist_rot(3),
+finger_joint_targets(16)], right hand first: indices 0:22 drive the right hand
+exactly as the single-hand env's 22-d action did, 22:44 drive the left hand the
+same way. Observation = object pose+vel, per-hand wrist pose + finger
+angles/velocities + per-fingertip distance to the box (right block first, left
+appended), and a 4-frame history of the object z / right-wrist z.
 
 Hard rule (PLAN 4.2 / GPT-redline): the ONLY way anything moves is through
 ``data.ctrl``. ``step()`` never assigns to ``data.qpos`` / ``data.qvel``; qpos is
 written exclusively in ``reset()``. ``tests/test_smoke4_env.py::test_c5_*``
 enforces this statically (AST scan) and dynamically (replay determinism).
+
+W6a: the scene carries TWO hands at the box's +-x end faces (source-video task).
+The right hand keeps every MJCF name it always had; the left hand appends
+``_left`` to every body/joint/actuator/geom name, so body names still start with
+the finger prefixes (``ff_tip_left``) and every prefix-based contact classifier
+- this env's and the frozen acceptance test's - sees both hands unchanged.
+Contact classification, support decomposition and the bearing split below are
+therefore hand-agnostic by construction; the reward's palm-distance and align
+terms keep measuring the RIGHT palm, so every shaped value means what it meant
+before W6a.
 
 Reward is shaped around the official evaluator
 (``runs/p0/assets/tissue_box_lift_hold.json``):
@@ -42,7 +54,19 @@ EVALUATOR_JSON = REPO / "runs/p0/assets/tissue_box_lift_hold.json"
 
 N_WRIST = 6
 N_FINGER = 16
-N_ACT = N_WRIST + N_FINGER  # 22
+N_ACT_PER_HAND = N_WRIST + N_FINGER  # 22 - the single-hand env's whole action
+N_HANDS = 2
+N_ACT = N_ACT_PER_HAND * N_HANDS     # 44: right hand block first, left appended
+# observation width (see LiftHoldEnv._obs): 13 object fields, two 43-field hand
+# blocks, 8 history fields
+N_OBS = 13 + N_HANDS * (3 + 4 + N_FINGER + N_FINGER + 4) + 8
+# W6a scene naming: the right hand keeps upstream MJCF names, the left hand
+# appends this suffix to every body / joint / actuator / geom name. Finger body
+# names still START with their finger prefix ("ff_tip_left"), so
+# FINGER_BODY_PREFIXES below classifies both hands without modification - which
+# is also what keeps tests/test_smoke4_accept.py's frozen prefix rule counting
+# both hands' force into the A3a 1.4715 N sum.
+HAND_SUFFIXES = ("", "_left")        # right hand first (legacy action prefix)
 
 # finger bodies whose geoms count as "hand" for the contact-evidence criterion
 FINGER_BODY_PREFIXES = ("ff_", "mf_", "rf_", "th_")
@@ -432,29 +456,38 @@ class LiftHoldEnv(gym.Env):
         m, d = self.model, self.data
         self.obj_body = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, "object")
         self.obj_geom = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, OBJECT_GEOM)
-        self.hand_root = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, "hand_root")
-        self.palm = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, "palm")
+        # one root / palm per hand, right first (W6a); self.hand_root and
+        # self.palm stay the RIGHT hand's for every legacy measurement channel
+        self.hand_roots = [mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY,
+                                             f"hand_root{sfx}")
+                           for sfx in HAND_SUFFIXES]
+        self.palms = [mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, f"palm{sfx}")
+                      for sfx in HAND_SUFFIXES]
+        self.hand_root = self.hand_roots[0]
+        self.palm = self.palms[0]
         self.obj_qpos_adr = int(m.jnt_qposadr[mujoco.mj_name2id(
             m, mujoco.mjtObj.mjOBJ_JOINT, "object_free")])
         self.obj_qvel_adr = int(m.jnt_dofadr[mujoco.mj_name2id(
             m, mujoco.mjtObj.mjOBJ_JOINT, "object_free")])
-        self.wrist_qpos_adr = [int(m.jnt_qposadr[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT, n)])
-                               for n in ("wrist_x", "wrist_y", "wrist_z",
-                                         "wrist_rx", "wrist_ry", "wrist_rz")]
-        self.wrist_dof_adr = [int(m.jnt_dofadr[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT, n)])
-                              for n in ("wrist_x", "wrist_y", "wrist_z",
-                                        "wrist_rx", "wrist_ry", "wrist_rz")]
-        # JOINT names are ffj*/mfj*/rfj*/thj*. The MJCF names the ACTUATORS
-        # ffa*/mfa*/rfa*/tha*, and looking a joint up by an actuator name returns
-        # -1, which then indexes the LAST element of jnt_qposadr - so all eight
-        # middle-finger and thumb entries silently collapsed onto thj3. The reset
-        # pre-shape never reached those eight joints and the observation carried
-        # 7 duplicated values instead of 16 distinct angles, blinding any policy
-        # to half the hand. `_joint_id` makes that failure loud instead.
-        finger_joint_names = ("ffj0", "ffj1", "ffj2", "ffj3",
-                              "mfj0", "mfj1", "mfj2", "mfj3",
-                              "rfj0", "rfj1", "rfj2", "rfj3",
-                              "thj0", "thj1", "thj2", "thj3")
+        # per-hand wrist joint / dof addresses: 6 slides+hinges each, in the
+        # action's in-block order (x, y, z, rx, ry, rz)
+        self.wrist_qpos_adr = [[int(m.jnt_qposadr[mujoco.mj_name2id(
+            m, mujoco.mjtObj.mjOBJ_JOINT, f"wrist_{a}{sfx}")])
+            for a in ("x", "y", "z", "rx", "ry", "rz")] for sfx in HAND_SUFFIXES]
+        self.wrist_dof_adr = [[int(m.jnt_dofadr[mujoco.mj_name2id(
+            m, mujoco.mjtObj.mjOBJ_JOINT, f"wrist_{a}{sfx}")])
+            for a in ("x", "y", "z", "rx", "ry", "rz")] for sfx in HAND_SUFFIXES]
+        # JOINT names are ffj*/mfj*/rfj*/thj* (+ *_left); the MJCF names the
+        # ACTUATORS ffa*/mfa*/rfa*/tha* (+ *_left), and looking a joint up by an
+        # actuator name returns -1, which then indexes the LAST element of
+        # jnt_qposadr - so all eight middle-finger and thumb entries silently
+        # collapsed onto thj3. The reset pre-shape never reached those eight
+        # joints and the observation carried 7 duplicated values instead of 16
+        # distinct angles, blinding any policy to half the hand. `_joint_id`
+        # makes that failure loud instead. Right-hand block first, left appended.
+        finger_joint_names = tuple(
+            f"{f}j{i}{sfx}" for sfx in HAND_SUFFIXES
+            for f in ("ff", "mf", "rf", "th") for i in range(4))
         self.finger_joint_names = finger_joint_names
         self.finger_qpos_adr = np.array(
             [m.jnt_qposadr[_joint_id(m, n, "finger")] for n in finger_joint_names],
@@ -462,11 +495,13 @@ class LiftHoldEnv(gym.Env):
         self.finger_dof_adr = np.array(
             [m.jnt_dofadr[_joint_id(m, n, "finger")] for n in finger_joint_names],
             dtype=int)
-        assert len(set(self.finger_qpos_adr.tolist())) == N_FINGER, (
+        assert len(set(self.finger_qpos_adr.tolist())) == N_FINGER * N_HANDS, (
             "finger joint qpos indices alias each other - a joint name did not "
             f"resolve: {self.finger_qpos_adr.tolist()}")
-        self.tip_bodies = [mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, n)
-                           for n in ("ff_tip", "mf_tip", "rf_tip", "th_tip")]
+        self.tip_bodies = [mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY,
+                                             f"{f}_tip{sfx}")
+                           for sfx in HAND_SUFFIXES
+                           for f in ("ff", "mf", "rf", "th")]
         self.finger_geom_ids = {
             int(g) for g in range(m.ngeom)
             if (mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, int(m.geom_bodyid[g])) or "")
@@ -522,9 +557,7 @@ class LiftHoldEnv(gym.Env):
 
         # ---- spaces ------------------------------------------------------
         self.action_space = spaces.Box(-1.0, 1.0, (N_ACT,), dtype=np.float32)
-        # 3 box xyz + 4 quat + 3 linvel + 3 angvel + 3 wrist-box + 4 wrist quat
-        # + 16 finger q + 16 finger v + 4 tip distances + 8 history = 64
-        n_obs = 3 + 4 + 3 + 3 + 3 + 4 + N_FINGER + N_FINGER + 4 + 8
+        n_obs = N_OBS
         self.n_obs = n_obs
         self.observation_space = spaces.Box(-np.inf, np.inf, (n_obs,), dtype=np.float32)
 
@@ -561,14 +594,23 @@ class LiftHoldEnv(gym.Env):
         obj_quat = d.xquat[self.obj_body].copy()
         obj_linvel = d.qvel[self.obj_qvel_adr: self.obj_qvel_adr + 3].copy()
         obj_angvel = d.qvel[self.obj_qvel_adr + 3: self.obj_qvel_adr + 6].copy()
-        wrist_pos = d.xpos[self.hand_root].copy()
-        wrist_quat = d.xquat[self.hand_root].copy()
-        finger_q = d.qpos[self.finger_qpos_adr].copy()
-        finger_v = d.qvel[self.finger_dof_adr].copy()
-        tip_dist = np.array(
-            [np.linalg.norm(d.xpos[b] - obj_pos) for b in self.tip_bodies], dtype=np.float64)
+        # one block per hand (right first): wrist pose relative to the box, the
+        # hand's 16 finger angles/velocities, its 4 fingertip distances
+        hand_blocks = []
+        for h in range(N_HANDS):
+            lo, hi = h * N_FINGER, (h + 1) * N_FINGER
+            wrist_pos = d.xpos[self.hand_roots[h]].copy()
+            wrist_quat = d.xquat[self.hand_roots[h]].copy()
+            finger_q = d.qpos[self.finger_qpos_adr[lo:hi]].copy()
+            finger_v = d.qvel[self.finger_dof_adr[lo:hi]].copy()
+            tip_dist = np.array(
+                [np.linalg.norm(d.xpos[b] - obj_pos)
+                 for b in self.tip_bodies[h * 4: h * 4 + 4]], dtype=np.float64)
+            hand_blocks += [wrist_pos - obj_pos, wrist_quat,
+                            finger_q, finger_v, tip_dist]
         self._history = np.concatenate(
-            [[obj_pos[2] - self._z0, wrist_pos[2] - self._z0],
+            [[obj_pos[2] - self._z0,
+              d.xpos[self.hand_roots[0]][2] - self._z0],
              self._history[:-2]])
 
         return np.concatenate([
@@ -576,12 +618,8 @@ class LiftHoldEnv(gym.Env):
             obj_quat,  # 4
             obj_linvel,  # 3
             obj_angvel,  # 3
-            wrist_pos - obj_pos,  # 3  wrist relative to box
-            wrist_quat,  # 3 -> 4
-            finger_q,  # 16
-            finger_v,  # 16
-            tip_dist,  # 4
-            self._history,  # 8  4-frame history of (box dz, wrist dz)
+        ] + hand_blocks + [
+            self._history,  # 8  4-frame history of (box dz, right-wrist dz)
         ]).astype(np.float32)
 
     def observation_space_shape(self) -> tuple[int, ...]:
@@ -632,25 +670,32 @@ class LiftHoldEnv(gym.Env):
         self.last_placement = placement
         d.qpos[self.obj_qpos_adr: self.obj_qpos_adr + 7] = np.concatenate([obj_pos, quat])
 
-        # --- hand: home pose with a light grasp pre-shape ------------------
-        d.qpos[self.wrist_qpos_adr] = 0.0
-        # fingers start half-curled so the box is between them from step 0
-        pre_curl = np.array([
+        # --- hands: home pose with a light grasp pre-shape ------------------
+        # W6a: both hands start at the MJCF's own home (wrist joints at 0 - the
+        # body euler carries the end-face tilt), fingers half-curled. The old
+        # single-hand reset dropped wrist_z by 0.02 to meet the raised box; the
+        # dual-hand home is already placed, so the slides stay at 0.
+        pre_curl_base = np.array([
             0.0, 0.9, 0.7, 0.4,
             0.0, 0.9, 0.7, 0.4,
             0.0, 0.9, 0.7, 0.4,
             0.8, 0.5, 0.4, 0.3,
         ])
-        if self.domain_rand:
-            pre_curl = pre_curl + self._rng.uniform(-0.05, 0.05, N_FINGER)
-        d.qpos[self.finger_qpos_adr] = pre_curl
-        d.qpos[self.wrist_qpos_adr[2]] = -0.02  # palm slightly lower to meet the box
+        for h in range(N_HANDS):
+            wq = self.wrist_qpos_adr[h]
+            d.qpos[wq] = 0.0
+            pre = pre_curl_base.copy()
+            if self.domain_rand:
+                pre = pre + self._rng.uniform(-0.05, 0.05, N_FINGER)
+            d.qpos[self.finger_qpos_adr[h * N_FINGER:(h + 1) * N_FINGER]] = pre
         d.qvel[:] = 0.0
-        # ctrl MUST mirror the qpos we just wrote: all 22 actuators are position
+        # ctrl MUST mirror the qpos we just wrote: all actuators are position
         # servos, so ctrl=0 would drag every joint back to zero during settling.
-        d.ctrl[N_WRIST:] = pre_curl
-        d.ctrl[0:3] = d.qpos[self.wrist_qpos_adr[0:3]]
-        d.ctrl[3:6] = 0.0
+        for h in range(N_HANDS):
+            d.ctrl[h * N_ACT_PER_HAND: h * N_ACT_PER_HAND + N_WRIST] = 0.0
+            d.ctrl[h * N_ACT_PER_HAND + N_WRIST:
+                   (h + 1) * N_ACT_PER_HAND] = \
+                d.qpos[self.finger_qpos_adr[h * N_FINGER:(h + 1) * N_FINGER]]
         # Settle under gravity / contact stiffness so step 0 is not a shock and the
         # box has already reached its resting height when z0 is recorded (MuJoCo's
         # default solref lets a resting box creep ~4 mm before it stops).
@@ -997,7 +1042,7 @@ class LiftHoldEnv(gym.Env):
         on_support, finger_held = self._support_and_held(pairs)
 
         qvel = d.qvel[self.finger_dof_adr]
-        wrist_vel = d.qvel[self.wrist_dof_adr]
+        wrist_vel = np.concatenate([d.qvel[adr] for adr in self.wrist_dof_adr])
         act_pen = float(np.sum(np.square(d.ctrl - self._ctrl_ref))) * W_CTRL
         vel_pen = float(np.sum(np.square(qvel))) * W_VEL \
             + float(np.sum(np.square(wrist_vel))) * W_VEL
@@ -1027,21 +1072,31 @@ class LiftHoldEnv(gym.Env):
 
     # ------------------------------------------------------------------ step
     def _apply_action(self, action: np.ndarray) -> None:
-        """Map the 22-d action onto actuator setpoints. No qpos/qvel writes."""
+        """Map the 44-d action onto actuator setpoints. No qpos/qvel writes.
+
+        Layout, right hand first: [d_wrist_pos(3), d_wrist_rot(3),
+        finger_targets(16)] per hand - the 0:22 prefix drives the right hand
+        exactly as the single-hand env's 22-d action did.
+        """
         a = np.clip(np.asarray(action, dtype=np.float64), -1.0, 1.0)
 
-        # wrist: pose DELTA, integrated into the setpoint then clipped to ctrlrange
-        dpos = a[0:3] * np.array([0.012, 0.012, 0.008])
-        drot = a[3:6] * np.array([0.10, 0.10, 0.10])
-        target = self.data.ctrl[0:N_WRIST].copy()
-        target[0:3] = target[0:3] + dpos
-        target[3:6] = target[3:6] + drot
-
-        # fingers: absolute setpoint spanning the joint ctrlrange
-        lo, hi = self.ctrl_low[N_WRIST:], self.ctrl_high[N_WRIST:]
-        finger_target = lo + (a[N_WRIST:] + 1.0) * 0.5 * (hi - lo)
-
-        ctrl = np.concatenate([target, finger_target])
+        ctrl = self.data.ctrl.copy()
+        for h in range(N_HANDS):
+            base = h * N_ACT_PER_HAND
+            # wrist: pose DELTA, integrated into the setpoint then clipped to ctrlrange
+            dpos = a[base:base + 3] * np.array([0.012, 0.012, 0.008])
+            drot = a[base + 3:base + 6] * np.array([0.10, 0.10, 0.10])
+            target = ctrl[base:base + N_WRIST].copy()
+            target[0:3] = target[0:3] + dpos
+            target[3:6] = target[3:6] + drot
+            ctrl[base:base + N_WRIST] = target
+            # fingers: absolute setpoint spanning the joint ctrlrange; the
+            # action's finger blocks sit at 6 + h*22 (interleaved [6,16,6,16])
+            fbase = N_WRIST + h * N_ACT_PER_HAND
+            lo = self.ctrl_low[base + N_WRIST: base + N_ACT_PER_HAND]
+            hi = self.ctrl_high[base + N_WRIST: base + N_ACT_PER_HAND]
+            ctrl[base + N_WRIST: base + N_ACT_PER_HAND] = \
+                lo + (a[fbase:fbase + N_FINGER] + 1.0) * 0.5 * (hi - lo)
         self.data.ctrl[:] = np.clip(ctrl, self.ctrl_low, self.ctrl_high)
         self._ctrl_ref = self.data.ctrl.copy()
 

@@ -129,20 +129,38 @@ def _make_env(episode_len: int = 1200):
 def action_from_ctrl(env, ctrl_target: np.ndarray) -> np.ndarray:
     """Invert `_apply_action` so a caller can name a target ctrl vector directly.
 
-    The wrist half is a *delta* applied to the current ctrl, so a P-controller
-    has to convert the residual into the per-step delta the env will add.
+    W6a: the env action is 44-d (right hand block first, left appended). The
+    scripted grasp drives the RIGHT hand's 22-d ctrl target as before; the left
+    hand's action block holds its current setpoints (wrist deltas 0, finger
+    targets wherever reset parked it), so the parked hand stays parked.
     """
     tgt = np.asarray(ctrl_target, dtype=np.float64)
-    a = np.zeros(22)
+    n_act = env.action_space.shape[0]
+    a = np.zeros(n_act)
     a[0:6] = np.clip((tgt[0:6] - env.data.ctrl[0:6]) / WRIST_STEP, -1.0, 1.0)
-    lo, hi = env.ctrl_low[N_WRIST:], env.ctrl_high[N_WRIST:]
-    a[N_WRIST:] = np.clip(2.0 * (tgt[N_WRIST:] - lo) / (hi - lo) - 1.0, -1.0, 1.0)
+    lo, hi = env.ctrl_low[N_WRIST:N_WRIST + N_FINGER], \
+        env.ctrl_high[N_WRIST:N_WRIST + N_FINGER]
+    a[N_WRIST:N_WRIST + N_FINGER] = np.clip(
+        2.0 * (tgt[N_WRIST:] - lo) / (hi - lo) - 1.0, -1.0, 1.0)
+    if n_act > N_WRIST + N_FINGER:
+        # left block: zero wrist deltas, finger actions that reproduce the
+        # current (reset-parked) left finger ctrl exactly
+        llo = env.ctrl_low[N_WRIST + N_FINGER + N_WRIST:
+                           N_WRIST + N_FINGER + N_WRIST + N_FINGER]
+        lhi = env.ctrl_high[N_WRIST + N_FINGER + N_WRIST:
+                            N_WRIST + N_FINGER + N_WRIST + N_FINGER]
+        cur = env.data.ctrl[N_WRIST + N_FINGER + N_WRIST:
+                            N_WRIST + N_FINGER + N_WRIST + N_FINGER]
+        base = N_WRIST + N_FINGER + N_WRIST
+        a[base:base + N_FINGER] = np.clip(
+            2.0 * (cur - llo) / (lhi - llo) - 1.0, -1.0, 1.0)
     return a
 
 
 def ctrl_from_amp(env, amps: np.ndarray) -> np.ndarray:
     """Finger ACTION units -> finger ctrl, i.e. the forward map of the same thing."""
-    lo, hi = env.ctrl_low[N_WRIST:], env.ctrl_high[N_WRIST:]
+    lo, hi = env.ctrl_low[N_WRIST:N_WRIST + N_FINGER], \
+        env.ctrl_high[N_WRIST:N_WRIST + N_FINGER]
     return lo + (np.asarray(amps, dtype=np.float64) + 1.0) * 0.5 * (hi - lo)
 
 
@@ -162,17 +180,20 @@ def _kin_setup(env):
 
 
 def fk_state(env, kin, box: np.ndarray, wrist: np.ndarray, amps: np.ndarray) -> None:
-    """Put the model in an exact pose (no integration, no dynamics)."""
+    """Put the model in an exact pose (no integration, no dynamics).
+
+    W6a: env.wrist_qpos_adr is per-hand; the scripted grasp poses the RIGHT
+    hand (block 0). Kinematics only - ctrl is written for completeness."""
     import mujoco  # noqa: PLC0415
     m, d, qa, _, _ = kin
     mujoco.mj_resetData(m, d)
     d.qpos[:] = 0.0
     d.qpos[0:7] = [box[0], box[1], box[2], 1.0, 0.0, 0.0, 0.0]
-    d.qpos[env.wrist_qpos_adr] = wrist
+    d.qpos[env.wrist_qpos_adr[0]] = wrist
     fctrl = ctrl_from_amp(env, amps)
     d.qpos[qa] = fctrl
     d.ctrl[:6] = wrist
-    d.ctrl[N_WRIST:] = fctrl
+    d.ctrl[N_WRIST:N_WRIST + N_FINGER] = fctrl
     mujoco.mj_forward(m, d)
 
 
@@ -710,8 +731,8 @@ def _verdict_counts(samples: int = 60000, seed: int = 3) -> tuple:
     half = np.asarray(m.geom_size[env.obj_geom])
     qa = np.array([m.jnt_qposadr[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT, n)]
                    for n in FINGER_JOINTS])
-    lo = env.ctrl_low[N_WRIST:]
-    hi = env.ctrl_high[N_WRIST:]
+    lo = env.ctrl_low[N_WRIST:N_WRIST + N_FINGER]
+    hi = env.ctrl_high[N_WRIST:N_WRIST + N_FINGER]
     tip_geom = {n: mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, n + "_collision")
                 for n in ("ff_tip", "mf_tip", "rf_tip", "th_tip")}
     pad_names = {mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_GEOM, g) for g in tip_geom.values()}
@@ -725,7 +746,7 @@ def _verdict_counts(samples: int = 60000, seed: int = 3) -> tuple:
              rng.uniform(-0.163, 0.16), rng.uniform(-1.2, 1.2),
              rng.uniform(-1.259, 1.2), rng.uniform(-1.57, 1.57)]
         amps = rng.uniform(-1, 1, N_FINGER)
-        d.qpos[env.wrist_qpos_adr] = w
+        d.qpos[env.wrist_qpos_adr[0]] = w
         d.qpos[qa] = lo + (amps + 1.0) * 0.5 * (hi - lo)
         mujoco.mj_forward(m, d)
         hits = set()

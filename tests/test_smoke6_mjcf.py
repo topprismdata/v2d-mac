@@ -537,7 +537,12 @@ def test_r2_wrist_z_travel_covers_the_measured_residual(model):
 def test_r2_wrist_ry_travel_covers_the_measured_residual(model):
     """Same for wrist_ry: smoke5 measured 0.058449 rad of pitch travel still
     needed and R2 widened the low end for it. The 5c base solve removed the
-    residual at the source (overshoot_after == 0); the widened travel stays."""
+    residual at the source (overshoot_after == 0); the widened travel stays.
+
+    W6a widened the range further to the full quarter turn
+    (WRIST_Y_RANGE_W6A = +-1.571) because the end-face palm pitch needs it;
+    that strictly contains R2's (−1.259, 1.20), so this pin's coverage claim
+    still holds and only the exact-endpoint assertions below moved."""
     qa = json.loads(SMOKE5_QA.read_text())
     overshoot = qa["retargeting"]["wrist_anchor"]["gauge_fixing"]["overshoot_after"][4]
     assert overshoot == pytest.approx(0.0, abs=5e-4), "gauge residual is back"
@@ -548,8 +553,9 @@ def test_r2_wrist_ry_travel_covers_the_measured_residual(model):
         f"wrist_ry low end {lo:.6f} still clips smoke5's command minimum "
         f"{-1.20 - overshoot:.6f}"
     )
-    assert lo == pytest.approx(-1.259, abs=1e-9)
-    assert hi == pytest.approx(1.20, abs=1e-6), "wrist_ry high end must not move"
+    # W6a: the full quarter turn, rounded outward to the milliradian
+    assert lo == pytest.approx(builder.WRIST_Y_RANGE_W6A[0], abs=1e-9)
+    assert hi == pytest.approx(builder.WRIST_Y_RANGE_W6A[1], abs=1e-9)
     assert model.actuator_ctrlrange[bid][0] == pytest.approx(lo, abs=1e-6)
 
 
@@ -715,7 +721,13 @@ def test_r4_every_finger_and_palm_geom_is_named(model):
         f"{mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY, int(model.geom_bodyid[unnamed[0]]))})"
     )
     n_hand = sum(1 for g in range(model.ngeom) if int(model.geom_bodyid[g]) in bodies)
-    assert n_hand == 42, f"expected the 42 upstream hand geoms, found {n_hand}"
+    # W6a: `_hand_body_ids` matches every body whose name starts with a finger
+    # prefix - and the left hand DELIBERATELY keeps those prefixes
+    # (ff_base_left), because the frozen acceptance classifier counts finger
+    # geoms by prefix. 42 right-hand geoms + 40 left-hand finger-chain geoms
+    # (its palm_left is not prefix-matched) = 82. The property this test guards
+    # is NAMING, unchanged: the unnamed count above must stay empty.
+    assert n_hand == 82, f"expected the 82 dual-hand prefix-matched geoms, found {n_hand}"
 
 
 def test_r4_hand_geom_names_are_unique_and_resolvable(model):
@@ -790,19 +802,26 @@ W35E_BOX_PAIRS = {
     "rf_proximal_collision": "Wave 3.5-E",
     "th_proximal_collision": "Wave 3.5-E",
 }
+# W6a: the left hand emits the identical scope under its _left names - the same
+# solref-mixing defect would otherwise come back on that side only
+W35E_BOX_PAIRS.update({
+    "palm_left_collision": "W6a (Wave 3.5-B scope, left)",
+    **{f"{f}_proximal_left_collision": "W6a (Wave 3.5-E scope, left)"
+       for f in ("ff", "mf", "rf", "th")},
+})
 # Links that carry NO box force in this scene (0.000 N, 0.000 mm measured over the
 # frozen smoke5 replay, runs/w35/w35e_proximal.json).  Proximal-only,
 # proximal+medial and all-phalanges variants are bit-for-bit identical there.
 W35E_UNLOADED_LINKS = ("medial", "distal", "base")
 
 
-def test_w35e_exactly_five_explicit_box_pairs(model):
+def test_w35e_exactly_ten_hand_geoms_of_explicit_box_pairs(model):
     """Every box<->hand contact that R3 could not govern by itself is named by one
-    explicit <pair>, and nothing else is.
+    explicit <pair>, and nothing else is (W6a: for BOTH hands - 5 right + 5 left).
 
     Both sides are asserted, because the W4/R8 lip work showed how easily this
     test can be made to pass while the scope is wrong in one direction: the count
-    alone is satisfied by any 5 pairs touching the box. The hand side is the scope
+    alone is satisfied by any N pairs touching the box. The hand side is the scope
     3.5-B/E argued for and measured; the box side is whatever object geoms the
     scene actually has, which is what has to be covered.
     """
@@ -918,20 +937,27 @@ def test_w35e_revision_md_records_the_measured_accounting():
 
 # ============================================================== regression
 def test_frozen_box_and_scene_constants():
-    """The box and pedestal are the evaluator's, not ours."""
+    """The box is the evaluator's, not ours. The pedestal is W6a-gone: the
+    constant stays as the parameterisation's rollback knob, pinned at 0."""
     assert BOX_HALF_M == (0.06, 0.12, 0.04)
     assert BOX_MASS_KG == 0.15
     assert builder.BOX_HALF_M == BOX_HALF_M
     assert builder.BOX_MASS_KG == BOX_MASS_KG
-    assert builder.PEDESTAL_H_M == PEDESTAL_H_M
+    # W6a: the pedestal existed to give a single hand under-box clearance; the
+    # dual-hand scene needs none (R10) and the emitted XML omits the geom
+    assert builder.PEDESTAL_H_M == 0.0
 
 
 def test_action_semantics_unchanged(model):
-    assert model.nu == N_ACT
-    assert model.nu - 6 == 16
+    """W6a: two hands x the original 22-actuator block, right block first."""
+    assert model.nu == N_ACT * 2
+    assert model.nu == 44
     for i, name in enumerate(("wrist_ax", "wrist_ay", "wrist_az",
                               "wrist_rx", "wrist_ry", "wrist_rz")):
         assert mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, name) == i
+        # the left hand mirrors the right's actuator block at 22:28
+        assert mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR,
+                                 name + "_left") == 22 + i
 
 
 def test_generated_xml_is_reproducible_from_the_generator():
@@ -945,12 +971,13 @@ def test_generated_xml_is_reproducible_from_the_generator():
 
 
 def test_model_loads_and_statistics_are_self_consistent(model):
-    # 46 + 2 = the W5 top-edge chamfer plates (one per +-x top edge)
-    assert model.ngeom == 48
-    assert model.nbody == 24
-    assert model.nq == 29
-    assert model.nu == 22
-    assert model.nv == 28
+    # 42 hand geoms x 2 (W6a dual hands) + 3 object (box + 2 chamfers)
+    # + floor + table slab (pedestal removed in W6a)
+    assert model.ngeom == 89
+    assert model.nbody == 46
+    assert model.nq == 51
+    assert model.nu == 44
+    assert model.nv == 50
     obj = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "object")
     assert float(model.body_mass[obj]) == pytest.approx(BOX_MASS_KG)
 
@@ -985,10 +1012,11 @@ def test_r8_lip_geometry_is_refuted_and_withdrawn(model):
             f"{name} is in the shipped scene - the refuted lip geometry is back in"
         )
     # the +2 geoms vs the pre-W5 scene are the W5 chamfer plates, NOT the lip:
-    # the lip geoms themselves stay out (checked by id above)
-    assert model.ngeom == 48, (
-        f"{model.ngeom} geoms: expected 46 + the 2 W5 chamfer plates, with the "
-        "refuted lip still withdrawn")
+    # the lip geoms themselves stay out (checked by id above). W6a doubles the
+    # hand geoms (42 x 2) and drops the pedestal, netting 89.
+    assert model.ngeom == 89, (
+        f"{model.ngeom} geoms: expected 84 hand + 3 object + floor + slab, with "
+        "the refuted lip still withdrawn and the pedestal still removed")
     n_obj = len(builder.object_geom_names())
     assert model.npair == len(W35E_BOX_PAIRS) * n_obj, (
         f"{model.npair} explicit pairs; expected {len(W35E_BOX_PAIRS)} hand geoms "
@@ -1122,6 +1150,6 @@ def test_model_stats_script_runs():
                          cwd=str(REPO), capture_output=True, text=True)
     assert out.returncode == 0, out.stderr
     payload = json.loads(out.stdout)
-    # 46 + 2 = the W5 top-edge chamfer plates
-    assert payload["model_shape"]["ngeom"] == 48
-    assert payload["model_shape"]["nu"] == 22
+    # W6a: 84 hand + 3 object + floor + slab
+    assert payload["model_shape"]["ngeom"] == 89
+    assert payload["model_shape"]["nu"] == 44

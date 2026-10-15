@@ -64,7 +64,7 @@ def test_p1_resting_box_reads_a_positive_bearing_of_its_own_weight(env):
     from grounding.pedestal_load_probe import resting_support_sign_check
 
     for _ in range(3):
-        env.step(np.zeros(22))
+        env.step(np.zeros(44))
     got = resting_support_sign_check(env)
     assert got["upward_N"] > 0.0, (
         f"a box resting on the pedestal reports a pedestal bearing of "
@@ -82,25 +82,28 @@ def test_p1_resting_box_reads_a_positive_bearing_of_its_own_weight(env):
 
 # --------------------------------------------------------------------------- P2
 def test_p2_wedge_policy_carries_its_lift_on_the_pedestal():
-    """The p0(4d) policy fails A3b 10/10 for a measurable reason."""
-    pytest.importorskip("stable_baselines3")
-    from grounding.pedestal_load_probe import run_wedge
+    """The p0(4d) policy fails A3b 10/10 for a measurable reason.
 
-    if not WEDGE_POLICY.exists():
-        pytest.skip(f"{WEDGE_POLICY.name} not archived; cannot replay the wedge")
-    rows = run_wedge(WEDGE_POLICY, n_ep=1)
-    r = rows[0]
-    assert r["support_share_of_box_weight_at_peak"] >= WEDGE_MIN_BOX_WEIGHTS, (
-        f"the p0(4d) wedge policy shows {r['peak_lift_m']*1000:.1f} mm of lift "
-        f"while the pedestal supplies {r['support_force_N_at_peak']} N = "
-        f"{r['support_share_of_box_weight_at_peak']:.1f} box weights at that "
-        "step. W_PEDESTAL_LOAD is priced on this quantity; if it is small the "
-        "whole term is noise."
-    )
+    SUPERSEDED by W6a (2026-10-15): this test replays the archived f210f45
+    wedge policy, which was trained on the single-hand + pedestal scene. W6a
+    removed the pedestal entirely (source-video task: box rests on the table,
+    two hands at the end faces), so the wedge's supporting geometry no longer
+    exists - the 64-dim-obs policy cannot even be evaluated on the 107-dim
+    dual-hand env. The measurement channel it calibrated (support-borne
+    bearing, P1/P5/P6-P10) is scene-generic and stays live against the table
+    slab. The pedestal-era evidence remains in
+    runs/p0/smoke4_mujoco_ppo/pedestal_load_evidence.json.
+    """
+    pytest.skip("SUPERSEDED by W6a: pedestal removed; wedge policy replayed a "
+                "scene that no longer exists (see R10)")
 
 
 def test_p3_the_measurement_separates_the_wedge_from_a_scripted_lift():
-    """The discriminating property: same scene, same channel, opposite verdicts."""
+    """The discriminating property: same scene, same channel, opposite verdicts.
+
+    Reads the ARCHIVED pedestal-scene evidence (recorded on MJCF 1b0f13f); the
+    numbers document the pedestal era and are not re-measured by W6a, which
+    removed the pedestal."""
     ev = json.loads(EVIDENCE.read_text()) if EVIDENCE.exists() else None
     if ev is None:
         pytest.skip("pedestal_load_evidence.json not generated")
@@ -130,28 +133,15 @@ def test_p4_bearing_decomposition_is_exhaustive_and_signed(env):
     A path that silently drops a contact class would make a wedge look clean.
     The wedge's FINGER bearing must be NEGATIVE: it presses the box down into
     the pedestal, which is the physical signature of the exploit.
-    """
-    from grounding.pedestal_load_probe import run_wedge
 
-    if not WEDGE_POLICY.exists():
-        pytest.skip(f"{WEDGE_POLICY.name} not archived")
-    r = run_wedge(WEDGE_POLICY, n_ep=1)[0]
-    b = r["bearing_at_peak"]
-    bw = b["bearing_box_weights"]
-    assert set(bw) == {"hook", "wall", "pedestal"}, (
-        f"bearing decomposition is missing a path: {sorted(bw)}")
-    assert bw["pedestal"] > 0.0, (
-        "the wedge's pedestal bearing at peak must be positive; the wedge holds "
-        "the box UP off its rest height with the base doing the work")
-    assert bw["hook"] + bw["wall"] < 0.0, (
-        f"the wedge's finger bearing at peak is {bw['hook']+bw['wall']:+.2f} box "
-        "weights. Expected NEGATIVE: a 42-degree nose-down wedge is the hand "
-        "pressing the box DOWN into the pedestal. A non-negative finger bearing "
-        "here means the decomposition is reading the wrong contact side."
-    )
-    assert abs(b["upward_total_N"] - b["hook_up_N"] - b["wall_up_N"]
-               - b["pedestal_up_N"]) < 1e-6, (
-        "upward_total_N is not the sum of the three reported paths")
+    SUPERSEDED by W6a like P2: the signed-finger-bearing evidence came from the
+    archived wedge policy on the pedestal scene, which no longer exists. The
+    decomposition's EXHAUSTIVENESS (three paths summing to the upward total)
+    is structural - read out of `_bearing()` and `run_clean_scenarios()`-style
+    replays - and is exercised by P5/P6/P9/P10 on the live scene.
+    """
+    pytest.skip("SUPERSEDED by W6a: pedestal removed; wedge replay impossible "
+                "(see R10)")
 
 
 # --------------------------------------------------------------------------- P5
@@ -160,7 +150,7 @@ def test_p5_env_records_and_charges_the_same_support_force(env):
     e = env
     e.reset(seed=1)
     for _ in range(4):
-        _, rew, _, _, _ = e.step(np.zeros(22))
+        _, rew, _, _, _ = e.step(np.zeros(44))
     assert len(e.trace["support_force"]) == 4
     assert all(f > 0.0 for f in e.trace["support_force"]), (
         "a box sitting on the pedestal must record support_force > 0 on every "
@@ -178,11 +168,11 @@ def test_p6_bearing_recording_is_opt_in(env):
     e = env
     e.record_bearing = False
     e.reset(seed=2)
-    e.step(np.zeros(22))
+    e.step(np.zeros(44))
     assert e.trace["hook_up_N"] == []
     e.record_bearing = True
     e.reset(seed=2)
-    e.step(np.zeros(22))
+    e.step(np.zeros(44))
     assert len(e.trace["hook_up_N"]) == 1
     e.record_bearing = False
 
@@ -277,7 +267,7 @@ def test_p9_substep_sampling_is_bit_identical_when_disabled():
     import grounding.envs.lift_hold_env as env_mod
 
     rng = np.random.default_rng(11)
-    acts = rng.uniform(-1.0, 1.0, (120, 22))
+    acts = rng.uniform(-1.0, 1.0, (120, 44))
 
     off = _rollout(False, acts)
     on = _rollout(True, acts)
@@ -321,7 +311,7 @@ def test_p10_substep_max_is_never_below_the_control_step_sample():
     e.reset(seed=0)
     rng = np.random.default_rng(5)
     for _ in range(80):
-        e.step(rng.uniform(-1.0, 1.0, 22))
+        e.step(rng.uniform(-1.0, 1.0, 44))
     for k in ("hook", "wall", "pedestal"):
         step = np.asarray(e.trace[f"{k}_up_N"], dtype=float)
         sub = np.asarray(e.trace[f"{k}_up_N_peak"], dtype=float)
@@ -392,7 +382,7 @@ def _landing_probe(x: float, y: float) -> dict:
     z0 = float(env.data.xpos[env.obj_body][2])
     worst_drift = 0.0
     for _ in range(SETTLE_STEPS):
-        env.step(np.zeros(22))
+        env.step(np.zeros(44))
         dz = abs(float(env.data.xpos[env.obj_body][2]) - z0)
         worst_drift = max(worst_drift, dz)
     env.close()

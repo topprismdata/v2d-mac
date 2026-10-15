@@ -43,6 +43,7 @@ OUT_NPZ = RUN_DIR / "reachable_demo_set.npz"
 MJCF_COMMIT = "1b0f13f"
 
 N_WRIST = 6
+N_FINGER = 16                   # W6a: per-hand finger action count
 WRIST_ROT_STEP = 0.10           # rad per unit action (env _apply_action)
 WORLD_GAIN = np.array([0.012, 0.012, 0.00436])   # measured, probe_clean_lift
 WRIST_Z_BASE = 0.92             # hand_root world z = WRIST_Z_BASE + ctrl_z
@@ -142,13 +143,26 @@ def _init_worker():
 
 def _action(env, wrist_tgt, rot_tgt, fingers):
     """World-frame wrist P-loop (probe_clean_lift polarity fix) + absolute
-    finger setpoints in action units."""
+    finger setpoints in action units.
+
+    W6a: the env action is 44-d (right block first, left appended). This
+    harness scripts the RIGHT hand; the left block stays at zero wrist deltas
+    with its finger setpoints reproduced from the reset-parked left ctrl (same
+    convention as collect_clean_demos.action_from_ctrl)."""
+    n_act = env.action_space.shape[0]
     err = np.asarray(wrist_tgt) - env.data.xpos[env.hand_root]
-    a = np.zeros(22)
+    a = np.zeros(n_act)
     a[0:3] = np.clip(err / WORLD_GAIN, -1.0, 1.0)
     a[3:6] = np.clip((np.asarray(rot_tgt) - env.data.ctrl[3:6]) / WRIST_ROT_STEP,
                      -1.0, 1.0)
-    a[N_WRIST:] = np.clip(np.asarray(fingers), -1.0, 1.0)
+    a[N_WRIST:N_WRIST + N_FINGER] = np.clip(np.asarray(fingers), -1.0, 1.0)
+    if n_act > N_WRIST + N_FINGER:
+        base = 2 * N_WRIST + N_FINGER          # left fingers start at ctrl 28
+        lo = env.ctrl_low[base:base + N_FINGER]
+        hi = env.ctrl_high[base:base + N_FINGER]
+        cur = env.data.ctrl[base:base + N_FINGER]
+        a[base:base + N_FINGER] = np.clip(
+            2.0 * (cur - lo) / (hi - lo) - 1.0, -1.0, 1.0)
     return a
 
 

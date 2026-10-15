@@ -65,11 +65,23 @@ assumed: see PROXIMAL_BOX_PAIRS.
       sufficiency bound, the pedestal-load ratios), and a lip that silently made
       the box heavier would move all of them in the same direction.
 
+W6a (R10) makes the scene dual-hand, per the source video: one hand per 120x80 mm
+short end face (+-x), palms facing the faces, the box resting DIRECTLY on the
+table slab (PEDESTAL_H_M = 0 - the pedestal existed only to give a single hand
+under-box clearance, which a second hand makes unnecessary). The right hand keeps
+every upstream name; the left hand appends _left to every body / joint / actuator
+/ geom name, which keeps the finger geoms matching the frozen acceptance
+classifier's ff_/mf_/rf_/th_ body-prefix rule. wrist_ry is widened to the full
+quarter turn (WRIST_Y_RANGE_W6A) because the palm faces its end face only at a
++-90 degree pitch. See grounding/assets/REVISION.md R10 for the verification
+numbers (birth contact table, settle drift, dual-hand end-face reach).
+
 Run:  python grounding/assets/build_allegro_floating.py
 """
 
 from __future__ import annotations
 
+import copy
 import functools
 import pathlib
 import xml.dom.minidom
@@ -144,16 +156,51 @@ BOX_LIP_GEOM_NAMES = ("object_lip_negx", "object_lip_posx")
 BOX_LIP_DENSITY_KG_M3 = BOX_MASS_KG / (8.0 * BOX_HALF_M[0] * BOX_HALF_M[1] * BOX_HALF_M[2])
 TABLE_TOP_Z_M = 0.70  # table slab top surface
 TABLE_TOP_Z = TABLE_TOP_Z_M
-# The box sits on a 60 mm pedestal rather than flush on the table. Measured with a
-# scripted open-loop grasp search (~5800 samples): with the box flush on the slab
-# the fingers can only hook its top edge and the grasp slips at ~3.2-3.6 cm, which
-# is BELOW the 5 cm acceptance bar - the task was geometrically unsolvable, not
-# merely hard for PPO. With 60 mm of clearance the fingers slide under the box and
-# form a real power grasp: 169/700 sampled poses exceed 5 cm, best 11.5 cm, i.e.
-# above the official evaluator's own 0.10 m lift threshold.
-PEDESTAL_H_M = 0.06
+# The box sits directly on the table slab (W6a / R10). Until W6a it sat on a
+# 60 mm pedestal (PEDESTAL_H_M = 0.06) because a SINGLE hand could not otherwise
+# get under the box: with the box flush on the slab the one hand's fingers could
+# only hook its top edge and slipped at ~3.2-3.6 cm, below the 5 cm bar
+# (measured with a ~5800-sample open-loop grasp search). The SOURCE VIDEO of the
+# task shows a different grasp entirely: TWO hands, one per 120x80 mm short end
+# face (+-x), each pinching its face directly - the box rests on the table with
+# no pedestal at all. The dual-hand scene (R10) makes the pedestal's clearance
+# function redundant, so the parameter is set to 0: the emitted XML simply omits
+# the geom. Raising it regenerates the old single-hand-geometry scene (the
+# placement resolver, support scan and resting-sink measurement all read this
+# constant), so the rollback stays one rebuild away.
+PEDESTAL_H_M = 0.0
 PEDESTAL_H = PEDESTAL_H_M
-HAND_HOME = "0 0 0.92"  # floating palm pose (x y z) - above the raised box
+
+# --- W6a / R10: two hands at the box's two short end faces ------------------
+# The source video grasps the box with both hands, one per +-x end face, palms
+# facing the faces. The scene therefore carries TWO copies of the hand subtree:
+# the right hand keeps every upstream name (hand_root, palm, ffj*, ffa*, ff_tip,
+# ...) so retarget/ and every recorded trace keep resolving to it unchanged, and
+# the left copy appends the suffix _left to every body / joint / actuator /
+# geom name (hand_root_left, palm_left, ffj0_left, ffa0_left, ff_tip_left).
+# Suffix rather than prefix on purpose: the frozen acceptance classifier
+# (tests/test_smoke4_accept.py::_finger_geom_ids) identifies finger geoms by
+# body-name PREFIX (ff_/mf_/rf_/th_), so "ff_tip_left" is counted as finger
+# evidence while a hypothetical "l_ff_tip" would silently drop the left hand
+# out of the A3a force sum.
+#
+# Orientation: the palm's collision face is local -z; euler tilts it about y so
+# the palm faces its end face from above-outside at 45 deg (the wrist chain
+# composes R = Rx@Ry@Rz, and flexion carries the fingertips along +R@e3 - AWAY
+# from the palm normal - so the workable end-face grip is the wrap-around: palm
+# tilted over the box end, fingers curling up-and-over onto the face). A exact
+# 90 deg palm-vertical orientation was measured and REFUTED: with the palm
+# vertical the flexion axis stays world-vertical, so every joint range curls the
+# fingertips outward, away from the box - the pads can never come onto the face
+# (finite-difference of ff_tip vs ffj1 on the built model). 45 deg keeps the
+# palm "facing the end face" (task wording) while leaving flexion a usable
+# hook-over path. Birth is penetration-free at these homes: right fingertips at
+# (+0.326, y, 1.026), left at (-0.174, y, 0.874), all clear of box and slab.
+HAND_HOME_RIGHT = "0.25 0 0.95"     # +x end, outside the face
+HAND_HOME_LEFT = "-0.25 0 0.95"     # -x end, mirrored
+HAND_EULER_RIGHT = "0 -0.785398163397 0"   # Ry(-45 deg): palm faces (+x,-z)
+HAND_EULER_LEFT = "0 0.785398163397 0"     # Ry(+45 deg): palm faces (-x,-z)
+HAND_HOME = HAND_HOME_RIGHT  # backwards-compatible alias (single-hand era)
 
 # --- R1: the real machine's fingertip force budget --------------------------
 # Wonik Allegro V5 spec: 10 N per fingertip. This is the single number the whole
@@ -202,8 +249,18 @@ WRIST_TRAVEL_ADD_M = {
     # axis would read as out of range on replay even though the nominal figure was
     # "added".
     "wrist_z": (-0.10, 0.16, 0.063),   # m   - vertical descent
-    "wrist_ry": (-1.20, 1.20, 0.059),  # rad - pitch swing
 }
+# W6a / R10: wrist_ry was widened in R2 to (-1.259, 1.20) for smoke5's pitch
+# residual; the end-face grasp needs the FULL quarter turn. The palm faces the
+# end face only when the wrist pitches +-90 deg (R = Rx@Ry@Rz: Ry(+90) maps the
+# palm's local -z face onto world -x for the right hand, Ry(-90) onto +x for the
+# left hand), and +-1.20 rad = +-68.7 deg leaves the palm tilted ~21 deg off the
+# face no matter how rx/rz are set - measured, not assumed: a boundary grid solve
+# of |R@(0,0,-1) - target| bottoms out exactly at the old ry cap. The new range
+# is the quarter turn rounded OUTWARD to the next milliradian, same convention
+# as R2. It strictly contains the old range, so every recorded wrist_ry command
+# (max |0.058| rad) still replays inside it.
+WRIST_Y_RANGE_W6A = (-1.571, 1.571)  # rad - palm-to-end-face pitch
 WRIST_UNCHANGED = {
     "wrist_x": (-0.18, 0.18),
     "wrist_y": (-0.18, 0.18),
@@ -211,13 +268,28 @@ WRIST_UNCHANGED = {
     "wrist_rz": (-1.57, 1.57),
 }
 WRIST_DAMPING = {"slide": "25", "hinge": "1.2"}
+# W6a / R10: the W6a hand homes tilt each palm 45 deg toward its end face, which
+# loads BOTH end-effector slides: wrist_x at 8.9 N and wrist_z at 8.9 N of the
+# hand's 12.645 N weight (the old single-hand scene loaded only wrist_z, and its
+# 70 mm sag was arrested by palm-on-box contact - a structural support the
+# parked dual-hand homes do not have). Left at the R2-era kp=180 the z slide
+# alone sags ~50 mm and drags the hand into the box. Both slides are resized to
+# kp=15000 (static sag 0.6-0.8 mm, omega*dt = 0.216, inside
+# SERVO_BANDWIDTH_GUARD) with ~critical damping (c_crit = 278). Force authority
+# is unchanged in practice: the 8.9-12.6 N bias saturates the +-45 N forcerange
+# only past a ~1 mm position error. The hinge gains are untouched.
+# per-joint damping override: only the loaded slides get the critically-damped
+# value; every other joint keeps the kind default above.
+WRIST_JOINT_DAMPING = {"wrist_x": "280", "wrist_z": "280"}
 WRIST_ARMATURE = {"slide": "0.03", "hinge": "0.03"}
 # wrist actuator gains: slides carry the whole hand mass, hinges only the palm's
-# inertia about a point inside the hand.
+# inertia about a point inside the hand. W6a: wrist_ax and wrist_az are resized
+# from the R2-era kp=180 because the end-face tilt made both slides
+# gravity-loaded (see the WRIST_JOINT_DAMPING comment above for the numbers).
 WRIST_ACTUATOR = {
-    "wrist_ax": dict(kp="180", forcerange="-45 45"),
+    "wrist_ax": dict(kp="15000", forcerange="-45 45"),
     "wrist_ay": dict(kp="180", forcerange="-45 45"),
-    "wrist_az": dict(kp="180", forcerange="-45 45"),
+    "wrist_az": dict(kp="15000", forcerange="-45 45"),
     "wrist_rx": dict(kp="14", forcerange="-6 6"),
     "wrist_ry": dict(kp="14", forcerange="-6 6"),
     "wrist_rz": dict(kp="14", forcerange="-6 6"),
@@ -269,9 +341,21 @@ PALM_BOX_PAIR = ("palm_collision", "object_geom")
 def box_pairs(*, lip_overhang_m: float = BOX_LIP_OVERHANG_M,
               lip_h_m: float = BOX_LIP_HEIGHT_M,
               chamfer_m: float = BOX_CHAMFER_M) -> list[tuple[str, str]]:
-    """(hand geom, object geom) for every explicit box pair this scene emits."""
+    """(hand geom, object geom) for every explicit box pair this scene emits.
+
+    W6a: every right-hand pair is emitted once more with the left hand's geom
+    names (suffix ``_left``) - the left palm and proximal links resolve their box
+    contacts through the identical explicit-pair treatment, or they would
+    re-introduce exactly the solref mixing 3.5-B/E removed, on one side only.
+    """
     out = [(PALM_BOX_PAIR[0], name) for name in object_geom_names(lip_overhang_m, lip_h_m, chamfer_m)]
     out += [(g1, name) for g1, _ in PROXIMAL_BOX_PAIRS
+            for name in object_geom_names(lip_overhang_m, lip_h_m, chamfer_m)]
+    # left-hand names follow R4's <body>_<role> rule on the renamed bodies:
+    # palm_collision -> palm_left_collision, ff_proximal_collision ->
+    # ff_proximal_left_collision
+    out += [(f"{g1.rpartition('_')[0]}_left_{g1.rpartition('_')[2]}", name)
+            for g1, _ in [PALM_BOX_PAIR] + list(PROXIMAL_BOX_PAIRS)
             for name in object_geom_names(lip_overhang_m, lip_h_m, chamfer_m)]
     return out
 
@@ -318,13 +402,18 @@ PLACEHOLDER_FORCERANGE_NM = 0.0
 TEMPLATE_HEAD = """<mujoco model="allegro_floating">
   <!-- GENERATED by grounding/assets/build_allegro_floating.py - do not hand-edit.
        Base: MuJoCo Menagerie {repo} @ {commit} (wonik_allegro/right_hand.xml).
-       Augments: actuatable 3-slide + 3-hinge floating base (6D wrist actuators),
-       tissue-box proxy (freejoint), fixed cameras cam_overhead / cam_wrist.
+       Augments: actuatable 3-slide + 3-hinge floating bases (6D wrist actuators
+       per hand), tissue-box proxy (freejoint), fixed cameras cam_overhead /
+       cam_wrist.
        Wave 3 revision: finger forcerange derived from the measured moment arm to
        the fingertip at the Allegro V5 10 N/finger limit, widened wrist_z/wrist_ry
        travel, stiffened box<->finger contacts, named hand geoms, and an explicit
        stiff palm<->box contact pair (Wave 3.5-B) and stiff finger-proximal<->box
-       contact pairs (Wave 3.5-E). -->
+       contact pairs (Wave 3.5-E).
+       W6a (R10): TWO hands at the box's +-x end faces (right keeps upstream
+       names, left appends _left), pedestal removed - the box rests directly on
+       the table slab per the source video, wrist_ry widened to the full quarter
+       turn so each palm faces its end face. -->
   <compiler angle="radian" meshdir="{meshdir}" autolimits="true"/>
 
   <option cone="elliptic" impratio="10" timestep="0.002" integrator="implicitfast"/>
@@ -346,9 +435,7 @@ TEMPLATE_HEAD = """<mujoco model="allegro_floating">
     <geom name="floor" type="plane" size="0 0 0.05" rgba="0.25 0.25 0.28 1"
       friction="0.8 0.02 0.002"/>
     <geom name="table_slab" type="box" size="0.45 0.45 0.02" pos="0 0 {slab_z}"
-      material="table" friction="0.9 0.02 0.002"/>
-    <geom name="pedestal" type="box" size="0.30 0.30 {ped_half}" pos="0 0 {ped_z}"
-      material="table" friction="0.9 0.02 0.002"/>
+      material="table" friction="0.9 0.02 0.002"/>{pedestal}
 
     <camera name="cam_overhead" mode="fixed" pos="0 0 1.55" xyaxes="1 0 0 0 1 0"
       fovy="45"/>
@@ -362,20 +449,28 @@ TEMPLATE_HEAD = """<mujoco model="allegro_floating">
         friction="1.4 0.02 0.004" solref="{solref}" solimp="{solimp}"/>{lip}{chamfer}
     </body>
 
-    <body name="hand_root" pos="{hand_home}">
+    <body name="hand_root" pos="{hand_home_r}" euler="{hand_euler_r}">
 {wrist_joints}
 {palm}
+    </body>
+
+    <body name="hand_root_left" pos="{hand_home_l}" euler="{hand_euler_l}">
+{wrist_joints_left}
+{palm_left}
     </body>
   </worldbody>
 
   <contact>
 {excludes}
+{excludes_left}
 {pairs}
   </contact>
 
   <actuator>
 {wrist_actuators}
 {hand_actuators}
+{wrist_actuators_left}
+{hand_actuators_left}
   </actuator>
 </mujoco>
 """
@@ -655,7 +750,7 @@ def _self_collides_with_palm(model, data) -> bool:
             continue
         other = b2 if b1 == palm_b else b1
         name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY, other) or ""
-        if name.endswith(("_proximal", "_medial", "_distal", "_tip")):
+        if name.endswith(_PHALANX_BODY_SUFFIXES):
             return True
     return False
 
@@ -899,13 +994,24 @@ def _geom_name(body_name: str, role: str) -> str:
     return f"{body_name}_{role}"
 
 
+# A fingertip body is recognised by its name suffix; the W6a left-hand copy
+# names its bodies "..._tip_left", so the side suffix has to be part of the
+# match or the left fingertips would silently miss the R3 stiffness stamp.
+_TIP_BODY_SUFFIXES = ("_tip", "_tip_left")
+# Same for the phalanx suffixes the measurement code matches on.
+_PHALANX_BODY_SUFFIXES = ("_proximal", "_medial", "_distal",
+                          "_proximal_left", "_medial_left", "_distal_left",
+                          "_tip", "_tip_left")
+
+
 def _name_hand_geoms(palm_el: ET.Element) -> None:
     """R4. Give every geom under <body name="palm"> an explicit name.
 
     Upstream they are all produced by unnamed <default> classes, which is exactly
     why a name-based contact detector once reported a structural zero. The role is
     read off the geom's class so the name says which of the pair is the colliding
-    one - ``ff_proximal_collision`` vs ``ff_proximal_visual``."""
+    one - ``ff_tip_collision`` vs ``ff_tip_visual``.
+    """
     for body in palm_el.iter("body"):
         body_name = body.get("name")
         if not body_name:
@@ -923,11 +1029,12 @@ def _annotate_hand_geoms(palm_el: ET.Element, solref, solimp) -> None:
 
     See CONTACT_SOLREF's comment for why this is not "every colliding hand geom":
     widening it to the palm turns an unrelated table graze into a 24x force spike.
-    The fingertips are identifiable by their body name (``*_tip``) and by their
-    capsule geom class, so this cannot silently start matching other links."""
+    The fingertips are identifiable by their body name (``*_tip``, W6a:
+    ``*_tip_left``) and by their capsule geom class, so this cannot silently start
+    matching other links."""
     for body in palm_el.iter("body"):
         body_name = body.get("name") or ""
-        if not body_name.endswith("_tip"):
+        if not body_name.endswith(_TIP_BODY_SUFFIXES):
             continue
         for geom in body.findall("geom"):
             cls = geom.get("class") or ""
@@ -937,42 +1044,68 @@ def _annotate_hand_geoms(palm_el: ET.Element, solref, solimp) -> None:
             geom.set("solimp", " ".join(f"{v:g}" for v in solimp))
 
 
+# --- W6a / R10: the left hand is a renamed deep copy of the right ------------
+def _left_palm_from(raw_palm_el: ET.Element) -> ET.Element:
+    """Deep-copy the RAW (pre-naming) upstream palm subtree and append ``_left``
+    to every body and joint name.
+
+    The copy must be taken BEFORE ``_name_hand_geoms`` runs, so its geoms are
+    still unnamed: the caller then runs ``_name_hand_geoms`` /
+    ``_annotate_hand_geoms`` on the copy and the left geoms come out as
+    ``ff_tip_left_collision`` etc. by the same rule as the right hand's - one
+    naming convention, enforced in one place, no duplicate-geom-name hazard.
+    """
+    left = copy.deepcopy(raw_palm_el)
+    for el in left.iter():
+        if el.tag in ("body", "joint") and el.get("name"):
+            el.set("name", f"{el.get('name')}_left")
+    return left
+
+
 # ===================================================================== emit
 def _fmt_pair(values) -> str:
     return " ".join(f"{v:g}" for v in values)
 
 
-def _wrist_joint_lines() -> list[str]:
+def _wrist_range(name: str) -> tuple[float, float]:
+    """Joint (and ctrl) range of one wrist axis, W6a override first."""
+    if name in WRIST_Y_RANGE_W6A_SPECIAL:
+        return WRIST_Y_RANGE_W6A
+    if name in WRIST_TRAVEL_ADD_M:
+        prev_lo, prev_hi, add = WRIST_TRAVEL_ADD_M[name]
+        return (prev_lo - add, prev_hi)
+    return WRIST_UNCHANGED[name]
+
+
+# wrist_ry is the only axis whose range W6a rewrote outright (see
+# WRIST_Y_RANGE_W6A); the set exists so the override is keyed by name, not by
+# call-site ordering.
+WRIST_Y_RANGE_W6A_SPECIAL = frozenset({"wrist_ry"})
+
+
+def _wrist_joint_lines(suffix: str = "") -> list[str]:
     lines = []
     for name in ("wrist_x", "wrist_y", "wrist_z", "wrist_rx", "wrist_ry", "wrist_rz"):
         kind, axis = WRIST_AXIS[name]
-        if name in WRIST_TRAVEL_ADD_M:
-            prev_lo, prev_hi, add = WRIST_TRAVEL_ADD_M[name]
-            lo, hi = prev_lo - add, prev_hi
-        else:
-            lo, hi = WRIST_UNCHANGED[name]
-        damping = WRIST_DAMPING[kind]
+        lo, hi = _wrist_range(name)
+        damping = WRIST_JOINT_DAMPING.get(name, WRIST_DAMPING[kind])
         armature = WRIST_ARMATURE[kind]
         lines.append(
-            f'      <joint name="{name}" type="{kind}" axis="{axis}" '
+            f'      <joint name="{name}{suffix}" type="{kind}" axis="{axis}" '
             f'range="{lo:g} {hi:g}"\n'
             f'        damping="{damping}" armature="{armature}"/>'
         )
     return lines
 
 
-def _wrist_actuator_lines() -> list[str]:
+def _wrist_actuator_lines(suffix: str = "") -> list[str]:
     lines = []
     for jname in ("wrist_x", "wrist_y", "wrist_z", "wrist_rx", "wrist_ry", "wrist_rz"):
         aname = WRIST_ACTUATOR_OF[jname]
         spec = WRIST_ACTUATOR[aname]
-        if jname in WRIST_TRAVEL_ADD_M:
-            prev_lo, prev_hi, add = WRIST_TRAVEL_ADD_M[jname]
-            lo, hi = prev_lo - add, prev_hi
-        else:
-            lo, hi = WRIST_UNCHANGED[jname]
+        lo, hi = _wrist_range(jname)
         lines.append(
-            f'    <position name="{aname}" joint="{jname}" kp="{spec["kp"]}" '
+            f'    <position name="{aname}{suffix}" joint="{jname}{suffix}" kp="{spec["kp"]}" '
             f'ctrlrange="{lo:g} {hi:g}"\n'
             f'      forcerange="{spec["forcerange"]}"/>'
         )
@@ -1002,8 +1135,13 @@ def _patch_defaults(raw: str) -> str:
     return raw.replace('damping=".1"', 'damping="0.5"')
 
 
-def _upstream_parts() -> tuple[str, str, str, str, list]:
-    """Parse upstream into (defaults, assets, palm, excludes, hand_acts)."""
+def _upstream_parts() -> tuple[str, str, str, list, ET.Element, list]:
+    """Parse upstream into (defaults, assets, palm, exclude_pairs, raw_palm, hand_acts).
+
+    ``raw_palm`` is the unnamed pre-naming subtree: the W6a left hand is a renamed
+    deep copy of it (see _left_palm_from), so both hands go through the same
+    naming/stiffness code path.
+    """
     raw_text = _patch_defaults(UPSTREAM_HAND.read_text())
     root = ET.fromstring(raw_text)
 
@@ -1027,14 +1165,13 @@ def _upstream_parts() -> tuple[str, str, str, str, list]:
         if body.get("name") == "palm":
             palm_el = body
     assert palm_el is not None, "palm body not found upstream"
+    raw_palm = copy.deepcopy(palm_el)
     _name_hand_geoms(palm_el)
     _annotate_hand_geoms(palm_el, CONTACT_SOLREF, CONTACT_SOLIMP)
     palm = _indent(palm_el, 6)
 
-    excludes = "\n".join(
-        f'    <exclude body1="{ex.get("body1")}" body2="{ex.get("body2")}"/>'
-        for ex in root.findall("./contact/exclude")
-    )
+    excludes = [(ex.get("body1"), ex.get("body2"))
+                for ex in root.findall("./contact/exclude")]
 
     # ---- hand actuators: R1, two passes --------------------------------
     # Pass 1 writes the tree with placeholder finger actuators so the model can be
@@ -1044,7 +1181,15 @@ def _upstream_parts() -> tuple[str, str, str, str, list]:
     hand_acts = [(a.get("name"), a.get("joint"), a.get("class")) for a in
                  root.findall("./actuator/position")]
     assert len(hand_acts) == 16, f"expected 16 hand joints, got {len(hand_acts)}"
-    return defaults, assets, palm, excludes, hand_acts
+    return defaults, assets, palm, excludes, raw_palm, hand_acts
+
+
+def _exclude_lines(pairs: list[tuple[str, str]], suffix: str = "") -> str:
+    """Upstream self-collision excludes, optionally _left-suffixed (W6a)."""
+    return "\n".join(
+        f'    <exclude body1="{b1}{suffix}" body2="{b2}{suffix}"/>'
+        for b1, b2 in pairs
+    )
 
 
 def build(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
@@ -1054,15 +1199,23 @@ def build(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
           *, verbose: bool = False) -> pathlib.Path:
     """Write the MJCF for one lip setting. Returns the path written.
 
-    Two passes, as before: pass 1 emits placeholder finger forceranges so the model
-    can be loaded and MEASURED, pass 2 writes the measured numbers. The measurement
-    is a property of the geometry the XML actually contains, not a hand-maintained
-    table - which is why this is a function of ``lip_*`` rather than a constant.
+    Two passes, as before: pass 1 emits placeholder finger forceranges so the
+    model can be loaded and MEASURED, pass 2 writes the measured numbers. The
+    measurement is a property of the geometry the XML actually contains, not a
+    hand-maintained table - which is why this is a function of ``lip_*`` rather
+    than a constant.
 
     The lip settings are parameters with no default in the measurement path, so a
     sweep over ``overhang x lip_h`` calls this per cell and gets a self-consistent
     scene each time. ``lip_overhang_m <= 0`` reproduces the bare box exactly, which
     is the control every sweep cell is compared against.
+
+    W6a: the scene carries TWO hand subtrees. The moment-arm / gravity / inertia
+    measurements are made on the right hand's joints; the left hand is a
+    byte-identical copy (same meshes, same inertias, same joint ranges), so the
+    same measured table is written onto both hands' actuators rather than
+    measured twice - a symmetry the dual-hand tests pin by asserting the two
+    hands' forceranges are equal.
     """
     if not UPSTREAM_HAND.exists():
         raise SystemExit(
@@ -1072,9 +1225,19 @@ def build(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
     # absolute, because MESH_DIR inside the XML is relative to the XML's own
     # directory: a relative `out` makes the mesh lookup depend on the caller's cwd
     out = pathlib.Path(out).resolve() if out is not None else OUT.resolve()
-    defaults, assets, palm, excludes, hand_acts = _upstream_parts()
+    defaults, assets, palm, exclude_pairs, raw_palm, hand_acts = _upstream_parts()
 
-    placeholder = _emit(assets, defaults, palm, excludes, hand_acts, None,
+    # the left hand: same subtree, _left-suffixed names, same naming/stiffness pass
+    left_el = _left_palm_from(raw_palm)
+    _name_hand_geoms(left_el)
+    _annotate_hand_geoms(left_el, CONTACT_SOLREF, CONTACT_SOLIMP)
+    palm_left = _indent(left_el, 6)
+    excludes = _exclude_lines(exclude_pairs)
+    excludes_left = _exclude_lines(exclude_pairs, suffix="_left")
+
+    placeholder = _emit(assets, defaults, palm, excludes, hand_acts,
+                        palm_left=palm_left, excludes_left=excludes_left,
+                        measured=None,
                         lip_overhang_m=lip_overhang_m, lip_h_m=lip_h_m,
                         chamfer_m=chamfer_m)
     out.write_text(placeholder)
@@ -1091,7 +1254,9 @@ def build(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
         spans[n] = float(model.jnt_range[jid][1] - model.jnt_range[jid][0])
     kp = finger_kp_table(arms, gravity, inertia, spans, float(model.opt.timestep))
 
-    final = _emit(assets, defaults, palm, excludes, hand_acts, (arms, kp),
+    final = _emit(assets, defaults, palm, excludes, hand_acts,
+                  palm_left=palm_left, excludes_left=excludes_left,
+                  measured=(arms, kp),
                   lip_overhang_m=lip_overhang_m, lip_h_m=lip_h_m,
                   chamfer_m=chamfer_m)
     out.write_text(final)
@@ -1100,7 +1265,7 @@ def build(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
     if verbose:
         print(f"wrote {out} ({len(final)} bytes, upstream commit {UPSTREAM_COMMIT})")
         print("R1 finger forcerange = (10 N / 4) x moment arm  [sum over a finger's 4 "
-              "joints = 10 N at the fingertip]:")
+              "joints = 10 N at the fingertip] (same table written onto BOTH hands):")
         for n in FINGER_JOINTS:
             print(f"    {n:6s} arm={arms[n] * 1e3:7.3f} mm  "
                   f"tau=+/-{finger_forcerange(arms[n]):.4f}  "
@@ -1112,6 +1277,10 @@ def build(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
               f"total={box_object_mass(lip_overhang_m, lip_h_m, chamfer_m):.6f} kg")
         print(f"W3.5-B/E explicit pairs ({len(box_pairs(lip_overhang_m=lip_overhang_m, lip_h_m=lip_h_m, chamfer_m=chamfer_m))}): "
               f"{', '.join(f'{a}<->{b}' for a, b in box_pairs(lip_overhang_m=lip_overhang_m, lip_h_m=lip_h_m, chamfer_m=chamfer_m))}")
+        print(f"W6a/R10 pedestal_h={PEDESTAL_H_M:g} m  box_z="
+              f"{TABLE_TOP_Z_M + PEDESTAL_H_M + BOX_HALF_M[2]:.4f}  "
+              f"right hand @{HAND_HOME_RIGHT} euler {HAND_EULER_RIGHT}  "
+              f"left hand @{HAND_HOME_LEFT} euler {HAND_EULER_LEFT}")
         sink = measure_resting_sink(out)
         print(f"R5 resting sink = {sink:.4e} m -> tolerance = {PENETRATION_TOLERANCE_K} x "
               f"sink = {PENETRATION_TOLERANCE_K * sink:.4e} m")
@@ -1141,6 +1310,7 @@ def _verify_out(xml_text: str, out: pathlib.Path | None = None) -> None:
 
 def _emit(assets: str, defaults: str, palm: str, excludes: str,
           hand_acts, measured, *,
+          palm_left: str, excludes_left: str,
           lip_overhang_m: float = BOX_LIP_OVERHANG_M,
           lip_h_m: float = BOX_LIP_HEIGHT_M,
           chamfer_m: float = BOX_CHAMFER_M) -> str:
@@ -1148,18 +1318,26 @@ def _emit(assets: str, defaults: str, palm: str, excludes: str,
         arms = kp = None
     else:
         arms, kp = measured
-    hand_actuator_lines = []
-    for name, joint, cls in hand_acts:
-        if arms is None:
-            hand_actuator_lines.append(
-                f'    <position name="{name}" joint="{joint}" class="{cls}" '
-                f'forcerange="{-PLACEHOLDER_FORCERANGE_NM:g} '
-                f'{PLACEHOLDER_FORCERANGE_NM:g}" kp="1"/>')
-        else:
-            tau = finger_forcerange(arms[joint])
-            hand_actuator_lines.append(
-                f'    <position name="{name}" joint="{joint}" class="{cls}" '
-                f'kp="{kp[joint]:g}" forcerange="{-tau:.5f} {tau:.5f}"/>')
+
+    def _hand_actuator_lines(suffix: str = "") -> list[str]:
+        lines = []
+        for name, joint, cls in hand_acts:
+            if arms is None:
+                lines.append(
+                    f'    <position name="{name}{suffix}" joint="{joint}{suffix}" '
+                    f'class="{cls}" '
+                    f'forcerange="{-PLACEHOLDER_FORCERANGE_NM:g} '
+                    f'{PLACEHOLDER_FORCERANGE_NM:g}" kp="1"/>')
+            else:
+                # the left hand is a byte-identical copy of the right, so the
+                # measured arm/kp table transfers as-is (pinned by the W6a tests)
+                tau = finger_forcerange(arms[joint])
+                lines.append(
+                    f'    <position name="{name}{suffix}" joint="{joint}{suffix}" '
+                    f'class="{cls}" '
+                    f'kp="{kp[joint]:g}" forcerange="{-tau:.5f} {tau:.5f}"/>')
+        return lines
+
     def _box_pair(g1: str, g2: str) -> str:
         return (
             f'    <pair geom1="{g1}" geom2="{g2}" '
@@ -1172,6 +1350,16 @@ def _emit(assets: str, defaults: str, palm: str, excludes: str,
     pairs = "\n".join(_box_pair(g1, g2)
                       for g1, g2 in box_pairs(lip_overhang_m=lip_overhang_m,
                                               lip_h_m=lip_h_m))
+    # W6a: the pedestal geom exists only when PEDESTAL_H_M > 0; the empty string
+    # keeps the shipped dual-hand XML free of it while the parameterisation keeps
+    # the single-hand-geometry scene one rebuild away.
+    if PEDESTAL_H_M > 0.0:
+        pedestal = (f'\n    <geom name="pedestal" type="box" '
+                    f'size="0.30 0.30 {PEDESTAL_H_M / 2:.4f}" '
+                    f'pos="0 0 {TABLE_TOP_Z_M + PEDESTAL_H_M / 2:.4f}"\n'
+                    f'      material="table" friction="0.9 0.02 0.002"/>')
+    else:
+        pedestal = ""
     return TEMPLATE_HEAD.format(
         repo=UPSTREAM_REPO,
         commit=UPSTREAM_COMMIT,
@@ -1179,22 +1367,29 @@ def _emit(assets: str, defaults: str, palm: str, excludes: str,
         defaults=defaults,
         assets=assets,
         slab_z=f"{TABLE_TOP_Z_M - 0.02:.4f}",
-        ped_half=f"{PEDESTAL_H_M / 2:.4f}",
-        ped_z=f"{TABLE_TOP_Z_M + PEDESTAL_H_M / 2:.4f}",
+        pedestal=pedestal,
         box_z=f"{TABLE_TOP_Z_M + PEDESTAL_H_M + BOX_HALF_M[2]:.4f}",
         bx=BOX_HALF_M[0], by=BOX_HALF_M[1], bz=BOX_HALF_M[2],
         mass=f"{box_geom_mass(lip_overhang_m, lip_h_m, chamfer_m):.9f}",
         lip=lip_geom_lines(lip_overhang_m, lip_h_m),
         chamfer=chamfer_geom_lines(chamfer_m),
-        hand_home=HAND_HOME,
+        hand_home_r=HAND_HOME_RIGHT,
+        hand_euler_r=HAND_EULER_RIGHT,
+        hand_home_l=HAND_HOME_LEFT,
+        hand_euler_l=HAND_EULER_LEFT,
         solref=_fmt_pair(CONTACT_SOLREF),
         solimp=_fmt_pair(CONTACT_SOLIMP),
         wrist_joints="\n".join(_wrist_joint_lines()),
+        wrist_joints_left="\n".join(_wrist_joint_lines("_left")),
         palm=palm,
+        palm_left=palm_left,
         excludes=excludes,
+        excludes_left=excludes_left,
         pairs=pairs,
         wrist_actuators="\n".join(_wrist_actuator_lines()),
-        hand_actuators="\n".join(hand_actuator_lines),
+        hand_actuators="\n".join(_hand_actuator_lines()),
+        wrist_actuators_left="\n".join(_wrist_actuator_lines("_left")),
+        hand_actuators_left="\n".join(_hand_actuator_lines("_left")),
     )
 
 
