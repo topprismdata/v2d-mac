@@ -146,6 +146,26 @@ HOLD_SLACK = 0.001     # descent tolerance added on top of max_descent_step_m
 W_PEDESTAL_LOAD = 4.0        # per box-weight of pedestal-borne load, per step
 W_PEDESTAL_LOAD_CAP = 12.0   # ... capped at this many box weights (see above)
 
+# --- object placement (W4-A) ---------------------------------------------
+# Where the C6 control parks the box. This is a REQUEST, not the answer: the
+# resolver below is allowed to slide it (see _resolve_object_placement) and the
+# slide is reported in the reset info dict.
+OUT_OF_REACH_REQUEST_XY = (0.0, 0.35)
+# The box must come to rest with its WHOLE footprint on ONE support face, at
+# least this far inside that face's edge. Anything else is a placement that tips
+# or falls the moment it is born.
+SUPPORT_EDGE_MARGIN_M = 0.005
+# Slide resolution / how far the resolver will look for a legal pose.
+SUPPORT_SLIDE_STEP_M = 0.005
+SUPPORT_SLIDE_SPAN_M = 0.40
+# The control box must additionally lie outside this radius around the hand's
+# home (the world origin). Measured on this scene: wrist travel is +-0.18 m
+# (actuator ctrlrange) and the furthest fingertip reached 0.2181 m from the
+# origin over the C6 flail (4 seeds x 100 steps). 0.28 m clears both with
+# ~60 mm to spare, and is what makes "the control hand cannot touch it" a
+# property of the PLACEMENT instead of a hope about the flail.
+CONTROL_CLEARANCE_M = 0.28
+
 
 def _load_evaluator() -> dict[str, float]:
     data = json.loads(EVALUATOR_JSON.read_text())["evaluator"]
@@ -479,6 +499,26 @@ class LiftHoldEnv(gym.Env):
                 continue
             self.support_geoms.add(self.geom_label[g])
         assert self.support_geoms, "scene defines no support geometry"
+        # The same geoms as axis-aligned faces (x0, x1, y0, y1, top) so that
+        # placement can be asked about a FOOTPRINT rather than a point - see
+        # _support_height.
+        self.support_faces: list[tuple[str, float, float, float, float, float]] = []
+        for g in range(m.ngeom):
+            if int(m.geom_bodyid[g]) != 0 or g == self.obj_geom:
+                continue
+            if int(m.geom_type[g]) != int(mujoco.mjtGeom.mjGEOM_BOX):
+                continue
+            pos, half = m.geom_pos[g], m.geom_size[g]
+            self.support_faces.append((
+                self.geom_label[g],
+                float(pos[0] - half[0]), float(pos[0] + half[0]),
+                float(pos[1] - half[1]), float(pos[1] + half[1]),
+                float(pos[2] + half[2])))
+        # Box footprint: the union of EVERY geom on the object body, so a scene
+        # that grows the proxy (e.g. a lip flange) cannot be placed by a stale
+        # half-extent that no longer matches what is drawn.
+        self.box_half_z = float(m.geom_size[self.obj_geom][2])
+        self.box_half_xy = self._object_footprint_half(0.0)
 
         # ---- spaces ------------------------------------------------------
         self.action_space = spaces.Box(-1.0, 1.0, (N_ACT,), dtype=np.float32)
@@ -499,6 +539,7 @@ class LiftHoldEnv(gym.Env):
         self._rng = np.random.default_rng(0)
         self.last_contact_pairs: list[tuple[str, str]] = []
         self.last_contact_force = 0.0
+        self.last_placement: dict = {}
         # Per-step bearing decomposition is only recorded when asked for: it needs
         # the contact POINTS (to tell a top-face hook from side-wall friction),
         # not just the forces, so it costs more than the rest of the contact
@@ -556,32 +597,39 @@ class LiftHoldEnv(gym.Env):
         mujoco.mj_resetData(m, d)
 
         # --- object placement (allowed: reset may write qpos) -------------
-        # out_of_reach parks the box 0.35 m along +y: far outside the hand's
-        # workspace (fingers reach ~0.06 m past the palm, and the wrist ctrlrange
-        # caps travel at 0.18 m) but still over the table slab, so the box cannot
-        # move. The resting height must be the height of whatever is actually
-        # beneath it (the pedestal only spans +-0.30 m), so it is raycast rather
-        # than assumed - otherwise the box free-falls 60 mm during settling.
-        x_off, y_off = (0.0, 0.35) if self.out_of_reach else (0.0, 0.0)
-        support_z = self._support_height(x_off, y_off)
-        box_z = support_z + float(m.geom_size[self.obj_geom][2])
-        obj_pos = np.array([x_off, y_off, box_z])
+        # out_of_reach asks for the box 0.35 m along +y, far outside the hand's
+        # workspace. That request is NOT satisfiable on this scene and is not
+        # honoured blindly any more: the pedestal ends at y=0.30 m and the slab
+        # at y=0.45 m, so only a 150 mm-wide band of bare table exists off the
+        # pedestal, and the box is 240 mm long in y. The nearest fully
+        # supported pose on that axis is y=0.18 m - inside the hand's reach,
+        # which makes the control meaningless (measured: 24 finger-box contacts
+        # over the C6 flail at y=0.18). _resolve_object_placement therefore
+        # rejects the +y axis and slides the box to +x, where the 120 mm-wide
+        # box does fit in the same 150 mm band (x in [0.36, 0.39] m; the
+        # max-margin pick is 0.375 m, clearing the hand by 0.315 m).
+        x_off, y_off = OUT_OF_REACH_REQUEST_XY if self.out_of_reach else (0.0, 0.0)
+        clearance = CONTROL_CLEARANCE_M if self.out_of_reach else 0.0
+        yaw = 0.0
         quat = np.array([1.0, 0.0, 0.0, 0.0])
         if self.domain_rand and not self.out_of_reach:
-            obj_pos[:2] += self._rng.uniform(-0.01, 0.01, 2)
+            x_off += float(self._rng.uniform(-0.01, 0.01))
+            y_off += float(self._rng.uniform(-0.01, 0.01))
             yaw = float(self._rng.uniform(-0.10, 0.10))
             quat = np.array([np.cos(yaw / 2), 0.0, 0.0, np.sin(yaw / 2)])
         # explicit placement overrides the stochastic protocol entirely (and is
         # usable with domain_rand=False, which is how the collector holds the
         # commanded pose exact and perturbs only the variable under test)
         if self.box_offset_xy is not None:
-            obj_pos[0] += self.box_offset_xy[0]
-            obj_pos[1] += self.box_offset_xy[1]
-            obj_pos[2] = self._support_height(obj_pos[0], obj_pos[1]) \
-                + float(m.geom_size[self.obj_geom][2])
+            x_off += self.box_offset_xy[0]
+            y_off += self.box_offset_xy[1]
         if self.box_yaw is not None:
             yaw = self.box_yaw
             quat = np.array([np.cos(yaw / 2), 0.0, 0.0, np.sin(yaw / 2)])
+        px, py, pz, placement = self._resolve_object_placement(
+            x_off, y_off, yaw, min_clearance=clearance)
+        obj_pos = np.array([px, py, pz])
+        self.last_placement = placement
         d.qpos[self.obj_qpos_adr: self.obj_qpos_adr + 7] = np.concatenate([obj_pos, quat])
 
         # --- hand: home pose with a light grasp pre-shape ------------------
@@ -629,7 +677,7 @@ class LiftHoldEnv(gym.Env):
                       "free_flight": [], "wrist_z": [], "lift": []}
         self._ep: dict[str, list[float]] = {"grasp": [], "hold": [], "streak": []}
 
-        return self._obs(), {"obj_z0": self._z0}
+        return self._obs(), {"obj_z0": self._z0, "placement": self.last_placement}
 
     # --------------------------------------------------------- contact probe
     def _finger_geom_ids_of(self, pairs: list[tuple[str, str]]) -> list[str]:
@@ -640,27 +688,177 @@ class LiftHoldEnv(gym.Env):
                 out.append(name)
         return out
 
-    def _support_height(self, x: float, y: float) -> float:
-        """Top surface height of the highest axis-aligned static geom under (x, y).
+    def _support_height(self, x: float, y: float,
+                        *, half_xy: tuple[float, float] | None = None,
+                        strict: bool = True) -> float:
+        """Top surface height of the highest static geom the box FOOTPRINT touches.
 
-        Resolved from the model rather than assumed, because the pedestal only
-        spans +-0.30 m: placing the parked box at the nominal pedestal height would
-        drop it 60 mm onto the bare table during settling.
+        Whole-footprint, not centre-point. The centre-only version is what made
+        the C6 control a false pass: ``out_of_reach`` parked the box at
+        y=0.35 m, whose footprint spans y in [0.23, 0.47] m. The centre at 0.35
+        is off the pedestal (which ends at y=0.30 m), so the old code returned
+        the bare table top (0.70 m) and dropped the box to z=0.74 m - i.e. 60 mm
+        INSIDE the pedestal. The birth contact table read
+        ``pedestal|object -0.0600`` x4, the solver threw the box off the table
+        in the 400 settle steps, and it came to rest on the floor 0.41 m away
+        (z=0.0394). The flail then moved it 0.57 mm, under the 1e-3 m gate -
+        so the control passed while measuring a box that was not even on the
+        table any more.
+
+        Taking the max over every geom the footprint OVERLAPS makes that
+        unrepresentable: the box is always born resting on the highest surface
+        it actually touches.
+        """
+        hx, hy = self.box_half_xy if half_xy is None else half_xy
+        best = -np.inf
+        for _name, x0, x1, y0, y1, top in self.support_faces:
+            if x + hx > x0 and x - hx < x1 and y + hy > y0 and y - hy < y1:
+                best = max(best, top)
+        if not np.isfinite(best):
+            if not strict:
+                return float(-np.inf)
+            raise RuntimeError(
+                f"box footprint at ({x}, {y}) half ({hx}, {hy}) overlaps no "
+                "support geom - it would be born in mid-air")
+        return float(best)
+
+    def _object_footprint_half(self, yaw: float) -> tuple[float, float]:
+        """Axis-aligned half-extents of the object body's footprint at ``yaw``.
+
+        Taken over every geom on the object body, then rotated, so the answer is
+        the true bounding box of what will collide with the table - not the
+        nominal half-extent of one geom.
         """
         m = self.model
-        best = -np.inf
-        for gid in range(m.ngeom):
-            if gid == self.obj_geom or int(m.geom_bodyid[gid]) != 0:
-                continue  # skip the box and anything parented to a body
-            if int(m.geom_type[gid]) != int(mujoco.mjtGeom.mjGEOM_BOX):
+        hw = np.zeros(2)
+        for g in range(m.ngeom):
+            if int(m.geom_bodyid[g]) != self.obj_body:
                 continue
-            half = m.geom_size[gid]
-            pos = m.geom_pos[gid]
-            if abs(x - pos[0]) <= half[0] and abs(y - pos[1]) <= half[1]:
-                best = max(best, float(pos[2] + half[2]))
-        if not np.isfinite(best):
-            raise RuntimeError(f"no support geom under ({x}, {y})")
+            if int(m.geom_type[g]) != int(mujoco.mjtGeom.mjGEOM_BOX):
+                continue
+            half, pos = m.geom_size[g][:2], m.geom_pos[g][:2]
+            hw = np.maximum(hw, np.abs(pos) + np.abs(half))
+        c, s = abs(float(np.cos(yaw))), abs(float(np.sin(yaw)))
+        return (float(c * hw[0] + s * hw[1]), float(s * hw[0] + c * hw[1]))
+
+    def _face_fit(self, x: float, y: float,
+                  half_xy: tuple[float, float]) -> tuple[float, float] | None:
+        """(top, edge_margin) of the support face the box rests on, or None.
+
+        The face must (a) contain the WHOLE footprint with
+        ``SUPPORT_EDGE_MARGIN_M`` to spare, and (b) be the highest face the
+        footprint OVERLAPS, i.e. the one ``_support_height`` returns. (b) is not
+        redundant: the pedestal sits inside the slab, so a footprint straddling
+        the pedestal edge "fits" the slab with room to spare - and dropping the
+        box onto the slab there buries its overhanging part in the pedestal,
+        which is the bug class this whole function exists to remove.
+        """
+        hx, hy = half_xy
+        best: tuple[float, float] | None = None
+        support = self._support_height(x, y, half_xy=half_xy, strict=False)
+        if not np.isfinite(support):
+            return None   # the search visits poses off the table; not an error
+        for _name, x0, x1, y0, y1, top in self.support_faces:
+            if abs(top - support) > 1e-12:
+                continue
+            # margin from the FOOTPRINT to the face edge, not from the centre -
+            # the centre-only version accepts a box whose corner hangs in the air.
+            margin = min(x - hx - x0, x1 - (x + hx), y - hy - y0, y1 - (y + hy))
+            if margin < SUPPORT_EDGE_MARGIN_M:
+                continue
+            best = (float(top), float(margin))
+            break
         return best
+
+    @staticmethod
+    def _clearance(x: float, y: float,
+                   half_xy: tuple[float, float]) -> float:
+        """Distance from the hand's home (world origin) to the box footprint."""
+        hx, hy = half_xy
+        gx = max(0.0, abs(x) - hx)
+        gy = max(0.0, abs(y) - hy)
+        return float(np.hypot(gx, gy))
+
+    def _search_placement(self, x: float, y: float, half_xy: tuple[float, float],
+                          *, min_clearance: float
+                          ) -> tuple[float, float, float, float] | None:
+        """Find a legal pose near (x, y) in two stages.
+
+        1. slide along ONE axis (the cheap fix: the box was nudged off the face
+           by a small offset, e.g. the demo collector's +-6 mm grid);
+        2. only if that finds nothing, a 2-D sweep - needed because the
+           control's +y request is unsatisfiable along y at ANY distance (see
+           reset), and a single-axis slide can never satisfy an infeasible axis
+           that is held fixed.
+
+        Candidates are scored by (edge margin, clearance from the hand): the
+        most robust legal pose wins, and among equally robust ones the one
+        furthest from the hand. Both terms are computed from the footprint.
+        """
+        n = int(round(SUPPORT_SLIDE_SPAN_M / SUPPORT_SLIDE_STEP_M))
+        best: tuple[tuple[float, float], tuple[float, float, float, float]] | None = None
+
+        def consider(cx: float, cy: float) -> None:
+            nonlocal best
+            fit = self._face_fit(cx, cy, half_xy)
+            if fit is None:
+                return
+            clearance = self._clearance(cx, cy, half_xy)
+            if clearance < min_clearance:
+                return
+            key = (fit[1], clearance)
+            if best is None or key > best[0]:
+                best = (key, (float(cx), float(cy), fit[0], fit[1]))
+
+        for axis in (0, 1):
+            for k in range(n + 1):
+                for sign in ((1, -1) if k else (1,)):
+                    off = [float(x), float(y)]
+                    off[axis] += sign * k * SUPPORT_SLIDE_STEP_M
+                    consider(*off)
+        if best is None:
+            for i in range(-n, n + 1):
+                for j in range(-n, n + 1):
+                    consider(x + i * SUPPORT_SLIDE_STEP_M, y + j * SUPPORT_SLIDE_STEP_M)
+        return None if best is None else best[1]
+
+    def _resolve_object_placement(self, x: float, y: float, yaw: float, *,
+                                  min_clearance: float = 0.0
+                                  ) -> tuple[float, float, float, dict]:
+        """(x, y, z, report) for a placement the box can actually rest at.
+
+        Never returns an initial overlap: the height comes from
+        ``_support_height`` over the whole footprint. If the requested xy would
+        leave the box hanging over an edge (or, for the control, inside the
+        hand's reach) it is moved to a legal pose and the correction is REPORTED
+        rather than hidden.
+        """
+        half_xy = self._object_footprint_half(yaw)
+        fit = self._face_fit(x, y, half_xy)
+        if fit is not None and self._clearance(x, y, half_xy) >= min_clearance:
+            px, py, top, margin = x, y, fit[0], fit[1]
+            moved = False
+        else:
+            found = self._search_placement(x, y, half_xy, min_clearance=min_clearance)
+            if found is None:
+                raise RuntimeError(
+                    f"no stable placement for the box near ({x}, {y}): within "
+                    f"{SUPPORT_SLIDE_SPAN_M} m no pose puts the whole footprint "
+                    f"({half_xy[0]:.3f}, {half_xy[1]:.3f}) on one support face "
+                    f"with {SUPPORT_EDGE_MARGIN_M * 1e3:.0f} mm to spare"
+                    + (f" and {min_clearance} m of clearance from the hand"
+                       if min_clearance > 0 else ""))
+            px, py, top, margin = found
+            moved = True
+        report = {
+            "requested_xy_m": [float(x), float(y)],
+            "placed_xy_m": [float(px), float(py)],
+            "resting_z_m": float(top + self.box_half_z),
+            "edge_margin_m": float(margin),
+            "clearance_m": self._clearance(px, py, half_xy),
+            "moved": moved,
+        }
+        return float(px), float(py), float(top + self.box_half_z), report
 
     def _support_and_held(self, pairs: list[tuple[str, str]]) -> tuple[bool, bool]:
         """(box resting on a support surface, box held by a finger).
