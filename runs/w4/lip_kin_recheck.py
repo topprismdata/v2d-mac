@@ -139,12 +139,19 @@ class Rig:
                     continue
                 qx, qy, qz = (float(v) for v in ft[3:6])
                 rel_z = qz - self.box_z
-                off = (max(0.0, abs(rel_z - self.hook_z)
-                           - max(self.lip_h, WALL_BAND_M))
+                # The hook face is the lip's UNDERSIDE at rel_z = hook_z. The
+                # z-band must be the contact tolerance, NOT max(lip_h, ...): a band
+                # as wide as the lip itself admits a pad resting on the lip's TOP
+                # face (rel_z = bz), which presses DOWN and is the opposite
+                # mechanism. That mistake reported clean hooks for all three cells
+                # with the nearest point at rel_z = 0.04 (the box top), 64-71 mm
+                # above the actual hook face. The face test is a strict rectangle
+                # test, same standard as w35d's wall criterion.
+                off = (max(0.0, abs(rel_z - self.hook_z) - WALL_BAND_M)
                        + max(0.0, self.x_lo - abs(qx) - WALL_BAND_M)
                        + max(0.0, abs(qx) - self.x_hi - WALL_BAND_M)
                        + max(0.0, abs(qy) - self.by - WALL_BAND_M))
-                recs.append({"pad": name, "lip_geom": mujoco.mj_id2name(
+                        recs.append({"pad": name, "lip_geom": mujoco.mj_id2name(
                     self.m, mujoco.mjtObj.mjOBJ_GEOM, lg), "dist_m": dist,
                     "gap_m": dist + off, "rel_on_box": [round(qx, 5), round(qy, 5),
                                                          round(rel_z, 5)]})

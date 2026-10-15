@@ -90,46 +90,60 @@ def _score(job: tuple) -> dict:
 
 
 def search_grid(coarse: bool, wide: bool = False) -> list[dict]:
-    """Neighbourhood sweep of the hook family on the CURRENT scene.
+    """Limit-covering sweep of the reachable grasp set on the CURRENT scene.
 
-    ``wide`` adds the timing axes the first sweep held at their p0(4d) values
-    (descent depth, settle, lift rate). They matter because the Wave 3.5F
-    stiffening changed the box<->finger response mid-close: a trajectory that
-    used to clear the rim with one descent depth may now need a slower or
-    shallower one, and holding the timings fixed would report that as "no hook
-    exists on this scene" when it only means "no hook exists at THESE timings".
+    REBUILT after the w35d verdict was overturned. SceneInitFix measured that the
+    K1 dual-wall pad pinch is feasible at 0/20/40/60 mm - including the current
+    60 mm - because the structured grid that declared it class-B infeasible never
+    reached the extreme wrist poses (rz +-1.4, wrist_y +-0.17, single joints
+    pinned at their ctrlrange limits); random-restart refinement found them.
+
+    The previous hook sweep had the SAME blind spot, and this function is where
+    it lived. Measured against the real ctrlranges:
+
+        wrist_x, wrist_y  +-0.18      grid covered -0.04 .. +0.01
+        wrist_z           -0.163..0.16 grid covered -0.14 .. -0.09
+        wrist_rx          +-1.8       grid covered 1.7 .. 1.8 (1.9 clips)
+        wrist_ry          -1.259..1.2 grid covered +0.4 .. +0.8, NEVER negative
+        wrist_rz          +-1.57      grid was HARDCODED to 0.0 - never varied
+
+    So the earlier "16,200 poses, zero passes" was measured over a small interior
+    patch of a 6-DOF set with one axis frozen at zero. That is not a statement
+    about the scene; it is a statement about the grid. This version brackets both
+    ends of every axis at its ctrlrange limit, which is where a boundary grip has
+    to live.
     """
-    xs = (-0.02,) if coarse else (-0.04, -0.03, -0.02, -0.01, 0.0, 0.01)
-    ys = (-0.02,) if coarse else (-0.04, -0.03, -0.02, -0.01, 0.0, 0.01)
-    zs = (0.80,) if coarse else ((0.76, 0.77, 0.78, 0.79, 0.80, 0.81, 0.82) if wide
-                                 else (0.78, 0.79, 0.80, 0.81, 0.82, 0.83))
-    rys = (0.6,) if coarse else ((0.4, 0.5, 0.6, 0.7, 0.8) if wide
-                                 else (0.4, 0.5, 0.6, 0.7, 0.8))
-    rxs = (1.8,) if coarse else ((1.6, 1.7, 1.8, 1.9, 2.0) if wide
-                                 else (1.7, 1.8, 1.9))
-    cts = (-0.6,) if coarse else ((-0.3, -0.4, -0.5, -0.6, -0.7, -0.8) if wide
-                                  else (-0.4, -0.5, -0.6, -0.7, -0.8))
-    n_descs = (60,) if coarse else ((40, 60, 80) if wide else (60,))
-    lift_rates = (0.004,) if coarse else ((0.002, 0.004) if wide else (0.004,))
+    xs = (-0.02,) if coarse else (-0.17, -0.09, 0.0, 0.09, 0.17)
+    ys = (-0.02,) if coarse else (-0.17, -0.09, 0.0, 0.09, 0.17)
+    # world z = WRIST_Z_BASE (0.92) + wrist_z ctrl; ctrl spans -0.163 .. +0.16
+    zs = (0.80,) if coarse else (0.757, 0.84, 0.92, 1.00, 1.08)
+    rxs = (1.8,) if coarse else (-1.8, -0.9, 0.0, 0.9, 1.8)
+    rys = (0.6,) if coarse else (-1.25, -0.6, 0.0, 0.6, 1.2)
+    rzs = (0.0,) if coarse else (-1.5, -0.75, 0.0, 0.75, 1.5)
+    cts = (-0.6,) if coarse else ((-0.3, -0.5, -0.7, 0.0, 0.4) if wide
+                                  else (-0.7,))
+    n_descs = (60,) if coarse else ((40, 80) if wide else (60,))
+    lift_rates = (0.004,) if coarse else ((0.002, 0.006) if wide else (0.004,))
     cfgs = []
     for x in xs:
         for y in ys:
             for z in zs:
                 for rx in rxs:
                     for ry in rys:
-                        for ct in cts:
-                            for nd in n_descs:
-                                for lr in lift_rates:
-                                    c = json.loads(json.dumps(BASE_CFG))
-                                    c["wrist_world"] = [x, y, z]
-                                    c["rot"] = [rx, ry, 0.0]
-                                    a = list(c["close"])
-                                    a[12:16] = [0.0, ct, ct, ct]
-                                    c["close"] = a
-                                    c["close_params"] = [1.0, ct, 0.0]
-                                    c["n_desc"] = nd
-                                    c["lift_rate"] = lr
-                                    cfgs.append(c)
+                        for rz in rzs:
+                            for ct in cts:
+                                for nd in n_descs:
+                                    for lr in lift_rates:
+                                        c = json.loads(json.dumps(BASE_CFG))
+                                        c["wrist_world"] = [x, y, z]
+                                        c["rot"] = [rx, ry, rz]
+                                        a = list(c["close"])
+                                        a[12:16] = [0.0, ct, ct, ct]
+                                        c["close"] = a
+                                        c["close_params"] = [1.0, ct, 0.0]
+                                        c["n_desc"] = nd
+                                        c["lift_rate"] = lr
+                                        cfgs.append(c)
     return cfgs
 
 
