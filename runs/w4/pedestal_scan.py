@@ -142,10 +142,24 @@ class Rig:
         self.wrist_q = [int(model.jnt_qposadr[j]) for j in wrist_j]
         self.finger_q = np.array([model.jnt_qposadr[j] for j in finger_j], dtype=int)
         adr = np.array(wrist_j + finger_j, dtype=int)
-        self.lo = model.jnt_range[adr, 0].astype(float).copy()
-        self.hi = model.jnt_range[adr, 1].astype(float).copy()
+        # Bounds are the ACTUATOR command ranges, not jnt_range: the env's actions
+        # map onto ctrlrange, so a pose outside it is not a pose the controller can
+        # ask for. jnt_range is the mechanical stop, which a position servo can
+        # transiently pass (R7 measured exactly that on mfj1) but cannot hold.
+        cmd_lo = np.empty(22)
+        cmd_hi = np.empty(22)
+        for k, j in enumerate(wrist_j + finger_j):
+            acts = [a for a in range(model.nu) if int(model.actuator_trnid[a, 0]) == j]
+            if acts:
+                cmd_lo[k], cmd_hi[k] = model.actuator_ctrlrange[acts[0]]
+            else:
+                cmd_lo[k], cmd_hi[k] = model.jnt_range[j]
+        self.jnt_lo = model.jnt_range[adr, 0].astype(float).copy()
+        self.jnt_hi = model.jnt_range[adr, 1].astype(float).copy()
+        self.lo = cmd_lo
+        self.hi = cmd_hi
         self.span = np.where(self.hi > self.lo, self.hi - self.lo, 1.0)
-        self.ft = np.zeros(6)      # [distance, point_on_geom1(3)]
+        self.ft = np.zeros(6)      # [point_on_geom1, point_on_geom2] (dist = RETURN)
 
     def pose_to_qpos(self, pose: np.ndarray) -> None:
         q = self.d.qpos
