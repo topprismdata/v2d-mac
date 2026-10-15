@@ -35,3 +35,9 @@ __pycache__/
 frames/
 weights/
 .DS_Store
+
+# Evidence scripts backing REVISION.md refutations must be reproducible from a
+# clean checkout (BoxLipVerify flag). Numbers live in REVISION.md; the scripts
+# that regenerate them are tracked; large JSON/pickle payloads stay ignored.
+!runs/w4/*.py
+!runs/w35/*.py
