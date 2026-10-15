@@ -193,40 +193,108 @@ def train(total_steps: int, n_envs: int, seed: int, episode_len: int,
 
 
 def bearing_summary(trace: dict, peak_i: int, box_weight_n: float) -> dict:
-    """Per-episode bearing decomposition at the peak-lift step.
+    """Per-episode bearing decomposition, reported at THREE resolutions.
 
-    Round p0(4e) asks the report for the load carried by each path - top-face
-    hook / side-wall friction / pedestal - so the evidence shows WHERE the box's
-    weight went, not only how high the policy displayed it. Read straight off
-    the eval trace, so no re-simulation is needed. Values are in newtons and in
-    BOX WEIGHTS; the sign matters: a negative path pushes the box DOWN, which is
-    exactly what a corner wedge does with its fingers.
+    Round p0(4e) asks where the box's weight was actually going - top-face hook,
+    side-wall friction, pedestal - rather than only how high the policy displayed
+    it. Three columns, because they answer different questions and a column
+    named "peak" that is not actually a peak is worse than no column at all
+    (Main ruling, wave 3.5-G):
+
+      hold              mean over the hold window (steps whose hold_streak >= 1)
+                        of the control-step sample. Quasi-static caliber; this
+                        is the column the load-path claims are read from.
+                        Resolution: 20 ms (one control step).
+      peak_control_step max over the hold window of the control-step sample.
+                        Resolution: 20 ms. CANNOT see a frame-internal spike.
+      peak_substep      max over the hold window of the per-control-step
+                        intra-frame maximum. Resolution: 2 ms (the sim
+                        timestep), sampled at the END of each completed
+                        mj_step. This is the only column that can show the
+                        frame-internal amplification stiffened contacts produce
+                        (Wave 3.5F: 9 N @ 0.6 mm -> 9.93 kN @ 20.8 mm).
+
+    Sampling alignment: we sample after each completed mj_step. A probe that
+    wraps mj_step and samples BEFORE it is offset by one substep (2 ms), i.e.
+    their index i corresponds to our index i-1. The two numbers must not be read
+    as the same quantity without applying that offset.
+
+    Signs matter and are preserved: a negative path pushes the box DOWN, which
+    is exactly what a corner wedge does with its fingers.
     """
-    hook = np.asarray(trace["hook_up_N"], dtype=float)
-    wall = np.asarray(trace["wall_up_N"], dtype=float)
-    ped = np.asarray(trace["pedestal_up_N"], dtype=float)
+    paths = ("hook", "wall", "pedestal")
+    step = {k: np.asarray(trace[f"{k}_up_N"], dtype=float) for k in paths}
+    peak = {k: np.asarray(trace.get(f"{k}_up_N_peak", []), dtype=float)
+            for k in paths}
+    streak = np.asarray(trace.get("hold_streak", []), dtype=float)
     i = int(peak_i)
-    sup = np.asarray(trace.get("support_force", []), dtype=float)
+
+    window = slice(0, i + 1)
+    hold_win = None
+    if streak.size:
+        mask = streak[: i + 1] >= 1.0
+        if mask.any():
+            hold_win = slice(0, i + 1)
+            sel = np.where(mask)[0]
+
+    def _col(arr: np.ndarray) -> dict:
+        return {
+            "at_peak_step": round(float(arr[i]) / box_weight_n, 4),
+            "mean_over_lift_window": round(
+                float(np.mean(arr[window])) / box_weight_n, 4),
+            "max_over_lift_window": round(
+                float(np.max(arr[window])) / box_weight_n, 4),
+        }
+
+    def _hold(arr: np.ndarray) -> dict:
+        if hold_win is None or sel.size == 0:
+            return {"n_steps": 0, "mean": None}
+        v = arr[sel]
+        j = int(sel[int(np.argmax(v))])
+        return {"n_steps": int(sel.size), "mean": round(
+            float(np.mean(v)) / box_weight_n, 4), "max": round(
+            float(np.max(v)) / box_weight_n, 4), "max_step": int(j)}
+
     out = {
         "peak_step": i,
-        "hook_up_N": float(hook[i]), "wall_up_N": float(wall[i]),
-        "pedestal_up_N": float(ped[i]),
         "box_weight_N": float(box_weight_n),
-        "bearing_box_weights": {
-            "hook": round(float(hook[i]) / box_weight_n, 4),
-            "wall": round(float(wall[i]) / box_weight_n, 4),
-            "pedestal": round(float(ped[i]) / box_weight_n, 4),
+        "caliber": {
+            "hold": "mean over evaluator-valid hold steps of the control-step "
+                    "sample; quasi-static caliber; resolution 20 ms (1 control "
+                    "step, 10 x 2 ms sim substeps)",
+            "peak_control_step": "max over the lift window of the control-step "
+                                 "sample; resolution 20 ms; CANNOT see a "
+                                 "frame-internal spike",
+            "peak_substep": "max over the lift window of the intra-frame "
+                            "maximum; resolution 2 ms (the sim timestep), "
+                            "sampled at the END of each completed mj_step",
+            "alignment": "a probe that samples BEFORE mj_step instead of after "
+                         "is offset by one substep (2 ms): its index i "
+                         "corresponds to ours i-1",
         },
+        "hold": {k: _hold(step[k]) for k in paths},
+        "peak_control_step": {k: _col(step[k]) for k in paths},
+        "peak_substep": ({
+            "resolution_m_s": 0.002,
+            "sampling": "end of each completed mj_step",
+            **{k: _col(peak[k]) for k in paths},
+        } if peak["hook"].size else {"resolution_m_s": 0.002,
+                                     "sampling": "not recorded"}),
     }
-    total = float(hook[i] + wall[i] + ped[i])
+    # The path decomposition at the single peak-lift step, kept verbatim: it is
+    # what the A3b diagnosis is read from and what the round's own tests pin.
+    out["bearing_box_weights"] = {
+        k: round(float(step[k][i]) / box_weight_n, 4) for k in paths}
+    total = float(sum(float(step[k][i]) for k in paths))
     out["upward_total_N"] = total
     out["net_box_weights"] = round(total / box_weight_n, 4)
+    sup = np.asarray(trace.get("support_force", []), dtype=float)
     if sup.size:
         out["support_force_N_at_peak"] = float(sup[i])
         out["support_force_box_weights_at_peak"] = round(
             float(sup[i]) / box_weight_n, 4)
         out["support_force_box_weights_mean_window"] = round(
-            float(np.mean(sup[:i + 1])) / box_weight_n, 4)
+            float(np.mean(sup[window])) / box_weight_n, 4)
     return out
 
 

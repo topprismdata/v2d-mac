@@ -60,8 +60,12 @@ EVAL_EPISODE_KEYS = {"episode", "seed", "return", "z0", "max_lift_m", "final_lif
 EVAL_TRACE_KEYS = {"obj_z", "lift", "wrist_z", "contact_force", "finger_force",
                    "contact_pairs", "obj_vz", "supported", "finger_held", "dt",
                    # round p0(4e): the pedestal-borne normal force that
-                   # W_PEDESTAL_LOAD prices, plus its three bearing paths.
-                   "support_force", "hook_up_N", "wall_up_N", "pedestal_up_N"}
+                   # W_PEDESTAL_LOAD prices, plus its three bearing paths at
+                   # control-step resolution AND their intra-frame maxima (the
+                   # _peak keys -- a stiffened contact's spike lives inside a
+                   # control step and is invisible without them).
+                   "support_force", "hook_up_N", "wall_up_N", "pedestal_up_N",
+                   "hook_up_N_peak", "wall_up_N_peak", "pedestal_up_N_peak"}
 CONTROL_KEYS = {"n_episodes", "peak_lift_m", "n_finger_contact_steps",
                 "threshold_m", "pass"}
 

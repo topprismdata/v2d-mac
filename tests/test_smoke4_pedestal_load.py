@@ -232,3 +232,107 @@ def test_p8_zero_weight_reproduces_the_pre_a3b_reward_exactly():
         "ablation is measuring two different experiments")
     assert r_off - r_on == pytest.approx(
         env_mod.W_PEDESTAL_LOAD * i_on["support_share"])
+
+
+def _rollout(record_bearing: bool, acts, xml=None):
+    """Replay ``acts`` on ``xml`` (default: the scene in the tree)."""
+    import grounding.envs.lift_hold_env as env_mod
+
+    original = env_mod.MJCF
+    if xml is not None:
+        env_mod.MJCF = xml
+    try:
+        e = env_mod.LiftHoldEnv(episode_len=len(acts) + 5, domain_rand=False)
+        e.record_bearing = record_bearing
+        e.reset(seed=0)
+        rewards = []
+        for a in acts:
+            _, r, _, _, _ = e.step(np.asarray(a, dtype=np.float64))
+            rewards.append(r)
+        snap = {
+            "qpos": e.data.qpos.copy(),
+            "ctrl": e.data.ctrl.copy(),
+            "rewards": np.asarray(rewards),
+            "trace": {k: np.asarray(v, dtype=np.float64)
+                      for k, v in e.trace.items()
+                      if k != "contact_pairs" and len(v)},
+        }
+        e.close()
+        return snap
+    finally:
+        env_mod.MJCF = original
+
+
+def test_p9_substep_sampling_is_bit_identical_when_disabled():
+    """Main's condition 1: record_bearing off must be BIT-identical, not close.
+
+    The intra-frame bearing sampler runs inside the frame loop. It only READS
+    contacts, so it cannot perturb physics - but "cannot" is an argument, and a
+    refactor that moved a write into that loop would pass every tolerance-based
+    assertion while changing the trajectory. Hence exact equality on qpos, ctrl,
+    per-step reward and every numeric trace, over a rollout long enough to
+    include contacts (the box rests on the pedestal from step 0, and the hand
+    descends into it).
+    """
+    import grounding.envs.lift_hold_env as env_mod
+
+    rng = np.random.default_rng(11)
+    acts = rng.uniform(-1.0, 1.0, (120, 22))
+
+    off = _rollout(False, acts)
+    on = _rollout(True, acts)
+
+    assert off["qpos"].tobytes() == on["qpos"].tobytes(), (
+        "qpos diverged with record_bearing on - the sampler is perturbing "
+        "physics it must only observe")
+    assert off["ctrl"].tobytes() == on["ctrl"].tobytes()
+    assert off["rewards"].tobytes() == on["rewards"].tobytes(), (
+        "per-step rewards diverged; the reward path must not depend on whether "
+        "extra diagnostics were recorded")
+    # The bearing keys are ABSENT when the sampler is off (the whole bearing
+    # block is gated on record_bearing), so the invariant is "off's keys are a
+    # subset of on's, and every shared key is bit-identical" - not equality of
+    # key sets. Extra keys are diagnostics, not state.
+    off_keys, on_keys = set(off["trace"]), set(on["trace"])
+    assert off_keys < on_keys, (
+        f"record_bearing=False must trace strictly fewer series than True; "
+        f"off-only={sorted(off_keys - on_keys)} on-only={sorted(on_keys - off_keys)}")
+    assert on_keys - off_keys == {
+        "hook_up_N", "wall_up_N", "pedestal_up_N",
+        "hook_up_N_peak", "wall_up_N_peak", "pedestal_up_N_peak"}, (
+        f"enabling the sampler must add exactly the six bearing series, got "
+        f"{sorted(on_keys - off_keys)}")
+    for k, v in off["trace"].items():
+        assert v.tobytes() == on["trace"][k].tobytes(), f"trace {k} diverged"
+    assert not any("up_N" in k for k in off_keys), (
+        "no bearing series may be recorded when record_bearing is off")
+
+
+def test_p10_substep_max_is_never_below_the_control_step_sample():
+    """The intra-frame maximum dominates the end-of-frame sample by construction.
+
+    If this fails the two columns are not measuring what their names claim, and
+    any "peak" downstream reading would be wrong.
+    """
+    from grounding.envs.lift_hold_env import LiftHoldEnv
+
+    e = LiftHoldEnv(episode_len=80, domain_rand=False)
+    e.record_bearing = True
+    e.reset(seed=0)
+    rng = np.random.default_rng(5)
+    for _ in range(80):
+        e.step(rng.uniform(-1.0, 1.0, 22))
+    for k in ("hook", "wall", "pedestal"):
+        step = np.asarray(e.trace[f"{k}_up_N"], dtype=float)
+        sub = np.asarray(e.trace[f"{k}_up_N_peak"], dtype=float)
+        assert len(step) == len(sub) > 0
+        assert np.all(sub >= step - 1e-12), (
+            f"{k}: the intra-frame maximum is below the end-of-frame sample on "
+            f"{int(np.sum(sub < step - 1e-12))} steps - the peak column is not a "
+            "maximum")
+    assert np.any(np.asarray(e.trace["pedestal_up_N_peak"])
+                  > np.asarray(e.trace["pedestal_up_N"])), (
+        "the resting box is pinned by the pedestal for the whole rollout; if "
+        "the intra-frame max never exceeds the end-of-frame sample the sampler "
+        "is probably not running per substep at all")
+    e.close()

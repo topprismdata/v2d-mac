@@ -505,6 +505,10 @@ class LiftHoldEnv(gym.Env):
         # loop. Training leaves it off; the evaluation run switches it on so
         # every episode can report where the box's weight was actually going.
         self.record_bearing = False
+        # Substep-resolution bearing maxima for the step that just ran, or None
+        # when record_bearing is off. Read only after step(); see the sampling
+        # comment there for the alignment with other probes.
+        self._substep_bearing: dict[str, float] | None = None
         self.episode_info: dict[str, Any] = {}
         # full per-step trace of the most recent episode (used by the acceptance test)
         self.trace: dict[str, list] = {}
@@ -616,9 +620,11 @@ class LiftHoldEnv(gym.Env):
         self._history = np.zeros(8)
         self.last_contact_pairs = []
         self.last_contact_force = 0.0
+        self._substep_bearing = None
         self.trace = {"obj_z": [], "contact_force": [], "finger_force": [],
                       "support_force": [], "hook_up_N": [], "wall_up_N": [],
-                      "pedestal_up_N": [], "contact_pairs": [], "obj_vz": [],
+                      "pedestal_up_N": [], "hook_up_N_peak": [], "wall_up_N_peak": [],
+                      "pedestal_up_N_peak": [], "contact_pairs": [], "obj_vz": [],
                       "supported": [], "finger_held": [], "hold_streak": [],
                       "free_flight": [], "wrist_z": [], "lift": []}
         self._ep: dict[str, list[float]] = {"grasp": [], "hold": [], "streak": []}
@@ -845,8 +851,34 @@ class LiftHoldEnv(gym.Env):
         if not isinstance(action, np.ndarray) or action.shape != (N_ACT,):
             raise ValueError(f"action must be shape ({N_ACT},), got {action!r}")
         self._apply_action(action)
-        for _ in range(self.frame_skip):
-            mujoco.mj_step(self.model, self.data)
+        if self.record_bearing:
+            # Substep-resolution bearing sampling. A stiffened contact's frame-
+            # internal spike lives INSIDE a control step (50 Hz control = 10 x
+            # 2 ms sim substeps), so a single sample taken after the frame loop
+            # cannot see it: Wave 3.5F's own note records 9 N @ 0.6 mm becoming
+            # 9.93 kN @ 20.8 mm as an intra-frame event. Sampling after each
+            # substep and keeping the running max is what makes the third
+            # bearing column mean what its name says.
+            #
+            # Sampling points: the END of each completed mj_step, i.e. the same
+            # substep boundaries the physics is integrated on. If another probe
+            # wraps mj_step and samples BEFORE it, its index i corresponds to
+            # our index i-1 - a one-substep (2 ms) offset. report.json carries
+            # that alignment so the two numbers are never read as one quantity.
+            sub = {"hook_up_N": -np.inf, "wall_up_N": -np.inf,
+                   "pedestal_up_N": -np.inf}
+            for _ in range(self.frame_skip):
+                mujoco.mj_step(self.model, self.data)
+                b = self._bearing()
+                for k, v in b.items():
+                    if v > sub[k]:
+                        sub[k] = v
+            self._substep_bearing = {k: (0.0 if not np.isfinite(v) else v)
+                                     for k, v in sub.items()}
+        else:
+            for _ in range(self.frame_skip):
+                mujoco.mj_step(self.model, self.data)
+            self._substep_bearing = None
         rew, rinfo = self._reward()
 
         self._ep["grasp"].append(rinfo["grasp"])
@@ -872,6 +904,8 @@ class LiftHoldEnv(gym.Env):
             b = self._bearing()
             for k, v in b.items():
                 self.trace[k].append(v)
+            for k, v in self._substep_bearing.items():
+                self.trace[f"{k}_peak"].append(v)
         self.trace["contact_pairs"].append([list(p) for p in rinfo["pairs"]])
         # per-step state the acceptance gates segment on: vertical velocity (for the
         # gravity-consistency check on a free-falling box) and whether the box was
