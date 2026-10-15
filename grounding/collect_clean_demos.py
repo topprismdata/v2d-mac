@@ -93,7 +93,7 @@ DEMO_NPZ = OUT_DIR / "clean_demos.npz"
 DIAG_JSON = OUT_DIR / "clean_lift_diagnose.json"
 VERDICT_JSON = OUT_DIR / "clean_lift_verdict.json"
 
-MJCF_COMMIT = "4508421"
+MJCF_COMMIT = "4ee6f1d"
 N_WRIST = 6
 N_FINGER = 16
 

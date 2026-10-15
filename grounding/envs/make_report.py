@@ -191,6 +191,7 @@ def main() -> None:
         },
         "model": {
             "xml": "grounding/assets/allegro_floating.xml",
+            "mjcf_commit": "4ee6f1d",
             "upstream": "google-deepmind/mujoco_menagerie wonik_allegro "
                         "@ d7b481bac63d3d600ab404ee74f7474c5efe8a67",
             "xml_sha256": _sha256(REPO / "grounding/assets/allegro_floating.xml"),

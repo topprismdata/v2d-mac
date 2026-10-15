@@ -1,13 +1,13 @@
 {
-  "mjcf_commit": "4508421",
+  "mjcf_commit": "4ee6f1d",
   "samples": 60000,
   "poses_with_finger_contact": 16609,
   "poses_touching_with_pads_only": 231,
   "poses_with_opposite_wall_pad_pinch": 0,
   "median_buried_geoms_when_contacting": 4.0,
   "max_buried_geoms": 16,
-  "palm_force_into_box_N": 26.42141561354158,
+  "palm_force_into_box_N": 26.516939861137708,
   "box_weight_N": 1.4715,
-  "palm_overload_ratio": 17.95543025045299,
+  "palm_overload_ratio": 18.020346490749375,
   "clean_lift_exists": false
 }
