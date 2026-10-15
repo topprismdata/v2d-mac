@@ -412,6 +412,27 @@ def test_r2_untouched_wrist_axes_keep_their_exact_range(model):
         )
 
 
+# ===================================================================== Wave 3.5-C
+def test_w35c_wrist_rx_travel_widened_for_the_thumb_opposition_cone(model):
+    """Wave 3.5-C: runs/w35/verdict.json proved the thumb opposition cone bottoms
+    out 13.702 mm above the box top in every feasible pose at three pedestal
+    heights - the cone is fixed relative to the palm, and K3 (palm clear of the
+    box top) pins the palm. The one wrist DOF that pitches the cone down without
+    lifting the opposite long fingers is wrist_rx, whose +/-1.2 rad cap the
+    earlier scans never probed past |0.6| rad. Travel widened to +/-1.8 rad
+    (same R2 principle: travel is a modelling choice and must cover the task
+    workspace); the K1 verification numbers live in runs/w35/rx_widen_scan.json."""
+    jid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, "wrist_rx")
+    bid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, "wrist_rx")
+    lo, hi = model.jnt_range[jid]
+    assert (lo, hi) == pytest.approx((-1.80, 1.80), abs=1e-9), (
+        f"wrist_rx travel is [{lo:.6g}, {hi:.6g}]; Wave 3.5-C widened it to "
+        f"[-1.8, 1.8] for the thumb opposition cone"
+    )
+    assert tuple(model.actuator_ctrlrange[bid]) == pytest.approx(
+        (-1.80, 1.80), abs=1e-9), "wrist_rx ctrlrange must match the joint range"
+
+
 def test_r2_commanded_smoke5_trajectory_now_fits(model):
     """The point of R2: replaying the actual smoke5 command minima must land inside
     ctrlrange on every axis. This is the end-to-end form of the residual claim."""

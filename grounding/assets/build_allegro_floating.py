@@ -140,7 +140,7 @@ WRIST_TRAVEL_ADD_M = {
 WRIST_UNCHANGED = {
     "wrist_x": (-0.18, 0.18),
     "wrist_y": (-0.18, 0.18),
-    "wrist_rx": (-1.20, 1.20),
+    "wrist_rx": (-1.80, 1.80),
     "wrist_rz": (-1.57, 1.57),
 }
 WRIST_DAMPING = {"slide": "25", "hinge": "1.2"}

@@ -319,3 +319,10 @@ void — and smoke5 must re-run. Both are the next round's job.
 * kp is checked against `I_eff` minima sampled from the joint space, not against a
   contact-loaded configuration, where the effective inertia of a pressed finger is
   lower and the true bandwidth requirement slightly higher.
+
+## Wave 3.5-C（2026-10-15）：腕部俯仰行程 ±1.2 → ±1.8 rad——必要不充分
+
+- 依据：rx 降指必翻（三长指高度差 47/65/78mm）、rz 保平不能降（runs/w35/verdict.json）；R2 同原则（行程=建模选择，须覆盖任务工作空间）
+- **效果（诚实记账）**：拇指下探可行位姿 0% → 1279/53,624（0.70%，随 +rx 单调上升）；联合指标 13.702mm → **0.089mm**（154×）
+- **K1 双侧接触仍为 0**（263 万位姿全局 + 50 万局部致密 + rx=±2.2/2.6 外推）：拇指入盒顶下的位姿族与长指触壁位姿族**互斥**（互斥间隙 ≥14.5mm 局部 / ≥27.6mm 全局）；外推 rx 恶化（joint 指标 14.3→20.2mm）→ 残余是**转轴几何耦合**，非行程量问题
+- 新 XML sha256 `dbba3d70…`；证据 runs/w35/rx_widen_scan / rx_coupling_diag / rx_local_dense；下一杠杆：拇指对向锥建模保真度（对照 Allegro URDF 实有范围）、手姿态或盒-手相对滚转（rz）解耦

@@ -159,7 +159,7 @@
         damping="25" armature="0.03"/>
       <joint name="wrist_z" type="slide" axis="0 0 1" range="-0.163 0.16"
         damping="25" armature="0.03"/>
-      <joint name="wrist_rx" type="hinge" axis="1 0 0" range="-1.2 1.2"
+      <joint name="wrist_rx" type="hinge" axis="1 0 0" range="-1.8 1.8"
         damping="1.2" armature="0.03"/>
       <joint name="wrist_ry" type="hinge" axis="0 1 0" range="-1.259 1.2"
         damping="1.2" armature="0.03"/>
@@ -284,7 +284,7 @@
       forcerange="-45 45"/>
     <position name="wrist_az" joint="wrist_z" kp="180" ctrlrange="-0.163 0.16"
       forcerange="-45 45"/>
-    <position name="wrist_rx" joint="wrist_rx" kp="14" ctrlrange="-1.2 1.2"
+    <position name="wrist_rx" joint="wrist_rx" kp="14" ctrlrange="-1.8 1.8"
       forcerange="-6 6"/>
     <position name="wrist_ry" joint="wrist_ry" kp="14" ctrlrange="-1.259 1.2"
       forcerange="-6 6"/>
