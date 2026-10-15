@@ -36,11 +36,17 @@ if str(REPO) not in sys.path:
 
 from retarget import retarget_smoke as rs  # noqa: E402
 
-#: The MJCF revision this re-run is accounted against.
-MJCF_COMMIT = "4508421"
+#: The MJCF revision this re-run is accounted against.  Wave 3.5-E (the
+#: finger-proximal <pair> block) landed in 1b0f13f and that is the XML in the
+#: tree, but the pin was still on 4508421 -- so every rerun restamped the
+#: artefact with a commit whose blob does not match the tree and a false
+#: "does not match" guard.  Verified: blob(1b0f13f) == sha256 of the tree.
+MJCF_COMMIT = "1b0f13f"
 #: The MJCF revision the *previous* smoke-5 numbers were taken on. Kept so the
-#: two data sets can never be silently mixed.
-MJCF_COMMIT_BASELINE = "ff5ec17"
+#: two data sets can never be silently mixed.  4ee6f1d is the last commit
+#: before the proximal pairs -- the superseded physics the artefacts were
+#: already stamped against.
+MJCF_COMMIT_BASELINE = "4ee6f1d"
 
 OUT_DIR = REPO / "runs/p0/smoke5_retarget"
 REPORT_PATH = OUT_DIR / "report.json"

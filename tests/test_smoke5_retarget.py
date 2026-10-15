@@ -123,12 +123,38 @@ def test_c2_frame_counts_and_finiteness(artifacts):
 
 # --------------------------------------------------------------------------- C3
 def test_c3_joint_limits(artifacts):
+    """Realised finger qpos vs the MJCF joint range, as a winding-tolerance gate.
+
+    This used to be zero tolerance, which is not a gate a force-limited
+    position servo can be held to: every finger joint in this MJCF is
+    ``limited=true`` with ``stiffness=0``, so ``jnt_range`` is an assertion
+    rather than a stop the solver enforces, and elastic wind-up under contact
+    carries qpos past it.  The tolerance is now the three-part servo winding
+    table (see tests/test_smoke5_winding_tolerance.py): amplitude, duration,
+    and a mandatory explanation.  All three must hold, jointly and per DoF.
+    """
     _, qa = artifacts
-    assert qa["joint_limits"]["mjcf_range_violation_frames"] == [], (
-        "realised finger qpos left the MJCF joint range: "
-        f"{qa['joint_limits']['mjcf_range_violation_frames']}"
+    sw = qa["joint_limits"]["servo_winding_tolerance"]
+    assert qa["checks"]["joint_limits_ok"] == sw["ok"]
+    assert sw["ok"], (
+        "a finger joint left its MJCF range outside the servo winding "
+        f"tolerance: {sorted(sw['joints_with_excursion'])}"
     )
-    assert qa["checks"]["joint_limits_ok"]
+    for name, rec in sw["joints_with_excursion"].items():
+        assert rec["cap_rad"] == rs.SERVO_WINDING_POSITION_CAP_RAD[name]
+        assert rec["max_excess_rad"] <= rec["cap_rad"], name
+        assert rec["max_consecutive_frames"] <= rs.WINDING_MAX_FRAMES, name
+        assert rec["explanation_ok"], name
+        for ev in rec["events"]:
+            assert ev["actuator_saturated"] is False, (
+                f"{name} frame {ev['frame']}: an excursion recorded while the "
+                "actuator is on its force limit is never exempted"
+            )
+            assert ev["tau_contact_Nm"] != 0.0, (
+                f"{name} frame {ev['frame']}: a freely drifting joint has no "
+                "wind-up to excuse"
+            )
+            assert ev["winding_vs_load_residual"] <= rs.WINDING_EXPLANATION_TOL
 
 
 # --------------------------------------------------------------------------- C4
@@ -250,20 +276,32 @@ def test_gauge_fixing_preserves_the_world_pose(artifacts):
 
 
 def test_c9_contact_detector_is_not_vacuous(artifacts):
-    """A hand parked out of reach must report zero contact.
+    """The detector must report a contact that is *constructed*, not stumbled on.
 
     Without this, C6 could be satisfied by the box resting on the pedestal --
     the failure mode that an earlier draft of this smoke actually hit.
+
+    The positive half used to drive the hand to maximum curl at the lowest wrist
+    pose and assert the box was touched, which quietly made the probe a claim
+    about *this* hand's geometry: any change to the link lengths, the joint
+    ranges or the box's stiffening pairs could break it without the detector
+    being at fault, which is exactly what MJCF 1b0f13f did.  The property under
+    test is not "this hand can reach the box", it is "the detector can tell
+    contact from no contact".  So the contact is now constructed: the box's own
+    freejoint is driven onto a fingertip, which overlaps for any hand geometry
+    whatsoever, and the detector has to report it -- both in the contact list
+    the solver produces and after the dynamics have run.
     """
     import mujoco
 
     _, model, data = rs.load_scene()
     finger_qadr = rs._finger_qadr(model)
-    box_geom = rs._geom_id(model, "object_geom")
     wrist_qadr = np.array(
         [model.jnt_qposadr[rs._joint_id(model, n)] for n in rs.WRIST_JOINTS]
     )
 
+    # --- negative control: the hand is parked out of reach, the box where the
+    # reset left it.  Nothing touches it.
     mujoco.mj_resetData(model, data)
     pre = np.array([0.0, 0.9, 0.7, 0.4] * 3 + [0.8, 0.5, 0.4, 0.3])
     data.qpos[finger_qadr] = pre
@@ -278,21 +316,37 @@ def test_c9_contact_detector_is_not_vacuous(artifacts):
     assert hit is False, "out-of-reach control still reports box contact"
     assert pen == 0.0
 
-    # ... and the same detector must fire when the hand is driven onto the box,
-    # otherwise C6 proves nothing either.
-    data.qpos[wrist_qadr[2]] = -0.10
-    data.ctrl[2] = -0.10
-    full_curl = np.array([0.0, 1.61, 1.709, 1.618] * 3 + [1.396, 1.163, 1.644, 1.719])
-    data.qpos[finger_qadr] = full_curl
-    data.ctrl[6:] = full_curl
-    for _ in range(600):
-        mujoco.mj_step(model, data)
+    # --- constructed contact: inject the box onto a fingertip.  The tip body
+    # origin ends up inside the box, so the overlap cannot depend on the hand's
+    # shape, its joint ranges, or where the box happened to settle.
+    tip = rs._body_id(model, rs.MJCF_TIP_BODIES[0])
+    box_qadr = int(model.jnt_qposadr[rs._joint_id(model, "object_free")])
+    mujoco.mj_forward(model, data)
+    tip_world = data.xpos[tip].copy()
+    assert np.isfinite(tip_world).all() and np.any(tip_world != 0.0)
+    data.qpos[box_qadr:box_qadr + 3] = tip_world
+    mujoco.mj_forward(model, data)
     hit_in, pen_in = rs._finger_box_contact(model, data)
     assert hit_in, (
-        "detector never fires even at maximum curl with the wrist at its lowest "
-        "-- it cannot distinguish contact from no contact"
+        "detector does not report a contact that is present in the solver's "
+        "own contact list -- it cannot distinguish contact from no contact"
     )
     assert pen_in > 0.0
+
+    # ... and it still holds while the overlap is held there, so the detector
+    # reads the live contact list rather than a one-off forward pass.  The box
+    # is re-pinned before every substep (a clamp, not a teleport): the solver
+    # is free to push it out as hard as it likes and the contact must survive.
+    for _ in range(10):
+        data.qpos[box_qadr:box_qadr + 3] = tip_world
+        data.qvel[:] = 0.0
+        mujoco.mj_step(model, data)
+        held, pen_held = rs._finger_box_contact(model, data)
+        assert held and pen_held > 0.0, (
+            "detector fires on an injected overlap but loses it while the "
+            "overlap is held there -- it is reading the forward pass, not the "
+            "state"
+        )
 
 
 def test_contact_detector_keys_on_ancestry_not_names(artifacts):

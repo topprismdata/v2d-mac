@@ -4,7 +4,7 @@
   "verdict_checks": {
     "frame_counts_consistent": true,
     "all_finite": true,
-    "joint_limits_ok": false,
+    "joint_limits_ok": true,
     "joint_velocity_ok": true,
     "joint_acceleration_ok": true,
     "penetration_ok": true,
@@ -16,7 +16,7 @@
     "base_displacement_within_cap": true,
     "hand_world_pose_deviation_within_cap": false
   },
-  "verdict_reason": "failing G3 criteria: joint_limits_ok, hand_world_pose_deviation_within_cap -- see retarget_qa.json",
+  "verdict_reason": "failing G3 criteria: hand_world_pose_deviation_within_cap -- see retarget_qa.json",
   "blocker": {
     "what": "the base solve and the constrained solve removed every executability failure -- the command now fits its ctrlrange and joint range and respects all three signed velocity limits -- but the hand still sits 102 mm away from the pose it is commanded to, because the palm collision plate rests on the box and the wrist position servos spend their force budget holding it there instead of closing the fingers. Only one of four fingertips is within grasp radius of the box at the closest-approach frame, so this is a palm-down rest, not the grasp the clip describes.",
     "root_cause_fixed_this_round": {
@@ -1344,6 +1344,504 @@
         "wrist_slide": 0.34401380821545785,
         "wrist_hinge": 1.7234307511472924
       },
+      "servo_winding_rate": {
+        "ok": true,
+        "rule": "three-part servo winding tolerance, per wrist hinge: (1) realised rate <= |forcerange|/dof_damping, (2) at most 3 consecutive control intervals above that same cap, (3) every interval in which the servo outran the command-side trackable rate 1.5 rad/s has its excess over the commanded rate explained as this DoF's own wind-up release (release_j(t) = sqrt(kp_j * windup_j(t)^2 / (dof_M0_j + armature_j)), windup_j(t) = ctrl_j(t) - qpos_j(t)) with the actuator off its force limit. kv = 0 does not weaken the bound: dof_damping = 1.2 is what makes a finite bound exist at all. The bound is tight -- the free-space step asymptote of this servo plateaus at 4.90-4.97 rad/s (both directions, both step signs), within 2% of it; with dof_damping forced to 0 the plateau disappears entirely.",
+        "rejected_forms": {
+          "dv <= a_max * tau_s": {
+            "value_rad_s": {
+              "wrist_rx": 27.886,
+              "wrist_ry": 27.33,
+              "wrist_rz": 26.787
+            },
+            "rejected_because": "an order of magnitude above the measured transient: forcerange/I ~ 94-98 rad/s^2 is the acceleration ceiling of a kp=14, I~0.062 wrist hinge, and tau_s = 0.2857 s is a window the command rate gives, not the servo.  A bound an order of magnitude above every achievable value gates nothing."
+          }
+        },
+        "command_side_cap_rad_s": 1.5,
+        "max_frames": 3,
+        "joints": {
+          "wrist_rx": {
+            "cap_rad_s": 5.0,
+            "cap_units": "m/s",
+            "cap_formula": "|forcerange| / dof_damping",
+            "cap_from_model_rad_s": 5.0,
+            "dof_damping": 1.2,
+            "kv_Nm_s_per_rad": 0.0,
+            "gain_only_ok": true,
+            "inertia_kg_m2": 0.06147473997985312,
+            "command_side_cap_rad_s": 1.5,
+            "peak_realised_rad_s": 1.7234307511472924,
+            "margin_x": 2.9011899646513135,
+            "amplitude_ok": true,
+            "max_consecutive_intervals": 0,
+            "max_consecutive_intervals_over_command_cap": 10,
+            "frame_limit": 3,
+            "duration_ok": true,
+            "explanation_ok": true,
+            "release_formula": "release_j(t) = sqrt(kp_j * windup_j(t)^2 / (dof_M0_j + armature_j)), windup_j(t) = ctrl_j(t) - qpos_j(t)",
+            "events": [
+              {
+                "interval": 4,
+                "realised_rate_rad_s": 1.5583919647947757,
+                "commanded_rate_rad_s": 1.4999999985,
+                "excess_rad_s": 0.05839196629477561,
+                "windup_rad": 0.14096858552977762,
+                "release_rad_s": 2.1273454056024415,
+                "release_window_rad_s": 2.1273454056024415,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              },
+              {
+                "interval": 5,
+                "realised_rate_rad_s": 1.6438962614813157,
+                "commanded_rate_rad_s": 1.4999999985000012,
+                "excess_rad_s": 0.14389626298131453,
+                "windup_rad": 0.13804898721503883,
+                "release_rad_s": 2.083285985996843,
+                "release_window_rad_s": 2.1273454056024415,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              },
+              {
+                "interval": 6,
+                "realised_rate_rad_s": 1.69331831004643,
+                "commanded_rate_rad_s": 1.4999999985000012,
+                "excess_rad_s": 0.19331831154642876,
+                "windup_rad": 0.1308541740659731,
+                "release_rad_s": 1.9747096486567774,
+                "release_window_rad_s": 2.1273454056024415,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              },
+              {
+                "interval": 7,
+                "realised_rate_rad_s": 1.7024541895331557,
+                "commanded_rate_rad_s": 1.4999999985000012,
+                "excess_rad_s": 0.20245419103315454,
+                "windup_rad": 0.12118825848865167,
+                "release_rad_s": 1.8288421064871625,
+                "release_window_rad_s": 2.083285985996843,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              },
+              {
+                "interval": 8,
+                "realised_rate_rad_s": 1.6699299932266531,
+                "commanded_rate_rad_s": 1.4999999985000012,
+                "excess_rad_s": 0.16992999472665193,
+                "windup_rad": 0.11106554893699394,
+                "release_rad_s": 1.6760811237757471,
+                "release_window_rad_s": 1.9747096486567774,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              },
+              {
+                "interval": 9,
+                "realised_rate_rad_s": 1.649821682923287,
+                "commanded_rate_rad_s": 1.4999999985000012,
+                "excess_rad_s": 0.1498216844232858,
+                "windup_rad": 0.10256904920066134,
+                "release_rad_s": 1.547861140508827,
+                "release_window_rad_s": 1.8288421064871625,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              },
+              {
+                "interval": 10,
+                "realised_rate_rad_s": 1.6885774689803368,
+                "commanded_rate_rad_s": 1.4999999985000012,
+                "excess_rad_s": 0.18857747048033557,
+                "windup_rad": 0.09507796497949705,
+                "release_rad_s": 1.4348138006282085,
+                "release_window_rad_s": 1.6760811237757471,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              },
+              {
+                "interval": 11,
+                "realised_rate_rad_s": 1.7234307511472924,
+                "commanded_rate_rad_s": 1.4999999985000012,
+                "excess_rad_s": 0.22343075264729118,
+                "windup_rad": 0.08564909145548028,
+                "release_rad_s": 1.292523440716166,
+                "release_window_rad_s": 1.547861140508827,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              },
+              {
+                "interval": 12,
+                "realised_rate_rad_s": 1.669901515006993,
+                "commanded_rate_rad_s": 1.499999998499999,
+                "excess_rad_s": 0.16990151650699392,
+                "windup_rad": 0.07447755382311572,
+                "release_rad_s": 1.1239346791391738,
+                "release_window_rad_s": 1.4348138006282085,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              },
+              {
+                "interval": 13,
+                "realised_rate_rad_s": 1.5003747992302596,
+                "commanded_rate_rad_s": 1.499999998499999,
+                "excess_rad_s": 0.0003748007302606382,
+                "windup_rad": 0.06598247799776602,
+                "release_rad_s": 0.9957361839965478,
+                "release_window_rad_s": 1.292523440716166,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              }
+            ],
+            "ok": true
+          },
+          "wrist_ry": {
+            "cap_rad_s": 5.0,
+            "cap_units": "m/s",
+            "cap_formula": "|forcerange| / dof_damping",
+            "cap_from_model_rad_s": 5.0,
+            "dof_damping": 1.2,
+            "kv_Nm_s_per_rad": 0.0,
+            "gain_only_ok": true,
+            "inertia_kg_m2": 0.06272474712351253,
+            "command_side_cap_rad_s": 1.5,
+            "peak_realised_rad_s": 1.6171128319031596,
+            "margin_x": 3.091930198906135,
+            "amplitude_ok": true,
+            "max_consecutive_intervals": 0,
+            "max_consecutive_intervals_over_command_cap": 2,
+            "frame_limit": 3,
+            "duration_ok": true,
+            "explanation_ok": true,
+            "release_formula": "release_j(t) = sqrt(kp_j * windup_j(t)^2 / (dof_M0_j + armature_j)), windup_j(t) = ctrl_j(t) - qpos_j(t)",
+            "events": [
+              {
+                "interval": 3,
+                "realised_rate_rad_s": 1.5084782741251146,
+                "commanded_rate_rad_s": 1.4999999985,
+                "excess_rad_s": 0.008478275625114495,
+                "windup_rad": 0.13256558418680411,
+                "release_rad_s": 1.9805022871441917,
+                "release_window_rad_s": 1.9805022871441917,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              },
+              {
+                "interval": 4,
+                "realised_rate_rad_s": 1.6171128319031596,
+                "commanded_rate_rad_s": 1.4412550759510634,
+                "excess_rad_s": 0.17585775595209618,
+                "windup_rad": 0.1321416704055484,
+                "release_rad_s": 1.9741691033206599,
+                "release_window_rad_s": 1.9805022871441917,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              }
+            ],
+            "ok": true
+          },
+          "wrist_rz": {
+            "cap_rad_s": 5.0,
+            "cap_units": "m/s",
+            "cap_formula": "|forcerange| / dof_damping",
+            "cap_from_model_rad_s": 5.0,
+            "dof_damping": 1.2,
+            "kv_Nm_s_per_rad": 0.0,
+            "gain_only_ok": true,
+            "inertia_kg_m2": 0.06399634656844386,
+            "command_side_cap_rad_s": 1.5,
+            "peak_realised_rad_s": 1.6033066120202744,
+            "margin_x": 3.1185550926529664,
+            "amplitude_ok": true,
+            "max_consecutive_intervals": 0,
+            "max_consecutive_intervals_over_command_cap": 4,
+            "frame_limit": 3,
+            "duration_ok": true,
+            "explanation_ok": true,
+            "release_formula": "release_j(t) = sqrt(kp_j * windup_j(t)^2 / (dof_M0_j + armature_j)), windup_j(t) = ctrl_j(t) - qpos_j(t)",
+            "events": [
+              {
+                "interval": 4,
+                "realised_rate_rad_s": 1.539606308960283,
+                "commanded_rate_rad_s": 1.4999999985,
+                "excess_rad_s": 0.039606310460282845,
+                "windup_rad": 0.11337516800995484,
+                "release_rad_s": 1.6768892116058178,
+                "release_window_rad_s": 1.6768892116058178,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              },
+              {
+                "interval": 5,
+                "realised_rate_rad_s": 1.5952015518265794,
+                "commanded_rate_rad_s": 1.4999999985,
+                "excess_rad_s": 0.09520155332657931,
+                "windup_rad": 0.1113948524869407,
+                "release_rad_s": 1.6475991140085524,
+                "release_window_rad_s": 1.6768892116058178,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              },
+              {
+                "interval": 6,
+                "realised_rate_rad_s": 1.6033066120202744,
+                "commanded_rate_rad_s": 1.4999999985000012,
+                "excess_rad_s": 0.10330661352027315,
+                "windup_rad": 0.10663477482061173,
+                "release_rad_s": 1.5771946063444757,
+                "release_window_rad_s": 1.6768892116058178,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              },
+              {
+                "interval": 7,
+                "realised_rate_rad_s": 1.573430085469213,
+                "commanded_rate_rad_s": 1.4999999985000012,
+                "excess_rad_s": 0.07343008696921172,
+                "windup_rad": 0.10146944414459808,
+                "release_rad_s": 1.5007961547521187,
+                "release_window_rad_s": 1.6475991140085524,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              }
+            ],
+            "ok": true
+          }
+        }
+      },
+      "servo_winding_rate_slide": {
+        "ok": true,
+        "rule": "three-part servo winding tolerance, per wrist hinge: (1) realised rate <= |forcerange|/dof_damping, (2) at most 3 consecutive control intervals above that same cap, (3) every interval in which the servo outran the command-side trackable rate 0.2 rad/s has its excess over the commanded rate explained as this DoF's own wind-up release (release_j(t) = sqrt(kp_j * windup_j(t)^2 / (dof_M0_j + armature_j)), windup_j(t) = ctrl_j(t) - qpos_j(t)) with the actuator off its force limit. kv = 0 does not weaken the bound: dof_damping = 1.2 is what makes a finite bound exist at all. The bound is tight -- the free-space step asymptote of this servo plateaus at 4.90-4.97 rad/s (both directions, both step signs), within 2% of it; with dof_damping forced to 0 the plateau disappears entirely.",
+        "rejected_forms": {
+          "dv <= a_max * tau_s": {
+            "value_rad_s": {
+              "wrist_rx": 27.886,
+              "wrist_ry": 27.33,
+              "wrist_rz": 26.787
+            },
+            "rejected_because": "an order of magnitude above the measured transient: forcerange/I ~ 94-98 rad/s^2 is the acceleration ceiling of a kp=14, I~0.062 wrist hinge, and tau_s = 0.2857 s is a window the command rate gives, not the servo.  A bound an order of magnitude above every achievable value gates nothing."
+          }
+        },
+        "command_side_cap_rad_s": 0.2,
+        "max_frames": 3,
+        "joints": {
+          "wrist_x": {
+            "cap_rad_s": 1.8,
+            "cap_units": "m/s",
+            "cap_formula": "|forcerange| / dof_damping",
+            "cap_from_model_rad_s": 1.8,
+            "dof_damping": 25.0,
+            "kv_Nm_s_per_rad": 0.0,
+            "gain_only_ok": true,
+            "inertia_kg_m2": 0.704495548133446,
+            "command_side_cap_rad_s": 0.2,
+            "peak_realised_rad_s": 0.34401380821545785,
+            "margin_x": 5.232348112238127,
+            "amplitude_ok": true,
+            "max_consecutive_intervals": 0,
+            "max_consecutive_intervals_over_command_cap": 9,
+            "frame_limit": 3,
+            "duration_ok": true,
+            "explanation_ok": true,
+            "release_formula": "release_j(t) = sqrt(kp_j * windup_j(t)^2 / (dof_M0_j + armature_j)), windup_j(t) = ctrl_j(t) - qpos_j(t)",
+            "events": [
+              {
+                "interval": 6,
+                "realised_rate_rad_s": 0.2004673165288963,
+                "commanded_rate_rad_s": 0.19999999980000016,
+                "excess_rad_s": 0.0004673167288961333,
+                "windup_rad": 0.026394732193199502,
+                "release_rad_s": 0.4219047218658345,
+                "release_window_rad_s": 0.4219047218658345,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              },
+              {
+                "interval": 7,
+                "realised_rate_rad_s": 0.22895059603988507,
+                "commanded_rate_rad_s": 0.19999999980000016,
+                "excess_rad_s": 0.028950596239884913,
+                "windup_rad": 0.026371366356754695,
+                "release_rad_s": 0.4215312323129096,
+                "release_window_rad_s": 0.4219047218658345,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              },
+              {
+                "interval": 8,
+                "realised_rate_rad_s": 0.256032501183745,
+                "commanded_rate_rad_s": 0.19999999980000016,
+                "excess_rad_s": 0.056032501383744826,
+                "windup_rad": 0.02492383654476045,
+                "release_rad_s": 0.3983932948543404,
+                "release_window_rad_s": 0.4219047218658345,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              },
+              {
+                "interval": 9,
+                "realised_rate_rad_s": 0.2714239858867404,
+                "commanded_rate_rad_s": 0.19999999980000016,
+                "excess_rad_s": 0.07142398608674022,
+                "windup_rad": 0.02212221147557321,
+                "release_rad_s": 0.3536109179415587,
+                "release_window_rad_s": 0.4215312323129096,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              },
+              {
+                "interval": 10,
+                "realised_rate_rad_s": 0.2948904161384419,
+                "commanded_rate_rad_s": 0.19999999980000016,
+                "excess_rad_s": 0.09489041633844175,
+                "windup_rad": 0.018551012171236198,
+                "release_rad_s": 0.2965273363315901,
+                "release_window_rad_s": 0.3983932948543404,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              },
+              {
+                "interval": 11,
+                "realised_rate_rad_s": 0.3289319511426686,
+                "commanded_rate_rad_s": 0.19999999979999988,
+                "excess_rad_s": 0.12893195134266872,
+                "windup_rad": 0.01380649135431411,
+                "release_rad_s": 0.2206888803473345,
+                "release_window_rad_s": 0.3536109179415587,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              },
+              {
+                "interval": 12,
+                "realised_rate_rad_s": 0.34401380821545785,
+                "commanded_rate_rad_s": 0.19999999980000016,
+                "excess_rad_s": 0.1440138084154577,
+                "windup_rad": 0.007359893787180674,
+                "release_rad_s": 0.11764369945161185,
+                "release_window_rad_s": 0.2965273363315901,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              },
+              {
+                "interval": 13,
+                "realised_rate_rad_s": 0.2894461636734347,
+                "commanded_rate_rad_s": 0.19999999980000016,
+                "excess_rad_s": 0.08944616387343451,
+                "windup_rad": 0.00015920336640778965,
+                "release_rad_s": 0.0025447749017771344,
+                "release_window_rad_s": 0.2206888803473345,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              },
+              {
+                "interval": 14,
+                "realised_rate_rad_s": 0.20408726446831005,
+                "commanded_rate_rad_s": 0.19999999980000016,
+                "excess_rad_s": 0.004087264668309887,
+                "windup_rad": 0.004313104827263936,
+                "release_rad_s": 0.06894251774199939,
+                "release_window_rad_s": 0.11764369945161185,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              }
+            ],
+            "ok": true
+          },
+          "wrist_y": {
+            "cap_rad_s": 1.8,
+            "cap_units": "m/s",
+            "cap_formula": "|forcerange| / dof_damping",
+            "cap_from_model_rad_s": 1.8,
+            "dof_damping": 25.0,
+            "kv_Nm_s_per_rad": 0.0,
+            "gain_only_ok": true,
+            "inertia_kg_m2": 0.704495548133446,
+            "command_side_cap_rad_s": 0.2,
+            "peak_realised_rad_s": 0.2111536591369576,
+            "margin_x": 8.524597714086932,
+            "amplitude_ok": true,
+            "max_consecutive_intervals": 0,
+            "max_consecutive_intervals_over_command_cap": 1,
+            "frame_limit": 3,
+            "duration_ok": true,
+            "explanation_ok": true,
+            "release_formula": "release_j(t) = sqrt(kp_j * windup_j(t)^2 / (dof_M0_j + armature_j)), windup_j(t) = ctrl_j(t) - qpos_j(t)",
+            "events": [
+              {
+                "interval": 9,
+                "realised_rate_rad_s": 0.2111536591369576,
+                "commanded_rate_rad_s": 0.19999999980000016,
+                "excess_rad_s": 0.011153659336957444,
+                "windup_rad": 0.08193140885466811,
+                "release_rad_s": 1.3096267850677732,
+                "release_window_rad_s": 1.3096267850677732,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              }
+            ],
+            "ok": true
+          },
+          "wrist_z": {
+            "cap_rad_s": 1.8,
+            "cap_units": "m/s",
+            "cap_formula": "|forcerange| / dof_damping",
+            "cap_from_model_rad_s": 1.8,
+            "dof_damping": 25.0,
+            "kv_Nm_s_per_rad": 0.0,
+            "gain_only_ok": true,
+            "inertia_kg_m2": 0.704495548133446,
+            "command_side_cap_rad_s": 0.2,
+            "peak_realised_rad_s": 0.21134714285432196,
+            "margin_x": 8.516793630092788,
+            "amplitude_ok": true,
+            "max_consecutive_intervals": 0,
+            "max_consecutive_intervals_over_command_cap": 1,
+            "frame_limit": 3,
+            "duration_ok": true,
+            "explanation_ok": true,
+            "release_formula": "release_j(t) = sqrt(kp_j * windup_j(t)^2 / (dof_M0_j + armature_j)), windup_j(t) = ctrl_j(t) - qpos_j(t)",
+            "events": [
+              {
+                "interval": 12,
+                "realised_rate_rad_s": 0.21134714285432196,
+                "commanded_rate_rad_s": 0.0,
+                "excess_rad_s": 0.21134714285432196,
+                "windup_rad": 0.06027207198418767,
+                "release_rad_s": 0.9634146533723102,
+                "release_window_rad_s": 1.1372186234002022,
+                "release_window_frames": 3,
+                "actuator_saturated": false,
+                "explained": true
+              }
+            ],
+            "ok": true
+          }
+        }
+      },
       "command_span": {
         "finger": 1.0075050244824895,
         "wrist_slide": 0.1724237987530284,
@@ -1390,6 +1888,47 @@
         1.0278289338744777,
         0.6251942127894562
       ]
+    },
+    "servo_winding_position": {
+      "ok": true,
+      "rule": "three-part servo winding tolerance, per finger joint: (1) excess beyond jnt_range <= |forcerange|/kp, (2) at most 3 consecutive control frames (150 ms at 20 Hz), (3) the transient is elastic wind-up: there is a contact torque on that DoF, the actuator is not on its force limit while it happens, and kp*(ctrl-qpos) accounts for the whole non-actuator load on the DoF to 5%. An excursion during saturation is never exempted, and neither is one on a freely drifting joint.",
+      "explanation_tol": 0.05,
+      "max_frames": 3,
+      "control_period_ms": 50.0,
+      "joints_with_excursion": {
+        "mfj1": {
+          "cap_rad": 0.14290824047324255,
+          "cap_formula": "|forcerange| / kp",
+          "cap_from_model_rad": 0.14290824047324255,
+          "max_excess_rad": 0.0071731073144030155,
+          "margin_x": 19.922780213575564,
+          "frames": [
+            0
+          ],
+          "max_consecutive_frames": 1,
+          "frame_limit": 3,
+          "amplitude_ok": true,
+          "duration_ok": true,
+          "events": [
+            {
+              "frame": 0,
+              "qpos_rad": 1.6171731073144031,
+              "ctrl_rad": 1.5991133324390179,
+              "excess_rad": 0.0071731073144030155,
+              "servo_winding_rad": -0.018059774875385237,
+              "tau_servo_Nm": -0.013127650356917528,
+              "tau_contact_Nm": -0.010742036808617518,
+              "tau_other_Nm": 0.01316386577192401,
+              "winding_vs_load_residual": 0.0027511230845062226,
+              "actuator_saturated": false,
+              "torque_match": true,
+              "explained": true
+            }
+          ],
+          "explanation_ok": true,
+          "ok": true
+        }
+      }
     }
   },
   "config": {
@@ -1870,6 +2409,504 @@
       "finger": 0.2877239669593079,
       "wrist_slide": 0.34401380821545785,
       "wrist_hinge": 1.7234307511472924
+    },
+    "servo_winding_rate": {
+      "ok": true,
+      "rule": "three-part servo winding tolerance, per wrist hinge: (1) realised rate <= |forcerange|/dof_damping, (2) at most 3 consecutive control intervals above that same cap, (3) every interval in which the servo outran the command-side trackable rate 1.5 rad/s has its excess over the commanded rate explained as this DoF's own wind-up release (release_j(t) = sqrt(kp_j * windup_j(t)^2 / (dof_M0_j + armature_j)), windup_j(t) = ctrl_j(t) - qpos_j(t)) with the actuator off its force limit. kv = 0 does not weaken the bound: dof_damping = 1.2 is what makes a finite bound exist at all. The bound is tight -- the free-space step asymptote of this servo plateaus at 4.90-4.97 rad/s (both directions, both step signs), within 2% of it; with dof_damping forced to 0 the plateau disappears entirely.",
+      "rejected_forms": {
+        "dv <= a_max * tau_s": {
+          "value_rad_s": {
+            "wrist_rx": 27.886,
+            "wrist_ry": 27.33,
+            "wrist_rz": 26.787
+          },
+          "rejected_because": "an order of magnitude above the measured transient: forcerange/I ~ 94-98 rad/s^2 is the acceleration ceiling of a kp=14, I~0.062 wrist hinge, and tau_s = 0.2857 s is a window the command rate gives, not the servo.  A bound an order of magnitude above every achievable value gates nothing."
+        }
+      },
+      "command_side_cap_rad_s": 1.5,
+      "max_frames": 3,
+      "joints": {
+        "wrist_rx": {
+          "cap_rad_s": 5.0,
+          "cap_units": "m/s",
+          "cap_formula": "|forcerange| / dof_damping",
+          "cap_from_model_rad_s": 5.0,
+          "dof_damping": 1.2,
+          "kv_Nm_s_per_rad": 0.0,
+          "gain_only_ok": true,
+          "inertia_kg_m2": 0.06147473997985312,
+          "command_side_cap_rad_s": 1.5,
+          "peak_realised_rad_s": 1.7234307511472924,
+          "margin_x": 2.9011899646513135,
+          "amplitude_ok": true,
+          "max_consecutive_intervals": 0,
+          "max_consecutive_intervals_over_command_cap": 10,
+          "frame_limit": 3,
+          "duration_ok": true,
+          "explanation_ok": true,
+          "release_formula": "release_j(t) = sqrt(kp_j * windup_j(t)^2 / (dof_M0_j + armature_j)), windup_j(t) = ctrl_j(t) - qpos_j(t)",
+          "events": [
+            {
+              "interval": 4,
+              "realised_rate_rad_s": 1.5583919647947757,
+              "commanded_rate_rad_s": 1.4999999985,
+              "excess_rad_s": 0.05839196629477561,
+              "windup_rad": 0.14096858552977762,
+              "release_rad_s": 2.1273454056024415,
+              "release_window_rad_s": 2.1273454056024415,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            },
+            {
+              "interval": 5,
+              "realised_rate_rad_s": 1.6438962614813157,
+              "commanded_rate_rad_s": 1.4999999985000012,
+              "excess_rad_s": 0.14389626298131453,
+              "windup_rad": 0.13804898721503883,
+              "release_rad_s": 2.083285985996843,
+              "release_window_rad_s": 2.1273454056024415,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            },
+            {
+              "interval": 6,
+              "realised_rate_rad_s": 1.69331831004643,
+              "commanded_rate_rad_s": 1.4999999985000012,
+              "excess_rad_s": 0.19331831154642876,
+              "windup_rad": 0.1308541740659731,
+              "release_rad_s": 1.9747096486567774,
+              "release_window_rad_s": 2.1273454056024415,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            },
+            {
+              "interval": 7,
+              "realised_rate_rad_s": 1.7024541895331557,
+              "commanded_rate_rad_s": 1.4999999985000012,
+              "excess_rad_s": 0.20245419103315454,
+              "windup_rad": 0.12118825848865167,
+              "release_rad_s": 1.8288421064871625,
+              "release_window_rad_s": 2.083285985996843,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            },
+            {
+              "interval": 8,
+              "realised_rate_rad_s": 1.6699299932266531,
+              "commanded_rate_rad_s": 1.4999999985000012,
+              "excess_rad_s": 0.16992999472665193,
+              "windup_rad": 0.11106554893699394,
+              "release_rad_s": 1.6760811237757471,
+              "release_window_rad_s": 1.9747096486567774,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            },
+            {
+              "interval": 9,
+              "realised_rate_rad_s": 1.649821682923287,
+              "commanded_rate_rad_s": 1.4999999985000012,
+              "excess_rad_s": 0.1498216844232858,
+              "windup_rad": 0.10256904920066134,
+              "release_rad_s": 1.547861140508827,
+              "release_window_rad_s": 1.8288421064871625,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            },
+            {
+              "interval": 10,
+              "realised_rate_rad_s": 1.6885774689803368,
+              "commanded_rate_rad_s": 1.4999999985000012,
+              "excess_rad_s": 0.18857747048033557,
+              "windup_rad": 0.09507796497949705,
+              "release_rad_s": 1.4348138006282085,
+              "release_window_rad_s": 1.6760811237757471,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            },
+            {
+              "interval": 11,
+              "realised_rate_rad_s": 1.7234307511472924,
+              "commanded_rate_rad_s": 1.4999999985000012,
+              "excess_rad_s": 0.22343075264729118,
+              "windup_rad": 0.08564909145548028,
+              "release_rad_s": 1.292523440716166,
+              "release_window_rad_s": 1.547861140508827,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            },
+            {
+              "interval": 12,
+              "realised_rate_rad_s": 1.669901515006993,
+              "commanded_rate_rad_s": 1.499999998499999,
+              "excess_rad_s": 0.16990151650699392,
+              "windup_rad": 0.07447755382311572,
+              "release_rad_s": 1.1239346791391738,
+              "release_window_rad_s": 1.4348138006282085,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            },
+            {
+              "interval": 13,
+              "realised_rate_rad_s": 1.5003747992302596,
+              "commanded_rate_rad_s": 1.499999998499999,
+              "excess_rad_s": 0.0003748007302606382,
+              "windup_rad": 0.06598247799776602,
+              "release_rad_s": 0.9957361839965478,
+              "release_window_rad_s": 1.292523440716166,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            }
+          ],
+          "ok": true
+        },
+        "wrist_ry": {
+          "cap_rad_s": 5.0,
+          "cap_units": "m/s",
+          "cap_formula": "|forcerange| / dof_damping",
+          "cap_from_model_rad_s": 5.0,
+          "dof_damping": 1.2,
+          "kv_Nm_s_per_rad": 0.0,
+          "gain_only_ok": true,
+          "inertia_kg_m2": 0.06272474712351253,
+          "command_side_cap_rad_s": 1.5,
+          "peak_realised_rad_s": 1.6171128319031596,
+          "margin_x": 3.091930198906135,
+          "amplitude_ok": true,
+          "max_consecutive_intervals": 0,
+          "max_consecutive_intervals_over_command_cap": 2,
+          "frame_limit": 3,
+          "duration_ok": true,
+          "explanation_ok": true,
+          "release_formula": "release_j(t) = sqrt(kp_j * windup_j(t)^2 / (dof_M0_j + armature_j)), windup_j(t) = ctrl_j(t) - qpos_j(t)",
+          "events": [
+            {
+              "interval": 3,
+              "realised_rate_rad_s": 1.5084782741251146,
+              "commanded_rate_rad_s": 1.4999999985,
+              "excess_rad_s": 0.008478275625114495,
+              "windup_rad": 0.13256558418680411,
+              "release_rad_s": 1.9805022871441917,
+              "release_window_rad_s": 1.9805022871441917,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            },
+            {
+              "interval": 4,
+              "realised_rate_rad_s": 1.6171128319031596,
+              "commanded_rate_rad_s": 1.4412550759510634,
+              "excess_rad_s": 0.17585775595209618,
+              "windup_rad": 0.1321416704055484,
+              "release_rad_s": 1.9741691033206599,
+              "release_window_rad_s": 1.9805022871441917,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            }
+          ],
+          "ok": true
+        },
+        "wrist_rz": {
+          "cap_rad_s": 5.0,
+          "cap_units": "m/s",
+          "cap_formula": "|forcerange| / dof_damping",
+          "cap_from_model_rad_s": 5.0,
+          "dof_damping": 1.2,
+          "kv_Nm_s_per_rad": 0.0,
+          "gain_only_ok": true,
+          "inertia_kg_m2": 0.06399634656844386,
+          "command_side_cap_rad_s": 1.5,
+          "peak_realised_rad_s": 1.6033066120202744,
+          "margin_x": 3.1185550926529664,
+          "amplitude_ok": true,
+          "max_consecutive_intervals": 0,
+          "max_consecutive_intervals_over_command_cap": 4,
+          "frame_limit": 3,
+          "duration_ok": true,
+          "explanation_ok": true,
+          "release_formula": "release_j(t) = sqrt(kp_j * windup_j(t)^2 / (dof_M0_j + armature_j)), windup_j(t) = ctrl_j(t) - qpos_j(t)",
+          "events": [
+            {
+              "interval": 4,
+              "realised_rate_rad_s": 1.539606308960283,
+              "commanded_rate_rad_s": 1.4999999985,
+              "excess_rad_s": 0.039606310460282845,
+              "windup_rad": 0.11337516800995484,
+              "release_rad_s": 1.6768892116058178,
+              "release_window_rad_s": 1.6768892116058178,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            },
+            {
+              "interval": 5,
+              "realised_rate_rad_s": 1.5952015518265794,
+              "commanded_rate_rad_s": 1.4999999985,
+              "excess_rad_s": 0.09520155332657931,
+              "windup_rad": 0.1113948524869407,
+              "release_rad_s": 1.6475991140085524,
+              "release_window_rad_s": 1.6768892116058178,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            },
+            {
+              "interval": 6,
+              "realised_rate_rad_s": 1.6033066120202744,
+              "commanded_rate_rad_s": 1.4999999985000012,
+              "excess_rad_s": 0.10330661352027315,
+              "windup_rad": 0.10663477482061173,
+              "release_rad_s": 1.5771946063444757,
+              "release_window_rad_s": 1.6768892116058178,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            },
+            {
+              "interval": 7,
+              "realised_rate_rad_s": 1.573430085469213,
+              "commanded_rate_rad_s": 1.4999999985000012,
+              "excess_rad_s": 0.07343008696921172,
+              "windup_rad": 0.10146944414459808,
+              "release_rad_s": 1.5007961547521187,
+              "release_window_rad_s": 1.6475991140085524,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            }
+          ],
+          "ok": true
+        }
+      }
+    },
+    "servo_winding_rate_slide": {
+      "ok": true,
+      "rule": "three-part servo winding tolerance, per wrist hinge: (1) realised rate <= |forcerange|/dof_damping, (2) at most 3 consecutive control intervals above that same cap, (3) every interval in which the servo outran the command-side trackable rate 0.2 rad/s has its excess over the commanded rate explained as this DoF's own wind-up release (release_j(t) = sqrt(kp_j * windup_j(t)^2 / (dof_M0_j + armature_j)), windup_j(t) = ctrl_j(t) - qpos_j(t)) with the actuator off its force limit. kv = 0 does not weaken the bound: dof_damping = 1.2 is what makes a finite bound exist at all. The bound is tight -- the free-space step asymptote of this servo plateaus at 4.90-4.97 rad/s (both directions, both step signs), within 2% of it; with dof_damping forced to 0 the plateau disappears entirely.",
+      "rejected_forms": {
+        "dv <= a_max * tau_s": {
+          "value_rad_s": {
+            "wrist_rx": 27.886,
+            "wrist_ry": 27.33,
+            "wrist_rz": 26.787
+          },
+          "rejected_because": "an order of magnitude above the measured transient: forcerange/I ~ 94-98 rad/s^2 is the acceleration ceiling of a kp=14, I~0.062 wrist hinge, and tau_s = 0.2857 s is a window the command rate gives, not the servo.  A bound an order of magnitude above every achievable value gates nothing."
+        }
+      },
+      "command_side_cap_rad_s": 0.2,
+      "max_frames": 3,
+      "joints": {
+        "wrist_x": {
+          "cap_rad_s": 1.8,
+          "cap_units": "m/s",
+          "cap_formula": "|forcerange| / dof_damping",
+          "cap_from_model_rad_s": 1.8,
+          "dof_damping": 25.0,
+          "kv_Nm_s_per_rad": 0.0,
+          "gain_only_ok": true,
+          "inertia_kg_m2": 0.704495548133446,
+          "command_side_cap_rad_s": 0.2,
+          "peak_realised_rad_s": 0.34401380821545785,
+          "margin_x": 5.232348112238127,
+          "amplitude_ok": true,
+          "max_consecutive_intervals": 0,
+          "max_consecutive_intervals_over_command_cap": 9,
+          "frame_limit": 3,
+          "duration_ok": true,
+          "explanation_ok": true,
+          "release_formula": "release_j(t) = sqrt(kp_j * windup_j(t)^2 / (dof_M0_j + armature_j)), windup_j(t) = ctrl_j(t) - qpos_j(t)",
+          "events": [
+            {
+              "interval": 6,
+              "realised_rate_rad_s": 0.2004673165288963,
+              "commanded_rate_rad_s": 0.19999999980000016,
+              "excess_rad_s": 0.0004673167288961333,
+              "windup_rad": 0.026394732193199502,
+              "release_rad_s": 0.4219047218658345,
+              "release_window_rad_s": 0.4219047218658345,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            },
+            {
+              "interval": 7,
+              "realised_rate_rad_s": 0.22895059603988507,
+              "commanded_rate_rad_s": 0.19999999980000016,
+              "excess_rad_s": 0.028950596239884913,
+              "windup_rad": 0.026371366356754695,
+              "release_rad_s": 0.4215312323129096,
+              "release_window_rad_s": 0.4219047218658345,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            },
+            {
+              "interval": 8,
+              "realised_rate_rad_s": 0.256032501183745,
+              "commanded_rate_rad_s": 0.19999999980000016,
+              "excess_rad_s": 0.056032501383744826,
+              "windup_rad": 0.02492383654476045,
+              "release_rad_s": 0.3983932948543404,
+              "release_window_rad_s": 0.4219047218658345,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            },
+            {
+              "interval": 9,
+              "realised_rate_rad_s": 0.2714239858867404,
+              "commanded_rate_rad_s": 0.19999999980000016,
+              "excess_rad_s": 0.07142398608674022,
+              "windup_rad": 0.02212221147557321,
+              "release_rad_s": 0.3536109179415587,
+              "release_window_rad_s": 0.4215312323129096,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            },
+            {
+              "interval": 10,
+              "realised_rate_rad_s": 0.2948904161384419,
+              "commanded_rate_rad_s": 0.19999999980000016,
+              "excess_rad_s": 0.09489041633844175,
+              "windup_rad": 0.018551012171236198,
+              "release_rad_s": 0.2965273363315901,
+              "release_window_rad_s": 0.3983932948543404,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            },
+            {
+              "interval": 11,
+              "realised_rate_rad_s": 0.3289319511426686,
+              "commanded_rate_rad_s": 0.19999999979999988,
+              "excess_rad_s": 0.12893195134266872,
+              "windup_rad": 0.01380649135431411,
+              "release_rad_s": 0.2206888803473345,
+              "release_window_rad_s": 0.3536109179415587,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            },
+            {
+              "interval": 12,
+              "realised_rate_rad_s": 0.34401380821545785,
+              "commanded_rate_rad_s": 0.19999999980000016,
+              "excess_rad_s": 0.1440138084154577,
+              "windup_rad": 0.007359893787180674,
+              "release_rad_s": 0.11764369945161185,
+              "release_window_rad_s": 0.2965273363315901,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            },
+            {
+              "interval": 13,
+              "realised_rate_rad_s": 0.2894461636734347,
+              "commanded_rate_rad_s": 0.19999999980000016,
+              "excess_rad_s": 0.08944616387343451,
+              "windup_rad": 0.00015920336640778965,
+              "release_rad_s": 0.0025447749017771344,
+              "release_window_rad_s": 0.2206888803473345,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            },
+            {
+              "interval": 14,
+              "realised_rate_rad_s": 0.20408726446831005,
+              "commanded_rate_rad_s": 0.19999999980000016,
+              "excess_rad_s": 0.004087264668309887,
+              "windup_rad": 0.004313104827263936,
+              "release_rad_s": 0.06894251774199939,
+              "release_window_rad_s": 0.11764369945161185,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            }
+          ],
+          "ok": true
+        },
+        "wrist_y": {
+          "cap_rad_s": 1.8,
+          "cap_units": "m/s",
+          "cap_formula": "|forcerange| / dof_damping",
+          "cap_from_model_rad_s": 1.8,
+          "dof_damping": 25.0,
+          "kv_Nm_s_per_rad": 0.0,
+          "gain_only_ok": true,
+          "inertia_kg_m2": 0.704495548133446,
+          "command_side_cap_rad_s": 0.2,
+          "peak_realised_rad_s": 0.2111536591369576,
+          "margin_x": 8.524597714086932,
+          "amplitude_ok": true,
+          "max_consecutive_intervals": 0,
+          "max_consecutive_intervals_over_command_cap": 1,
+          "frame_limit": 3,
+          "duration_ok": true,
+          "explanation_ok": true,
+          "release_formula": "release_j(t) = sqrt(kp_j * windup_j(t)^2 / (dof_M0_j + armature_j)), windup_j(t) = ctrl_j(t) - qpos_j(t)",
+          "events": [
+            {
+              "interval": 9,
+              "realised_rate_rad_s": 0.2111536591369576,
+              "commanded_rate_rad_s": 0.19999999980000016,
+              "excess_rad_s": 0.011153659336957444,
+              "windup_rad": 0.08193140885466811,
+              "release_rad_s": 1.3096267850677732,
+              "release_window_rad_s": 1.3096267850677732,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            }
+          ],
+          "ok": true
+        },
+        "wrist_z": {
+          "cap_rad_s": 1.8,
+          "cap_units": "m/s",
+          "cap_formula": "|forcerange| / dof_damping",
+          "cap_from_model_rad_s": 1.8,
+          "dof_damping": 25.0,
+          "kv_Nm_s_per_rad": 0.0,
+          "gain_only_ok": true,
+          "inertia_kg_m2": 0.704495548133446,
+          "command_side_cap_rad_s": 0.2,
+          "peak_realised_rad_s": 0.21134714285432196,
+          "margin_x": 8.516793630092788,
+          "amplitude_ok": true,
+          "max_consecutive_intervals": 0,
+          "max_consecutive_intervals_over_command_cap": 1,
+          "frame_limit": 3,
+          "duration_ok": true,
+          "explanation_ok": true,
+          "release_formula": "release_j(t) = sqrt(kp_j * windup_j(t)^2 / (dof_M0_j + armature_j)), windup_j(t) = ctrl_j(t) - qpos_j(t)",
+          "events": [
+            {
+              "interval": 12,
+              "realised_rate_rad_s": 0.21134714285432196,
+              "commanded_rate_rad_s": 0.0,
+              "excess_rad_s": 0.21134714285432196,
+              "windup_rad": 0.06027207198418767,
+              "release_rad_s": 0.9634146533723102,
+              "release_window_rad_s": 1.1372186234002022,
+              "release_window_frames": 3,
+              "actuator_saturated": false,
+              "explained": true
+            }
+          ],
+          "ok": true
+        }
+      }
     },
     "command_span": {
       "finger": 1.0075050244824895,

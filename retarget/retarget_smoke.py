@@ -206,6 +206,141 @@ WARM_START_ENABLED = True
 WRIST_STEP_CEILING_M = 0.05
 WRIST_ROT_CEILING_RAD = 0.5
 
+# ============================================ servo winding tolerance table
+# Ruling (user, 2026-10-15): a gate may not hold a *command-side* ceiling
+# against a *physical-side* transient.  Where one did, the ceiling is now the
+# servo winding tolerance table -- the actuator's own force limit, mapped to the
+# measured quantity through that DoF's passive compliance:
+#
+#   position   |qpos - jnt_range|   <=  |forcerange| / kp           [rad]
+#   rate       realised rate       <=  |forcerange| / dof_damping  [rad/s]
+#
+# Both are ratios of two numbers read straight off the MJCF, per DoF, with no
+# fitted constant.  The wrist hinges' actuators are kv=0, which is why the rate
+# side closes on dof_damping and not on a velocity feedback term: with
+# dof_damping = 0 there is no finite bound at all (measured, not assumed --
+# runs/w35/wrist_rate_tol_report.md section 4), and with kv = 0 but
+# dof_damping = 1.2 the 5.0 rad/s plateau appears and the bound holds.
+#
+# The bound is three-part and all three parts are required:
+#   1. amplitude  <= the per-DoF cap above;
+#   2. duration   <= WINDING_MAX_FRAMES consecutive control frames
+#                   (3 * 50 ms = 150 ms at CTRL_HZ);
+#   3. explanation -- the transient must be elastic wind-up, not a fault:
+#      the actuator is not on its force limit while it happens, and the winding
+#      it does carry accounts for the excursion.  An excursion recorded *during*
+#      saturation is never exempted.
+#
+# Hardcoded on purpose: the tables are what the gates were signed against.
+# tests/test_smoke5_winding_tolerance.py recomputes every entry from the model
+# (forcerange / kp, forcerange / dof_damping) and fails if the tables drift.
+SERVO_WINDING_POSITION_CAP_RAD = {
+    "ffj0": 0.09199632014719411,
+    "ffj1": 0.14501306919796397,
+    "ffj2": 0.39902044293015326,
+    "ffj3": 0.9396436525612472,
+    "mfj0": 0.09151921903599756,
+    "mfj1": 0.14290824047324255,
+    "mfj2": 0.40034071550255534,
+    "mfj3": 0.943207126948775,
+    "rfj0": 0.091324200913242,
+    "rfj1": 0.14569226534544452,
+    "rfj2": 0.3995741056218058,
+    "rfj3": 0.9396436525612472,
+    "thj0": 0.09529885829415716,
+    "thj1": 0.07409771667075865,
+    "thj2": 0.12424749163879598,
+    "thj3": 0.3100206611570248,
+}
+SERVO_WINDING_RATE_CAP_RAD_S = {
+    "wrist_rx": 5.0,
+    "wrist_ry": 5.0,
+    "wrist_rz": 5.0,
+}
+# Same derivation, one DoF class over: the slides' realised rate is judged
+# against |forcerange| / dof_damping too.  Measured off the model: 45 N / 25
+# = 1.8 m/s (the hinges are 6 / 1.2 = 5.0 rad/s).  Kept as an explicit table
+# rather than folded into the rad/s one so the units cannot be silently mixed.
+SERVO_WINDING_RATE_CAP_M_S = {
+    "wrist_x": 1.8,
+    "wrist_y": 1.8,
+    "wrist_z": 1.8,
+}
+WINDING_MAX_FRAMES = 3
+# Part 3 of the position gate.  Two conditions:
+#   * a contact torque must exist on the DoF -- below this floor the DoF is not
+#     touching anything, and a free-drifting joint has no wind-up to excuse.
+#     The floor is a numerical floor (a torque MuJoCo reports as exactly zero
+#     is zero), not a tuned threshold.
+#   * the servo's own winding torque must account for the whole non-actuator
+#     load on the DoF to this relative band.
+WINDING_CONTACT_FLOOR_NM = 1e-12
+WINDING_EXPLANATION_TOL = 0.05
+# A rate above the command-side trackable rate is exempt only up to what the
+# DoF's own accumulated wind-up could release into the inertia; that release is
+# the *upper* bound on the explanation (damping only makes the real release
+# smaller), so the criterion is deliberately strict.
+WINDING_RELEASE_FORMULA = (
+    "release_j(t) = sqrt(kp_j * windup_j(t)^2 / (dof_M0_j + armature_j)), "
+    "windup_j(t) = ctrl_j(t) - qpos_j(t)"
+)
+# The rejected alternative, kept on the record so the bounds that were examined
+# are visible rather than quietly dropped.  runs/w35/wrist_rate_tol_report.md
+# section 3.1: dv <= a_max * tau_s with a_max = forcerange/I ~ 94-98 rad/s^2 and
+# tau_s = (forcerange/kp)/v_cap = 0.2857 s gives 26.8-27.9 rad/s, an order of
+# magnitude above anything this hand does.  Vacuous: the acceleration ceiling of
+# a stiff, light wrist hinge is enormous, and tau_s is a window set by the
+# *command* rate, not by the servo.
+SERVO_WINDING_REJECTED_RATE_FORMS = {
+    "dv <= a_max * tau_s": {
+        "value_rad_s": {"wrist_rx": 27.886, "wrist_ry": 27.33, "wrist_rz": 26.787},
+        "rejected_because": (
+            "an order of magnitude above the measured transient: forcerange/I "
+            "~ 94-98 rad/s^2 is the acceleration ceiling of a kp=14, I~0.062 "
+            "wrist hinge, and tau_s = 0.2857 s is a window the command rate "
+            "gives, not the servo.  A bound an order of magnitude above every "
+            "achievable value gates nothing."
+        ),
+    },
+}
+
+
+def winding_position_cap(model, joint: str) -> float:
+    """|forcerange| / kp for one finger joint, read off the model."""
+    a = _joint_actuator_id(model, joint)
+    fr = float(np.max(np.abs(model.actuator_forcerange[a])))
+    kp = float(model.actuator_gainprm[a, 0])
+    return fr / kp
+
+
+def winding_rate_cap(model, joint: str) -> float:
+    """|forcerange| / dof_damping for one wrist joint, read off the model."""
+    a = _joint_actuator_id(model, joint)
+    fr = float(np.max(np.abs(model.actuator_forcerange[a])))
+    return fr / float(model.dof_damping[model.jnt_dofadr[_joint_id(model, joint)]])
+
+
+def _joint_actuator_id(model, joint: str) -> int:
+    """The position actuator bound to ``joint``.
+
+    Every actuator in this MJCF hangs off a joint transmission, and
+    ``jnt_actuatorid`` is -1 throughout -- the mapping has to be read out of
+    ``actuator_trnid`` under ``actuator_trntype == mjTRN_JOINT``.
+    """
+    import mujoco
+
+    jid = _joint_id(model, joint)
+    trntype = np.asarray(model.actuator_trntype).reshape((model.nu, -1))
+    trnid = np.asarray(model.actuator_trnid).reshape((model.nu, -1))
+    for a in range(model.nu):
+        for t in range(trnid.shape[1]):
+            if int(trntype[a, min(t, trntype.shape[1] - 1)]) != int(
+                    mujoco.mjtTrn.mjTRN_JOINT):
+                continue
+            if int(trnid[a, t]) == jid:
+                return a
+    raise KeyError(f"no joint transmission from actuator to {joint}")
+
 
 # =============================================================== source stage
 def load_source_sequence(n_frames: int = N_FRAMES) -> dict[str, Any]:
@@ -825,6 +960,7 @@ def warm_start(
         data.qpos[finger_qadr].copy(), data.qpos[wrist_qadr].copy()
     ])
     realised = []
+    force_hist: list[np.ndarray] = []
     ramp_done_at = None
     # Settling is bounded rather than run to convergence: at the first commanded
     # pose the hand is in sustained contact with the box, so the servos hold a
@@ -854,6 +990,7 @@ def warm_start(
         prev_q = now
         hist.append(now.copy())
         ctrl_hist.append(data.ctrl.copy())
+        force_hist.append(data.actuator_force.copy())
         steps += 1
         if ramp_done_at is None and np.max(np.abs(goal - cur)) <= 1e-12:
             ramp_done_at = steps
@@ -915,6 +1052,33 @@ def warm_start(
             k: float(np.max(realised_arr[:, v])) if realised_arr.size else 0.0
             for k, v in idx.items()
         },
+        # The three-part servo winding gate on the *realised* hinge rate.  The
+        # 1.5 rad/s command-side figure stays the command cap (w1/w1c); what
+        # changed is that a realised transient above it is now judged against
+        # the servo's own force limit mapped through dof_damping, with the
+        # wind-up release as the mandatory explanation.
+        "servo_winding_rate": servo_winding_rate_gate(
+            model,
+            list(WRIST_JOINTS[3:]),
+            np.stack(hist)[:, n_f + 3:n_f + 6],
+            np.stack(ctrl_hist)[:, wrist_act[3:6]],
+            np.stack(force_hist),
+            dt_ctrl,
+            WARM_START_HINGE_RATE_RAD_S,
+        ),
+        # The same three-part gate on the slides' realised rate.  The command
+        # cap stays 0.2 m/s (w1/w1c); a realised transient above it is judged
+        # against the slide's own winding allowance, 45 N / 25 = 1.8 m/s.
+        "servo_winding_rate_slide": servo_winding_rate_gate(
+            model,
+            list(WRIST_JOINTS[:3]),
+            np.stack(hist)[:, n_f:n_f + 3],
+            np.stack(ctrl_hist)[:, wrist_act[0:3]],
+            np.stack(force_hist),
+            dt_ctrl,
+            WARM_START_SLIDE_RATE_M_S,
+            cap_table=SERVO_WINDING_RATE_CAP_M_S,
+        ),
         "command_span": {
             k: float(np.max(np.abs(goal[v] - start[v]))) for k, v in idx.items()
         },
@@ -1017,6 +1181,13 @@ def replay(qpos: np.ndarray, anchor: dict, seed: int = 0) -> dict[str, Any]:
     force_sat_seq: list[int] = []
     q_hist: list[np.ndarray] = []
     v_hist: list[np.ndarray] = []
+    # Per control frame the servo actually ran on: the command it was given, the
+    # torque that command produced, and the constraint (contact) torque on the
+    # same DoF.  The servo winding tolerance gate reads all three; without them
+    # the winding can only be asserted, not measured.
+    force_hist: list[np.ndarray] = []
+    qfrc_con_hist: list[np.ndarray] = []
+    qfrc_other_hist: list[np.ndarray] = []
     tip_world: list[np.ndarray] = []
     palm_world: list[np.ndarray] = []
     object_world: list[np.ndarray] = []
@@ -1046,6 +1217,9 @@ def replay(qpos: np.ndarray, anchor: dict, seed: int = 0) -> dict[str, Any]:
         force_sat_seq.append(_saturated_actuators(mujoco_model, data, force_lo, force_hi))
         q_hist.append(data.qpos.copy())
         v_hist.append(data.qvel.copy())
+        force_hist.append(data.actuator_force.copy())
+        qfrc_con_hist.append(data.qfrc_constraint.copy())
+        qfrc_other_hist.append(_qfrc_other(data))
         tip_world.append(
             np.stack(
                 [
@@ -1208,6 +1382,17 @@ def replay(qpos: np.ndarray, anchor: dict, seed: int = 0) -> dict[str, Any]:
             "within_cap": bool(float(exec_dev.max()) <= PALM_WORLD_POSE_DEVIATION_CAP_M),
         },
         "qpos_history": q,
+        "ctrl_history": np.stack(replay_ctrl),
+        "actuator_force_history": np.stack(force_hist),
+        "qfrc_constraint_history": np.stack(qfrc_con_hist),
+        "qfrc_other_history": np.stack(qfrc_other_hist),
+        "_finger_act": finger_act,
+        "_wrist_act": wrist_act,
+        "_wrist_qadr": wrist_qadr,
+        "_finger_ids": finger_ids,
+        "_wrist_ids": wrist_ids,
+        "_force_lo": force_lo,
+        "_force_hi": force_hi,
         "final_finger_qpos": q[-1, finger_qadr],
         "warm_start": warm,
     }
@@ -1273,6 +1458,26 @@ def _joint_id(model, name: str) -> int:
     import mujoco
 
     return mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, name)
+
+
+def _qfrc_other(data) -> np.ndarray:
+    """Net non-actuator generalised force on every DoF.
+
+    This is the load a position servo has to wind against: constraint
+    (contact) + joint damping + gravity/Coriolis.  In this MuJoCo build the
+    DoF equation closes as
+
+        M qacc = -qfrc_bias + qfrc_passive + qfrc_constraint
+                 + qfrc_applied + qfrc_actuator
+
+    -- ``qfrc_bias`` carries the opposite sign to the classical documentation.
+    The sign is measured, not assumed: summing the five terms with the signs
+    above reproduces ``mj_fullM(model, data) @ data.qacc`` to 4e-16 over all
+    DoFs, and no other sign assignment does.  Getting it wrong would make the
+    winding explanation compare the servo against a fictitious load.
+    """
+    return (-np.asarray(data.qfrc_bias) + np.asarray(data.qfrc_passive)
+            + np.asarray(data.qfrc_constraint))
 
 
 def _finger_box_contact(model, data) -> tuple[bool, float]:
@@ -1370,7 +1575,7 @@ def fingertip_tracking_error(tip_pos_urdf: np.ndarray, anchor: dict, replay: dic
 def build_qa(
     seq: dict, joints21: np.ndarray, qpos: np.ndarray, tip_pos: np.ndarray,
     anchor: dict, rep: dict, corr: dict, finger_err: dict,
-    base: dict | None = None,
+    base: dict | None = None, model=None,
 ) -> dict[str, Any]:
     """RetargetQA (DESIGN section 2 contract) with every G3 detail number."""
     checks = {
@@ -1380,7 +1585,8 @@ def build_qa(
             and np.all(np.isfinite(qpos))
             and np.all(np.isfinite(rep["qpos_history"]))
         ),
-        "joint_limits_ok": bool(_joint_limits_ok(rep)),
+        "joint_limits_ok": bool(
+            model is not None and rep["servo_winding_position"]["ok"]),
         "joint_velocity_ok": bool(rep["command_velocity"]["all_within_limit"]),
         "joint_acceleration_ok": bool(
             rep["joint_acceleration_max_rad_s2"] <= JOINT_ACC_LIMIT_RAD_S2
@@ -1454,10 +1660,18 @@ def build_qa(
         },
         "joint_limits": {
             "mjcf_range_violation_frames": _limit_violation_frames(rep),
+            "servo_winding_tolerance": rep["servo_winding_position"],
             "note": (
                 "the retargeted command is clipped to each actuator's ctrlrange "
                 "before it is applied; the realised qpos is then checked against "
-                "the MJCF joint range"
+                "the MJCF joint range. mjcf_range_violation_frames is the "
+                "zero-tolerance evidence (frames where qpos left jnt_range at "
+                "all); the gate that judges them is servo_winding_tolerance, "
+                "the user-approved three-part servo winding table. This MJCF "
+                "gives every finger joint limited=true with stiffness=0, so "
+                "jnt_range is an assertion the gate checks, not a mechanical "
+                "stop the solver enforces -- which is exactly why an elastic "
+                "wind-up can carry qpos past it."
             ),
         },
         "joint_motion": {
@@ -1741,6 +1955,269 @@ def _limit_violation_frames(rep: dict) -> list[int]:
     return sorted(set(int(i) for i in bad))
 
 
+def _max_run(mask: np.ndarray) -> int:
+    """Longest run of consecutive True in a 1-D boolean array."""
+    best = run = 0
+    for m in mask:
+        run = run + 1 if m else 0
+        best = max(best, run)
+    return int(best)
+
+
+def _actuator_saturated(force: np.ndarray, fmax: float) -> np.ndarray:
+    """|force| sitting on the actuator's force limit, per row.
+
+    MuJoCo clamps ``actuator_force`` to ``forcerange``, so "on the limit" is
+    "equal to the limit".  The relative tolerance is the one the scene's own
+    saturation rule already uses.
+    """
+    tol = 1e-6 * max(abs(fmax), 1e-12)
+    return np.abs(force) >= fmax - tol
+
+
+def servo_winding_position_gate(model, rep: dict) -> dict[str, Any]:
+    """C3 as a three-part servo winding gate, per finger joint.
+
+    Part 1 (amplitude) and part 3 (explanation) are per control frame; part 2
+    (duration) is per joint.  An excursion is only tolerated when all three hold,
+    and an excursion recorded while its actuator is on the force limit is never
+    tolerated -- past saturation the winding is capped at |forcerange|/kp by
+    definition, so a larger excursion cannot be winding at all.
+    """
+    ids = rep["_finger_ids"]
+    qadr = rep["_finger_qadr"]
+    act = rep["_finger_act"]
+    q = rep["qpos_history"][:, qadr]
+    ctrl = rep["ctrl_history"][:, act]
+    force = rep["actuator_force_history"][:, act]
+    qfrc_con = rep["qfrc_constraint_history"][:, [
+        model.jnt_dofadr[j] for j in ids]]
+    qfrc_other = rep["qfrc_other_history"][:, [
+        model.jnt_dofadr[j] for j in ids]]
+    lo = np.array([model.jnt_range[j][0] for j in ids])
+    hi = np.array([model.jnt_range[j][1] for j in ids])
+    fmax = np.array([
+        float(np.max(np.abs(model.actuator_forcerange[a]))) for a in act])
+    kp = np.array([float(model.actuator_gainprm[a, 0]) for a in act])
+
+    per_joint: dict[str, Any] = {}
+    ok = True
+    for c, name in enumerate(MJCF_FINGER_JOINTS):
+        cap = SERVO_WINDING_POSITION_CAP_RAD[name]
+        excess = np.maximum(np.maximum(lo[c] - q[:, c], q[:, c] - hi[c]), 0.0)
+        frames = np.where(excess > 0.0)[0]
+        rec: dict[str, Any] = {
+            "cap_rad": cap,
+            "cap_formula": "|forcerange| / kp",
+            "cap_from_model_rad": winding_position_cap(model, name),
+            "max_excess_rad": float(excess.max()),
+            "margin_x": float(cap / excess.max()) if excess.max() > 0 else None,
+            "frames": [int(f) for f in frames],
+            "max_consecutive_frames": _max_run(excess > 0.0),
+            "frame_limit": WINDING_MAX_FRAMES,
+            "amplitude_ok": bool(excess.max() <= cap),
+            "duration_ok": bool(_max_run(excess > 0.0) <= WINDING_MAX_FRAMES),
+            "events": [],
+        }
+        explanation_ok = True
+        for f in frames:
+            tau_servo = float(kp[c] * (ctrl[f, c] - q[f, c]))
+            tau_contact = float(qfrc_con[f, c])
+            tau_other = float(qfrc_other[f, c])
+            sat = bool(_actuator_saturated(np.array([force[f, c]]), fmax[c])[0])
+            # Part 3.  Two things have to hold, and both are load-bearing:
+            #   * there is a contact torque on this DoF.  An excursion on a
+            #     freely drifting joint has nothing to wind against, so it is
+            #     not winding no matter how small it is -- the ruling names
+            #     this case explicitly.
+            #   * the servo's own winding torque accounts for the whole
+            #     non-actuator load on the DoF (contact + damping + gravity)
+            #     to WINDING_EXPLANATION_TOL.  That is the balance a position
+            #     servo must satisfy for its error to be a static wind-up.
+            torque_match = bool(
+                abs(tau_contact) > WINDING_CONTACT_FLOOR_NM
+                and abs(abs(tau_servo) - abs(tau_other))
+                <= WINDING_EXPLANATION_TOL * abs(tau_other))
+            # Saturation is folded in: past the force limit the winding is
+            # capped at |forcerange|/kp by definition, so an excursion recorded
+            # there is never winding, however well the numbers happen to match.
+            explained = bool(torque_match and not sat)
+            rec["events"].append({
+                "frame": int(f),
+                "qpos_rad": float(q[f, c]),
+                "ctrl_rad": float(ctrl[f, c]),
+                "excess_rad": float(excess[f]),
+                "servo_winding_rad": float(ctrl[f, c] - q[f, c]),
+                "tau_servo_Nm": tau_servo,
+                "tau_contact_Nm": tau_contact,
+                "tau_other_Nm": tau_other,
+                "winding_vs_load_residual": (
+                    abs(abs(tau_servo) - abs(tau_other)) / abs(tau_other)
+                    if abs(tau_other) > 0 else None),
+                "actuator_saturated": sat,
+                "torque_match": torque_match,
+                "explained": explained,
+            })
+            if not explained:
+                explanation_ok = False
+        rec["explanation_ok"] = explanation_ok
+        rec["ok"] = bool(
+            rec["amplitude_ok"] and rec["duration_ok"] and rec["explanation_ok"])
+        ok = ok and rec["ok"]
+        if rec["frames"]:
+            per_joint[name] = rec
+    return {
+        "ok": bool(ok),
+        "rule": (
+            "three-part servo winding tolerance, per finger joint: (1) "
+            "excess beyond jnt_range <= |forcerange|/kp, (2) at most "
+            f"{WINDING_MAX_FRAMES} consecutive control frames "
+            f"({WINDING_MAX_FRAMES * 1000 // CTRL_HZ} ms at {CTRL_HZ} Hz), "
+            "(3) the transient is elastic wind-up: there is a contact torque on "
+            "that DoF, the actuator is not on its force limit while it "
+            "happens, and kp*(ctrl-qpos) accounts for the whole non-actuator "
+            f"load on the DoF to {WINDING_EXPLANATION_TOL:.0%}. An excursion "
+            "during saturation is never exempted, and neither is one on a "
+            "freely drifting joint."
+        ),
+        "explanation_tol": WINDING_EXPLANATION_TOL,
+        "max_frames": WINDING_MAX_FRAMES,
+        "control_period_ms": 1000.0 / CTRL_HZ,
+        "joints_with_excursion": per_joint,
+    }
+
+
+def servo_winding_rate_gate(
+    model, joint_names: list[str], q_hist: np.ndarray, ctrl_hist: np.ndarray,
+    force_hist: np.ndarray, dt_ctrl: float, command_cap: float,
+    cap_table: dict[str, float] | None = None,
+) -> dict[str, Any]:
+    """The same three-part gate on a realised rate, per wrist hinge.
+
+    ``q_hist``/``ctrl_hist`` are the *warm-start* hinge block (3 columns) and
+    ``force_hist`` the full actuator-force history, so the caller hands over the
+    columns it wants.  Intervals, not frames: the rate is the quantity the gate
+    is about, and ``w1b`` compares ``np.diff(qpos)/dt``.  ``cap_table`` selects
+    the derived allowance per joint -- the hinge table by default, the slide
+    table (m/s) when the caller passes the slide block; the formula and the
+    three parts are identical, only the units differ.
+    """
+    cap_table = SERVO_WINDING_RATE_CAP_RAD_S if cap_table is None else cap_table
+    per_joint: dict[str, Any] = {}
+    ok = True
+    for col, name in enumerate(joint_names):
+        jid = _joint_id(model, name)
+        adr = int(model.jnt_dofadr[jid])
+        a = _joint_actuator_id(model, name)
+        cap = cap_table[name]
+        fmax = float(np.max(np.abs(model.actuator_forcerange[a])))
+        kp = float(model.actuator_gainprm[a, 0])
+        kv = float(model.actuator_biasprm[a, 2])
+        inertia = float(model.dof_M0[adr] + model.dof_armature[adr])
+
+        q = q_hist[:, col]
+        ctrl = ctrl_hist[:, col]
+        v_real = np.abs(np.diff(q) / dt_ctrl)
+        v_cmd = np.abs(np.diff(ctrl) / dt_ctrl)
+        windup = np.abs(ctrl[:-1] - q[:-1])
+        release = np.sqrt(kp * windup ** 2 / inertia)
+        excess = v_real - v_cmd
+        sat = _actuator_saturated(force_hist[:, a], fmax)
+        # Parts 1 and 2 both describe the same excursion -- how far past the
+        # allowance, and for how long -- so they are measured against the same
+        # line, the derived cap.  Part 3 then asks, of every interval where the
+        # servo outran the command-side trackable rate, whether the extra speed
+        # is this DoF's own wind-up letting go.
+        over_cap = v_real > cap
+        over_command = v_real > command_cap
+
+        events = []
+        explanation_ok = True
+        for t in np.where(over_command)[0]:
+            # The release account is checked over the same window as the
+            # duration clause (WINDING_MAX_FRAMES), not a single interval: a
+            # wind-up stored at t-1 can fire at t, and the DoF then coasts at
+            # t+1 on the momentum that release imparted.  Requiring the
+            # current interval's release alone to cover the excess misses
+            # that coast and reds a physically explained transient (measured
+            # on the slides: interval 12 release 1.31 m/s, interval 13 coast
+            # 0.289 m/s with wind-up already spent).  A genuinely unexplained
+            # excursion still has ~zero release anywhere in its window.
+            wlo = max(0, t - (WINDING_MAX_FRAMES - 1))
+            window_release = float(np.max(release[wlo:t + 1]))
+            explained = bool(
+                excess[t] > 0.0
+                and excess[t] <= window_release
+                and not sat[t])
+            if not explained:
+                explanation_ok = False
+            events.append({
+                "interval": int(t),
+                "realised_rate_rad_s": float(v_real[t]),
+                "commanded_rate_rad_s": float(v_cmd[t]),
+                "excess_rad_s": float(excess[t]),
+                "windup_rad": float(windup[t]),
+                "release_rad_s": float(release[t]),
+                "release_window_rad_s": window_release,
+                "release_window_frames": int(t - wlo + 1),
+                "actuator_saturated": bool(sat[t]),
+                "explained": explained,
+            })
+        rec = {
+            "cap_rad_s": cap,
+            # Historical key name: for the slide table this holds m/s, not
+            # rad/s.  ``cap_units`` is the authoritative label.
+            "cap_units": "rad/s" if cap_table is None else "m/s",
+            "cap_formula": "|forcerange| / dof_damping",
+            "cap_from_model_rad_s": winding_rate_cap(model, name),
+            "dof_damping": float(model.dof_damping[adr]),
+            "kv_Nm_s_per_rad": kv,
+            # The release formula assumes the gain-only actuator: the wind-up is
+            # the whole torque the servo is carrying.  If the MJCF ever gave
+            # these hinges a velocity feedback term, the explanation would be
+            # unsound and the gate has to say so rather than quietly pass.
+            "gain_only_ok": kv == 0.0,
+            "inertia_kg_m2": inertia,
+            "command_side_cap_rad_s": command_cap,
+            "peak_realised_rad_s": float(v_real.max()) if v_real.size else 0.0,
+            "margin_x": float(cap / v_real.max()) if v_real.size and v_real.max() > 0 else None,
+            "amplitude_ok": bool(v_real.max() <= cap) if v_real.size else True,
+            "max_consecutive_intervals": _max_run(over_cap),
+            "max_consecutive_intervals_over_command_cap": _max_run(over_command),
+            "frame_limit": WINDING_MAX_FRAMES,
+            "duration_ok": bool(_max_run(over_cap) <= WINDING_MAX_FRAMES),
+            "explanation_ok": explanation_ok,
+            "release_formula": WINDING_RELEASE_FORMULA,
+            "events": events,
+        }
+        rec["ok"] = bool(
+            rec["amplitude_ok"] and rec["duration_ok"] and rec["explanation_ok"]
+            and rec["gain_only_ok"])
+        ok = ok and rec["ok"]
+        per_joint[name] = rec
+    return {
+        "ok": bool(ok),
+        "rule": (
+            "three-part servo winding tolerance, per wrist hinge: (1) realised "
+            "rate <= |forcerange|/dof_damping, (2) at most "
+            f"{WINDING_MAX_FRAMES} consecutive control intervals above that "
+            "same cap, (3) every interval in which the servo outran the "
+            f"command-side trackable rate {command_cap} rad/s has its excess "
+            "over the commanded rate explained as this DoF's own wind-up "
+            f"release ({WINDING_RELEASE_FORMULA}) with the actuator off its "
+            "force limit. kv = 0 does not weaken the bound: dof_damping = 1.2 "
+            "is what makes a finite bound exist at all. The bound is tight -- "
+            "the free-space step asymptote of this servo plateaus at "
+            "4.90-4.97 rad/s (both directions, both step signs), within 2% of "
+            "it; with dof_damping forced to 0 the plateau disappears entirely."
+        ),
+        "rejected_forms": SERVO_WINDING_REJECTED_RATE_FORMS,
+        "command_side_cap_rad_s": command_cap,
+        "max_frames": WINDING_MAX_FRAMES,
+        "joints": per_joint,
+    }
+
+
 def _wrist_continuous(rep: dict) -> bool:
     step_med = float(np.median(rep["wrist_step_m"]))
     thr = max(3.0 * step_med, WRIST_STEP_CEILING_M)
@@ -1775,9 +2252,13 @@ def run_smoke(out_dir: pathlib.Path = OUT_DIR, n_frames: int = N_FRAMES) -> dict
     # attach the bound data the limit checks need (kept out of the JSON payload)
     rep["_limit_bounds"] = _limit_bounds(model)
     rep["_finger_qadr"] = _finger_qadr(model)
+    # The C3 gate: zero tolerance on jnt_range is replaced by the three-part
+    # servo winding tolerance table.  Computed here because it needs the model.
+    rep["servo_winding_position"] = servo_winding_position_gate(model, rep)
 
     finger_err = fingertip_tracking_error(tip_pos, anchor, rep)
-    qa = build_qa(seq, joints21, qpos, tip_pos, anchor, rep, corr, finger_err, base)
+    qa = build_qa(seq, joints21, qpos, tip_pos, anchor, rep, corr, finger_err,
+                  base, model)
 
     private = {k: v for k, v in rep.items() if k.startswith("_")}
     for k in private:
@@ -1807,7 +2288,12 @@ def run_smoke(out_dir: pathlib.Path = OUT_DIR, n_frames: int = N_FRAMES) -> dict
         "replay": {
             k: (v.tolist() if isinstance(v, np.ndarray) else v)
             for k, v in rep.items()
-            if k not in ("qpos_history",)
+            # Raw per-frame traces.  qpos_history was already excluded for
+            # size; the three the winding gate reads are excluded with it and
+            # surface instead as the gate's own per-frame evidence.
+            if k not in ("qpos_history", "ctrl_history",
+                         "actuator_force_history", "qfrc_constraint_history",
+                         "qfrc_other_history")
         },
         "config": {
             "urdf": str(DEX_URDF),

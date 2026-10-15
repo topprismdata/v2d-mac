@@ -3,7 +3,7 @@
   "checks": {
     "frame_counts_consistent": true,
     "all_finite": true,
-    "joint_limits_ok": false,
+    "joint_limits_ok": true,
     "joint_velocity_ok": true,
     "joint_acceleration_ok": true,
     "penetration_ok": true,
@@ -2144,7 +2144,48 @@
     "mjcf_range_violation_frames": [
       0
     ],
-    "note": "the retargeted command is clipped to each actuator's ctrlrange before it is applied; the realised qpos is then checked against the MJCF joint range"
+    "servo_winding_tolerance": {
+      "ok": true,
+      "rule": "three-part servo winding tolerance, per finger joint: (1) excess beyond jnt_range <= |forcerange|/kp, (2) at most 3 consecutive control frames (150 ms at 20 Hz), (3) the transient is elastic wind-up: there is a contact torque on that DoF, the actuator is not on its force limit while it happens, and kp*(ctrl-qpos) accounts for the whole non-actuator load on the DoF to 5%. An excursion during saturation is never exempted, and neither is one on a freely drifting joint.",
+      "explanation_tol": 0.05,
+      "max_frames": 3,
+      "control_period_ms": 50.0,
+      "joints_with_excursion": {
+        "mfj1": {
+          "cap_rad": 0.14290824047324255,
+          "cap_formula": "|forcerange| / kp",
+          "cap_from_model_rad": 0.14290824047324255,
+          "max_excess_rad": 0.0071731073144030155,
+          "margin_x": 19.922780213575564,
+          "frames": [
+            0
+          ],
+          "max_consecutive_frames": 1,
+          "frame_limit": 3,
+          "amplitude_ok": true,
+          "duration_ok": true,
+          "events": [
+            {
+              "frame": 0,
+              "qpos_rad": 1.6171731073144031,
+              "ctrl_rad": 1.5991133324390179,
+              "excess_rad": 0.0071731073144030155,
+              "servo_winding_rad": -0.018059774875385237,
+              "tau_servo_Nm": -0.013127650356917528,
+              "tau_contact_Nm": -0.010742036808617518,
+              "tau_other_Nm": 0.01316386577192401,
+              "winding_vs_load_residual": 0.0027511230845062226,
+              "actuator_saturated": false,
+              "torque_match": true,
+              "explained": true
+            }
+          ],
+          "explanation_ok": true,
+          "ok": true
+        }
+      }
+    },
+    "note": "the retargeted command is clipped to each actuator's ctrlrange before it is applied; the realised qpos is then checked against the MJCF joint range. mjcf_range_violation_frames is the zero-tolerance evidence (frames where qpos left jnt_range at all); the gate that judges them is servo_winding_tolerance, the user-approved three-part servo winding table. This MJCF gives every finger joint limited=true with stiffness=0, so jnt_range is an assertion the gate checks, not a mechanical stop the solver enforces -- which is exactly why an elastic wind-up can carry qpos past it."
   },
   "joint_motion": {
     "ctrl_hz": 20,
