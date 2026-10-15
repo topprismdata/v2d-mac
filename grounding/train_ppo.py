@@ -6,6 +6,11 @@ Curves (windowed means of the raw episode telemetry) go to
 ``runs/p0/smoke4_mujoco_ppo/curve.csv``; the trained policy is saved next to it and
 re-evaluated with full contact tracing into ``eval_episodes.json`` for the
 acceptance test. Nothing here writes qpos: SB3 only ever calls ``env.step``.
+
+Two pipeline-validation knobs that must NOT be used for a formal run:
+``--out-dir`` redirects every artifact so a plumbing run cannot overwrite the
+committed smoke4 evidence, and ``--init-from-bc`` loads a behaviour-cloning warm
+start (``grounding/bc_pretrain.py``) into the fresh policy before training.
 """
 
 from __future__ import annotations
@@ -71,17 +76,24 @@ class WindowedCurve:
 
 
 def train(total_steps: int, n_envs: int, seed: int, episode_len: int,
-          early_stop_lift: float, resume: bool = False) -> dict:
+          early_stop_lift: float, resume: bool = False,
+          out_dir: pathlib.Path = OUT_DIR,
+          init_from_bc: pathlib.Path | None = None) -> dict:
     from stable_baselines3 import PPO  # noqa: PLC0415
     from stable_baselines3.common.callbacks import BaseCallback  # noqa: PLC0415
     from stable_baselines3.common.vec_env import SubprocVecEnv  # noqa: PLC0415
 
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    if resume and init_from_bc is not None:
+        raise ValueError("--resume and --init-from-bc are mutually exclusive: "
+                         "one continues a trained policy, the other overwrites a "
+                         "fresh one")
+
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     class CurveCallback(BaseCallback):
         def __init__(self) -> None:
             super().__init__()
-            self.curve = WindowedCurve(OUT_DIR / "curve.csv")
+            self.curve = WindowedCurve(out_dir / "curve.csv")
             self.episode = 0
             self.best = {"z_peak": -1.0, "episode": -1}
             self.history: list[dict] = []
@@ -115,7 +127,7 @@ def train(total_steps: int, n_envs: int, seed: int, episode_len: int,
 
     vec = SubprocVecEnv([_make_env(i, seed, episode_len) for i in range(n_envs)],
                         start_method="spawn")
-    ckpt = OUT_DIR / "ppo_lift_hold.zip"
+    ckpt = out_dir / "ppo_lift_hold.zip"
     resumed_from = None
     if resume and ckpt.exists():
         # continue from the existing policy; total_steps is the NEW budget to add
@@ -142,18 +154,25 @@ def train(total_steps: int, n_envs: int, seed: int, episode_len: int,
             clip_range=0.2,
             policy_kwargs={"net_arch": [256, 256]},
         )
+        if init_from_bc is not None:
+            from grounding.bc_pretrain import load_into_sb3  # noqa: PLC0415
+
+            bc_info = load_into_sb3(model, init_from_bc)
+            print(f"[bc] warm start loaded from {init_from_bc}: "
+                  f"max|delta| {json.dumps(bc_info['max_abs_delta'])}", flush=True)
     cb = CurveCallback()
     t0 = time.time()
     model.learn(total_timesteps=total_steps, callback=cb, progress_bar=False,
                 reset_num_timesteps=not resume)
     wall = time.time() - t0
-    model.save(OUT_DIR / "ppo_lift_hold")
+    model.save(out_dir / "ppo_lift_hold")
     vec.close()
 
     summary = {
         "total_steps_requested": total_steps,
         "cumulative_timesteps": int(model.num_timesteps),
         "resumed_from_timesteps": resumed_from,
+        "init_from_bc": str(init_from_bc) if init_from_bc else None,
         "wall_seconds": wall,
         "seed": seed,
         "n_envs": n_envs,
@@ -162,17 +181,18 @@ def train(total_steps: int, n_envs: int, seed: int, episode_len: int,
         "n_episodes": cb.episode,
         "early_stop_target_m": early_stop_lift,
     }
-    (OUT_DIR / "train_summary.json").write_text(json.dumps(summary, indent=2))
+    (out_dir / "train_summary.json").write_text(json.dumps(summary, indent=2))
     return summary
 
 
-def evaluate(n_episodes: int, seed: int, episode_len: int) -> dict:
+def evaluate(n_episodes: int, seed: int, episode_len: int,
+             out_dir: pathlib.Path = OUT_DIR) -> dict:
     """Deterministic evaluation with full contact tracing."""
     from stable_baselines3 import PPO  # noqa: PLC0415
 
     from grounding.envs.lift_hold_env import LiftHoldEnv  # noqa: PLC0415
 
-    model = PPO.load(OUT_DIR / "ppo_lift_hold", device="cpu")
+    model = PPO.load(out_dir / "ppo_lift_hold", device="cpu")
     env = LiftHoldEnv(episode_len=episode_len)
     episodes = []
     for ep in range(n_episodes):
@@ -253,7 +273,7 @@ def evaluate(n_episodes: int, seed: int, episode_len: int) -> dict:
         },
         "episodes": episodes,
     }
-    (OUT_DIR / "eval_episodes.json").write_text(json.dumps(result, indent=2))
+    (out_dir / "eval_episodes.json").write_text(json.dumps(result, indent=2))
     return result
 
 
@@ -269,13 +289,22 @@ def main() -> None:
     p.add_argument("--resume", action="store_true",
                    help="continue from runs/p0/smoke4_mujoco_ppo/ppo_lift_hold.zip; "
                         "--total-steps is then the ADDITIONAL budget")
+    p.add_argument("--out-dir", type=pathlib.Path, default=OUT_DIR,
+                   help="artifact directory (default: the formal smoke4 dir; "
+                        "pipeline-validation runs MUST redirect this so the "
+                        "committed evidence is not overwritten)")
+    p.add_argument("--init-from-bc", type=pathlib.Path, default=None,
+                   help="load a bc_pretrain.py warm start into the fresh policy "
+                        "before training (mutually exclusive with --resume)")
     args = p.parse_args()
 
     if not args.eval_only:
         s = train(args.total_steps, args.n_envs, args.seed, args.episode_len,
-                  args.early_stop_lift, resume=args.resume)
+                  args.early_stop_lift, resume=args.resume, out_dir=args.out_dir,
+                  init_from_bc=args.init_from_bc)
         print(json.dumps(s, indent=2), flush=True)
-    res = evaluate(args.eval_episodes, args.seed + 10_000, args.episode_len)
+    res = evaluate(args.eval_episodes, args.seed + 10_000, args.episode_len,
+                   out_dir=args.out_dir)
     best = res["episodes"][res["best_episode"]]
     print(f"BEST max_lift={best['max_lift_m']:+.4f} m", flush=True)
 

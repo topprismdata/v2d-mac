@@ -490,67 +490,76 @@ def sweep(cands: list[Pose], workers: int = 8) -> list[dict]:
     return out
 
 
+def _record_trajectory(env, p: Pose) -> tuple[list, list]:
+    """Replay one Pose's scripted rollout, recording the (obs, action) pairs.
+
+    Deterministic by construction: the caller resets the env to seed 0 and the
+    controller is a pure function of the Pose, so these are exactly the
+    obs/action pairs `run_trial` stepped with. Extracted verbatim from
+    `save_demo_set` so `bc_demo_set` records the identical layout from trials
+    that never achieved a clean lift.
+    """
+    base_amp = amps_for(p)
+    obs_all: list = []
+    act_all: list = []
+
+    def step_to(ctrl_t, amps):
+        tgt = np.zeros(22)
+        tgt[0:6] = ctrl_t
+        tgt[N_WRIST:] = ctrl_from_amp(env, amps)
+        a = action_from_ctrl(env, tgt)
+        obs, *_ = env.step(a)
+        obs_all.append(obs.copy())
+        act_all.append(a.astype(np.float32))
+
+    wrist_hi = np.array([p.wx, p.wy, max(p.wz, 0.06), p.rx, p.ry, p.rz])
+    wrist_lo = np.array([p.wx, p.wy, p.wz, p.rx, p.ry, p.rz])
+    for _ in range(p.n_app):
+        step_to(wrist_hi, np.full(16, -1.0))
+    if p.sequence == "descend_then_close":
+        for _ in range(p.n_desc):
+            step_to(wrist_lo, np.full(16, -1.0))
+        for _ in range(p.n_close):
+            step_to(wrist_lo, base_amp)
+    elif p.sequence == "close_then_descend":
+        for _ in range(p.n_close):
+            step_to(wrist_hi, base_amp)
+        for _ in range(p.n_desc):
+            step_to(wrist_lo, base_amp)
+    else:
+        n = max(p.n_desc, p.n_close)
+        for i in range(n):
+            f = -1.0 + (base_amp[0] + 1.0) * min(1.0, (i + 1) / n)
+            step_to(wrist_lo, np.full(16, f))
+        for _ in range(40):
+            step_to(wrist_lo, base_amp)
+    lift_goal = np.array([p.wx, p.wy, p.lift_z, p.rx, p.ry, p.rz])
+    cur = np.array(env.data.ctrl[0:6])
+    for _ in range(p.n_lift):
+        cur = np.minimum(lift_goal, cur + p.lift_rate * WRIST_STEP)
+        step_to(cur, base_amp)
+    return obs_all, act_all
+
+
 def save_demo_set(rows: list[dict], top: int = 12) -> dict:
     """Materialise the winning trajectories as obs/action pairs for behaviour cloning.
 
     Format matches the `bc_*` slots already reserved in feasible_poses.npz:
     flat obs/actions with a per-trajectory length, plus the pose each came from.
     """
-    env = _make_env(episode_len=1200)
-    import mujoco  # noqa: PLC0415
-    m, d = env.model, env.data
-    env.reset(seed=0)
-    box = d.xpos[env.obj_body].copy()
-    half = np.asarray(m.geom_size[env.obj_geom])
-    kin = _kin_setup(env)
-
     good = sorted([r for r in rows if r.get("clean")],
                   key=lambda r: -r["clean_streak_steps"])[:top]
     if not good:
         return {"saved": 0, "reason": "no clean trajectory in the sweep"}
 
-    obs_all, act_all, pose_all, lens = [], [], [], []
+    env = _make_env(episode_len=1200)
+    obs_all, act_all, lens = [], [], []
     for r in good:
-        p = Pose(**r["cfg"])
         env.reset(seed=0)
-        base_amp = amps_for(p)
-
-        def step_to(ctrl_t, amps):
-            tgt = np.zeros(22)
-            tgt[0:6] = ctrl_t
-            tgt[N_WRIST:] = ctrl_from_amp(env, amps)
-            a = action_from_ctrl(env, tgt)
-            obs, *_ = env.step(a)
-            obs_all.append(obs.copy())
-            act_all.append(a.astype(np.float32))
-
-        wrist_hi = np.array([p.wx, p.wy, max(p.wz, 0.06), p.rx, p.ry, p.rz])
-        wrist_lo = np.array([p.wx, p.wy, p.wz, p.rx, p.ry, p.rz])
-        for _ in range(p.n_app):
-            step_to(wrist_hi, np.full(16, -1.0))
-        if p.sequence == "descend_then_close":
-            for _ in range(p.n_desc):
-                step_to(wrist_lo, np.full(16, -1.0))
-            for _ in range(p.n_close):
-                step_to(wrist_lo, base_amp)
-        elif p.sequence == "close_then_descend":
-            for _ in range(p.n_close):
-                step_to(wrist_hi, base_amp)
-            for _ in range(p.n_desc):
-                step_to(wrist_lo, base_amp)
-        else:
-            n = max(p.n_desc, p.n_close)
-            for i in range(n):
-                f = -1.0 + (base_amp[0] + 1.0) * min(1.0, (i + 1) / n)
-                step_to(wrist_lo, np.full(16, f))
-            for _ in range(40):
-                step_to(wrist_lo, base_amp)
-        lift_goal = np.array([p.wx, p.wy, p.lift_z, p.rx, p.ry, p.rz])
-        cur = np.array(env.data.ctrl[0:6])
-        for _ in range(p.n_lift):
-            cur = np.minimum(lift_goal, cur + p.lift_rate * WRIST_STEP)
-            step_to(cur, base_amp)
-        lens.append(len(obs_all) - sum(lens))
+        obs, act = _record_trajectory(env, Pose(**r["cfg"]))
+        obs_all.extend(obs)
+        act_all.extend(act)
+        lens.append(len(obs))
 
     obs_arr = np.asarray(obs_all, dtype=np.float32)
     act_arr = np.asarray(act_all, dtype=np.float32)
@@ -564,6 +573,109 @@ def save_demo_set(rows: list[dict], top: int = 12) -> dict:
                         mjcf_commit=np.array(MJCF_COMMIT))
     return {"saved": len(good), "frames": int(len(obs_all)), "path": str(DEMO_NPZ),
             "best_streak": int(max(r["clean_streak_steps"] for r in good))}
+
+
+# ------------------------------------------------------------ BC plumbing set
+# The committed verdict on MJCF 4508421 is that NO clean lift exists, so
+# `save_demo_set` can never emit a set in this scene. `bc_demo_set` records the
+# best AVAILABLE scripted trials regardless of the clean flag so the
+# BC -> PPO -> eval pipeline can be validated end to end against real env
+# telemetry. The npz records `selection="best_available_not_clean"`: these
+# arrays are training-plumbing data, NOT demonstration evidence of a clean
+# grasp, and must never be cited as one.
+_BC_SEQUENCES = ("descend_then_close", "close_then_descend", "simultaneous")
+
+
+def _plumbing_pose(rng: np.random.Generator, quick: bool) -> Pose:
+    """One seeded sample from the same field `_kinematic_candidates` searches.
+
+    Bounds are copied from that grid so the plumbing trials exercise the same
+    pose space the feasibility sweep did; they are not re-tuned.
+    """
+    kw: dict = {}
+    if quick:
+        # short phase budgets for schema/pipeline tests; episode_len 220 covers
+        # 20 + max(20, 20) + 40 + 40 = 120 steps in every sequence
+        kw = dict(n_app=20, n_desc=20, n_close=20, n_lift=40, lift_z=0.10)
+    return Pose(
+        wx=float(rng.choice((-0.05, 0.0, 0.05))),
+        wy=0.0,
+        wz=float(rng.choice((-0.163, -0.10, -0.02, 0.06))),
+        rx=round(float(rng.uniform(-1.2, 1.2)), 4),
+        ry=round(float(rng.uniform(-1.2, 1.2)), 4),
+        rz=round(float(rng.uniform(-1.4, 1.4)), 4),
+        a_long=round(float(rng.uniform(-0.6, 1.0)), 3),
+        a_thumb=round(float(rng.uniform(-1.0, 0.4)), 3),
+        a_spread=float(rng.choice((0.0, 0.06))),
+        sequence=str(rng.choice(_BC_SEQUENCES)),
+        lift_rate=float(rng.choice((0.35, 1.0))),
+        **kw,
+    )
+
+
+def bc_demo_set(n_trials: int = 32, top: int = 12, out: str | pathlib.Path | None = None,
+                seed: int = 0, quick: bool = False) -> dict:
+    """Collect a BC dataset from scripted trials WITHOUT requiring a clean lift.
+
+    Pipeline-validation input only: runs `n_trials` poses from the same field
+    the feasibility sweep searches, ranks them by off-pedestal streak then peak
+    lift, and records the `top` best as obs/action pairs in the exact D4 layout
+    `save_demo_set` uses (`bc_obs`/`bc_act`/`bc_pose`/`bc_trajectory_len`/
+    `mjcf_commit`), plus a `selection` marker declaring them non-clean.
+    """
+    import mujoco  # noqa: PLC0415
+
+    out = pathlib.Path(out) if out is not None else OUT_DIR / "bc_plumbing_demos.npz"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    episode_len = 220 if quick else 1200
+    env = _make_env(episode_len=episode_len)
+    m, d = env.model, env.data
+    env.reset(seed=0)
+    box = d.xpos[env.obj_body].copy()
+    half = np.asarray(m.geom_size[env.obj_geom])
+    kin = _kin_setup(env)
+
+    rng = np.random.default_rng(seed)
+    rows = []
+    for i in range(n_trials):
+        row = run_trial(env, kin, _plumbing_pose(rng, quick), box=box, half=half)
+        rows.append(row)
+        print(f"  trial {i + 1}/{n_trials}: streak={row['clean_streak_steps']} "
+              f"peak={row['peak_lift_m'] * 1000:.1f}mm clean={row['clean']}", flush=True)
+
+    rows.sort(key=lambda r: (-r["clean_streak_steps"], -r["peak_lift_m"]))
+    chosen = rows[:max(1, min(top, len(rows)))]
+
+    obs_all, act_all, lens, pose_rows = [], [], [], []
+    for r in chosen:
+        p = Pose(**r["cfg"])
+        env.reset(seed=0)
+        obs, act = _record_trajectory(env, p)
+        obs_all.extend(obs)
+        act_all.extend(act)
+        lens.append(len(obs))
+        pose_rows.append([p.wx, p.wy, p.wz, p.rx, p.ry, p.rz, p.a_long, p.a_thumb])
+
+    np.savez_compressed(
+        out,
+        bc_obs=np.asarray(obs_all, dtype=np.float32),
+        bc_act=np.asarray(act_all, dtype=np.float32),
+        bc_pose=np.asarray(pose_rows, dtype=np.float32),
+        bc_trajectory_len=np.asarray(lens, dtype=np.int32),
+        mjcf_commit=np.array(MJCF_COMMIT),
+        selection=np.array("best_available_not_clean"),
+    )
+    return {
+        "path": str(out),
+        "n_trials": n_trials,
+        "saved": len(chosen),
+        "frames": int(len(obs_all)),
+        "best_streak": int(chosen[0]["clean_streak_steps"]),
+        "n_clean_trials": int(sum(r["clean"] for r in rows)),
+        "selection": "best_available_not_clean",
+        "quick": bool(quick),
+        "mjcf_commit": MJCF_COMMIT,
+    }
 
 
 # -------------------------------------------------------------------- verdict
@@ -703,11 +815,27 @@ def verdict(samples: int = 60000, seed: int = 3) -> dict:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--stage", default="all",
-                    choices=("diagnose", "kinematic", "sweep", "report", "verdict", "all"))
+                    choices=("diagnose", "kinematic", "sweep", "report", "verdict",
+                             "bc-demos", "all"))
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--limit", type=int, default=400)
+    ap.add_argument("--n-trials", type=int, default=32,
+                    help="bc-demos stage: how many scripted trials to run")
+    ap.add_argument("--top", type=int, default=12,
+                    help="bc-demos stage: how many trials to record into the npz")
+    ap.add_argument("--demo-out", type=str, default=None,
+                    help="bc-demos stage: npz output path (default "
+                         "runs/p0/smoke4_mujoco_ppo/bc_plumbing_demos.npz)")
+    ap.add_argument("--quick", action="store_true",
+                    help="bc-demos stage: short phase budgets for schema/pipeline "
+                         "tests; trials are ~120 steps instead of ~1060")
     args = ap.parse_args()
     OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    if args.stage == "bc-demos":
+        print(json.dumps(bc_demo_set(n_trials=args.n_trials, top=args.top,
+                                     out=args.demo_out, quick=args.quick), indent=2))
+        return
 
     if args.stage in ("diagnose", "all"):
         diag = diagnose()
