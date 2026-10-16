@@ -96,18 +96,17 @@ VERDICT_JSON = OUT_DIR / "clean_lift_verdict.json"
 # Scene provenance stamp written into every demo npz this module produces, and
 # checked by grounding/bc_pretrain.py against the demo set it is asked to load -
 # a BC warm start must never be fitted on frames recorded against a different
-# scene. Bumped 8c58733 -> eba5d7b with W6a-v8 (per-joint finger return
-# springs sized to static-hold budgets, springref = clipped gate-3 solution;
-# sha256 8b6a6ddd...). Actuator forcerange/kp/dof_damping re-diffed per joint
-# against 7b7a1adf: 0 changes, so the servo winding tables carry over; the
-# springs are per-joint passive physics (mfj0_left watch item: 86% of cap
-# under gravity, handed to W6c).
+# scene. Bumped eba5d7b -> 353b0b0 with W6a-v10..v12 (r9x11mm cylindrical pads,
+# friction 1.8; moment-arm re-measurement re-pinning abductor/thumb
+# forceranges; lift-chain forcerange x1.7 aligned to the Allegro hardware
+# spec; sha256 f8925e27...).  The position winding table was re-derived for
+# the new caps (hardware-spec calibration, R10-v12); rate tables unchanged.
 # HONESTY NOTE: the committed demo npz artefacts under smoke4_mujoco_ppo/ were
 # recorded on the superseded single-hand XML (1b0f13f, blob 1ea0fdf5...) --
 # this pin describes the XML the generator now runs on, and the artefacts must
 # not be mixed with a run made after this bump without a re-record.
-MJCF_COMMIT = "eba5d7b"
-MJCF_SHA256 = "8b6a6ddd1b0df4f7d1b16df18263af6093a48eba31d7818630f44d1677dc11b0"
+MJCF_COMMIT = "353b0b0"
+MJCF_SHA256 = "f8925e275e601355606b84b711d848b4901ea6be2a55c1746ea0827ee1aad08a"
 N_WRIST = 6
 N_FINGER = 16
 

@@ -267,43 +267,54 @@ WRIST_ROT_CEILING_RAD = 0.5
 #     8b6a6ddd...) re-posed/mounted the hands and re-sized the passive finger
 #     springs (per-joint in v8) -- re-affirmed by per-joint actuator diffs:
 #     ZERO forcerange/kp/dof_damping changes in both steps, so these numbers
-#     are unchanged across all five scene generations.
+#     are unchanged across all five scene generations;
+#   * W6a-v10..v12 (HEAD 353b0b0, blob f8925e27...) changed the numbers
+#     twice over: v10 re-measured the R1 moment-arm table (abductor/thumb
+#     forceranges re-pinned -- ffj0 0.03 -> 0.0225 etc., position caps x0.75)
+#     and swapped the pads to r9x11 cylinders with friction 1.8; v12 then
+#     raised the lift-chain forceranges x1.7 (ffj1/ffj2/mfj1/mfj2, both
+#     hands, 0.159-0.179 N m) to align with the Allegro hardware spec --
+#     Main's ruling A, R10-v12 basis.  This is a HARDWARE-SPEC CALIBRATION:
+#     the caps move because the actuators' own force limits moved, not
+#     because any gate criterion was loosened (the lift gate stays at 5 mm).
+#     Rate tables are untouched by both steps (hinges 5.0 rad/s x6; slides
+#     x/z 45/280 = 0.1607 m/s, y 45/25 = 1.8 m/s, x2 hands).
 SERVO_WINDING_POSITION_CAP_RAD = {
     # right hand (the hand the retargeted clip drives)
-    "ffj0": 0.09199632014719411,
-    "ffj1": 0.14501306919796397,
-    "ffj2": 0.39902044293015326,
+    "ffj0": 0.06899724011039558,
+    "ffj1": 0.24651258770119686,
+    "ffj2": 0.6783219761499147,
     "ffj3": 0.9396436525612472,
-    "mfj0": 0.09151921903599756,
-    "mfj1": 0.14290824047324255,
-    "mfj2": 0.40034071550255534,
+    "mfj0": 0.0686699206833435,
+    "mfj1": 0.24294951162470768,
+    "mfj2": 0.6806218057921636,
     "mfj3": 0.943207126948775,
-    "rfj0": 0.091324200913242,
+    "rfj0": 0.0684931506849315,
     "rfj1": 0.14569226534544452,
     "rfj2": 0.3995741056218058,
     "rfj3": 0.9396436525612472,
-    "thj0": 0.09529885829415716,
-    "thj1": 0.07409771667075865,
-    "thj2": 0.12424749163879598,
-    "thj3": 0.3100206611570248,
+    "thj0": 0.09040583325338193,
+    "thj1": 0.05538914804812178,
+    "thj2": 0.12164357381748685,
+    "thj3": 0.23264462809917355,
     # left hand (frozen at the reset pose in smoke 5; gated identically if
     # ever driven -- the values are the mirror hand's own derivation)
-    "ffj0_left": 0.09199632014719411,
-    "ffj1_left": 0.14501306919796397,
-    "ffj2_left": 0.39902044293015326,
+    "ffj0_left": 0.06899724011039558,
+    "ffj1_left": 0.24651258770119686,
+    "ffj2_left": 0.6783219761499147,
     "ffj3_left": 0.9396436525612472,
-    "mfj0_left": 0.09151921903599756,
-    "mfj1_left": 0.14290824047324255,
-    "mfj2_left": 0.40034071550255534,
+    "mfj0_left": 0.0686699206833435,
+    "mfj1_left": 0.24294951162470768,
+    "mfj2_left": 0.6806218057921636,
     "mfj3_left": 0.943207126948775,
-    "rfj0_left": 0.091324200913242,
+    "rfj0_left": 0.0684931506849315,
     "rfj1_left": 0.14569226534544452,
     "rfj2_left": 0.3995741056218058,
     "rfj3_left": 0.9396436525612472,
-    "thj0_left": 0.09529885829415716,
-    "thj1_left": 0.07409771667075865,
-    "thj2_left": 0.12424749163879598,
-    "thj3_left": 0.3100206611570248,
+    "thj0_left": 0.09040583325338193,
+    "thj1_left": 0.05538914804812178,
+    "thj2_left": 0.12164357381748685,
+    "thj3_left": 0.23264462809917355,
 }
 SERVO_WINDING_RATE_CAP_RAD_S = {
     "wrist_rx": 5.0,

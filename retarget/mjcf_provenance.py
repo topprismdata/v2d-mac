@@ -36,22 +36,26 @@ if str(REPO) not in sys.path:
 
 from retarget import retarget_smoke as rs  # noqa: E402
 
-#: The MJCF revision this re-run is accounted against.  W6a-v8 landed in
-#: eba5d7b (+3adf741/8be7dc9): finger return springs became PER-JOINT --
-#: k_j sized to each joint's static-hold budget (k = min(0.09,
-#: max(0.01, (0.8*cap - gravity)/|seed deviation|)), with thj2/thj3 and
-#: mfj0 stepped down further), springref = the gate-3 solution's per-joint
-#: mean clipped into the joint's range.  Verified: blob(eba5d7b) == sha256
-#: of the working-tree XML (8b6a6ddd...).
-#: RE-AFFIRMATION (per-joint forcerange/kp/dof_damping diffed against the
-#: 7b7a1adf generation): 0 differences across all 44 actuators -- the three
-#: servo winding tables carry over unchanged; the sha pin moves, the numbers
-#: do not.
+#: The MJCF revision this re-run is accounted against.  W6a-v12 landed in
+#: 353b0b0: the v10/v11 pad swap (finger pads are now r9x11mm CYLINDERS,
+#: friction 1.8), the v10 moment-arm re-measurement (abductor/thumb
+#: forceranges re-pinned -- ffj0 0.03 -> 0.0225 etc., position caps x0.75)
+#: and the v12 lift-chain forcerange raise (ffj1/ffj2/mfj1/mfj2 x1.7 ->
+#: 0.159-0.179 N m, both hands) -- Main's ruling A, aligning the caps with
+#: the Allegro hardware spec (R10-v12 basis).  Verified: blob(353b0b0) ==
+#: sha256 of the working-tree XML (f8925e27...).
+#: The position winding table was RE-DERIVED for these caps.  This is a
+#: HARDWARE-SPEC CALIBRATION, not a criteria loosening: the caps moved
+#: because the actuators' own force limits moved, and the lift gate stays
+#: at 5 mm.  The rate tables are untouched by every step since v2 (hinges
+#: 5.0 rad/s x6; slides x/z 45/280 = 0.1607 m/s, y 45/25 = 1.8 m/s, x2
+#: hands), re-affirmed by per-joint diff on each landing.  The per-joint
+#: spring table below is also unchanged v8 -> v12 (re-diffed, 0 entries).
 #:
-#: PASSIVE CONSTANTS, per joint (v8; the v5 single "0.4 + springref" remark is
-#: superseded -- k is no longer a shared constant).  Left hand mirrors right
-#: bit-identically (asserted per mirror pair in the winding-tolerance tests'
-#: spirit; measured off the model):
+#: PASSIVE CONSTANTS, per joint (v8 sizing, unchanged through v12; the v5
+#: single "0.4 + springref" remark is superseded -- k is no longer a shared
+#: constant).  Left hand mirrors right bit-identically (asserted per mirror
+#: pair in the winding-tolerance tests' spirit; measured off the model):
 #:   ffj0 k=0.0318 ref=-0.144   mfj0 k=0.005  ref=0.132
 #:   ffj1 k=0.09   ref=0.63     mfj1 k=0.0739 ref=0.466
 #:   ffj2 k=0.09   ref=0.58     mfj2 k=0.085  ref=0.64
@@ -73,12 +77,13 @@ from retarget import retarget_smoke as rs  # noqa: E402
 #: the 0.8 static-hold budget but below saturation.  First observed by the
 #: v8 static-hold gate; it is contact-physics evidence for W6c's A2/A3a
 #: accounting, not a smoke-5 gate.
-MJCF_COMMIT = "eba5d7b"
+MJCF_COMMIT = "353b0b0"
 #: The MJCF revision the *previous* smoke-5 numbers were taken on. Kept so the
-#: two data sets can never be silently mixed.  8c58733 is the W6a-v5
-#: generation (blob 7b7a1adf..., shared-constant springs) -- the superseded
-#: physics the artefacts were stamped against before v8 landed.
-MJCF_COMMIT_BASELINE = "8c58733"
+#: two data sets can never be silently mixed.  eba5d7b is the W6a-v8
+#: generation (blob 8b6a6ddd..., capsule pads and pre-hardware-spec caps) --
+#: the superseded physics the artefacts were stamped against before
+#: v10-v12 landed.
+MJCF_COMMIT_BASELINE = "eba5d7b"
 
 OUT_DIR = REPO / "runs/p0/smoke5_retarget"
 REPORT_PATH = OUT_DIR / "report.json"
