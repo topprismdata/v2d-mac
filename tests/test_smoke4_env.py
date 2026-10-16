@@ -189,35 +189,20 @@ def test_c5_step_never_writes_qpos(env_cls):
 # --------------------------------------------------------------------------- C6
 def test_c6_object_only_moves_via_contact(env_cls):
     """Control experiment: park the box out of the hand's workspace -> random
-    flailing must not move it at all (so every metre of real-task motion is contact)."""
-    worst = 0.0
-    for seed in (3, 7, 11, 13):
-        env = env_cls(out_of_reach=True)
-        rng = np.random.default_rng(seed)
-        env.reset(seed=seed)
-        start = env.unwrapped.data.qpos[:3].copy()
-        finger_steps = 0
-        for _ in range(100):
-            env.step(rng.uniform(-1, 1, 44).astype(np.float32))
-            assert np.all(np.isfinite(env.unwrapped.data.qpos))
-            finger_steps += any(
-                p[0].split("#")[0].startswith(("ff_", "mf_", "rf_", "th_"))
-                for p in env.trace["contact_pairs"][-1])
-        assert finger_steps == 0, (
-            f"seed {seed}: hand touched the parked box {finger_steps} times - "
-            "the control case must have zero finger-box contact"
-        )
-        worst = max(worst, float(np.linalg.norm(env.unwrapped.data.qpos[:3] - start)))
-        env.close()
-    # Bound justification: MuJoCo's default solref lets a box resting on the table
-    # creep/jitter by ~2e-4 m (measured over 100 steps with zero hand contact), so
-    # 1e-4 m is below the solver's own resting noise and can never be met. 1e-3 m is
-    # used instead - still 50x below the 5 cm acceptance bar, so any motion large
-    # enough to fake a lift would be caught by orders of magnitude.
-    assert worst < 1e-3, (
-        f"object moved {worst:.6f} m with zero possible hand contact - "
-        "object motion must be contact-driven only"
-    )
+    flailing must not move it at all (so every metre of real-task motion is contact).
+
+    SUPERSEDED by W6a-v5: the dual-hand scene has NO hand-free slab region.
+    Both hands (roots +-0.235, wrist slides +-0.18, fingers reaching into the
+    faces) sweep overlapping volumes across the entire slab - measured: with
+    the box parked at the resolver's max-clearance pose (-0.31, 0.25), the
+    left PALM swats it 15 mm at flail step ~50 with zero finger contact
+    (seeds 3/7/11/13). The control's placement-based premise is structurally
+    gone; the property it guarded (box motion must be contact-driven) lives
+    on in the acceptance gates' contact-evidence criteria (A2/A3a, frozen)
+    and the W_OFF_TABLE reward term. To be re-designed as a per-hand contact
+    attribution check in the W6c wave."""
+    pytest.skip("SUPERSEDED by W6a-v5: no hand-free slab region exists in the "
+                "dual-hand scene (REVISION.md R10-v5)")
 
 
 # --------------------------------------------------------------------------- C7

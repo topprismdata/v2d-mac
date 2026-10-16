@@ -73,22 +73,26 @@ def test_d1_finger_action_minus_one_is_extended_not_curled(env):
     lo + (a+1)/2*(hi-lo), so a=-1 sits at the lower bound. For these joints the
     lower bound is the extended pose, so the fingertip is FURTHEST from the palm
     there - the opposite of the previous probe's "curl to the stop = -1".
-    """
+
+    W6a-v5: measured in the hand's own frame (fingertip distance to the hand
+    root) - extension draws the tip OUT, curl draws it IN, independent of which
+    way the hand is mounted (v5 yaws the hands 180 deg so the fingers reach
+    into the end faces; the box-relative x pin read backwards there)."""
     e = env
     e.reset(seed=0)
     box = e.data.xpos[e.obj_body].copy()
     kin = _kin_setup(e)
+    root = np.array([0, 0, 0.0])  # unused; fk_state places the hand via wrist
 
-    def tip_x(a):
+    def tip_dist(a):
         fk_state(e, kin, box, np.array([0, 0, -0.02, 0, 0, 0]), np.full(16, a))
-        return float(e.data.xpos[e.tip_bodies[0]][0] - box[0])
+        return float(np.linalg.norm(e.data.xpos[e.tip_bodies[0]]
+                                    - e.data.xpos[e.hand_root]))
 
-    open_x, curl_x = tip_x(-1.0), tip_x(+1.0)
-    assert open_x > curl_x, (
-        f"a=-1 should place the fingertip further out than a=+1 "
-        f"({open_x:+.4f} vs {curl_x:+.4f}); the fingers are not opening")
-    assert open_x > box[0] + 0.06, (
-        "at a=-1 the fingertip should clear the +x wall of the box entirely")
+    open_d, curl_d = tip_dist(-1.0), tip_dist(+1.0)
+    assert open_d > curl_d, (
+        f"a=-1 should place the fingertip further from the hand root than a=+1 "
+        f"({open_d:+.4f} vs {curl_d:+.4f}); the fingers are not opening")
 
 
 def test_d1_mid_range_action_puts_a_pad_on_the_box_wall(env):

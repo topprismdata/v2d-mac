@@ -212,10 +212,19 @@ PEDESTAL_H = PEDESTAL_H_M
 # Birth safety at these homes (measured): palm plates hover 10 mm above the
 # box top (palm bottom z 0.790 vs box top 0.78), fingertips at z ~0.835 over
 # the ends, zero birth contacts, settle quiet (box 0.03 mm, roots <0.5 mm).
-HAND_HOME_RIGHT = "0.185 0 0.795"   # +x end: palm plate beside the face, 30 mm clear
-HAND_HOME_LEFT = "-0.185 0 0.795"   # -x end, mirrored
-HAND_EULER_RIGHT = "0 0 0"                 # palm faces -x = its face inward normal
-HAND_EULER_LEFT = "0 0 3.141592653590"     # Rz(180): palm faces +x
+HAND_HOME_RIGHT = "0.235 0 0.755"   # +x end: straight fingers at the face mid-band
+HAND_HOME_LEFT = "-0.235 0 0.755"   # -x end, mirrored
+# W6a-v5 (Main ruling): BOTH hands yaw 180 deg vs v4 - the finger extension
+# axis points AT the box centre (right hand euler 0 0 pi -> fingers -x world;
+# left 0 0 0 -> fingers +x world). This is the video posture (back of the hand
+# toward the camera, fingers open onto the end face) and it makes the P4
+# forward-axis gate satisfiable: with the fingers pointing at the face, the
+# palm->tip-centroid vector points INTO the face (~21 deg at the home) instead
+# of 108 deg away as in v2-v4. The palm consequently faces AWAY (anti-parallel
+# anatomy, R10-v3) - recorded as evidence, never asserted (v5 ruling supersedes
+# the v4 <120 deg band: the 180 deg back-facing palm IS the video-correct look).
+HAND_EULER_RIGHT = "0 0 3.141592653590"    # Rz(180): fingers point -x (into face)
+HAND_EULER_LEFT = "0 0 0"                  # identity: fingers point +x (into face)
 HAND_HOME = HAND_HOME_RIGHT  # backwards-compatible alias (single-hand era)
 
 # --- R1: the real machine's fingertip force budget --------------------------
@@ -1127,6 +1136,32 @@ def _left_palm_from(raw_palm_el: ET.Element) -> ET.Element:
     return left
 
 
+# --- W6a-v5: finger home springs --------------------------------------------
+# The standing pre-flexed home must be the RAW MjData settle's equilibrium too
+# (Main ruling: the bare settle and env.reset must look identical - a render of
+# qpos0 was the "hands flat on the table" panel bug). MuJoCo's joint `ref`
+# cannot express this (it shifts the joint VALUE at the authored pose, not the
+# pose itself), so the home is a passive JOINT SPRING: stiffness + springref
+# pull each finger to its home curl in both settle paths. The position servos
+# stay the active control (env reset mirrors qpos into ctrl after settling, so
+# the spring is at equilibrium there - no fight); actuator kp/forcerange are
+# untouched (W6ServoTol tables unaffected structurally).
+FINGER_SPRING_STIFFNESS = 0.4      # N*m/rad - ~5-20x the finger gravity torque
+FINGER_SPRINGREF = tuple(
+    (0.0, 0.6, 0.6, 0.6) * 3 + (0.5, 0.4, 0.3, 0.3))   # ff/mf/rf/th home curl
+
+
+def _add_finger_home_springs(palm_el: ET.Element, suffix: str = "") -> None:
+    """Set stiffness/springref on the 16 finger joints of one palm subtree."""
+    for j in palm_el.iter("joint"):
+        name = j.get("name") or ""
+        if not name.startswith(("ffj", "mfj", "rfj", "thj")):
+            continue
+        idx = int(name[3]) if len(name) > 3 and name[3].isdigit() else 0
+        j.set("stiffness", f"{FINGER_SPRING_STIFFNESS:g}")
+        j.set("springref", f"{FINGER_SPRINGREF[idx]:g}")
+
+
 # ===================================================================== emit
 def _fmt_pair(values) -> str:
     return " ".join(f"{v:g}" for v in values)
@@ -1233,6 +1268,7 @@ def _upstream_parts() -> tuple[str, str, str, list, ET.Element, list]:
     raw_palm = copy.deepcopy(palm_el)
     _name_hand_geoms(palm_el)
     _annotate_hand_geoms(palm_el, CONTACT_SOLREF, CONTACT_SOLIMP)
+    _add_finger_home_springs(palm_el)
     palm = _indent(palm_el, 6)
 
     excludes = [(ex.get("body1"), ex.get("body2"))
@@ -1296,6 +1332,7 @@ def build(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
     left_el = _left_palm_from(raw_palm)
     _name_hand_geoms(left_el)
     _annotate_hand_geoms(left_el, CONTACT_SOLREF, CONTACT_SOLIMP)
+    _add_finger_home_springs(left_el, "_left")
     palm_left = _indent(left_el, 6)
     excludes = _exclude_lines(exclude_pairs)
     excludes_left = _exclude_lines(exclude_pairs, suffix="_left")

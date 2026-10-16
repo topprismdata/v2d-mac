@@ -222,6 +222,15 @@ def test_w6_gate2_settle_is_quiet(model):
     )
     # the box is still ON the slab, not through it
     assert d.xpos[obj][2] > BOX_BOT - 1e-3
+    # W6a-v5: the standing home keeps every fingertip >= 50 mm above the table
+    # (visible margin in renders; both settle paths - raw MjData and env.reset -
+    # converge to the same spring/servo home)
+    for f in ("ff", "mf", "rf", "th"):
+        for sfx in ("", "_left"):
+            g = nid(model, mujoco.mjtObj.mjOBJ_GEOM, f"{f}_tip{sfx}_collision")
+            assert d.geom_xpos[g][2] >= 0.75, (
+                f"{f}_tip{sfx} hangs {0.75 - float(d.geom_xpos[g][2]) * 1e3:.1f} mm "
+                "below the 50 mm clearance line after settle")
     # W6a-v2: the hands STAND at the end faces - no hand geom may touch the
     # table or floor while settling (the posture gate's physical counterpart)
     hand_bodies = set()
@@ -285,13 +294,19 @@ def _objective(model, d, h, q22, tol):
     for adr, v, (lo, hi) in zip(h["qadr"], q22, h["rng"]):
         d.qpos[adr] = np.clip(v, lo, hi)
     mujoco.mj_kinematics(model, d)
-    # W6a-v2 P3: the palm plate's world normal must sit within 60 deg of the
-    # hand's end-face inward normal - the hand STANDS facing the face
-    palm_n = d.geom_xmat[h["palm"]].reshape(3, 3) @ np.array([0.0, 0.0, -1.0])
+    # W6a-v5 ruling: the P3 palm cone is REMOVED - in the fingers-into-the-face
+    # orientation the palm faces away by anatomy (anti-parallel), and the video
+    # shows exactly that (back of the hand outward). Palm angle is recorded as
+    # evidence in gate3_qpos.json, never asserted.
     inward = np.array([-h["side"], 0.0, 0.0])
-    cosang = float(palm_n @ inward) / max(float(np.linalg.norm(palm_n)), 1e-12)
-    if cosang < np.cos(np.deg2rad(60.0)):
-        return 0.5 + float(np.arccos(np.clip(cosang, -1.0, 1.0)))
+    # W6a-v5 P4: the hand forward axis (palm centre -> fingertip centroid) must
+    # point into the face (<= 35 deg off the inward normal)
+    ctr = np.mean([d.geom_xpos[g] for g in h["pads"]], axis=0)
+    fwd = ctr - d.geom_xpos[h["palm"]]
+    fwd = fwd / max(float(np.linalg.norm(fwd)), 1e-12)
+    cosf = float(fwd @ inward)
+    if cosf < np.cos(np.deg2rad(35.0)):
+        return 0.5 + float(np.arccos(np.clip(cosf, -1.0, 1.0)))
     # W6a-v2 P1: no hand geom may touch the slab or floor (kinematic proxy:
     # radius-expanded AABB vs slab box / floor plane)
     for g in h["collisions"]:
@@ -332,8 +347,8 @@ def _objective(model, d, h, q22, tol):
 # rectangle-distance criterion, palm/table/posture constraints P1-P3). Refine
 # seeds only - the objective and assertions are seed-independent.
 GATE3_SEEDS = {
-    "right": [-0.035954, -0.053617, 0.078879, 1.337585, -0.157081, -0.077287, -0.287087, 1.214734, 1.090627, 0.095416, 0.291949, 1.559421, 1.100877, -0.120596, -0.108949, 0.187543, 0.632502, 0.648451, 0.263, 0.992412, 0.315025, -0.155295],
-    "left": [-0.178961, 0.04363, 0.051572, -1.764295, -0.909718, 0.610392, 0.220807, 1.61, 0.95485, 0.501157, 0.056973, 0.077465, -0.155368, 0.662045, 0.359245, 1.122549, 0.624598, 1.550039, 0.473049, 0.450418, 1.218115, 0.35481],
+    "right": [0.063353, -0.032501, 0.058653, -1.74605, 1.269683, 0.555033, 0.050302, 0.490579, 1.222826, 1.001245, -0.096407, 0.117344, 1.675489, 0.407278, 0.036654, 0.328436, 0.674388, 0.968369, 0.688202, 0.485329, 0.396601, -0.074476],
+    "left": [0.048714, -0.120389, -0.019187, 0.524993, 0.377209, 0.56572, 0.189702, 0.987969, 1.195394, 0.949551, 0.385297, -0.196, 0.619491, 1.397664, 0.187858, 1.403023, 1.681292, 0.251268, 0.366311, 0.195799, 0.789984, 1.641301],
 }
 
 
@@ -453,12 +468,21 @@ def test_w6_gate3_both_hands_reach_their_end_faces(model):
             f"{hname}: no pad touches its end face inside the mid-face z band "
             f"[{BOX_BOT + 0.4 * 2 * HALF_Z:.3f}, {BOX_TOP - 0.01:.3f}]"
         )
-        # W6a-v2 P3: the palm still faces the face in the touching pose
+        # W6a-v5 P4 (gate): the fingers reach INTO the face - the palm->tip
+        # forward axis within 35 deg of the inward normal. Palm angle recorded
+        # as evidence only (the anti-parallel anatomy puts it ~180 deg here,
+        # which is the video-correct back-of-hand look).
         palm_n = d.geom_xmat[h["palm"]].reshape(3, 3) @ np.array([0.0, 0.0, -1.0])
         inward = np.array([-h["side"], 0.0, 0.0])
-        ang = float(np.degrees(np.arccos(np.clip(
+        palm_ang = float(np.degrees(np.arccos(np.clip(
             palm_n @ inward / np.linalg.norm(palm_n), -1, 1))))
-        assert ang < 60.0, f"{hname}: palm normal {ang:.1f} deg off its face normal"
+        ctr = np.mean([d.geom_xpos[g] for g in h["pads"]], axis=0)
+        fwd = ctr - d.geom_xpos[h["palm"]]
+        fwd = fwd / max(float(np.linalg.norm(fwd)), 1e-12)
+        fang = float(np.degrees(np.arccos(np.clip(fwd @ inward, -1, 1))))
+        assert fang <= 35.0, (
+            f"{hname}: forward axis {fang:.1f} deg off the face inward normal "
+            f"(palm evidence angle {palm_ang:.1f} deg)")
         # W6a-v2 P1: no hand geom touches the slab or floor
         for g in h["collisions"]:
             px, py, pz = d.geom_xpos[g]
