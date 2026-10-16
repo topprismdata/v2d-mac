@@ -37,9 +37,11 @@ PRESETS = [
     # puts the lens against the rail's end face (renders as a giant cube), so
     # the presets view from slightly off-axis -- gantry stays in frame without
     # blocking the lens.  Verified against reset + gate3 frames.
-    ("front", "正面", 105.0, -22.0, 0.80),
-    ("side", "侧面", -20.0, -30.0, 0.72),
-    ("close", "特写", -20.0, -24.0, 0.46),
+    ("front", "正面", 105.0, -30.0, 1.00),
+    ("side", "侧面", -25.0, -20.0, 0.62),
+    # the money shot: on-axis profile from inside the slab footprint -- both
+    # hands mirrored on the box ends, rail end passes behind the lens
+    ("close", "特写", 90.0, -26.0, 0.45),
 ]
 
 
@@ -54,6 +56,13 @@ def main() -> None:
     env = lhe.LiftHoldEnv(episode_len=50, domain_rand=False)
     env.reset(seed=0)
     m, d = env.model, env.data
+    # readability: the shipped materials are near-black under the two scene
+    # lights (ambient 0), so hand/forearm/gantry silhouettes merge into one
+    # dark blob -- brighten in memory (never the frozen XML) so the pinch is
+    # discernible, which is the panel's whole point
+    m.light_ambient[:] = 0.45
+    m.light_diffuse[:] = np.maximum(m.light_diffuse, 1.0)
+    m.light_specular[:] = np.maximum(m.light_specular, 0.4)
     # the frozen MJCF ships a 640 px offscreen buffer; widen it in memory so
     # the panel's sim panes come out at the source clip's 1280x720
     m.vis.global_.offwidth = WIDTH

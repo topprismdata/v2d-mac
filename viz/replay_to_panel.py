@@ -17,14 +17,15 @@ qpos can carry it zeroed (the W6a gate-3 configuration does exactly that);
 ``viz/render_replay.py`` must place the object from ``obj``, never from qpos.
 
 Inputs, in priority order:
-  1. ``viz/replay_frames.json``  (W6b trajectory; fps + frames[{t,qpos[,obj]}])
-     + ``viz/replay_gates.json``  (W6b gate verdicts, same shape as schema)
+  1. ``runs/w6b/replay_frames.json`` (W6b trajectory; fps + frames[{t,qpos,obj}])
+     + gates from ``runs/w6b/report.json`` (verdict_checks + per_side), or a
+     manual override in ``viz/replay_gates.json``
   2. Placeholder fallback while W6b data has not landed: the two VERIFIED
      configurations we already hold evidence for -- the settled reset and
      the W6a gate-3 both-hands-on-end-faces pose (runs/w6/gate3_qpos.json) --
-     plus the W6a gate badges.  ``meta.placeholder`` marks this honestly;
-     rerunning this script once W6b's replay_frames.json exists upgrades the
-     panel to the real trajectory with no other change.
+     plus the live-measured W6a gate badges.  ``meta.placeholder`` marks this
+     honestly; rerunning this script once W6b's replay_frames.json exists
+     upgrades the panel to the real trajectory with no other change.
 
 Also writes ``viz/panel_data_v2.js`` (``window.PANEL_DATA_V2 = {...}``) so the
 panel works from file:// where fetch() of a sibling JSON is blocked.
@@ -42,15 +43,16 @@ import numpy as np
 REPO = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-REPLAY_IN = REPO / "viz/replay_frames.json"
-GATES_IN = REPO / "viz/replay_gates.json"
+REPLAY_IN = REPO / "runs/w6b/replay_frames.json"
+REPORT_IN = REPO / "runs/w6b/report.json"
+GATES_OVERRIDE = REPO / "viz/replay_gates.json"
 GATE3 = REPO / "runs/w6/gate3_qpos.json"
 VIDEO_DIR = REPO / "docs/video_frames"
 OUT_JSON = REPO / "viz/panel_data_v2.json"
 OUT_JS = REPO / "viz/panel_data_v2.js"
 
 VIDEO_FPS = 30.0          # source clip; keep in step with extract_video_frames.py
-REPLAY_FPS = 30.0         # W6b retarget replay runs at the clip's frame rate
+REPLAY_FPS = 20.0         # W6b retarget replay rate (replay_frames.json "fps")
 NQ = 51                   # allegro_floating.xml nq: [0:7] object free joint,
                           # [7:29] right (6 wrist slides + 16 fingers),
                           # [29:51] left (same, *_left joints)
@@ -154,12 +156,13 @@ def _placeholder_frames() -> list[dict]:
             for (_, t), q in zip(PLACEHOLDER, [q_reset, q_reach])]
 
 
-def _convert_replay(raw: dict | list) -> list[dict]:
-    """Normalize W6b's replay_frames.json into schema frames, validating."""
+def _convert_replay(raw: dict | list) -> tuple[list[dict], float]:
+    """Normalize W6b's replay_frames.json into schema frames; returns
+    (frames, fps as declared by the file)."""
     frames = raw["frames"] if isinstance(raw, dict) else raw
-    if isinstance(raw, dict) and "fps" in raw and abs(raw["fps"] - REPLAY_FPS) > 1e-6:
-        print(f"[warn] replay fps {raw['fps']} != expected {REPLAY_FPS}; "
-              "keeping the file's value")
+    fps = float(raw.get("fps", REPLAY_FPS)) if isinstance(raw, dict) else REPLAY_FPS
+    if isinstance(raw, dict) and "fps" in raw:
+        print(f"replay fps from file: {raw['fps']}")
     out = []
     for i, fr in enumerate(frames):
         if "qpos" not in fr:
@@ -177,11 +180,68 @@ def _convert_replay(raw: dict | list) -> list[dict]:
             obj = [float(v) for v in obj]
             if len(obj) != 7:
                 raise SystemExit(f"replay frame {i}: obj must be [x,y,z,qw,qx,qy,qz]")
-        out.append({"t": float(fr.get("t", i / REPLAY_FPS)),
+        out.append({"t": float(fr.get("t", i / fps)),
                     "qpos": q, "obj": obj})
     if not out:
         raise SystemExit("replay_frames.json carries zero frames")
-    return out
+    return out, fps
+
+
+def _w6b_gates() -> list[dict]:
+    """Derive the five W6b gate badges from runs/w6b/report.json
+    (verdict_checks + per_side) -- every number from the committed report,
+    green/red exactly as measured."""
+    if not REPORT_IN.exists():
+        raise SystemExit(
+            f"real replay ({REPLAY_IN}) without {REPORT_IN} -- supply the W6b "
+            "report or a manual override in viz/replay_gates.json")
+    rep = json.loads(REPORT_IN.read_text())
+    checks = rep["verdict_checks"]
+    ps = rep["per_side"]
+    r, l = ps["right"], ps["left"]
+
+    g1r, g1l = r["gate1_final_touch"], l["gate1_final_touch"]
+    g2r, g2l = r["gate2_contact"], l["gate2_contact"]
+    g3r, g3l = r["gate3_approach_clean"], l["gate3_approach_clean"]
+    g4r, g4l = r["gate4_joint_limits"], l["gate4_joint_limits"]
+    g5r, g5l = r["gate5_palm_deviation"], l["gate5_palm_deviation"]
+
+    pad = lambda g, k: (g.get("per_pad_rect_mm") or
+                        g.get("executed_state_evidence", {}).get("per_pad_rect_mm", {})).get(k)
+    f5_note = "（失败=F5 接近高度预算，W6c 域处理）"
+
+    return [
+        {"id": "w6b_gate1", "name": "门 1 双手终触",
+         "verdict": "pass" if checks["gate1_final_touch"] else "fail",
+         "measured": (f"右 ff {pad(g1r, 'ff_tip_collision'):.3f}+mf "
+                      f"{pad(g1r, 'mf_tip_collision'):.3f} mm·前向 "
+                      f"{g1r['forward_axis_deg']:.1f}° / 左 ff "
+                      f"{pad(g1l, 'ff_tip_left_collision'):.3f}+mf "
+                      f"{pad(g1l, 'mf_tip_left_collision'):.3f} mm·前向 "
+                      f"{g1l['forward_axis_deg']:.1f}° / 帽 0.116 mm·35°"),
+         "scope": "指令终态双手各 ≥2 指垫入端面矩形带、垫心前向角 ≤35°、无埋入"},
+        {"id": "w6b_gate2", "name": "门 2 端面接触保持",
+         "verdict": "pass" if checks["gate2_contact"] else "fail",
+         "measured": f"右 {g2r['endface_contact_frames']} 帧 / 左 {g2l['endface_contact_frames']} 帧",
+         "scope": "接触物理执行下指垫贴住端面的控制帧数（双手须全程保持）"},
+        {"id": "w6b_gate3", "name": "门 3 接近段干净",
+         "verdict": "pass" if checks["gate3_approach_clean"] else "fail",
+         "measured": (f"右压支撑 {len(g3r.get('support_contact_control_frames', []))} 帧 / "
+                      f"左 {len(g3l.get('support_contact_control_frames', []))} 帧{f5_note}"),
+         "scope": "接近段手指不得触桌或支撑（现失败源于接近高度预算不足，非 retarget 接线）"},
+        {"id": "w6b_gate4", "name": "门 4 关节限位",
+         "verdict": "pass" if checks["gate4_joint_limits"] else "fail",
+         "measured": (f"左 {len(g4l.get('finger_qpos_violation_frames', []))} 帧微超限 "
+                      f"{g4l.get('finger_qpos_max_violation_rad', 0.0) * 1e3:.2f} mrad"
+                      f"（右 {len(g4r.get('finger_qpos_violation_frames', []))} 帧）"),
+         "scope": "手指 qpos 不越关节限、指令全部落在 ctrlrange 内"},
+        {"id": "w6b_gate5", "name": "门 5 掌偏差",
+         "verdict": "pass" if checks["gate5_palm_deviation"] else "fail",
+         "measured": (f"右 {g5r['execution_dev_max_m'] * 1e3:.0f} mm / "
+                      f"左 {g5l['execution_dev_max_m'] * 1e3:.0f} mm / "
+                      f"帽 {g5r['cap_m'] * 1e3:.0f} mm"),
+         "scope": "执行掌心位姿相对 MANO 目标的最大偏差（超帽即标红，如实入档）"},
+    ]
 
 
 def build() -> dict:
@@ -197,9 +257,10 @@ def build() -> dict:
         video_frames = [f"docs/video_frames/{n}" for n in found]
         segments = []
 
+    replay_fps = REPLAY_FPS
     if REPLAY_IN.exists():
-        frames = _convert_replay(json.loads(REPLAY_IN.read_text()))
-        source = "viz/replay_frames.json (W6b)"
+        frames, replay_fps = _convert_replay(json.loads(REPLAY_IN.read_text()))
+        source = "runs/w6b/replay_frames.json (W6b)"
         placeholder, notes = False, []
     else:
         frames = _placeholder_frames()
@@ -207,13 +268,17 @@ def build() -> dict:
         placeholder = True
         notes = [n for n, _ in PLACEHOLDER]
 
-    gates = (json.loads(GATES_IN.read_text())["gates"]
-             if GATES_IN.exists() else _measure_w6a_gates())
+    if GATES_OVERRIDE.exists():
+        gates = json.loads(GATES_OVERRIDE.read_text())["gates"]
+    elif placeholder:
+        gates = _measure_w6a_gates()
+    else:
+        gates = _w6b_gates()
 
     payload = {
         "fps": VIDEO_FPS,
         "video_frames": video_frames,
-        "replay": {"fps": REPLAY_FPS, "frames": frames},
+        "replay": {"fps": replay_fps, "frames": frames},
         "gates": gates,
         "meta": {
             "generated_by": "viz/replay_to_panel.py",
