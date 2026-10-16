@@ -200,16 +200,28 @@ def test_d2_reset_preshape_reaches_the_thumb_and_middle_finger(env):
     e = env
     e.reset(seed=0)
     q = e.data.qpos[e.finger_qpos_adr]
-    pre_curl = np.array([0.0, 0.9, 0.7, 0.4] * 3 + [0.8, 0.5, 0.4, 0.3])
-    for i, name in enumerate(FINGER_JOINTS):
-        lo, hi = e.ctrl_low[6 + i], e.ctrl_high[6 + i]
-        assert lo - 1e-3 <= q[i] <= hi + 1e-3, (
-            f"{name} settled at {q[i]:.3f}, outside its own ctrlrange "
-            f"[{lo:.3f}, {hi:.3f}] - the pre-shape did not reach it")
-    for i in (5, 6, 7, 13, 14, 15):     # curl joints of mf and th
-        assert q[i] > 0.15, (
-            f"{FINGER_JOINTS[i]} at {q[i]:.3f} vs a {pre_curl[i]:.2f} setpoint: "
-            "the middle finger / thumb pre-shape did not reach this joint")
+    pre_curl = np.array([
+        0.278, 0.12, 0.192, 0.662,
+        0.30, 0.431, 0.423, 0.959,
+        0.972, 0.535, 0.356, 0.831,
+        0.55, 0.553, 0.819, 0.236,
+    ])
+    # W6a-v5/v8: 32 finger joints, right block first; the ctrl strokes live at
+    # [6:22] (right) and [28:44] (left) of the 44-dim actuator vector
+    for h in range(2):
+        clo = 6 + 22 * h
+        for i in range(16):
+            lo, hi = e.ctrl_low[clo + i], e.ctrl_high[clo + i]
+            assert lo - 1e-3 <= q[16 * h + i] <= hi + 1e-3, (
+                f"{FINGER_JOINTS[i]}{'(left)' if h else ''} settled at "
+                f"{q[16 * h + i]:.3f}, outside its own ctrlrange "
+                f"[{lo:.3f}, {hi:.3f}] - the pre-shape did not reach it")
+    for h in range(2):
+        for i in (5, 6, 7, 13, 14, 15):     # curl joints of mf and th
+            assert q[16 * h + i] > 0.15, (
+                f"{FINGER_JOINTS[i]}{'(left)' if h else ''} at "
+                f"{q[16 * h + i]:.3f}: the middle finger / thumb pre-shape "
+                "did not reach this joint")
 
 
 # ------------------------------------------------------------ D3: the wrist floor

@@ -1271,9 +1271,20 @@ def _left_palm_from(raw_palm_el: ET.Element) -> ET.Element:
 # stay the active control (env reset mirrors qpos into ctrl after settling, so
 # the spring is at equilibrium there - no fight); actuator kp/forcerange are
 # untouched (W6ServoTol tables unaffected structurally).
-FINGER_SPRING_STIFFNESS = 0.4      # N*m/rad - ~5-20x the finger gravity torque
-FINGER_SPRINGREF = tuple(
-    (0.0, 0.6, 0.6, 0.6) * 3 + (0.5, 0.4, 0.3, 0.3))   # ff/mf/rf/th home curl
+# W6a-v8 (W6b finding 1): the v5 spring (k=0.4, ref=0.6) produced a 0.279 N*m
+# opening torque at deep curl (q=1.3) - 3x the ffj2 static cap (0.094) - so the
+# executed grasp could not hold the gate-3 depth. Fix (Main option b+a):
+# springref = the per-joint gate-3 solution means (the spring now ASSISTS the
+# grasp - zero demand at the documented pose) and stiffness 0.019, sized so the
+# spring demand at BOTH hands' gate-3 seeds stays within 0.8x the per-joint
+# servo caps (the static-hold gate in test_scene_w6.py). Gravity is handled by
+# the R1 sag budget separately (recorded per joint in gate3_qpos.json).
+FINGER_SPRING_STIFFNESS = 0.019    # N*m/rad
+FINGER_SPRINGREF = (
+    0.278, 0.12, 0.192, 0.662,
+    0.419, 0.431, 0.423, 0.959,
+    0.972, 0.535, 0.356, 0.831,
+    0.55, 0.553, 0.819, 0.236)     # ff/mf/rf/th per-joint gate-3 solution means
 
 
 def _add_finger_home_springs(palm_el: ET.Element, suffix: str = "") -> None:

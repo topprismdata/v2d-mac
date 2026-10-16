@@ -316,19 +316,19 @@
         <geom class="palm_visual" mesh="base_link" name="palm_visual"/>
         <geom class="palm_collision" name="palm_collision"/>
         <body name="ff_base" pos="0 0.0435 -0.001542" quat="0.999048 -0.0436194 0 0">
-          <joint name="ffj0" class="base" stiffness="0.4" springref="0"/>
+          <joint name="ffj0" class="base" stiffness="0.019" springref="0.278"/>
           <geom class="base_visual" name="ff_base_visual"/>
           <geom class="base_collision" name="ff_base_collision"/>
           <body name="ff_proximal" pos="0 0 0.0164">
-            <joint name="ffj1" class="proximal" stiffness="0.4" springref="0.6"/>
+            <joint name="ffj1" class="proximal" stiffness="0.019" springref="0.12"/>
             <geom class="proximal_visual" name="ff_proximal_visual"/>
             <geom class="proximal_collision" name="ff_proximal_collision"/>
             <body name="ff_medial" pos="0 0 0.054">
-              <joint name="ffj2" class="medial" stiffness="0.4" springref="0.6"/>
+              <joint name="ffj2" class="medial" stiffness="0.019" springref="0.192"/>
               <geom class="medial_visual" name="ff_medial_visual"/>
               <geom class="medial_collision" name="ff_medial_collision"/>
               <body name="ff_distal" pos="0 0 0.0384">
-                <joint name="ffj3" class="distal" stiffness="0.4" springref="0.6"/>
+                <joint name="ffj3" class="distal" stiffness="0.019" springref="0.662"/>
                 <geom class="distal_visual" name="ff_distal_visual"/>
                 <geom class="distal_collision" name="ff_distal_collision"/>
                 <body name="ff_tip">
@@ -340,19 +340,19 @@
           </body>
         </body>
         <body name="mf_base" pos="0 0 0.0007">
-          <joint name="mfj0" class="base" stiffness="0.4" springref="0"/>
+          <joint name="mfj0" class="base" stiffness="0.019" springref="0.278"/>
           <geom class="base_visual" name="mf_base_visual"/>
           <geom class="base_collision" name="mf_base_collision"/>
           <body name="mf_proximal" pos="0 0 0.0164">
-            <joint name="mfj1" class="proximal" stiffness="0.4" springref="0.6"/>
+            <joint name="mfj1" class="proximal" stiffness="0.019" springref="0.12"/>
             <geom class="proximal_visual" name="mf_proximal_visual"/>
             <geom class="proximal_collision" name="mf_proximal_collision"/>
             <body name="mf_medial" pos="0 0 0.054">
-              <joint name="mfj2" class="medial" stiffness="0.4" springref="0.6"/>
+              <joint name="mfj2" class="medial" stiffness="0.019" springref="0.192"/>
               <geom class="medial_visual" name="mf_medial_visual"/>
               <geom class="medial_collision" name="mf_medial_collision"/>
               <body name="mf_distal" pos="0 0 0.0384">
-                <joint name="mfj3" class="distal" stiffness="0.4" springref="0.6"/>
+                <joint name="mfj3" class="distal" stiffness="0.019" springref="0.662"/>
                 <geom class="distal_visual" name="mf_distal_visual"/>
                 <geom class="distal_collision" name="mf_distal_collision"/>
                 <body name="mf_tip">
@@ -364,19 +364,19 @@
           </body>
         </body>
         <body name="rf_base" pos="0 -0.0435 -0.001542" quat="0.999048 0.0436194 0 0">
-          <joint name="rfj0" class="base" stiffness="0.4" springref="0"/>
+          <joint name="rfj0" class="base" stiffness="0.019" springref="0.278"/>
           <geom class="base_visual" name="rf_base_visual"/>
           <geom class="base_collision" name="rf_base_collision"/>
           <body name="rf_proximal" pos="0 0 0.0164">
-            <joint name="rfj1" class="proximal" stiffness="0.4" springref="0.6"/>
+            <joint name="rfj1" class="proximal" stiffness="0.019" springref="0.12"/>
             <geom class="proximal_visual" name="rf_proximal_visual"/>
             <geom class="proximal_collision" name="rf_proximal_collision"/>
             <body name="rf_medial" pos="0 0 0.054">
-              <joint name="rfj2" class="medial" stiffness="0.4" springref="0.6"/>
+              <joint name="rfj2" class="medial" stiffness="0.019" springref="0.192"/>
               <geom class="medial_visual" name="rf_medial_visual"/>
               <geom class="medial_collision" name="rf_medial_collision"/>
               <body name="rf_distal" pos="0 0 0.0384">
-                <joint name="rfj3" class="distal" stiffness="0.4" springref="0.6"/>
+                <joint name="rfj3" class="distal" stiffness="0.019" springref="0.662"/>
                 <geom class="distal_visual" name="rf_distal_visual"/>
                 <geom class="distal_collision" name="rf_distal_collision"/>
                 <body name="rf_tip">
@@ -388,19 +388,19 @@
           </body>
         </body>
         <body name="th_base" pos="-0.0182 0.019333 -0.045987" quat="0.477714 -0.521334 -0.521334 -0.477714">
-          <joint name="thj0" class="thumb_base" stiffness="0.4" springref="0"/>
+          <joint name="thj0" class="thumb_base" stiffness="0.019" springref="0.278"/>
           <geom class="visual" mesh="link_12.0_right" name="th_base_visual"/>
           <geom class="thumb_base_collision" name="th_base_collision"/>
           <body name="th_proximal" pos="-0.027 0.005 0.0399">
-            <joint name="thj1" class="thumb_proximal" stiffness="0.4" springref="0.6"/>
+            <joint name="thj1" class="thumb_proximal" stiffness="0.019" springref="0.12"/>
             <geom class="visual" mesh="link_13.0" name="th_proximal_visual"/>
             <geom class="thumb_proximal_collision" name="th_proximal_collision"/>
             <body name="th_medial" pos="0 0 0.0177">
-              <joint name="thj2" class="thumb_medial" stiffness="0.4" springref="0.6"/>
+              <joint name="thj2" class="thumb_medial" stiffness="0.019" springref="0.192"/>
               <geom class="visual" mesh="link_14.0" name="th_medial_visual"/>
               <geom class="thumb_medial_collision" name="th_medial_collision"/>
               <body name="th_distal" pos="0 0 0.0514">
-                <joint name="thj3" class="thumb_distal" stiffness="0.4" springref="0.6"/>
+                <joint name="thj3" class="thumb_distal" stiffness="0.019" springref="0.662"/>
                 <geom class="visual" mesh="link_15.0" name="th_distal_visual"/>
                 <geom class="thumb_distal_collision" name="th_distal_collision"/>
                 <body name="th_tip">
@@ -469,19 +469,19 @@
         <geom class="palm_visual" mesh="base_link" name="palm_left_visual"/>
         <geom class="palm_collision" name="palm_left_collision"/>
         <body name="ff_base_left" pos="0 0.0435 -0.001542" quat="0.999048 -0.0436194 0 0">
-          <joint name="ffj0_left" class="base" stiffness="0.4" springref="0"/>
+          <joint name="ffj0_left" class="base" stiffness="0.019" springref="0.278"/>
           <geom class="base_visual" name="ff_base_left_visual"/>
           <geom class="base_collision" name="ff_base_left_collision"/>
           <body name="ff_proximal_left" pos="0 0 0.0164">
-            <joint name="ffj1_left" class="proximal" stiffness="0.4" springref="0.6"/>
+            <joint name="ffj1_left" class="proximal" stiffness="0.019" springref="0.12"/>
             <geom class="proximal_visual" name="ff_proximal_left_visual"/>
             <geom class="proximal_collision" name="ff_proximal_left_collision"/>
             <body name="ff_medial_left" pos="0 0 0.054">
-              <joint name="ffj2_left" class="medial" stiffness="0.4" springref="0.6"/>
+              <joint name="ffj2_left" class="medial" stiffness="0.019" springref="0.192"/>
               <geom class="medial_visual" name="ff_medial_left_visual"/>
               <geom class="medial_collision" name="ff_medial_left_collision"/>
               <body name="ff_distal_left" pos="0 0 0.0384">
-                <joint name="ffj3_left" class="distal" stiffness="0.4" springref="0.6"/>
+                <joint name="ffj3_left" class="distal" stiffness="0.019" springref="0.662"/>
                 <geom class="distal_visual" name="ff_distal_left_visual"/>
                 <geom class="distal_collision" name="ff_distal_left_collision"/>
                 <body name="ff_tip_left">
@@ -493,19 +493,19 @@
           </body>
         </body>
         <body name="mf_base_left" pos="0 0 0.0007">
-          <joint name="mfj0_left" class="base" stiffness="0.4" springref="0"/>
+          <joint name="mfj0_left" class="base" stiffness="0.019" springref="0.278"/>
           <geom class="base_visual" name="mf_base_left_visual"/>
           <geom class="base_collision" name="mf_base_left_collision"/>
           <body name="mf_proximal_left" pos="0 0 0.0164">
-            <joint name="mfj1_left" class="proximal" stiffness="0.4" springref="0.6"/>
+            <joint name="mfj1_left" class="proximal" stiffness="0.019" springref="0.12"/>
             <geom class="proximal_visual" name="mf_proximal_left_visual"/>
             <geom class="proximal_collision" name="mf_proximal_left_collision"/>
             <body name="mf_medial_left" pos="0 0 0.054">
-              <joint name="mfj2_left" class="medial" stiffness="0.4" springref="0.6"/>
+              <joint name="mfj2_left" class="medial" stiffness="0.019" springref="0.192"/>
               <geom class="medial_visual" name="mf_medial_left_visual"/>
               <geom class="medial_collision" name="mf_medial_left_collision"/>
               <body name="mf_distal_left" pos="0 0 0.0384">
-                <joint name="mfj3_left" class="distal" stiffness="0.4" springref="0.6"/>
+                <joint name="mfj3_left" class="distal" stiffness="0.019" springref="0.662"/>
                 <geom class="distal_visual" name="mf_distal_left_visual"/>
                 <geom class="distal_collision" name="mf_distal_left_collision"/>
                 <body name="mf_tip_left">
@@ -517,19 +517,19 @@
           </body>
         </body>
         <body name="rf_base_left" pos="0 -0.0435 -0.001542" quat="0.999048 0.0436194 0 0">
-          <joint name="rfj0_left" class="base" stiffness="0.4" springref="0"/>
+          <joint name="rfj0_left" class="base" stiffness="0.019" springref="0.278"/>
           <geom class="base_visual" name="rf_base_left_visual"/>
           <geom class="base_collision" name="rf_base_left_collision"/>
           <body name="rf_proximal_left" pos="0 0 0.0164">
-            <joint name="rfj1_left" class="proximal" stiffness="0.4" springref="0.6"/>
+            <joint name="rfj1_left" class="proximal" stiffness="0.019" springref="0.12"/>
             <geom class="proximal_visual" name="rf_proximal_left_visual"/>
             <geom class="proximal_collision" name="rf_proximal_left_collision"/>
             <body name="rf_medial_left" pos="0 0 0.054">
-              <joint name="rfj2_left" class="medial" stiffness="0.4" springref="0.6"/>
+              <joint name="rfj2_left" class="medial" stiffness="0.019" springref="0.192"/>
               <geom class="medial_visual" name="rf_medial_left_visual"/>
               <geom class="medial_collision" name="rf_medial_left_collision"/>
               <body name="rf_distal_left" pos="0 0 0.0384">
-                <joint name="rfj3_left" class="distal" stiffness="0.4" springref="0.6"/>
+                <joint name="rfj3_left" class="distal" stiffness="0.019" springref="0.662"/>
                 <geom class="distal_visual" name="rf_distal_left_visual"/>
                 <geom class="distal_collision" name="rf_distal_left_collision"/>
                 <body name="rf_tip_left">
@@ -541,19 +541,19 @@
           </body>
         </body>
         <body name="th_base_left" pos="-0.0182 0.019333 -0.045987" quat="0.477714 -0.521334 -0.521334 -0.477714">
-          <joint name="thj0_left" class="thumb_base" stiffness="0.4" springref="0"/>
+          <joint name="thj0_left" class="thumb_base" stiffness="0.019" springref="0.278"/>
           <geom class="visual" mesh="link_12.0_right" name="th_base_left_visual"/>
           <geom class="thumb_base_collision" name="th_base_left_collision"/>
           <body name="th_proximal_left" pos="-0.027 0.005 0.0399">
-            <joint name="thj1_left" class="thumb_proximal" stiffness="0.4" springref="0.6"/>
+            <joint name="thj1_left" class="thumb_proximal" stiffness="0.019" springref="0.12"/>
             <geom class="visual" mesh="link_13.0" name="th_proximal_left_visual"/>
             <geom class="thumb_proximal_collision" name="th_proximal_left_collision"/>
             <body name="th_medial_left" pos="0 0 0.0177">
-              <joint name="thj2_left" class="thumb_medial" stiffness="0.4" springref="0.6"/>
+              <joint name="thj2_left" class="thumb_medial" stiffness="0.019" springref="0.192"/>
               <geom class="visual" mesh="link_14.0" name="th_medial_left_visual"/>
               <geom class="thumb_medial_collision" name="th_medial_left_collision"/>
               <body name="th_distal_left" pos="0 0 0.0514">
-                <joint name="thj3_left" class="thumb_distal" stiffness="0.4" springref="0.6"/>
+                <joint name="thj3_left" class="thumb_distal" stiffness="0.019" springref="0.662"/>
                 <geom class="visual" mesh="link_15.0" name="th_distal_left_visual"/>
                 <geom class="thumb_distal_collision" name="th_distal_left_collision"/>
                 <body name="th_tip_left">

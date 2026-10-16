@@ -207,6 +207,37 @@ def test_w6_gate1_birth_contact_table_has_no_penetration(model, data):
         )
 
 
+# W6a-v8 static hold (W6b finding 1): at the gate-3 configuration the finger
+# home springs must not demand more servo torque than 80% of the per-joint
+# static cap - kinematically reachable is not dynamically holdable. Gravity is
+# a separate constant load (R1 sag budget domain); its per-joint duty at the
+# gate-3 pose is recorded in the evidence json.
+def test_w6_gate3b_static_hold_spring_demand_within_servo_caps(model):
+    refs = dict(zip(
+        [f"{f}j{i}" for f in ("ff", "mf", "rf", "th") for i in range(4)],
+        builder.FINGER_SPRINGREF))
+    k = builder.FINGER_SPRING_STIFFNESS
+    q = json.loads(open(REPO / "runs/w6/gate3_qpos.json").read())["qpos"]
+    worst = (None, 0.0)
+    for sfx in ("", "_left"):
+        for f in ("ff", "mf", "rf", "th"):
+            for i in range(4):
+                jn = f"{f}j{i}{sfx}"
+                jid = nid(model, mujoco.mjtObj.mjOBJ_JOINT, jn)
+                aid = nid(model, mujoco.mjtObj.mjOBJ_ACTUATOR, f"{f}a{i}{sfx}")
+                qj = float(q[13 + (0 if sfx == "" else 22) + 4 * FINGERS.index(f) + i])
+                cap = 0.8 * float(model.actuator_forcerange[aid][1])
+                demand = abs(k * (qj - refs[f"{f}j{i}"]))
+                if demand > worst[1]:
+                    worst = (jn, demand / cap)
+                assert demand <= cap, (
+                    f"{jn}: home spring demands {demand:.4f} N*m at the gate-3 "
+                    f"depth vs its 0.8*cap {cap:.4f} N*m - the executed grasp "
+                    "cannot be held statically (W6b finding 1 regression)")
+    # sanity: the strongest demand stays within the cap
+    assert worst[1] <= 1.0, f"spring demand exceeds cap on {worst[0]}"
+
+
 # ============================================================== GATE 2: settle
 def test_w6_gate2_settle_is_quiet(model):
     d = mujoco.MjData(model)

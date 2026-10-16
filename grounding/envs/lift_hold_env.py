@@ -675,11 +675,14 @@ class LiftHoldEnv(gym.Env):
         # body euler carries the end-face tilt), fingers half-curled. The old
         # single-hand reset dropped wrist_z by 0.02 to meet the raised box; the
         # dual-hand home is already placed, so the slides stay at 0.
+        # W6a-v8: matches the finger home springs (FINGER_SPRINGREF) so the
+        # servos, springs and gravity balance at one posture - the reset, the
+        # raw MjData settle and the executed grasp all share one equilibrium.
         pre_curl_base = np.array([
-            0.0, 0.6, 0.6, 0.6,
-            0.0, 0.6, 0.6, 0.6,
-            0.0, 0.6, 0.6, 0.6,
-            0.5, 0.4, 0.3, 0.3,
+            0.278, 0.12, 0.192, 0.662,
+            0.30, 0.431, 0.423, 0.959,
+            0.972, 0.535, 0.356, 0.831,
+            0.55, 0.553, 0.819, 0.236,
         ])
         for h in range(N_HANDS):
             wq = self.wrist_qpos_adr[h]
