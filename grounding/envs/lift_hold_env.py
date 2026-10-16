@@ -408,6 +408,8 @@ class LiftHoldEnv(gym.Env):
         box_offset_xy: tuple[float, float] | None = None,
         box_yaw: float | None = None,
         pedestal_load_weight: float = W_PEDESTAL_LOAD,
+        start_state: tuple[np.ndarray, np.ndarray] | None = None,
+        start_noise: tuple[float, float, float] | None = None,
     ) -> None:
         super().__init__()
         self.evaluator_only = evaluator_only
@@ -435,6 +437,18 @@ class LiftHoldEnv(gym.Env):
         self.data = mujoco.MjData(self.model)
         self.domain_rand = domain_rand
         self.out_of_reach = out_of_reach
+        # W6c: optional checkpoint start - (qpos, ctrl) captured from a
+        # deterministic approach run; reset() writes them (the sanctioned
+        # qpos-write point) instead of the home protocol. start_noise =
+        # (finger_std rad, box_xy_std m, box_yaw_std deg) perturbs the written
+        # state per reset so PPO trains a distribution, not one trajectory.
+        # step() still moves the world exclusively through data.ctrl.
+        self._start_state = None if start_state is None else (
+            np.asarray(start_state[0], dtype=np.float64),
+            np.asarray(start_state[1], dtype=np.float64))
+        self._start_noise = None if start_noise is None else (
+            float(start_noise[0]), float(start_noise[1]),
+            float(np.deg2rad(start_noise[2])))
         # Explicit box placement, used by the DAgger-style demonstration
         # collector (grounding/collect_hook_demos.py) to sweep the perturbation
         # grid one cell at a time. Both default to None, i.e. the committed
@@ -626,14 +640,13 @@ class LiftHoldEnv(gym.Env):
         return self.observation_space.shape  # type: ignore[return-value]
 
     # ---------------------------------------------------------------- reset
-    def reset(self, *, seed: int | None = None, options: dict | None = None):
-        if seed is not None:
-            self._rng = np.random.default_rng(seed)
-            super().reset(seed=seed)
-        d, m = self.data, self.model
+    def _reset_home_state(self, d) -> None:
+        """Home-pose episode start: box placement protocol + hand pre-shape.
 
-        mujoco.mj_resetData(m, d)
-
+        Extracted verbatim from reset() when the W6c hold-seed start arrived;
+        reset() chooses between this and the seed state, then runs the shared
+        settle + bookkeeping."""
+        m = self.model
         # --- object placement (allowed: reset may write qpos) -------------
         # out_of_reach asks for the box 0.35 m along +y, far outside the hand's
         # workspace. That request is NOT satisfiable on this scene and is not
@@ -699,6 +712,37 @@ class LiftHoldEnv(gym.Env):
             d.ctrl[h * N_ACT_PER_HAND + N_WRIST:
                    (h + 1) * N_ACT_PER_HAND] = \
                 d.qpos[self.finger_qpos_adr[h * N_FINGER:(h + 1) * N_FINGER]]
+
+    def reset(self, *, seed: int | None = None, options: dict | None = None):
+        if seed is not None:
+            self._rng = np.random.default_rng(seed)
+            super().reset(seed=seed)
+        d, m = self.data, self.model
+
+        mujoco.mj_resetData(m, d)
+
+        if self._start_state is not None:
+            # --- W6c checkpoint start ----------------------------------------
+            q_start, ctrl_start = self._start_state
+            d.qpos[:] = q_start
+            d.ctrl[:] = np.clip(ctrl_start, self.ctrl_low, self.ctrl_high)
+            if self._start_noise is not None:
+                f_std, xy_std, yaw_std = self._start_noise
+                for h in range(N_HANDS):
+                    fq = self.finger_qpos_adr[h * N_FINGER:(h + 1) * N_FINGER]
+                    d.qpos[fq] = d.qpos[fq] + self._rng.normal(0.0, f_std, N_FINGER)
+                    d.ctrl[h * N_ACT_PER_HAND + N_WRIST:
+                           (h + 1) * N_ACT_PER_HAND] = d.qpos[fq]
+                oa = self.obj_qpos_adr
+                d.qpos[oa] += float(self._rng.normal(0.0, xy_std))
+                d.qpos[oa + 1] += float(self._rng.normal(0.0, xy_std))
+                yaw = float(self._rng.normal(0.0, yaw_std))
+                d.qpos[oa + 3: oa + 7] = [np.cos(yaw / 2), 0.0, 0.0,
+                                          np.sin(yaw / 2)]
+            d.qvel[:] = 0.0
+            self.last_placement = {"mode": "w6c_checkpoint_start"}
+        else:
+            self._reset_home_state(d)
         # Settle under gravity / contact stiffness so step 0 is not a shock and the
         # box has already reached its resting height when z0 is recorded (MuJoCo's
         # default solref lets a resting box creep ~4 mm before it stops).
