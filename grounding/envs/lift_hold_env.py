@@ -410,6 +410,7 @@ class LiftHoldEnv(gym.Env):
         pedestal_load_weight: float = W_PEDESTAL_LOAD,
         start_state: tuple[np.ndarray, np.ndarray] | None = None,
         start_noise: tuple[float, float, float] | None = None,
+        grasp_bias_nm: float = 0.0,
     ) -> None:
         super().__init__()
         self.evaluator_only = evaluator_only
@@ -449,6 +450,29 @@ class LiftHoldEnv(gym.Env):
         self._start_noise = None if start_noise is None else (
             float(start_noise[0]), float(start_noise[1]),
             float(np.deg2rad(start_noise[2])))
+        # W6c-r5 (Main ruling, option a): force-controlled grasp bias. A
+        # constant closing torque on the 8 lift-chain curl joints (ffj1/2 +
+        # mfj1/2, both hands) via qfrc_applied - the env-equivalent of a
+        # force-controlled actuator, zero XML/nu change, magnitude clipped to
+        # the joint's own forcerange every step (cap-respecting by
+        # construction). Rationale (rounds 3-4 closure): under pure position
+        # control the vertical drag demand is structurally zero while the box
+        # rests (position-servo static trap); a force bias holds the contact
+        # normal constant through the lift so kinetic friction (mu 1.8) can
+        # carry the weight. step() writes qfrc_applied ONLY when this is
+        # nonzero; qpos/qvel stay untouched (the c5 invariant holds).
+        self._grasp_bias_nm = float(grasp_bias_nm)
+        self._grasp_bias_dofs: list[tuple[int, float]] = []
+        m = self.model
+        for sfx in HAND_SUFFIXES:
+            for f in ("ff", "mf"):
+                for i in (1, 2):
+                    jid = _joint_id(m, f"{f}j{i}{sfx}", "finger")
+                    aid = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_ACTUATOR,
+                                            f"{f}a{i}{sfx}")
+                    cap = float(m.actuator_forcerange[aid][1])
+                    self._grasp_bias_dofs.append(
+                        (int(m.jnt_dofadr[jid]), cap))
         # Explicit box placement, used by the DAgger-style demonstration
         # collector (grounding/collect_hook_demos.py) to sweep the perturbation
         # grid one cell at a time. Both default to None, i.e. the committed
@@ -743,6 +767,7 @@ class LiftHoldEnv(gym.Env):
             self.last_placement = {"mode": "w6c_checkpoint_start"}
         else:
             self._reset_home_state(d)
+        d.qfrc_applied[:] = 0.0  # grasp bias re-applied per step when enabled
         # Settle under gravity / contact stiffness so step 0 is not a shock and the
         # box has already reached its resting height when z0 is recorded (MuJoCo's
         # default solref lets a resting box creep ~4 mm before it stops).
@@ -1151,6 +1176,10 @@ class LiftHoldEnv(gym.Env):
         if not isinstance(action, np.ndarray) or action.shape != (N_ACT,):
             raise ValueError(f"action must be shape ({N_ACT},), got {action!r}")
         self._apply_action(action)
+        if self._grasp_bias_nm:
+            for dof, cap in self._grasp_bias_dofs:
+                self.data.qfrc_applied[dof] = float(
+                    np.clip(self._grasp_bias_nm, -cap, cap))
         if self.record_bearing:
             # Substep-resolution bearing sampling. A stiffened contact's frame-
             # internal spike lives INSIDE a control step (50 Hz control = 10 x

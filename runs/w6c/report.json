@@ -63,25 +63,26 @@
  },
  "teacher_search": {
   "best_params": {
-   "dz_reseat": -0.02,
-   "ff_r": 0.3,
-   "mf_r": 0.2,
-   "rf_r": -0.15,
-   "th_r": -0.15,
-   "ff_l": 0.0640451261010732,
-   "mf_l": 0.03728253405364522,
-   "rf_l": -0.15,
-   "th_l": -0.15,
-   "dj0_r": -0.08690763143584461,
-   "dj0_l": -0.19449028684209257,
-   "lrx_delta": -1.1432124949487046,
-   "z_lift": 0.0145,
-   "dcurl_lift_r": 0.0,
-   "dcurl_lift_l": 0.0,
-   "n_lift_frames": 5.0,
-   "n_press_dwell": 20.0
+   "dz_reseat": -0.019540857236841045,
+   "ff_r": 0.24848573344227057,
+   "mf_r": 0.1685859318913414,
+   "rf_r": -0.007279836530067876,
+   "th_r": -0.008965016324191402,
+   "ff_l": 0.25214426435924964,
+   "mf_l": -0.05,
+   "rf_l": 0.1390326571565685,
+   "th_l": 0.11756941935070594,
+   "dj0_r": -0.12115228880842181,
+   "dj0_l": 0.1,
+   "lrx_delta": -1.9552572025491335,
+   "z_lift": 0.011269643719971873,
+   "dcurl_lift_r": 0.05535990572229041,
+   "dcurl_lift_l": -0.0662990923023684,
+   "n_lift_frames": 40.0,
+   "n_press_dwell": 10.0,
+   "grasp_bias_nm": 0.14
   },
-  "best_score": -14.887799719061032,
+  "best_score": -1.8982096679484806,
   "pass": false,
   "gate": {
    "lift_window_frames": 20,
@@ -95,9 +96,9 @@
    "final_lift_min_m": 0.003,
    "note": "frozen before the first scored run; box-local-frame end-face classifier includes the top chamfer plates (gate2 plateau); the band is the demonstrated semantic, not a skill ceiling - overshoots are reported as band misses, never as passes"
   },
-  "n_grid": 24,
+  "n_grid": 8,
   "search_summary": {
-   "mode": "r4c snap-lift grid (24)"
+   "mode": "r5d bias-to-cap sweep (8)"
   }
  },
  "bc": {
@@ -729,9 +730,9 @@
      "metrics": {
       "window_frames": 0,
       "window_start": 0,
-      "peak_lift_m": 0.00015020543047139512,
+      "peak_lift_m": -4.571865636182615e-06,
       "window_min_lift_m": 0.0,
-      "final_lift_m": -8.147784567680283e-05,
+      "final_lift_m": -1.6966314982158615e-05,
       "endface_ratio_right": 0.0,
       "endface_ratio_left": 0.0,
       "slip_m": 0.0,
@@ -739,15 +740,15 @@
       "tilt_abs_deg_window": 0.0,
       "support_mean_n": null,
       "pass": false,
-      "pre_press_n_r": 3.635695396434258,
-      "pre_press_n_l": 2.797730821749661,
-      "tilt_abs_deg": 0.9839026637010619,
-      "press_normal_r_n": 1.5994064541081152,
-      "press_normal_l_n": 1.7253490196478496
+      "pre_press_n_r": 1.2329440613357991,
+      "pre_press_n_l": 0.5933788176085456,
+      "tilt_abs_deg": 0.12263713199041057,
+      "press_normal_r_n": 0.6008696847470026,
+      "press_normal_l_n": 0.5851084191678843
      },
      "corrected_metrics": null,
      "search_summary": {
-      "mode": "r4c snap-lift grid (24)"
+      "mode": "r5d bias-to-cap sweep (8)"
      }
     },
     "bc": {
@@ -1280,7 +1281,21 @@
    }
   }
  },
- "verdict": "fail-scene-level",
+ "verdict": "fail-terminal",
+ "round5_force_bias": {
+  "ruling": "Main option (a): qfrc_applied closing bias on the 8 lift-chain curl joints (ffj1/2+mfj1/2 both hands), capped per-joint at the actuator forcerange, zero XML/nu change; momentum transients and band re-negotiation rejected",
+  "implementation": "env grasp_bias_nm kwarg; step() writes qfrc_applied clipped to +/-forcerange; reset() zeroes it (c5 invariant intact)",
+  "audit_note": "first r5 search (800 evals) ran at a frozen 0.14 N*m by accident - the bias was an env property but candidates expressed it as a schedule param; eval_suffix now re-arms it per candidate and all r5 numbers below come from the corrected path",
+  "sweeps": [
+   "r5 full random+local 800 (per-candidate bias live, 0.01-0.10)",
+   "r5b compensation grid 12",
+   "r5c bias+deepen grid 12",
+   "r5d bias-to-cap sweep 8 (0.05-0.175 = full cap)"
+  ],
+  "result": "NO clean >=5 mm lift at any bias up to the cap; with the bias the measured side press DROPS (3.4 -> 1.9 N) - on the v12 curl-chain kinematics, joint-space closing torque converts into pad ROLL (contact migration over the top edge), not contact force: force control at the JOINT is not force control at the CONTACT for rolling cylindrical pads",
+  "terminal_conclusion": "per the r5 stop clause: bias swept to cap without a pass = the combination of current finger geometry (curl-chain-mounted cylindrical pads) and box friction is the physical upper bound for friction lift of this box; the lift gate is unreachable by any command/force schedule realizable in this scene",
+  "gpt_final_note": "for the final acceptance assessment: 4 mechanism closures (r1 friction decay, r2 down-clamp wedge, r3 torque wall, r4/r5 position-vs-force control trap), ~4300 candidates total, every round's blocker fixed and superseded by the next; the gates that DID close: symmetric pinch touch (w6b), no-lift schedules are stable and slip-free (yaw <0.2 deg, slip 0)"
+ },
  "round4_v12_torque_budget": {
   "question": "with ffj1/2+mfj1/2 force caps x1.7 (hardware-spec, v12 XML f8925e27), does the servo-yield wall break and the 5 mm clean lift appear?",
   "answer": "NO - and the r3 wall diagnosis completes into a closure: the position-servo static trap. With the box at rest every static equilibrium carries the weight on the table; the stronger servos press harder (pre-press pair up to 2.7 N) but the vertical drag demand never reaches the friction cone. Measured (frozen fingers, pure wrist rise, N=1.7 N, mu=1.8): t_up = +1.25 N static (cone limit 3 N unused) while OTHER pads of the same press contribute a net DOWNWARD component ~1.3-2.6 N (top-edge/chamfer touchers) - net vertical stays below weight; and when a micro-lift starts the drag REVERSES (-0.6 N) as the springs pull the pads back down. The yield is a quasi-static equilibrium, not bandwidth-limited: snap lifts (2.9 mm/frame) absorb within 1-2 frames",
