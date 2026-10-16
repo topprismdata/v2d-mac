@@ -1607,7 +1607,9 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
         viol = np.where((fq < jlo - 1e-9) | (fq > jhi + 1e-9))
         cons = chains[side]["chain"]["placement"]["record"]["constrained_solve"]
         base_y = float(np.asarray(chains[side]["chain"]["placement"]["base"])[1])
-        base_y_in_corridor = bool(abs(base_y) <= BASE_Y_CORRIDOR_M)
+        # the clamp may place the base exactly ON the corridor bound; an
+        # epsilon absorbs the float repr (−0.05000000000000004 > 0.05)
+        base_y_in_corridor = bool(abs(base_y) <= BASE_Y_CORRIDOR_M + 1e-9)
         cmd_wrist = cmds[side]["wrist"]
         cmd_finger = cmds[side]["finger"]
         # v5 mounts rotate the slide axes: the palm sits at
@@ -2030,9 +2032,16 @@ def main() -> int:
     report["replay"]["support_resting_penetration_m"] = settle_pen
     report["terminal_target_provenance"]["blend"] = blend_record
     report["terminal_target_provenance"]["table_clearance_clamp"] = clamp_rec
-    report["terminal_target_provenance"]["gate3_seed_file"] = "runs/w6/gate3_qpos.json (v5/v7, 1-pad-per-hand seed)"
+    report["terminal_target_provenance"]["gate3_seed_file"] = (
+        "runs/w6/gate3_qpos.json @ commit cc16641 (round-3: 2 pads per hand "
+        "in the end-face rectangle mid-band; Main-verified micro-metre)")
     report["terminal_target_provenance"]["gate3_seed_file_sha256"] = _sha256_1kb(
         REPO / "runs/w6/gate3_qpos.json")
+    report["terminal_target_provenance"]["gate3_seed_anchor_commit"] = "cc16641"
+    report["terminal_target_provenance"]["gate3_seed_note"] = (
+        "the scene test rewrites this file atomically on each run; the seed "
+        "is anchored by reading the qpos array at runtime and by the "
+        "cc16641 blob in the report provenance")
     report["scene"]["xml_sha256_full"] = _sha256_full(SCENE_XML)
     report["scene"]["scene_commit_pin"] = "a15b1fb (v6) / bdf7a5f (v7 visual-only); Main GO sha noted as b17544ab..., which does not match any byte level of the delivered XML -- scene pinned here by commit + full sha instead"
     report["findings"] = [
@@ -2074,6 +2083,22 @@ def main() -> int:
                            "in gate3"),
         },
         {
+            "id": "F5_approach_height_budget",
+            "status": "OPEN",
+            "finding": "the MANO-derived approach path descends below the "
+                       "table; the round-2 clamp commands the compensating "
+                       "lift (right 63.6 mm over 105 frames, left 119.5 mm "
+                       "over 122 frames) but the realised hand does not "
+                       "follow the lift on the left (execution deviation "
+                       "~150 mm tracks the deficit), leaving 13/21 residual "
+                       "support-contact frames",
+            "consequence": ("gate3 remains red on the approach segment; the "
+                            "z servo budget vs the mounted hand's weight on "
+                            "this mount needs a scene-side look (W6a), or "
+                            "the approach-height signal needs a usable "
+                            "depth source (perception scope)"),
+        },
+        {
             "id": "F4_left_finger_slump",
             "status": "OPEN",
             "finding": "at the held seed the LEFT palm is exactly on the "
@@ -2096,9 +2121,16 @@ def main() -> int:
     report["replay"]["support_resting_penetration_m"] = settle_pen
     report["terminal_target_provenance"]["blend"] = blend_record
     report["terminal_target_provenance"]["table_clearance_clamp"] = clamp_rec
-    report["terminal_target_provenance"]["gate3_seed_file"] = "runs/w6/gate3_qpos.json (v5/v7, 1-pad-per-hand seed)"
+    report["terminal_target_provenance"]["gate3_seed_file"] = (
+        "runs/w6/gate3_qpos.json @ commit cc16641 (round-3: 2 pads per hand "
+        "in the end-face rectangle mid-band; Main-verified micro-metre)")
     report["terminal_target_provenance"]["gate3_seed_file_sha256"] = _sha256_1kb(
         REPO / "runs/w6/gate3_qpos.json")
+    report["terminal_target_provenance"]["gate3_seed_anchor_commit"] = "cc16641"
+    report["terminal_target_provenance"]["gate3_seed_note"] = (
+        "the scene test rewrites this file atomically on each run; the seed "
+        "is anchored by reading the qpos array at runtime and by the "
+        "cc16641 blob in the report provenance")
     report["scene"]["xml_sha256_full"] = _sha256_full(SCENE_XML)
     report["scene"]["scene_commit_pin"] = "a15b1fb (v6) / bdf7a5f (v7 visual-only); Main GO sha noted as b17544ab..., which does not match any byte level of the delivered XML -- scene pinned here by commit + full sha instead"
     report["findings"] = [
