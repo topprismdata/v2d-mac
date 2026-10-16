@@ -516,6 +516,35 @@ TEMPLATE_HEAD = """<mujoco model="allegro_floating">
       <geom name="gantry_limit_posy" type="box" size="0.05 0.02 0.05"
         pos="0 -0.52 1.015" mass="0" contype="0" conaffinity="0"
         rgba="0.55 0.3 0.15 1"/>
+      <!-- W6a-v7: shared-beam dual-carriage answer + left end module. The
+           physics fact is ONE y-rail with TWO carriages (one per hand); each
+           carriage carries a Z stage and a short bridge arm down to its
+           hand's flange region (mounted module <= 60 mm bridges the rest).
+           Carriage end caps + a left drag chain complete the four-piece set. -->
+      <geom name="gantry_carriage_left" type="box" size="0.03 0.05 0.04"
+        pos="-0.20 0 0.965" mass="0" contype="0" conaffinity="0"
+        rgba="0.5 0.35 0.2 1"/>
+      <geom name="gantry_carriage_cap_r" type="box" size="0.02 0.05 0.04"
+        pos="0.235 0 0.965" mass="0" contype="0" conaffinity="0"
+        rgba="0.3 0.3 0.33 1"/>
+      <geom name="gantry_carriage_cap_l" type="box" size="0.02 0.05 0.04"
+        pos="-0.235 0 0.965" mass="0" contype="0" conaffinity="0"
+        rgba="0.3 0.3 0.33 1"/>
+      <geom name="gantry_zstage_left" type="box" size="0.05 0.05 0.047"
+        pos="-0.20 0 0.898" mass="0" contype="0" conaffinity="0"
+        rgba="0.42 0.42 0.46 1"/>
+      <geom name="gantry_bridge_right" type="capsule"
+        fromto="0.20 0 0.90 0.30 0 0.855" size="0.022" mass="0"
+        contype="0" conaffinity="0" rgba="0.38 0.38 0.42 1"/>
+      <geom name="gantry_bridge_left" type="capsule"
+        fromto="-0.20 0 0.90 -0.30 0 0.855" size="0.022" mass="0"
+        contype="0" conaffinity="0" rgba="0.38 0.38 0.42 1"/>
+      <geom name="gantry_drag_l0" type="box" size="0.016 0.02 0.016"
+        pos="-0.22 0 0.955" mass="0" contype="0" conaffinity="0"
+        rgba="0.2 0.2 0.22 1"/>
+      <geom name="gantry_drag_l1" type="box" size="0.016 0.02 0.016"
+        pos="-0.245 0 0.985" mass="0" contype="0" conaffinity="0"
+        rgba="0.2 0.2 0.22 1"/>
     </body>
     <geom name="table_slab" type="box" size="0.45 0.45 0.02" pos="0 0 {slab_z}"
       material="table" friction="0.9 0.02 0.002"/>{pedestal}
@@ -541,9 +570,15 @@ TEMPLATE_HEAD = """<mujoco model="allegro_floating">
            Welded child body, all geoms mass 0 / no collision => zero physical
            effect (birth/settle/gate numbers bit-identical). -->
       <body name="wmount_right" pos="0 0 0">
+        <geom name="wmount_transition" type="box" size="0.010 0.038 0.028"
+          pos="-0.004 0 0.010" mass="0" contype="0" conaffinity="0"
+          rgba="0.32 0.32 0.35 1"/>
         <geom name="wmount_plate" type="box" size="0.0175 0.045 0.035"
           pos="-0.020 0 0.010" mass="0" contype="0" conaffinity="0"
           rgba="0.28 0.28 0.31 1"/>
+        <geom name="wmount_step" type="cylinder"
+          fromto="-0.033 0 0.010 -0.037 0 0.010" size="0.034 0.002" mass="0"
+          contype="0" conaffinity="0" rgba="0.38 0.38 0.42 1"/>
         <geom name="wmount_flange" type="cylinder"
           fromto="-0.035 0 0.010 -0.050 0 0.010" size="0.030 0.0075" mass="0"
           contype="0" conaffinity="0" rgba="0.46 0.46 0.50 1"/>
@@ -578,9 +613,15 @@ TEMPLATE_HEAD = """<mujoco model="allegro_floating">
 
     <body name="hand_root_left" pos="{hand_home_l}" euler="{hand_euler_l}">
       <body name="wmount_left" pos="0 0 0">
+        <geom name="wmount_transition_left" type="box" size="0.010 0.038 0.028"
+          pos="-0.004 0 0.010" mass="0" contype="0" conaffinity="0"
+          rgba="0.32 0.32 0.35 1"/>
         <geom name="wmount_plate_left" type="box" size="0.0175 0.045 0.035"
           pos="-0.020 0 0.010" mass="0" contype="0" conaffinity="0"
           rgba="0.28 0.28 0.31 1"/>
+        <geom name="wmount_step_left" type="cylinder"
+          fromto="-0.033 0 0.010 -0.037 0 0.010" size="0.034 0.002" mass="0"
+          contype="0" conaffinity="0" rgba="0.38 0.38 0.42 1"/>
         <geom name="wmount_flange_left" type="cylinder"
           fromto="-0.035 0 0.010 -0.050 0 0.010" size="0.030 0.0075" mass="0"
           contype="0" conaffinity="0" rgba="0.46 0.46 0.50 1"/>
@@ -1196,6 +1237,10 @@ def _annotate_hand_geoms(palm_el: ET.Element, solref, solimp) -> None:
                 continue  # the visual pad mesh is not a collision geom
             geom.set("solref", f"{solref[0]:g} {solref[1]:g}")
             geom.set("solimp", " ".join(f"{v:g}" for v in solimp))
+            # W6a-v7 (GPT P1-4 residual): the menagerie default tints the tip
+            # capsules pure white - they read as cartoon balls in renders.
+            # rgba ONLY (size/position are collision physics and frozen).
+            geom.set("rgba", "0.72 0.72 0.76 1")
 
 
 # --- W6a / R10: the left hand is a renamed deep copy of the right ------------
