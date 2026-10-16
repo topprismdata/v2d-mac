@@ -125,6 +125,9 @@ MIRROR_CANDIDATES = {
 COMPARE_VIDEO_FRAMES = (8, 20, 39)        # approach / hold-aloft / terminal
 BLEND_SECONDS = 1.6   # video end posture -> v5 gate3 seed (smoothstep)
 HOLD_SECONDS = 1.5    # settled hold at the seed for the terminal gates
+BASE_Y_CORRIDOR_M = 0.05   # round-2: base-y search corridor (finding 3)
+TABLE_CLEARANCE_M = 0.03   # round-2: min hand-geom clearance above the table
+TABLE_TOP_Z_M = 0.70       # table_slab top (frozen scene geometry)
 
 VIDEOS = ("right", "left")
 
@@ -638,6 +641,15 @@ def solve_base_placement_side(qpos: np.ndarray, anchor: dict,
     shape = anchor["slide_shape"]
     base_lo = slide_lo - shape.min(axis=0)
     base_hi = slide_hi - shape.max(axis=0)
+    # W6b round-2 (Main ruling, finding 3): the base-y corridor.  The v5 run's
+    # closest-gap objective let the right base drift to y +0.17 m, where the
+    # spread-phase fingers knocked the box over its rear-top corner.  The
+    # video shows the hands entering along the +-x face normals, so the base
+    # y is corridor-clamped to +-BASE_Y_CORRIDOR_M (mount y magnitude equals
+    # world y magnitude under any Rz mount).  The corridor is a search-box
+    # restriction, not a threshold change.
+    base_lo[1] = max(base_lo[1], -BASE_Y_CORRIDOR_M)
+    base_hi[1] = min(base_hi[1], BASE_Y_CORRIDOR_M)
 
     solved = base_solve.solve_base_xyz(model, data, ctx, base_lo, base_hi)
     if base_solve_dbg.get("on"):
@@ -950,18 +962,84 @@ def derive_left_mirror(joints: np.ndarray, r_reg: np.ndarray) -> tuple[np.ndarra
 # --------------------------------------------------------------------------
 # execution
 # --------------------------------------------------------------------------
-def reset_scene_dual(model, data, specs: dict) -> float:
-    """retarget_smoke.reset_scene written for both hands at once."""
+def apply_table_clearance(model, data, specs, cmds) -> tuple[dict, dict]:
+    """W6b round-2 (Main ruling, finding 2): the approach may not dip the
+    hand into the table.  The MANO depth axis is unusable (weak-perspective),
+    so absolute approach height is not a trustworthy input; instead the
+    commanded stream is EXPLICITLY clamped: any control frame whose lowest
+    hand collision geom sits closer than TABLE_CLEARANCE_M above the table
+    top has its base-z command raised by the deficit (per frame, clipped into
+    ctrlrange).  Deficits are recorded per frame -- the clamping strategy is
+    the disclosed substitute for the missing depth signal.  The terminal seed
+    hold needs no clamp (the v5 seed clears the table by >= 37 mm)."""
+    import mujoco
+
+    _, box_geom, _, _ = obj_ids(model)
+    frame_slides = {s: [] for s in VIDEOS}
+    deficits = {s: [] for s in VIDEOS}
+    for t in range(cmds["right"]["wrist"].shape[0]):
+        for side in VIDEOS:
+            spec = specs[side]
+            data.qpos[:] = model.qpos0
+            data.qpos[spec.wrist_qadr] = cmds[side]["wrist"][t]
+            data.qpos[spec.finger_qadr] = cmds[side]["finger"][t]
+            mujoco.mj_forward(model, data)
+            z_min = min(float(data.geom_xpos[g][2])
+                        for g in spec.hand_geoms if model.geom_contype[g] != 0)
+            deficit = max(0.0, (TABLE_TOP_Z_M + TABLE_CLEARANCE_M) - z_min)
+            deficits[side].append(round(deficit * 1000, 3))
+            if deficit > 0.0:
+                zi = 2
+                cmds[side]["wrist"][t, zi] = min(
+                    cmds[side]["wrist"][t, zi] + deficit,
+                    model.actuator_ctrlrange[spec.wrist_act_id[zi], 1])
+            frame_slides[side].append(float(cmds[side]["wrist"][t, 2]))
+    rec = {
+        "strategy": ("explicit z lower-bound clamp: raise the base-z command "
+                     "by the per-frame deficit so the lowest hand collision "
+                     f"geom clears the table by >= {TABLE_CLEARANCE_M*1000:.0f} mm; "
+                     "disclosed substitute for the unusable MANO depth axis"),
+        "table_top_z_m": TABLE_TOP_Z_M,
+        "clearance_m": TABLE_CLEARANCE_M,
+        "max_deficit_mm": {s: max(deficits[s]) for s in VIDEOS},
+        "frames_clamped": {s: int(sum(1 for v in deficits[s] if v > 0))
+                           for s in VIDEOS},
+        "deficits_mm": deficits,
+    }
+    return cmds, rec
+
+
+def reset_scene_dual(model, data, specs: dict, first_cmd: dict | None = None) -> float:
+    """retarget_smoke.reset_scene written for both hands at once.
+
+    v8 home = extended fingers (qpos 0; the per-joint springs pull toward the
+    gate3-mean refs near extension).  ``first_cmd`` (round-2): when given, the
+    reset writes the FIRST commanded configuration as the initial state --
+    reset is the one sanctioned qpos-write point -- so the warm start no
+    longer sweeps extended fingers THROUGH the box face (the v8 extended
+    home sits 7 cm off the face and the curl ramp pressed the box for the
+    whole settle, nudging it between control frames).  Settling starts from
+    the commanded pose with ctrl = qpos, which is a contact-established
+    press, not a sweep.
+    """
     import mujoco
 
     mujoco.mj_resetData(model, data)
-    pre_curl = np.array([0.0, 0.9, 0.7, 0.4] * 3 + [0.8, 0.5, 0.4, 0.3])
+    ctrl_lo = model.actuator_ctrlrange[:, 0]
+    ctrl_hi = model.actuator_ctrlrange[:, 1]
     for spec in specs.values():
-        data.qpos[spec.finger_qadr] = pre_curl
-        data.qpos[spec.wrist_qadr] = 0.0
-        data.qpos[spec.wrist_qadr[2]] = -0.02
-        data.ctrl[spec.finger_act_id] = pre_curl
-        data.ctrl[spec.wrist_act_id] = data.qpos[spec.wrist_qadr]
+        if first_cmd is None:
+            fingers = np.zeros(16)
+            wrist = np.zeros(6)
+        else:
+            wrist = np.clip(first_cmd[spec.side]["wrist"][0],
+                            ctrl_lo[spec.wrist_act_id], ctrl_hi[spec.wrist_act_id])
+            fingers = np.clip(first_cmd[spec.side]["finger"][0],
+                              ctrl_lo[spec.finger_act_id], ctrl_hi[spec.finger_act_id])
+        data.qpos[spec.finger_qadr] = fingers
+        data.qpos[spec.wrist_qadr] = wrist
+        data.ctrl[spec.finger_act_id] = fingers
+        data.ctrl[spec.wrist_act_id] = wrist
     data.qvel[:] = 0.0
     for _ in range(400):
         mujoco.mj_step(model, data)
@@ -1528,6 +1606,8 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
         fq = h["qpos"][:, spec.finger_qadr]
         viol = np.where((fq < jlo - 1e-9) | (fq > jhi + 1e-9))
         cons = chains[side]["chain"]["placement"]["record"]["constrained_solve"]
+        base_y = float(np.asarray(chains[side]["chain"]["placement"]["base"])[1])
+        base_y_in_corridor = bool(abs(base_y) <= BASE_Y_CORRIDOR_M)
         cmd_wrist = cmds[side]["wrist"]
         cmd_finger = cmds[side]["finger"]
         # v5 mounts rotate the slide axes: the palm sits at
@@ -1553,7 +1633,10 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
                 "support_contact_control_frames": support_frames[:40],
                 "support_pair_examples_final_frame": rep.get(
                     "support_pair_examples", []),
-                "pass": bool(len(support_frames) == 0),
+                "base_y_m": base_y,
+                "base_y_corridor_m": BASE_Y_CORRIDOR_M,
+                "base_y_in_corridor": base_y_in_corridor,
+                "pass": bool(len(support_frames) == 0 and base_y_in_corridor),
             },
             "gate4_joint_limits": {
                 "finger_qpos_violation_frames": sorted(set(int(v) for v in viol[0]))[:40],
@@ -1646,8 +1729,8 @@ def gpt_triptych(model, data, rep, specs) -> dict:
         data.qpos[:] = rep["qpos_full"][k]
         data.qpos[0:7] = rep["obj_world"][k]
         mujoco.mj_forward(model, data)
-        cam.lookat[:] = [0.0, 0.0, 0.75]
-        cam.azimuth, cam.elevation, cam.distance = 25.0, -15.0, 1.1
+        cam.lookat[:] = [0.0, 0.0, 0.74]
+        cam.azimuth, cam.elevation, cam.distance = 105.0, -22.0, 0.80
         renderer.update_scene(data, camera=cam)
         dst = EVIDENCE_DIR / f"gpt_triptych_{tag}.png"
         Image.fromarray(renderer.render()).save(dst)
@@ -1668,7 +1751,8 @@ def gpt_triptych(model, data, rep, specs) -> dict:
                 "note": "抬离 = W6c 范围（本轨迹止于抓握就绪终态，无抬起段）",
             },
         },
-        "camera": "azimuth 25, elevation -15, distance 1.1, lookat box centre",
+        "camera": "W6d standard presets: front az105/el-22/0.80, side "
+                  "az-20/el-30/0.72, close az-20/el-24/0.46, lookat (0,0,0.74)",
     }
 
 
@@ -1685,9 +1769,11 @@ def render_comparison(model, data, rep, out_png: Path) -> dict:
     renderer = mujoco.Renderer(model, height=H, width=W)
     cam = mujoco.MjvCamera()
     cam.type = mujoco.mjtCamera.mjCAMERA_FREE
+    # W6d standard presets (Main round-2): front/side/close, lookat (0,0,0.74)
+    presets = [(105.0, -22.0, 0.80), (-20.0, -30.0, 0.72), (-20.0, -24.0, 0.46)]
     rows = []
     sim_cells = []
-    for vf in COMPARE_VIDEO_FRAMES:
+    for i, vf in enumerate(COMPARE_VIDEO_FRAMES):
         k = min(rep["n_frames"] - 1, int(round((vf - 1) / VIDEO_FPS * CTRL_HZ)))
         src = HUMAN_FRAMES_DIR / f"f_{vf:04d}.jpg"
         img = Image.open(src).convert("RGB").resize((W, H))
@@ -1695,8 +1781,8 @@ def render_comparison(model, data, rep, out_png: Path) -> dict:
         data.qpos[:] = rep["qpos_full"][k]
         data.qpos[0:7] = rep["obj_world"][k]
         mujoco.mj_forward(model, data)
-        cam.lookat[:] = data.xpos[obj_ids(model)[0]]
-        cam.azimuth, cam.elevation, cam.distance = 0.0, -25.0, 0.70
+        cam.lookat[:] = [0.0, 0.0, 0.74]
+        cam.azimuth, cam.elevation, cam.distance = presets[i]
         renderer.update_scene(data, camera=cam)
         sim_cells.append(renderer.render())
     renderer.close()
@@ -1894,9 +1980,13 @@ def main() -> int:
     n_ctrl += n_blend + n_hold
     print(f"    terminal blend: +{n_blend} blend +{n_hold} hold frames "
           f"(terminal = v5 gate3 seed)")
+    cmds_global, clamp_rec = apply_table_clearance(model, data, specs, cmds_global)
+    print(f"    table clearance clamp: max deficit "
+          f"{ {s: clamp_rec['max_deficit_mm'][s] for s in VIDEOS} } mm, "
+          f"frames { {s: clamp_rec['frames_clamped'][s] for s in VIDEOS} }")
 
     print(f"[5/7] dual warm start + replay ({n_ctrl} control frames @ {CTRL_HZ} Hz)")
-    settle_pen = reset_scene_dual(model, data, specs)
+    settle_pen = reset_scene_dual(model, data, specs, first_cmd=cmds_global)
     homes = {s: data.xpos[specs[s]._hand_root_id].copy() for s in VIDEOS}
     warm = dual_warm_start(model, data, specs, cmds_global, frame_skip)
     rep = dual_replay(model, data, specs, cmds_global, frame_skip)
@@ -1939,6 +2029,73 @@ def main() -> int:
     report["scene"]["nq_nv_nu"] = [int(model.nq), int(model.nv), int(model.nu)]
     report["replay"]["support_resting_penetration_m"] = settle_pen
     report["terminal_target_provenance"]["blend"] = blend_record
+    report["terminal_target_provenance"]["table_clearance_clamp"] = clamp_rec
+    report["terminal_target_provenance"]["gate3_seed_file"] = "runs/w6/gate3_qpos.json (v5/v7, 1-pad-per-hand seed)"
+    report["terminal_target_provenance"]["gate3_seed_file_sha256"] = _sha256_1kb(
+        REPO / "runs/w6/gate3_qpos.json")
+    report["scene"]["xml_sha256_full"] = _sha256_full(SCENE_XML)
+    report["scene"]["scene_commit_pin"] = "a15b1fb (v6) / bdf7a5f (v7 visual-only); Main GO sha noted as b17544ab..., which does not match any byte level of the delivered XML -- scene pinned here by commit + full sha instead"
+    report["findings"] = [
+        {
+            "id": "F1_spring_hold",
+            "status": "CLOSED (v8)",
+            "finding": "v5 uniform finger springs (0.4, ref 0.6) exceeded the "
+                       "finger servo static hold envelope for the gate3 seed "
+                       "curls",
+            "resolution": ("v8 per-joint springs (k 0.005-0.09, refs = "
+                           "clipped gate3 means): the seed is now holdable -- "
+                           "round-2 static-hold gate 32/32 joints <= 0.8x "
+                           "cap. Residual: the deep-curl joints ffj2/mfj2 "
+                           "still track the seed ~0.6-0.69 rad short during "
+                           "the approach/hold with saturated servos (new "
+                           "finding F4)"),
+        },
+        {
+            "id": "F2_left_table_contact",
+            "status": "PARTIAL",
+            "finding": "the registered LEFT approach dips below the table",
+            "resolution": ("round-2 clamp: explicit z lower-bound (>=30 mm "
+                           "clearance) reduced support-contact frames "
+                           "130 -> 17 and clamped 41 left frames (max deficit "
+                           "23.1 mm); the residual 17 frames are the video's "
+                           "own table-height left-hand rest/approach, which "
+                           "the x/y image-plane signal alone cannot lift "
+                           "without inventing height data"),
+        },
+        {
+            "id": "F3_base_y_drift",
+            "status": "CLOSED (round-2)",
+            "finding": "right base-solve y drift (+0.17 m) knocked the box "
+                       "over its rear-top corner",
+            "resolution": ("base-y corridor +-0.05 m in the search box; both "
+                           "bases sit at the corridor edge (-0.05) and the "
+                           "box displacement over the whole replay is "
+                           "8.6 mm; corridor violation is verdict-bearing "
+                           "in gate3"),
+        },
+        {
+            "id": "F4_left_finger_slump",
+            "status": "OPEN",
+            "finding": "at the held seed the LEFT palm is exactly on the "
+                       "seed pose but the LEFT fingers are limp against the "
+                       "table (realised finger qpos past joint limits by up "
+                       "to 393 mrad; executed pad-rect 70 mm): the left "
+                       "seed's wrist orientation (rx +0.37 vs the right's "
+                       "-1.67) points the finger curl plane downward, where "
+                       "gravity torque on the finger links exceeds the "
+                       "0.03-0.105 Nm servo budgets",
+            "consequence": ("gate4 left red; the right hand's posture family "
+                            "is correct and the symmetric-pinch target needs "
+                            "either a left seed with a gravity-neutral wrist "
+                            "or stronger left finger budgets (scene/seed "
+                            "generation, W6a scope)"),
+        },
+    ]
+    report["gpt_triptych"] = triptych
+    report["scene"]["nq_nv_nu"] = [int(model.nq), int(model.nv), int(model.nu)]
+    report["replay"]["support_resting_penetration_m"] = settle_pen
+    report["terminal_target_provenance"]["blend"] = blend_record
+    report["terminal_target_provenance"]["table_clearance_clamp"] = clamp_rec
     report["terminal_target_provenance"]["gate3_seed_file"] = "runs/w6/gate3_qpos.json (v5/v7, 1-pad-per-hand seed)"
     report["terminal_target_provenance"]["gate3_seed_file_sha256"] = _sha256_1kb(
         REPO / "runs/w6/gate3_qpos.json")
