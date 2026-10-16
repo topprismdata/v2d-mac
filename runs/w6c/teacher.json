@@ -1,30 +1,29 @@
 {
  "best_params": {
-  "dz_reseat": -0.04,
-  "ff_r": 0.2719,
-  "mf_r": 0.0195,
-  "rf_r": 0.2276,
-  "th_r": 0.3167,
-  "ff_l": -0.0265,
-  "mf_l": 0.2988,
-  "rf_l": 0.0,
-  "th_l": 0.45,
-  "dj0_r": -0.1047,
-  "dj0_l": 0.0899,
-  "lrx_delta": -1.2707,
-  "z_lift": 0.008,
-  "dcurl_lift": 0.22,
-  "n_lift_frames": 60.0,
-  "n_press_dwell": 20.0,
-  "dcurl_lift_r": 0.15,
-  "dcurl_lift_l": 0.0
+  "dz_reseat": -0.013081792465014801,
+  "ff_r": 0.4253579003337323,
+  "mf_r": 0.08202919003335717,
+  "rf_r": 0.05238104082286754,
+  "th_r": 0.39944818592602477,
+  "ff_l": 0.0640451261010732,
+  "mf_l": 0.03728253405364522,
+  "rf_l": 0.04257311626053179,
+  "th_l": -0.018766460568428914,
+  "dj0_r": -0.08690763143584461,
+  "dj0_l": -0.19449028684209257,
+  "lrx_delta": -1.1432124949487046,
+  "z_lift": 0.013,
+  "dcurl_lift_r": 0.0,
+  "dcurl_lift_l": 0.0,
+  "n_lift_frames": 10.0,
+  "n_press_dwell": 20.0
  },
  "best_metrics": {
   "window_frames": 0,
   "window_start": 0,
-  "peak_lift_m": 7.775828895584258e-05,
+  "peak_lift_m": 1.2836963743989571e-05,
   "window_min_lift_m": 0.0,
-  "final_lift_m": 2.8038745558900402e-05,
+  "final_lift_m": -1.4207864848292395e-05,
   "endface_ratio_right": 0.0,
   "endface_ratio_left": 0.0,
   "slip_m": 0.0,
@@ -32,13 +31,13 @@
   "tilt_abs_deg_window": 0.0,
   "support_mean_n": null,
   "pass": false,
-  "pre_press_n_r": 2.833454838864313,
-  "pre_press_n_l": 2.8006602446403837,
-  "tilt_abs_deg": 0.2404714729299705,
-  "press_normal_r_n": 1.4943470650236323,
-  "press_normal_l_n": 1.5027072368035999
+  "pre_press_n_r": 1.9774749276769126,
+  "pre_press_n_l": 2.399949979783398,
+  "tilt_abs_deg": 0.30948209228735474,
+  "press_normal_r_n": 0.7964255310968075,
+  "press_normal_l_n": 0.7568275812527524
  },
- "best_score": -0.886583180162337,
+ "best_score": -4.732498535670624,
  "pass": false,
  "gate": {
   "lift_window_frames": 20,
@@ -52,8 +51,8 @@
   "final_lift_min_m": 0.003,
   "note": "frozen before the first scored run; box-local-frame end-face classifier includes the top chamfer plates (gate2 plateau); the band is the demonstrated semantic, not a skill ceiling - overshoots are reported as band misses, never as passes"
  },
- "n_grid": 108,
+ "n_grid": 24,
  "search_summary": {
-  "mode": "r2b conditioned grid (108)"
+  "mode": "r3d fast-lift grid (24)"
  }
 }

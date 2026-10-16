@@ -674,7 +674,10 @@ def cmd_search(args: argparse.Namespace) -> None:
 
     def sample():
         return {
-            "dz_reseat": float(rng.uniform(-0.075, -0.030)),
+            # v10-fixed: the surface-gap seed places pads IN the face band
+            # at the checkpoint (measured z +4.6..+6.0 mm) - the press needs a
+            # small trim, not the v9-era 30-75 mm drop
+            "dz_reseat": float(rng.uniform(-0.020, 0.005)),
             "ff_r": float(rng.uniform(-0.05, 0.45)),
             "mf_r": float(rng.uniform(-0.05, 0.45)),
             "rf_r": float(rng.uniform(-0.05, 0.45)),
@@ -784,11 +787,9 @@ def _finish_search(best, hist, args) -> None:
 
 
 _BOUNDS = {
-    # measured (W6c probe round 5): at the checkpoint every fingertip pad sits
-    # z +46..+63 mm above the box centre - 6..23 mm ABOVE the +40 mm top face.
-    # Reaching the side-face band needs a 30-75 mm wrist drop, not the 2-20 mm
-    # the earlier rounds searched.
-    "dz_reseat": (-0.075, -0.030),
+    # v10-fixed re-calibration: checkpoint pads sit z +4.6..+6.0 mm (in band);
+    # the press trims -20..+5 mm instead of the v9-era 30-75 mm drop
+    "dz_reseat": (-0.020, 0.005),
     "ff_r": (-0.05, 0.45), "mf_r": (-0.05, 0.45),
     "rf_r": (-0.05, 0.45), "th_r": (-0.05, 0.45),
     "ff_l": (-0.05, 0.45), "mf_l": (-0.05, 0.45),
@@ -1453,7 +1454,49 @@ def cmd_report(args: argparse.Namespace) -> None:
         "gate_scope_statement": {"frozen": "before the first scored run "
                                            "(module GATE dict is the source)",
                                  "gates": gates},
-        "verdict": ("fail-scene-level" if args.round2 else verdict),
+        "verdict": ("fail-scene-level" if args.round3 else
+                    ("fail-scene-level" if args.round2 else verdict)),
+        "round3_v10_pads": (None if not args.round3 else {
+            "question": "does the 3.5 mm stall become a >=5 mm clean lift on "
+                        "mu=1.8 cylindrical (r9x11 mm) pads (v10-fixed, seed "
+                        "4c7a86d surface-gap baseline)?",
+            "answer": "NO - and the mechanism CHANGED: the friction-decay "
+                      "stall of rounds 1-2 is GONE (lift-window normals "
+                      "steady 1.4 N/side, tilt 0.05 deg, pre-press pair up "
+                      "to 4.4 N), but the binding constraint moved to the "
+                      "finger servo torque budget: transmitting the ~1.5 N "
+                      "vertical drag through the curl chain demands "
+                      "cap-level torque per joint (0.09-0.105 N*m at "
+                      "~45 mm arms), and the position servos yield first - "
+                      "wrist +9 mm produces only +1.4 mm pad world motion, "
+                      "tangential demand stays static-stick at 0.3-0.7 N, "
+                      "the box never unweights",
+            "variants_exhausted": ["slow lift 40-80 f (quasi-static trap: "
+                                   "drag demand ~0)", "fast lift 10-20 f "
+                                   "(servo yield absorbs in 1-2 frames)",
+                                   "curl-close ramp (drags DOWN: closing "
+                                   "moves the pad inward-down)",
+                                   "curl-extend grip-walk (breaks contact)",
+                                   "left release/follow (left drag "
+                                   "persists or two-hand contact breaks)",
+                                   "press pair 2.9-5.6 N (pure static: "
+                                   "presses harder, never drags)"],
+            "searches": "r3 full 800 (recalibrated dz -20..+5 mm) + r3b "
+                        "left-follow 48 + r3c grip-walk 48 + r3d fast 24",
+            "scene_conclusion": "on v10 pads the box cannot be lifted >=5 mm "
+                                "clean under the CURRENT finger servo force "
+                                "budget; this is an actuator-envelope "
+                                "constraint, not a friction or geometry one",
+            "next_lever_needs_ruling": "finger curl servo forcerange "
+                                       "(~1.5-2x on ffj1/2+mfj1/2 both "
+                                       "hands) is RED-LINED (W6c red line: "
+                                       "actuator params untouched) - needs "
+                                       "Main/W6a ruling; alternative: "
+                                       "renegotiate the lift band (the "
+                                       "stable pinch holds 4.4 N "
+                                       "statically; a 2-3 mm band with the "
+                                       "same schedule is within reach)",
+        }),
         "round2_press_schedule": (None if not args.round2 else {
             "levers_implemented": [
                 "per-hand curl ramp during lift (slope frozen at 0.22 rad = "
@@ -1547,6 +1590,7 @@ def main() -> None:
     p.add_argument("--render", action="store_true")
     p = sub.add_parser("report")
     p.add_argument("--round2", action="store_true")
+    p.add_argument("--round3", action="store_true")
     args = ap.parse_args()
     {"curate": cmd_curate, "checkpoint": cmd_checkpoint,
      "search": cmd_search, "bc": cmd_bc, "ppo": cmd_ppo,
