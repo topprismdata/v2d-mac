@@ -86,11 +86,11 @@ def _tip_geoms(model) -> dict[str, int]:
     out = {}
     for f in ("ff", "mf", "rf", "th"):
         bid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, f"{f}_tip")
-        gids = [g for g in range(model.ngeom)
-                if model.geom_bodyid[g] == bid
-                and model.geom_type[g] == mujoco.mjtGeom.mjGEOM_CAPSULE]
-        assert len(gids) == 1, f"{f}_tip must own exactly one capsule geom, got {gids}"
-        out[f] = gids[0]
+        # W6a-v10: the pad is a CYLINDER (was a capsule) - match by name
+        gname = f"{f}_tip_collision"
+        g = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, gname)
+        assert g >= 0, f"{gname} not found"
+        out[f] = g
     return out
 
 
