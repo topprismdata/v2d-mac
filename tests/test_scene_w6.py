@@ -216,7 +216,7 @@ def test_w6_gate3b_static_hold_spring_demand_within_servo_caps(model):
     refs = dict(zip(
         [f"{f}j{i}" for f in ("ff", "mf", "rf", "th") for i in range(4)],
         builder.FINGER_SPRINGREF))
-    k = builder.FINGER_SPRING_STIFFNESS
+    KJ = builder.FINGER_SPRING_STIFFNESS
     q = json.loads(open(REPO / "runs/w6/gate3_qpos.json").read())["qpos"]
     worst = (None, 0.0)
     for sfx in ("", "_left"):
@@ -227,7 +227,7 @@ def test_w6_gate3b_static_hold_spring_demand_within_servo_caps(model):
                 aid = nid(model, mujoco.mjtObj.mjOBJ_ACTUATOR, f"{f}a{i}{sfx}")
                 qj = float(q[13 + (0 if sfx == "" else 22) + 4 * FINGERS.index(f) + i])
                 cap = 0.8 * float(model.actuator_forcerange[aid][1])
-                demand = abs(k * (qj - refs[f"{f}j{i}"]))
+                demand = abs(KJ[4 * FINGERS.index(f) + i] * (qj - refs[f"{f}j{i}"]))
                 if demand > worst[1]:
                     worst = (jn, demand / cap)
                 assert demand <= cap, (

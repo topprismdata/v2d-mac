@@ -1277,24 +1277,35 @@ def _left_palm_from(raw_palm_el: ET.Element) -> ET.Element:
 # springref = the per-joint gate-3 solution means (the spring now ASSISTS the
 # grasp - zero demand at the documented pose) and stiffness 0.019, sized so the
 # spring demand at BOTH hands' gate-3 seeds stays within 0.8x the per-joint
-# servo caps (the static-hold gate in test_scene_w6.py). Gravity is handled by
+# tightest joint budget; see R10-v8). Gravity is handled by
 # the R1 sag budget separately (recorded per joint in gate3_qpos.json).
-FINGER_SPRING_STIFFNESS = 0.019    # N*m/rad
+# W6a-v8: PER-JOINT stiffness - each joint's spring is sized to its own
+# static-hold budget (0.8*cap - gravity) over its gate-3 seed offset (the two
+# hands' seeds differ per joint, so a shared constant cannot satisfy both);
+# computed by the offline solve recorded in R10-v8, floor 0.01 / cap 0.09.
+FINGER_SPRING_STIFFNESS = (
+(0.0318, 0.0900, 0.0900, 0.0251, 0.0050, 0.0739, 0.0850, 0.0315, 0.0104, 0.0445, 0.0900, 0.0552, 0.0900, 0.0900, 0.0100, 0.0100,))     # ff/mf/rf/th per-joint N*m/rad
 FINGER_SPRINGREF = (
-    0.278, 0.12, 0.192, 0.662,
-    0.419, 0.431, 0.423, 0.959,
-    0.972, 0.535, 0.356, 0.831,
-    0.55, 0.553, 0.819, 0.236)     # ff/mf/rf/th per-joint gate-3 solution means
+    -0.144, 0.63, 0.58, -0.014,
+    0.132, 0.466, 0.64, 0.449,
+    0.101, 1.057, 0.73, 0.652,
+    0.606, 0.573, 0.938, 0.407)    # ff/mf/rf/th per-joint gate-3 solution means
+
+
+FINGERS_ORDER = ("ff", "mf", "rf", "th")
 
 
 def _add_finger_home_springs(palm_el: ET.Element, suffix: str = "") -> None:
-    """Set stiffness/springref on the 16 finger joints of one palm subtree."""
+    """Set per-joint stiffness/springref on the 16 finger joints of one palm
+    subtree. FINGER_SPRINGREF / FINGER_SPRING_STIFFNESS are ordered
+    [ff(4), mf(4), rf(4), th(4)] - j0..j3 per finger."""
     for j in palm_el.iter("joint"):
         name = j.get("name") or ""
         if not name.startswith(("ffj", "mfj", "rfj", "thj")):
             continue
-        idx = int(name[3]) if len(name) > 3 and name[3].isdigit() else 0
-        j.set("stiffness", f"{FINGER_SPRING_STIFFNESS:g}")
+        idx = 4 * ("ffmf rf th".split().index(name[:2])) + int(name[3]) \
+            if False else 4 * FINGERS_ORDER.index(name[:2]) + int(name[3])
+        j.set("stiffness", f"{FINGER_SPRING_STIFFNESS[idx]:g}")
         j.set("springref", f"{FINGER_SPRINGREF[idx]:g}")
 
 

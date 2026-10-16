@@ -679,10 +679,10 @@ class LiftHoldEnv(gym.Env):
         # servos, springs and gravity balance at one posture - the reset, the
         # raw MjData settle and the executed grasp all share one equilibrium.
         pre_curl_base = np.array([
-            0.278, 0.12, 0.192, 0.662,
-            0.30, 0.431, 0.423, 0.959,
-            0.972, 0.535, 0.356, 0.831,
-            0.55, 0.553, 0.819, 0.236,
+            -0.144, 0.63, 0.58, -0.014,
+            0.132, 0.466, 0.64, 0.449,
+            0.101, 1.057, 0.73, 0.652,
+            0.606, 0.573, 0.938, 0.407,
         ])
         for h in range(N_HANDS):
             wq = self.wrist_qpos_adr[h]
