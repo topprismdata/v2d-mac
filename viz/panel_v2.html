@@ -60,6 +60,7 @@
     border-top: 1px solid var(--line); min-height: 40px;
   }
   .pane .caption b { color: var(--fg); font-weight: 600; }
+  .pnote { margin-top: 3px; color: #e8b45a; font-size: 12px; }
   .presets { display: flex; gap: 6px; margin-left: auto; }
   .presets button {
     background: var(--bg); color: var(--dim); border: 1px solid var(--line);
@@ -265,13 +266,15 @@ function draw(i) {
   $("slider").value = i;
 
   const fr = rf[i], t = fr.t;
+  const phaseNote = seg => (meta.phase_notes || {})[seg] || "";
   if (ONE2ONE) {
     // slider index i IS the pair index: sim replay frame i, source frame i+1
     seekVideo(i);
     const seg = segOfN(i + 1);
     $("vcap").innerHTML =
       `<b>原片帧 ${i + 1}/${meta.total_source_frames}</b> · t=${(i / VFPS).toFixed(2)} s` +
-      (seg ? ` · 阶段：<b>${seg}</b>` : "");
+      (seg ? ` · 阶段：<b>${seg}</b>` : "") +
+      (phaseNote(seg) ? `<div class="pnote">${phaseNote(seg)}</div>` : "");
     $("vtag").textContent = `${meta.total_source_frames} 帧 · 1:1 对应`;
   } else {
     const vj = nearestVideo(t), vfile = vf[vj];
@@ -282,7 +285,8 @@ function draw(i) {
     $("vcap").innerHTML =
       `<b>原片第 ${n ? n[1] : vj + 1} 帧</b> · t=${t.toFixed(2)} s` +
       (seg ? ` · 阶段：<b>${seg}</b>` : "") +
-      `（按时间就近对齐·旧版时基）`;
+      `（按时间就近对齐·旧版时基）` +
+      (phaseNote(seg) ? `<div class="pnote">${phaseNote(seg)}</div>` : "");
     $("vtag").textContent = `${vf.length} 个对比帧 · 旧版时基`;
   }
 

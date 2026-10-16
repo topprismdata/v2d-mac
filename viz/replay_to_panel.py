@@ -189,9 +189,9 @@ def _convert_replay(raw: dict | list) -> tuple[list[dict], float]:
 
 
 def _w6b_gates() -> list[dict]:
-    """Derive the five W6b gate badges from runs/w6b/report.json
-    (verdict_checks + per_side) -- every number from the committed report,
-    green/red exactly as measured."""
+    """Derive the gate badges from runs/w6b/report.json (verdict_checks +
+    per_side + trajectory_error) -- every number verbatim from the committed
+    round-4 report, green/red exactly as measured."""
     if not REPORT_IN.exists():
         raise SystemExit(
             f"real replay ({REPLAY_IN}) without {REPORT_IN} -- supply the W6b "
@@ -209,7 +209,14 @@ def _w6b_gates() -> list[dict]:
 
     pad = lambda g, k: (g.get("per_pad_rect_mm") or
                         g.get("executed_state_evidence", {}).get("per_pad_rect_mm", {})).get(k)
-    f5_note = "（失败=F5 接近高度预算，W6c 域处理）"
+
+    def g4_txt(g):
+        n = len(g.get("finger_qpos_violation_frames", []))
+        peak = g.get("finger_qpos_max_violation_rad", 0.0) * 1e3
+        return f"{n} 帧·峰 {peak:.0f} mrad"
+
+    wr = rep["trajectory_error"]["wrist_referenced"]["per_side"]
+    wr_r, wr_l = wr["right"], wr["left"]
 
     return [
         {"id": "w6b_gate1", "name": "门 1 双手终触",
@@ -223,18 +230,20 @@ def _w6b_gates() -> list[dict]:
          "scope": "指令终态双手各 ≥2 指垫入端面矩形带、垫心前向角 ≤35°、无埋入"},
         {"id": "w6b_gate2", "name": "门 2 端面接触保持",
          "verdict": "pass" if checks["gate2_contact"] else "fail",
-         "measured": f"右 {g2r['endface_contact_frames']} 帧 / 左 {g2l['endface_contact_frames']} 帧",
-         "scope": "接触物理执行下指垫贴住端面的控制帧数（双手须全程保持）"},
+         "measured": (f"右 {g2r['endface_contact_frames']} 帧（首触 "
+                      f"第 {g2r['first_endface_control_frame']} 控制帧）/ "
+                      f"左 {g2l['endface_contact_frames']} 帧（首触 "
+                      f"第 {g2l['first_endface_control_frame']}）"),
+         "scope": "接触物理执行下指垫贴住端面的控制帧数（按 report 逐侧实数）"},
         {"id": "w6b_gate3", "name": "门 3 接近段干净",
          "verdict": "pass" if checks["gate3_approach_clean"] else "fail",
          "measured": (f"右压支撑 {len(g3r.get('support_contact_control_frames', []))} 帧 / "
-                      f"左 {len(g3l.get('support_contact_control_frames', []))} 帧{f5_note}"),
+                      f"左 {len(g3l.get('support_contact_control_frames', []))} 帧"
+                      "（失败=F5 接近高度预算，W6c 域处理）"),
          "scope": "接近段手指不得触桌或支撑（现失败源于接近高度预算不足，非 retarget 接线）"},
         {"id": "w6b_gate4", "name": "门 4 关节限位",
          "verdict": "pass" if checks["gate4_joint_limits"] else "fail",
-         "measured": (f"左 {len(g4l.get('finger_qpos_violation_frames', []))} 帧微超限 "
-                      f"{g4l.get('finger_qpos_max_violation_rad', 0.0) * 1e3:.2f} mrad"
-                      f"（右 {len(g4r.get('finger_qpos_violation_frames', []))} 帧）"),
+         "measured": f"右 {g4_txt(g4r)} / 左 {g4_txt(g4l)}",
          "scope": "手指 qpos 不越关节限、指令全部落在 ctrlrange 内"},
         {"id": "w6b_gate5", "name": "门 5 掌偏差",
          "verdict": "pass" if checks["gate5_palm_deviation"] else "fail",
@@ -242,6 +251,18 @@ def _w6b_gates() -> list[dict]:
                       f"左 {g5l['execution_dev_max_m'] * 1e3:.0f} mm / "
                       f"帽 {g5r['cap_m'] * 1e3:.0f} mm"),
          "scope": "执行掌心位姿相对 MANO 目标的最大偏差（超帽即标红，如实入档）"},
+        {"id": "w6b_wrist", "name": "腕轨迹误差",
+         "verdict": "pass" if checks.get("wrist_referenced_error") else "fail",
+         "measured": (f"右 {wr_r['conf_weighted_median_err_m'] * 1e3:.1f} mm"
+                      f"（{wr_r['conf_weighted_median_err_span_frac'] * 100:.1f}% 跨度）/ "
+                      f"左 {wr_l['conf_weighted_median_err_m'] * 1e3:.1f} mm"
+                      f"（{wr_l['conf_weighted_median_err_span_frac'] * 100:.1f}%）"),
+         "scope": "MediaPipe 腕点 vs 回放腕的置信加权中位误差（占手跨度百分比，r4c 同尺判据）"},
+        {"id": "w6b_align", "name": "1:1 帧对齐",
+         "verdict": "pass" if checks.get("frame_alignment") else "fail",
+         "measured": (f"{len(json.loads(REPLAY_IN.read_text())['frames'])} 帧 @30 fps ↔ 原片逐帧"
+                      + ("（对齐断言 PASS）" if checks.get("frame_alignment") else "（对齐断言未过）")),
+         "scope": "仿真帧 i ↔ 原片帧 i+1（t=i/30 s）的对齐断言——本面板滑块的时基依据"},
     ]
 
 
@@ -304,6 +325,11 @@ def build() -> dict:
                 "runs/.venv-mj/bin/python viz/render_replay.py 即为成片。"),
             "notes_per_frame": notes,
             "playback": playback,
+            "phase_notes": {
+                # Main's honest-lift ruling: the sim never raises the box --
+                # that gap is a pad/finger geometry finding, not trainable
+                "抬离": "抬离=垫/指几何再设计范围（W6c 五轮机制闭环负结果，非训练可解）",
+            },
             "video_fps": VIDEO_FPS,
             "total_source_frames": SOURCE_TOTAL_FRAMES,
             "video_segments": segments,
