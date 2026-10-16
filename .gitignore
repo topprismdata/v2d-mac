@@ -23,6 +23,7 @@ runs/**
 !runs/w6b/mano_params.meta.json
 !runs/w6b/mano_params_fullfps.npz
 !runs/w6b/mano_params_fullfps.meta.json
+!runs/w6b/wrist_landmarks.npz
 !runs/w6b/report.json
 !runs/w6b/replay_frames.json
 !runs/w6b/evidence/*.png

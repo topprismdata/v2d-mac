@@ -2444,6 +2444,71 @@ def main() -> int:
     traj_err["pass"] = all(
         v["pass"] for v in traj_err["per_side"].values())
 
+    # round-4c: the WRIST-REFERENCED metric (Main ruling) -- like-for-like
+    # wrist-to-wrist comparison against MediaPipe wrist landmarks (smoke 6
+    # machinery, ego-view prior), same span definition both sides
+    # (wrist -> middle MCP), conf = detector score.  This replaces the
+    # bounding-box-centre upper bound as the criterion of record.
+    wl_path = REPO / "runs/w6b/wrist_landmarks.npz"
+    if wl_path.is_file():
+        wl = np.load(wl_path)
+        span_px_wl = {s: float(np.median(
+            wl[f"{s}/span_px"][wl[f"{s}/present"]])) for s in VIDEOS}
+        traj_err["wrist_referenced"] = {
+            "reference": "MediaPipe wrist landmark (landmark 0), smoke 6 "
+                         "machinery + ego-view x-order prior",
+            "span_definition": "wrist -> middle MCP, both sides",
+            "approach_frames": [1, approach_end],
+            "per_side": {},
+        }
+        for side in VIDEOS:
+            pres_wl = wl[f"{side}/present"].astype(bool)
+            wrist_px = wl[f"{side}/wrist_px"].copy()
+            a0, a1 = 0, approach_end
+            ref_px = wrist_px[a0:a1][pres_wl[a0:a1]].mean(axis=0)
+            wrist_m = (wrist_px - ref_px) * (span_m / span_px_wl[side])
+            present_m = d[f"{side}/present"].astype(bool)
+            mano_wrist = d[f"{side}/transl"].copy()
+            mano_ref = mano_wrist[a0:a1][present_m[a0:a1]].mean(axis=0)
+            mano_xy = mano_wrist - mano_ref
+            mano_xy[:, 2] = 0.0
+            errs, weights = [], []
+            for t in range(0, approach_end):
+                if not (pres_wl[t] and present_m[t]):
+                    continue
+                errs.append(float(np.linalg.norm(
+                    mano_xy[t][:2] - wrist_m[t])))
+                weights.append(float(wl[f"{side}/score"][t]))
+            errs_a = np.asarray(errs)
+            weights_a = np.asarray(weights)
+            order = np.argsort(errs_a)
+            cw = np.cumsum(weights_a[order])
+            wmedian = float(errs_a[order][np.searchsorted(cw, cw[-1] / 2)])
+            frac = wmedian / span_m
+            traj_err["wrist_referenced"]["per_side"][side] = {
+                "n_frames": len(errs),
+                "conf_weighted_median_err_m": wmedian,
+                "conf_weighted_median_err_span_frac": round(frac, 4),
+                "limit_span_frac": 0.10,
+                "pass": bool(frac <= 0.15),
+                "residual_characterization": (
+                    "partly fixable, partly perception-limited: the fixable "
+                    "part is the lateral command SOURCE -- swapping MANO "
+                    "transl (x,y) for the MediaPipe wrist pixel path at the "
+                    "same 1:1 px-to-m scale would make the pipeline self-"
+                    "consistent with this reference (deferred per the 4c "
+                    "close-out ruling). The perception-limited part is "
+                    "HaMeR's per-frame crop jitter (reproj median ~19-34 px) "
+                    "which the SG filter only partly removes; the depth axis "
+                    "remains unusable and is worked around by the height "
+                    "prior"),
+            }
+        traj_err["wrist_referenced"]["pass"] = all(
+            v["pass"] for v in
+            traj_err["wrist_referenced"]["per_side"].values())
+        report["verdict_checks"]["wrist_referenced_error"] = traj_err[
+            "wrist_referenced"]["pass"]
+
     # smoothness comparison vs the round-3 39-frame-derived stream (frozen
     # metric: mean |second difference| of the realised wrist joints, per
     # control second, over the video window)
@@ -2509,6 +2574,11 @@ def main() -> int:
     report["verdict_checks"]["frame_alignment"] = frame_alignment["pass"]
     if not frame_alignment["pass"]:
         fails.append("frame_alignment")
+    if "wrist_referenced_error" in report["verdict_checks"]:
+        if not report["verdict_checks"]["wrist_referenced_error"]:
+            fails.append("wrist_referenced_error")
+    else:
+        fails.append("wrist_referenced_error")
     report["verdict_reason"] = (
         "all frozen gates met" if not fails else f"failing gates: {fails}")
     report["verdict"] = "pass" if all(

@@ -33033,11 +33033,11 @@
           "control_period_ms": 50.0,
           "joints_with_excursion": {
             "mfj1": {
-              "cap_rad": 0.14290824047324255,
+              "cap_rad": 0.24294951162470768,
               "cap_formula": "|forcerange| / kp",
               "cap_from_model_rad": 0.24294951162470768,
               "max_excess_rad": 0.011028727158637563,
-              "margin_x": 12.95781810698967,
+              "margin_x": 22.028789735217323,
               "frames": [
                 98,
                 99,
@@ -33950,11 +33950,11 @@
               "ok": false
             },
             "rfj0": {
-              "cap_rad": 0.091324200913242,
+              "cap_rad": 0.0684931506849315,
               "cap_formula": "|forcerange| / kp",
               "cap_from_model_rad": 0.0684931506849315,
               "max_excess_rad": 0.13820652924264354,
-              "margin_x": 0.6607806549639044,
+              "margin_x": 0.4955854912229283,
               "frames": [
                 13,
                 14,
@@ -36059,10 +36059,11 @@
     "gate3_approach_clean": false,
     "gate5_palm_deviation": false,
     "gate4_joint_limits": false,
+    "wrist_referenced_error": false,
     "frame_alignment": true
   },
   "verdict": "fail",
-  "verdict_reason": "failing gates: ['gate3_approach_clean', 'gate5_palm_deviation', 'gate4_joint_limits']",
+  "verdict_reason": "failing gates: ['gate3_approach_clean', 'gate5_palm_deviation', 'gate4_joint_limits', 'wrist_referenced_error']",
   "versions": {
     "python": "3.11.15",
     "dex-retargeting": "0.5.0",
@@ -36096,6 +36097,31 @@
       }
     },
     "pass": false,
+    "wrist_referenced": {
+      "reference": "MediaPipe wrist landmark (landmark 0), smoke 6 machinery + ego-view x-order prior",
+      "span_definition": "wrist -> middle MCP, both sides",
+      "approach_frames": [
+        1,
+        151
+      ],
+      "per_side": {
+        "right": {
+          "n_frames": 130,
+          "conf_weighted_median_err_m": 0.031946248396254,
+          "conf_weighted_median_err_span_frac": 0.3377,
+          "limit_span_frac": 0.1,
+          "pass": false
+        },
+        "left": {
+          "n_frames": 144,
+          "conf_weighted_median_err_m": 0.03357939329373944,
+          "conf_weighted_median_err_span_frac": 0.3549,
+          "limit_span_frac": 0.1,
+          "pass": false
+        }
+      },
+      "pass": false
+    },
     "metric_definition_caveat": "the reference curve is the HAND BOUNDING-BOX centre (the only per-frame pixel signal in the npz), not the wrist landmark: the box centre moves OPPOSITE to the wrist when fingers curl (an articulation lever), so this metric is an UPPER BOUND on true wrist tracking error. The round-4b tradeoff sweep (SG windows 5/9/15/21/31 frames) moves it by <2% of the span (0.329/0.201 -> 0.320/0.193) -- the residual is SYSTEMATIC, not jitter, and no filter setting can close it. A wrist-landmark pixel reference (MediaPipe wrist) is the fix and is perception scope.",
     "tradeoff_curve": [
       {
@@ -36128,8 +36154,8 @@
   "smoothness_comparison": {
     "metric": "mean |second difference| of the realised wrist joints (6 slides+hinges) per control second, over the video grid; frozen before this run",
     "old_39frame_round3": {
-      "mean_abs_jerk_rad_s2": 7.718923349226803,
-      "max_abs_jump_rad_s": 2.669170229999999,
+      "mean_abs_jerk_rad_s2": 7.66251921224227,
+      "max_abs_jump_rad_s": 2.3957745600000004,
       "n_frames": 390
     },
     "new_fullfps_round4": {
