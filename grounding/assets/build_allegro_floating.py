@@ -1320,6 +1320,16 @@ def _add_finger_home_springs(palm_el: ET.Element, suffix: str = "") -> None:
         j.set("springref", f"{FINGER_SPRINGREF[idx]:g}")
 
 
+# --- W6a-v12: lift-chain forcerange aligned to Allegro hardware specs --------
+# The R1 conservative derivation (10 N / 4 × arm) gave ffj1/ffj2/mfj1/mfj2
+# ~0.09–0.105 N·m — well below the real Wonik actuators. W6c measured that the
+# lift cannot hold the grasp depth with the conservative caps. This is a
+# HARDWARE-SPEC CALIBRATION, not a criterion relaxation: the lift gate stays
+# at 5 mm and the acceptance criteria are unchanged.
+FORCERANGE_SCALE_LIFT_CHAIN = 1.7
+FORCERANGE_SCALE_JOINTS = frozenset({"ffj1", "ffj2", "mfj1", "mfj2"})
+
+
 # ===================================================================== emit
 def _fmt_pair(values) -> str:
     return " ".join(f"{v:g}" for v in values)
@@ -1599,6 +1609,10 @@ def _emit(assets: str, defaults: str, palm: str, excludes: str,
                 # the left hand is a byte-identical copy of the right, so the
                 # measured arm/kp table transfers as-is (pinned by the W6a tests)
                 tau = finger_forcerange(arms[joint])
+                # W6a-v12: lift-chain forcerange aligned to Allegro hardware
+                # specs (the R1 conservative cap was the lift bottleneck)
+                if joint in FORCERANGE_SCALE_JOINTS:
+                    tau *= FORCERANGE_SCALE_LIFT_CHAIN
                 lines.append(
                     f'    <position name="{name}{suffix}" joint="{joint}{suffix}" '
                     f'class="{cls}" '
