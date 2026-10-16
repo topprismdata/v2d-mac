@@ -356,7 +356,10 @@ def _objective(model, d, h, q22, tol):
     # "touched" the face only by grazing the y = -0.12 edge with the pad
     # sphere 11.9 mm outside the rectangle. A centre inside the footprint but
     # beyond the face plane by more than the tolerance is burial, not touch.
-    best = np.inf
+    # W6a-v9 gate3b: score the SECOND-smallest pad rect distance - the pinch
+    # needs TWO pads planted on the face; a min-over-pads objective lets the
+    # search trade the second pad away (measured: 1-pad optima at 0.000 mm).
+    dists = []
     for g in h["pads"]:
         px, py, pz = d.geom_xpos[g]
         s = px - h["side"] * FACE_X
@@ -370,7 +373,9 @@ def _objective(model, d, h, q22, tol):
             gap = float(np.hypot(np.hypot(s, dy), dz))
         # W6a-v2 P2: the touch must land mid-face, not on the bottom edge
         in_band = (BOX_BOT + 0.4 * 2 * HALF_Z) <= pz <= (BOX_TOP - 0.01)
-        best = min(best, gap if in_band else gap + 0.5)
+        dists.append(gap if in_band else gap + 0.5)
+    dists.sort()
+    best = dists[1] if len(dists) > 1 else dists[0]
     for g in h["collisions"]:
         px, py, pz = d.geom_xpos[g]
         if (abs(px) < FACE_X - 0.002 and abs(py) < HALF_Y
@@ -383,8 +388,8 @@ def _objective(model, d, h, q22, tol):
 # rectangle-distance criterion, palm/table/posture constraints P1-P3). Refine
 # seeds only - the objective and assertions are seed-independent.
 GATE3_SEEDS = {
-    "right": [0.063353, -0.032501, 0.058653, -1.74605, 1.269683, 0.555033, 0.050302, 0.490579, 1.222826, 1.001245, -0.096407, 0.117344, 1.675489, 0.407278, 0.036654, 0.328436, 0.674388, 0.968369, 0.688202, 0.485329, 0.396601, -0.074476],
-    "left": [0.048714, -0.120389, -0.019187, 0.524993, 0.377209, 0.56572, 0.189702, 0.987969, 1.195394, 0.949551, 0.385297, -0.196, 0.619491, 1.397664, 0.187858, 1.403023, 1.681292, 0.251268, 0.366311, 0.195799, 0.789984, 1.641301],
+    "right": [0.0642, -0.0591, 0.0293, 0.2357, 0.7886, -0.1899, -0.2835, 0.4121, 0.3074, 0.1866, 0.1852, 0.3199, 0.6195, 0.3911, -0.0657, 0.59, 0.5436, 0.464, 0.3337, 0.6029, 0.5455, 0.229],
+    "left": [0.0641, -0.0528, 0.0247, 0.2247, 0.7801, -0.1949, -0.2755, 0.4103, 0.3065, 0.1899, 0.1892, 0.3309, 0.6214, 0.3919, -0.0577, 0.5985, 0.5474, 0.4634, 0.3259, 0.5914, 0.5453, 0.2298],
 }
 
 
@@ -435,11 +440,12 @@ def test_w6_gate3_both_hands_reach_their_end_faces(model):
                             s = _objective(model, d, h, q, tol)
                             if s < best[0]:
                                 best = (s, q.copy())
-        p, bscore = best[1].copy(), best[0]
+        candidates = [(best[1].copy(), best[0])]
         # the offline scan's solution seeds the refine (runtime only; the
         # objective and every assertion are seed-independent)
-        p, bscore = (np.array(GATE3_SEEDS[hname]), _objective(
-            model, d, h, np.array(GATE3_SEEDS[hname]), tol))
+        candidates.append((np.array(GATE3_SEEDS[hname]),
+                           _objective(model, d, h, np.array(GATE3_SEEDS[hname]), tol)))
+        p, bscore = max(candidates, key=lambda c: -c[1])
         for rad in (0.3, 0.15, 0.07, 0.03, 0.012, 0.005):
             for _ in range(600):
                 q = np.clip(p + rng.uniform(-rad, rad, 22),
@@ -500,10 +506,12 @@ def test_w6_gate3_both_hands_reach_their_end_faces(model):
         f"tolerance {tol * 1e3:.4f} mm"
     )
     for hname in ("right", "left"):
-        assert touches[hname], (
-            f"{hname}: no pad touches its end face inside the mid-face z band "
-            f"[{BOX_BOT + 0.4 * 2 * HALF_Z:.3f}, {BOX_TOP - 0.01:.3f}]"
-        )
+        # W6a-v9 gate3b (promoted: both hands demonstrated 2 pads - ff+mf on
+        # the face rectangle mid-band, the pinch-symmetry requirement met
+        # without loosening the criterion)
+        assert len(touches[hname]) >= 2, (
+            f"{hname}: only {len(touches[hname])} pad(s) on the end face inside "
+            f"the mid-face z band - the two-finger pinch is not held")
         # W6a-v5 P4 (gate): the fingers reach INTO the face - the palm->tip
         # forward axis within 35 deg of the inward normal. Palm angle recorded
         # as evidence only (the anti-parallel anatomy puts it ~180 deg here,

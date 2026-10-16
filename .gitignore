@@ -3,6 +3,7 @@ runs/**
 !runs/**/
 !runs/p0/**/report.json
 !runs/p0/**/retarget_qa.json
+!runs/w6/gate3_qpos.json
 !runs/p0/**/curve.csv
 # clean-lift feasibility evidence: the verdict, the diagnosis that grounds it, the
 # full per-trial sweep distribution and the evaluation traces. A FAIL verdict
