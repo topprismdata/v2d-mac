@@ -25,12 +25,14 @@ OUT = REPO / "docs/video_frames"
 
 FPS = 30.0  # ffprobe: 30/1, 390 frames, 13.0 s (pinned in PLAN.md)
 
-# Three task phases, hand-picked on a full contact sheet of the clip.
-# (name, [source frame numbers])
+# Four task phases, hand-picked on a full contact sheet of the clip.
+# (name, [source frame numbers]) -- the W6d panel labels phases from this;
+# 释放 covers the hand-off/set-down tail the 1:1 frame sweep walks through.
 SEGMENTS = [
     ("接近", [1, 25, 49]),      # hands travel from rest toward the box ends
     ("触面", [67, 91, 115]),    # pads seat on the end faces, grasp closes
-    ("抬起", [160, 190, 220]),  # box lifted off the table, held aloft
+    ("抬离", [160, 190, 220]),  # box lifted off the table, held aloft
+    ("释放", [300, 335, 370]),  # box set back down, hands let go
 ]
 
 

@@ -9,7 +9,10 @@
   "docs/video_frames/f_0115.jpg",
   "docs/video_frames/f_0160.jpg",
   "docs/video_frames/f_0190.jpg",
-  "docs/video_frames/f_0220.jpg"
+  "docs/video_frames/f_0220.jpg",
+  "docs/video_frames/f_0300.jpg",
+  "docs/video_frames/f_0335.jpg",
+  "docs/video_frames/f_0370.jpg"
  ],
  "replay": {
   "fps": 20.0,
@@ -10654,7 +10657,13 @@
   "placeholder": false,
   "placeholder_note": "两个已验证场景帧（静置复位 / W6a 门 3 双手触面）。W6b 的 replay_frames.json 落地后，重跑 runs/.venv-mj/bin/python viz/replay_to_panel.py && runs/.venv-mj/bin/python viz/render_replay.py 即为成片。",
   "notes_per_frame": [],
+  "playback": {
+   "mode": "legacy",
+   "replay_frames": 163,
+   "note": "旧版时基：163 帧 @20 Hz，视频侧按时间就近对齐"
+  },
   "video_fps": 30.0,
+  "total_source_frames": 390,
   "video_segments": [
    {
     "name": "接近",
@@ -10673,11 +10682,19 @@
     ]
    },
    {
-    "name": "抬起",
+    "name": "抬离",
     "files": [
      "docs/video_frames/f_0160.jpg",
      "docs/video_frames/f_0190.jpg",
      "docs/video_frames/f_0220.jpg"
+    ]
+   },
+   {
+    "name": "释放",
+    "files": [
+     "docs/video_frames/f_0300.jpg",
+     "docs/video_frames/f_0335.jpg",
+     "docs/video_frames/f_0370.jpg"
     ]
    }
   ],

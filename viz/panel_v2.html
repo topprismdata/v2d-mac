@@ -130,6 +130,8 @@ if (!D) { document.body.innerHTML =
 
 const $ = id => document.getElementById(id);
 const rf = D.replay.frames, vf = D.video_frames, meta = D.meta || {};
+const ONE2ONE = !!(meta.playback && meta.playback.mode === "one_to_one");
+const VFPS = meta.video_fps || D.fps;
 const state = { i: 0, preset: (meta.renders ? meta.renders.presets[0].key : "front"),
                 timer: null };
 
@@ -158,9 +160,11 @@ if (meta.placeholder) {
 
 /* ---------- image helpers ---------- */
 const cache = {};
-// data paths are repo-root-relative (docs/...); the panel lives in viz/,
-// so every src goes up one level first
-function src(p) { return p && p.startsWith("docs/") ? "../" + p : p; }
+// data paths are repo-root-relative (docs/..., runs/...); the panel lives in
+// viz/, so every src goes up one level first
+function src(p) {
+  return p && !/^(https?:|file:|\.|\/)/.test(p) ? "../" + p : p;
+}
 function preload(p) {
   const s = src(p);
   if (!s || cache[s]) return;
@@ -183,13 +187,45 @@ function nearestVideo(t) {
   return best;
 }
 function segOf(file) {
+  const m = /f_(\d+)\.jpg$/.exec(file || "");
+  return m ? segOfN(parseInt(m[1], 10)) : "";
+}
+function segOfN(n) {
   for (const s of (meta.video_segments || []))
-    if (s.files.includes(file)) return s.name;
+    for (const f of s.files) {
+      const m = /f_(\d+)\.jpg$/.exec(f);
+      if (m && parseInt(m[1], 10) === n) return s.name;
+    }
   return "";
 }
 function renderSrc(i) {
   const r = meta.renders;
   return r && r.frames[state.preset] && r.frames[state.preset][i] ? r.frames[state.preset][i] : null;
+}
+
+/* 1:1 mode: the human side is the SOURCE CLIP itself -- a <video> element
+   seeked to frame i's timestamp (t = i/30 s shows source frame i+1), so every
+   one of the 390 frames is addressable without extracting 390 jpgs. */
+let vid = null;
+(function setupVideoPane() {
+  if (!ONE2ONE) return;
+  vid = document.createElement("video");
+  vid.id = "vvid";
+  vid.src = src(meta.src_video);
+  vid.muted = true;
+  vid.playsInline = true;
+  vid.preload = "auto";
+  vid.style.cssText = "display:block;width:100%;aspect-ratio:16/9;" +
+    "object-fit:contain;background:#000;";
+  const stage = $("vimg").parentNode;
+  stage.replaceChild(vid, $("vimg"));
+})();
+function seekVideo(i) {
+  if (!vid) return;
+  const t = i / VFPS + 0.4 / VFPS;  // land inside frame i+1's interval
+  if (vid.readyState >= 1 && Math.abs(vid.currentTime - t) > 1e-3) {
+    try { vid.currentTime = t; } catch (e) { /* seek before metadata */ }
+  }
 }
 
 /* ---------- preset buttons ---------- */
@@ -205,11 +241,13 @@ $("slider").max = rf.length - 1;
 $("slider").oninput = () => { stop(); draw(+$("slider").value); };
 
 $("play").onclick = () => state.timer ? stop() : play();
+// real-time: 30 fps in 1:1 mode; the replay's own rate in legacy mode
+const PLAY_MS = 1000 / (ONE2ONE ? VFPS : (D.replay.fps || 20));
 function play() {
   if (state.i >= rf.length - 1) state.i = 0;
   state.timer = setInterval(() => {
     state.i = (state.i + 1) % rf.length; draw();
-  }, 700);
+  }, PLAY_MS);
   $("play").textContent = "⏸ 暂停";
 }
 function stop() {
@@ -227,9 +265,26 @@ function draw(i) {
   $("slider").value = i;
 
   const fr = rf[i], t = fr.t;
-  const vj = nearestVideo(t), vfile = vf[vj];
-  preload(vfile);
-  $("vimg").src = src(vfile);
+  if (ONE2ONE) {
+    // slider index i IS the pair index: sim replay frame i, source frame i+1
+    seekVideo(i);
+    const seg = segOfN(i + 1);
+    $("vcap").innerHTML =
+      `<b>原片帧 ${i + 1}/${meta.total_source_frames}</b> · t=${(i / VFPS).toFixed(2)} s` +
+      (seg ? ` · 阶段：<b>${seg}</b>` : "");
+    $("vtag").textContent = `${meta.total_source_frames} 帧 · 1:1 对应`;
+  } else {
+    const vj = nearestVideo(t), vfile = vf[vj];
+    preload(vfile);
+    $("vimg").src = src(vfile);
+    const seg = segOf(vfile);
+    const n = /f_(\d+)\.jpg$/.exec(vfile || "");
+    $("vcap").innerHTML =
+      `<b>原片第 ${n ? n[1] : vj + 1} 帧</b> · t=${t.toFixed(2)} s` +
+      (seg ? ` · 阶段：<b>${seg}</b>` : "") +
+      `（按时间就近对齐·旧版时基）`;
+    $("vtag").textContent = `${vf.length} 个对比帧 · 旧版时基`;
+  }
 
   const sim = renderSrc(i);
   if (sim) { preload(sim); $("rimg").src = src(sim); $("rimg").style.opacity = 1; }
@@ -239,24 +294,16 @@ function draw(i) {
     $("rimg").style.opacity = 0.25;
   }
 
-  const mm = Math.floor(t / 60), ss = (t - mm * 60).toFixed(2);
-  $("vtag").textContent = `${vf.length} 个对比帧`;
-  const seg = segOf(vfile);
-  const n = /f_(\d+)\.jpg$/.exec(vfile || "");
-  $("vcap").innerHTML =
-    `<b>原片第 ${n ? n[1] : vj + 1} 帧</b> · t=${t.toFixed(2)} s` +
-    (seg ? ` · 阶段：<b>${seg}</b>` : "") +
-    `（按时间就近对齐）`;
-
   const note = (meta.notes_per_frame || [])[i];
   $("rcap").innerHTML =
     `<b>复现帧 ${i + 1}/${rf.length}</b> · t=${t.toFixed(2)} s` +
     (note ? ` · ${note}` : "") +
     (sim ? "" : ` · <span class="err">缺渲染：runs/.venv-mj/bin/python viz/render_replay.py</span>`);
 
-  $("finfo").innerHTML = `帧 <b>${i + 1}/${rf.length}</b> · 预设 <b>${
-    (meta.renders ? meta.renders.presets.find(p => p.key === state.preset) || {} : {}).label || state.preset
-  }</b> · ←/→ 键可逐帧`;
+  const presetLabel = ((meta.renders && meta.renders.presets) ||
+                       [{ key: "front", label: "正面" }])
+    .find(p => p.key === state.preset);
+  $("finfo").innerHTML = `帧 <b>${i + 1}/${rf.length}</b> · 预设 <b>${presetLabel.label || state.preset}</b> · ←/→ 键逐帧 ±1`;
   document.querySelectorAll("#presets button").forEach(b =>
     b.classList.toggle("on", b.dataset.k === state.preset));
 }
@@ -285,6 +332,7 @@ draw(Number.isFinite(qpF) ? Math.min(rf.length, Math.max(1, qpF)) - 1 : 0);
 document.documentElement.dataset.boot = JSON.stringify({
   frames: rf.length, gates: (D.gates || []).length,
   video: vf.length, preset: state.preset, rendered: true,
+  mode: ONE2ONE ? "one_to_one" : "legacy",
 });
 </script>
 </body>

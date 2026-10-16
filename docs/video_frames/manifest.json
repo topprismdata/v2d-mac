@@ -10,7 +10,10 @@
   "docs/video_frames/f_0115.jpg",
   "docs/video_frames/f_0160.jpg",
   "docs/video_frames/f_0190.jpg",
-  "docs/video_frames/f_0220.jpg"
+  "docs/video_frames/f_0220.jpg",
+  "docs/video_frames/f_0300.jpg",
+  "docs/video_frames/f_0335.jpg",
+  "docs/video_frames/f_0370.jpg"
  ],
  "segments": [
   {
@@ -30,11 +33,19 @@
    ]
   },
   {
-   "name": "抬起",
+   "name": "抬离",
    "files": [
     "docs/video_frames/f_0160.jpg",
     "docs/video_frames/f_0190.jpg",
     "docs/video_frames/f_0220.jpg"
+   ]
+  },
+  {
+   "name": "释放",
+   "files": [
+    "docs/video_frames/f_0300.jpg",
+    "docs/video_frames/f_0335.jpg",
+    "docs/video_frames/f_0370.jpg"
    ]
   }
  ]

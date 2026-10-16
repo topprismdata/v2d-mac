@@ -52,6 +52,7 @@ OUT_JSON = REPO / "viz/panel_data_v2.json"
 OUT_JS = REPO / "viz/panel_data_v2.js"
 
 VIDEO_FPS = 30.0          # source clip; keep in step with extract_video_frames.py
+SOURCE_TOTAL_FRAMES = 390  # tissue_box.mp4: 13.0 s at 30 fps (PLAN.md pinned)
 REPLAY_FPS = 20.0         # W6b retarget replay rate (replay_frames.json "fps")
 NQ = 51                   # allegro_floating.xml nq: [0:7] object free joint,
                           # [7:29] right (6 wrist slides + 16 fingers),
@@ -268,6 +269,18 @@ def build() -> dict:
         placeholder = True
         notes = [n for n, _ in PLACEHOLDER]
 
+    # playback timebase: round-4 replays ship the full 390-frame clip at
+    # 30 fps, so sim frame i IS source frame i+1 -- the panel then drives
+    # both sides 1:1 off the slider.  Older replays (163 @ 20 Hz) keep the
+    # nearest-time video alignment and are labelled as the legacy timebase.
+    if len(frames) == SOURCE_TOTAL_FRAMES and abs(replay_fps - VIDEO_FPS) < 1e-6:
+        playback = {"mode": "one_to_one", "replay_frames": len(frames),
+                    "note": "1:1：仿真帧 i ↔ 原片帧 i+1，t=i/30 s"}
+    else:
+        playback = {"mode": "legacy", "replay_frames": len(frames),
+                    "note": (f"旧版时基：{len(frames)} 帧 @{replay_fps:g} Hz，"
+                             "视频侧按时间就近对齐")}
+
     if GATES_OVERRIDE.exists():
         gates = json.loads(GATES_OVERRIDE.read_text())["gates"]
     elif placeholder:
@@ -290,7 +303,9 @@ def build() -> dict:
                 "runs/.venv-mj/bin/python viz/replay_to_panel.py && "
                 "runs/.venv-mj/bin/python viz/render_replay.py 即为成片。"),
             "notes_per_frame": notes,
+            "playback": playback,
             "video_fps": VIDEO_FPS,
+            "total_source_frames": SOURCE_TOTAL_FRAMES,
             "video_segments": segments,
             "src_video": "runs/p0/assets/tissue_box.mp4",
         },
