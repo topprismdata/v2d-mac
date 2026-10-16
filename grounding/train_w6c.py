@@ -1454,8 +1454,58 @@ def cmd_report(args: argparse.Namespace) -> None:
         "gate_scope_statement": {"frozen": "before the first scored run "
                                            "(module GATE dict is the source)",
                                  "gates": gates},
-        "verdict": ("fail-scene-level" if args.round3 else
+        "verdict": ("fail-scene-level" if (args.round3 or args.round4) else
                     ("fail-scene-level" if args.round2 else verdict)),
+        "round4_v12_torque_budget": (None if not args.round4 else {
+            "question": "with ffj1/2+mfj1/2 force caps x1.7 (hardware-spec, "
+                        "v12 XML f8925e27), does the servo-yield wall break "
+                        "and the 5 mm clean lift appear?",
+            "answer": "NO - and the r3 wall diagnosis completes into a "
+                      "closure: the position-servo static trap. With the box "
+                      "at rest every static equilibrium carries the weight "
+                      "on the table; the stronger servos press harder "
+                      "(pre-press pair up to 2.7 N) but the vertical drag "
+                      "demand never reaches the friction cone. Measured "
+                      "(frozen fingers, pure wrist rise, N=1.7 N, mu=1.8): "
+                      "t_up = +1.25 N static (cone limit 3 N unused) while "
+                      "OTHER pads of the same press contribute a net "
+                      "DOWNWARD component ~1.3-2.6 N (top-edge/chamfer "
+                      "touchers) - net vertical stays below weight; and "
+                      "when a micro-lift starts the drag REVERSES (-0.6 N) "
+                      "as the springs pull the pads back down. The yield is "
+                      "a quasi-static equilibrium, not bandwidth-limited: "
+                      "snap lifts (2.9 mm/frame) absorb within 1-2 frames",
+            "variants_exhausted_r4": ["frozen-finger rigid lift (dcurl 0)",
+                                      "curl-close/extend ramps",
+                                      "slow/fast/snap lift 5-80 frames",
+                                      "two-pad-only press (th/rf "
+                                      "retracted - down-component still "
+                                      "wins via the press geometry)",
+                                      "left re-engage / release / follow",
+                                      "press depth 1.4-2.7 N pair"],
+            "closure_statement": "across 4 rounds the mechanisms r1 (friction "
+                                 "decay), r2 (down-clamp wedge), r3 (torque "
+                                 "wall) and r4 (position-servo static trap) "
+                                 "are mutually exclusive and jointly "
+                                 "exhaustive over command-schedule control: "
+                                 "a friction lift of this box needs the "
+                                 "vertical drag demand to reach the friction "
+                                 "cone, and under pure position control the "
+                                 "demand is structurally zero while the box "
+                                 "rests. ~1500 additional candidates this "
+                                 "round, ~3500 total",
+            "next_lever_needs_ruling": "(a) force-controlled grasp: a "
+                                       "constant grip-force bias on the "
+                                       "curl actuators during lift (the "
+                                       "standard grasp-lift solution; "
+                                       "actuator-type change = W6a ruling); "
+                                       "(b) velocity servos for the lift "
+                                       "phase (same class); (c) renegotiate "
+                                       "'separation must be finger-driven' "
+                                       "to admit momentum transients (the "
+                                       "smoke4 flick class, currently "
+                                       "red-lined); (d) lower the gate band",
+        }),
         "round3_v10_pads": (None if not args.round3 else {
             "question": "does the 3.5 mm stall become a >=5 mm clean lift on "
                         "mu=1.8 cylindrical (r9x11 mm) pads (v10-fixed, seed "
@@ -1591,6 +1641,7 @@ def main() -> None:
     p = sub.add_parser("report")
     p.add_argument("--round2", action="store_true")
     p.add_argument("--round3", action="store_true")
+    p.add_argument("--round4", action="store_true")
     args = ap.parse_args()
     {"curate": cmd_curate, "checkpoint": cmd_checkpoint,
      "search": cmd_search, "bc": cmd_bc, "ppo": cmd_ppo,

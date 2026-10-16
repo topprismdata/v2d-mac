@@ -19,7 +19,7 @@
  ],
  "scene": {
   "xml": "/Users/guohongbin/v2d-mac/grounding/assets/allegro_floating.xml",
-  "xml_sha256": "133174371e884bf0b8ed6f3fc4228b89f54302893974ef4da9557fc6795d6273",
+  "xml_sha256": "f8925e275e601355606b84b711d848b4901ea6be2a55c1746ea0827ee1aad08a",
   "seed_file": "/Users/guohongbin/v2d-mac/runs/w6/gate3_qpos.json",
   "seed_sha256": "5072b0df9f27bfba0a152bbd90edf1e67b989a3434f3545c5a510f678c84e8aa",
   "actuator_table_untouched": true
@@ -52,36 +52,36 @@
  "approach_checkpoint": {
   "n_approach_frames": 105,
   "obj_xpos": [
-   0.00030435022712734975,
-   2.1218179002551536e-05,
-   0.739989022729087
+   5.666951625193563e-05,
+   -4.407545984802845e-05,
+   0.7399648176044844
   ],
-  "obj_yaw_deg": 5.424520925074882,
+  "obj_yaw_deg": 5.435177524345466,
   "ctrl_hz": 20,
   "seed": 0,
-  "checkpoint_sha256": "638bde564abe0a095e857cb494b021fa675040264bdeb2b936a770f77c37c5cd"
+  "checkpoint_sha256": "a195f94474e9a52cce8578f13b8a8373665ba0ff6d394c54a743048ff29bb3f6"
  },
  "teacher_search": {
   "best_params": {
-   "dz_reseat": -0.013081792465014801,
-   "ff_r": 0.4253579003337323,
-   "mf_r": 0.08202919003335717,
-   "rf_r": 0.05238104082286754,
-   "th_r": 0.39944818592602477,
+   "dz_reseat": -0.02,
+   "ff_r": 0.3,
+   "mf_r": 0.2,
+   "rf_r": -0.15,
+   "th_r": -0.15,
    "ff_l": 0.0640451261010732,
    "mf_l": 0.03728253405364522,
-   "rf_l": 0.04257311626053179,
-   "th_l": -0.018766460568428914,
+   "rf_l": -0.15,
+   "th_l": -0.15,
    "dj0_r": -0.08690763143584461,
    "dj0_l": -0.19449028684209257,
    "lrx_delta": -1.1432124949487046,
-   "z_lift": 0.013,
+   "z_lift": 0.0145,
    "dcurl_lift_r": 0.0,
    "dcurl_lift_l": 0.0,
-   "n_lift_frames": 10.0,
+   "n_lift_frames": 5.0,
    "n_press_dwell": 20.0
   },
-  "best_score": -4.732498535670624,
+  "best_score": -14.887799719061032,
   "pass": false,
   "gate": {
    "lift_window_frames": 20,
@@ -97,7 +97,7 @@
   },
   "n_grid": 24,
   "search_summary": {
-   "mode": "r3d fast-lift grid (24)"
+   "mode": "r4c snap-lift grid (24)"
   }
  },
  "bc": {
@@ -729,9 +729,9 @@
      "metrics": {
       "window_frames": 0,
       "window_start": 0,
-      "peak_lift_m": 1.2836963743989571e-05,
+      "peak_lift_m": 0.00015020543047139512,
       "window_min_lift_m": 0.0,
-      "final_lift_m": -1.4207864848292395e-05,
+      "final_lift_m": -8.147784567680283e-05,
       "endface_ratio_right": 0.0,
       "endface_ratio_left": 0.0,
       "slip_m": 0.0,
@@ -739,15 +739,15 @@
       "tilt_abs_deg_window": 0.0,
       "support_mean_n": null,
       "pass": false,
-      "pre_press_n_r": 1.9774749276769126,
-      "pre_press_n_l": 2.399949979783398,
-      "tilt_abs_deg": 0.30948209228735474,
-      "press_normal_r_n": 0.7964255310968075,
-      "press_normal_l_n": 0.7568275812527524
+      "pre_press_n_r": 3.635695396434258,
+      "pre_press_n_l": 2.797730821749661,
+      "tilt_abs_deg": 0.9839026637010619,
+      "press_normal_r_n": 1.5994064541081152,
+      "press_normal_l_n": 1.7253490196478496
      },
      "corrected_metrics": null,
      "search_summary": {
-      "mode": "r3d fast-lift grid (24)"
+      "mode": "r4c snap-lift grid (24)"
      }
     },
     "bc": {
@@ -972,9 +972,9 @@
       "gravity_nm": 0.03384188833417922,
       "conservative_demand_nm": 0.0528463195921241,
       "true_balance_nm": 0.0528463195921241,
-      "cap_08_nm": 0.08432800000000001,
-      "duty_conservative": 0.626675832370317,
-      "duty_true_balance": 0.626675832370317
+      "cap_08_nm": 0.143352,
+      "duty_conservative": 0.36864724309478836,
+      "duty_true_balance": 0.36864724309478836
      },
      {
       "joint": "ffj2",
@@ -982,9 +982,9 @@
       "gravity_nm": 0.011554991169947008,
       "conservative_demand_nm": 0.03527727395348792,
       "true_balance_nm": 0.03527727395348792,
-      "cap_08_nm": 0.074952,
-      "duty_conservative": 0.4706648782352428,
-      "duty_true_balance": 0.4706648782352428
+      "cap_08_nm": 0.127416,
+      "duty_conservative": 0.276866908029509,
+      "duty_true_balance": 0.276866908029509
      },
      {
       "joint": "ffj3",
@@ -1012,9 +1012,9 @@
       "gravity_nm": 0.03197348209428946,
       "conservative_demand_nm": 0.042948351976451055,
       "true_balance_nm": 0.042948351976451055,
-      "cap_08_nm": 0.08310400000000001,
-      "duty_conservative": 0.516802464098612,
-      "duty_true_balance": 0.516802464098612
+      "cap_08_nm": 0.14128000000000002,
+      "duty_conservative": 0.3039945638197271,
+      "duty_true_balance": 0.3039945638197271
      },
      {
       "joint": "mfj2",
@@ -1022,9 +1022,9 @@
       "gravity_nm": 0.011167064053533859,
       "conservative_demand_nm": 0.012659721732518345,
       "true_balance_nm": 0.012659721732518345,
-      "cap_08_nm": 0.0752,
-      "duty_conservative": 0.16834736346433968,
-      "duty_true_balance": 0.16834736346433968
+      "cap_08_nm": 0.12784800000000002,
+      "duty_conservative": 0.09902166426161021,
+      "duty_true_balance": 0.09902166426161021
      },
      {
       "joint": "mfj3",
@@ -1132,9 +1132,9 @@
       "gravity_nm": 0.033923884823764745,
       "conservative_demand_nm": 0.05364510926846627,
       "true_balance_nm": 0.05364510926846627,
-      "cap_08_nm": 0.08432800000000001,
-      "duty_conservative": 0.6361482457602015,
-      "duty_true_balance": 0.6361482457602015
+      "cap_08_nm": 0.143352,
+      "duty_conservative": 0.3742194686398953,
+      "duty_true_balance": 0.3742194686398953
      },
      {
       "joint": "ffj2_left",
@@ -1142,9 +1142,9 @@
       "gravity_nm": 0.01154765182368176,
       "conservative_demand_nm": 0.03534405834851742,
       "true_balance_nm": 0.03534405834851742,
-      "cap_08_nm": 0.074952,
-      "duty_conservative": 0.47155590709410583,
-      "duty_true_balance": 0.47155590709410583
+      "cap_08_nm": 0.127416,
+      "duty_conservative": 0.2773910525249374,
+      "duty_true_balance": 0.2773910525249374
      },
      {
       "joint": "ffj3_left",
@@ -1172,9 +1172,9 @@
       "gravity_nm": 0.032324694065717766,
       "conservative_demand_nm": 0.04184384057361683,
       "true_balance_nm": 0.04184384057361683,
-      "cap_08_nm": 0.08310400000000001,
-      "duty_conservative": 0.5035117512227669,
-      "duty_true_balance": 0.5035117512227669
+      "cap_08_nm": 0.14128000000000002,
+      "duty_conservative": 0.29617667450181784,
+      "duty_true_balance": 0.29617667450181784
      },
      {
       "joint": "mfj2_left",
@@ -1182,9 +1182,9 @@
       "gravity_nm": 0.011056489984662785,
       "conservative_demand_nm": 0.012116840594932642,
       "true_balance_nm": 0.012116840594932642,
-      "cap_08_nm": 0.0752,
-      "duty_conservative": 0.16112819940070003,
-      "duty_true_balance": 0.16112819940070003
+      "cap_08_nm": 0.12784800000000002,
+      "duty_conservative": 0.09477536289134472,
+      "duty_true_balance": 0.09477536289134472
      },
      {
       "joint": "mfj3_left",
@@ -1281,6 +1281,20 @@
   }
  },
  "verdict": "fail-scene-level",
+ "round4_v12_torque_budget": {
+  "question": "with ffj1/2+mfj1/2 force caps x1.7 (hardware-spec, v12 XML f8925e27), does the servo-yield wall break and the 5 mm clean lift appear?",
+  "answer": "NO - and the r3 wall diagnosis completes into a closure: the position-servo static trap. With the box at rest every static equilibrium carries the weight on the table; the stronger servos press harder (pre-press pair up to 2.7 N) but the vertical drag demand never reaches the friction cone. Measured (frozen fingers, pure wrist rise, N=1.7 N, mu=1.8): t_up = +1.25 N static (cone limit 3 N unused) while OTHER pads of the same press contribute a net DOWNWARD component ~1.3-2.6 N (top-edge/chamfer touchers) - net vertical stays below weight; and when a micro-lift starts the drag REVERSES (-0.6 N) as the springs pull the pads back down. The yield is a quasi-static equilibrium, not bandwidth-limited: snap lifts (2.9 mm/frame) absorb within 1-2 frames",
+  "variants_exhausted_r4": [
+   "frozen-finger rigid lift (dcurl 0)",
+   "curl-close/extend ramps",
+   "slow/fast/snap lift 5-80 frames",
+   "two-pad-only press (th/rf retracted - down-component still wins via the press geometry)",
+   "left re-engage / release / follow",
+   "press depth 1.4-2.7 N pair"
+  ],
+  "closure_statement": "across 4 rounds the mechanisms r1 (friction decay), r2 (down-clamp wedge), r3 (torque wall) and r4 (position-servo static trap) are mutually exclusive and jointly exhaustive over command-schedule control: a friction lift of this box needs the vertical drag demand to reach the friction cone, and under pure position control the demand is structurally zero while the box rests. ~1500 additional candidates this round, ~3500 total",
+  "next_lever_needs_ruling": "(a) force-controlled grasp: a constant grip-force bias on the curl actuators during lift (the standard grasp-lift solution; actuator-type change = W6a ruling); (b) velocity servos for the lift phase (same class); (c) renegotiate 'separation must be finger-driven' to admit momentum transients (the smoke4 flick class, currently red-lined); (d) lower the gate band"
+ },
  "round3_v10_pads": {
   "question": "does the 3.5 mm stall become a >=5 mm clean lift on mu=1.8 cylindrical (r9x11 mm) pads (v10-fixed, seed 4c7a86d surface-gap baseline)?",
   "answer": "NO - and the mechanism CHANGED: the friction-decay stall of rounds 1-2 is GONE (lift-window normals steady 1.4 N/side, tilt 0.05 deg, pre-press pair up to 4.4 N), but the binding constraint moved to the finger servo torque budget: transmitting the ~1.5 N vertical drag through the curl chain demands cap-level torque per joint (0.09-0.105 N*m at ~45 mm arms), and the position servos yield first - wrist +9 mm produces only +1.4 mm pad world motion, tangential demand stays static-stick at 0.3-0.7 N, the box never unweights",
