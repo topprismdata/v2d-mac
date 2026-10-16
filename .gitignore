@@ -50,3 +50,17 @@ weights/
 !runs/w4/*.py
 !runs/w35/*.py
 !runs/w5/*.py
+# W6c lift-training evidence: honest-fail verdict, curation, frozen-gate evals,
+# search/BC curves and the lift-attempt frames (same class as w6b report.json)
+!runs/w6c/report.json
+!runs/w6c/curation.json
+!runs/w6c/checkpoint_meta.json
+!runs/w6c/teacher.json
+!runs/w6c/eval_bc.json
+!runs/w6c/eval_ppo.json
+!runs/w6c/bc_curve.json
+!runs/w6c/ppo_curve.csv
+!runs/w6c/search_curve.json
+!runs/w6c/bc_demos.npz
+!runs/w6c/approach_checkpoint.npz
+!runs/w6c/evidence/*.png

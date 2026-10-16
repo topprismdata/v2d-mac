@@ -1,0 +1,59 @@
+{
+ "best_params": {
+  "dz_reseat": -0.04,
+  "ff_r": 0.2719,
+  "mf_r": 0.0195,
+  "rf_r": 0.2276,
+  "th_r": 0.3167,
+  "ff_l": -0.0265,
+  "mf_l": 0.2988,
+  "rf_l": 0.0,
+  "th_l": 0.45,
+  "dj0_r": -0.1047,
+  "dj0_l": 0.0899,
+  "lrx_delta": -1.2707,
+  "z_lift": 0.008,
+  "dcurl_lift": 0.22,
+  "n_lift_frames": 60.0,
+  "n_press_dwell": 20.0,
+  "dcurl_lift_r": 0.15,
+  "dcurl_lift_l": 0.0
+ },
+ "best_metrics": {
+  "window_frames": 0,
+  "window_start": 0,
+  "peak_lift_m": 7.775828895584258e-05,
+  "window_min_lift_m": 0.0,
+  "final_lift_m": 2.8038745558900402e-05,
+  "endface_ratio_right": 0.0,
+  "endface_ratio_left": 0.0,
+  "slip_m": 0.0,
+  "yaw_abs_deg": 0.0,
+  "tilt_abs_deg_window": 0.0,
+  "support_mean_n": null,
+  "pass": false,
+  "pre_press_n_r": 2.833454838864313,
+  "pre_press_n_l": 2.8006602446403837,
+  "tilt_abs_deg": 0.2404714729299705,
+  "press_normal_r_n": 1.4943470650236323,
+  "press_normal_l_n": 1.5027072368035999
+ },
+ "best_score": -0.886583180162337,
+ "pass": false,
+ "gate": {
+  "lift_window_frames": 20,
+  "lift_min_m": 0.005,
+  "lift_band_max_m": 0.015,
+  "endface_contact_ratio_min": 0.8,
+  "slip_max_m": 0.01,
+  "yaw_max_deg": 10.0,
+  "endface_band_m": 0.008,
+  "support_force_max_n": 0.2,
+  "final_lift_min_m": 0.003,
+  "note": "frozen before the first scored run; box-local-frame end-face classifier includes the top chamfer plates (gate2 plateau); the band is the demonstrated semantic, not a skill ceiling - overshoots are reported as band misses, never as passes"
+ },
+ "n_grid": 108,
+ "search_summary": {
+  "mode": "r2b conditioned grid (108)"
+ }
+}
