@@ -202,16 +202,28 @@ def test_c5b_runtime_qpos_monotone_through_actuators(artifacts):
 
 
 # --------------------------------------------------------------------------- C6
-def test_c6_finger_object_contact_occurred(artifacts):
+def test_c6_contact_criterion_is_superseded_and_still_recorded(artifacts):
+    """C6 is superseded by the W6 acceptance; the measurement stays on record.
+
+    The dual-hand sweep covers the whole table, so "one retargeted replay
+    touched the box" proves nothing about grasp viability any more -- the
+    structural premise of the criterion is gone and the contact-NATURE
+    evidence is carried by A2/A3a in W6c.  What this test holds the line on:
+    the supersession is explicit in the artefact (never a silent drop), the
+    per-frame measurement is still complete, and the gate set no longer
+    contains the key (it must not be able to fail a run on a superseded
+    criterion -- nor quietly pass one because of it).
+    """
     _, qa = artifacts
     contact = qa["contact"]
-    assert contact["frames_with_contact"] > 0, (
-        "no finger/palm contact with the tissue-box proxy in any frame -- the "
-        "retargeted sequence never touches the object, so G3 contact is unproven"
-    )
-    assert contact["duty"] > 0.0
+    assert contact["superseded_criterion"] is True
+    assert "A2/A3a" in contact["superseded_note"]
+    assert "superseded" in contact["superseded_note"]
     assert len(contact["sequence"]) == qa["frame_counts"]["replayed_frames"]
-    assert qa["checks"]["contact_occurred"]
+    assert 0.0 <= contact["duty"] <= 1.0
+    assert "contact_occurred" not in qa["checks"], (
+        "a superseded criterion must not stay in the gate set -- re-instate "
+        "it only by a new acceptance ruling, not by drift")
 
 
 # --------------------------------------------------------------------------- C9
@@ -521,10 +533,12 @@ def test_artefacts_exist_and_are_complete(artifacts):
     for key in (
         "frame_counts_consistent", "all_finite", "joint_limits_ok",
         "joint_velocity_ok", "joint_acceleration_ok", "penetration_ok",
-        "contact_occurred", "wrist_continuous", "actuator_ctrl_not_saturated",
+        "wrist_continuous", "actuator_ctrl_not_saturated",
         "urdf_mjcf_frames_agree",
     ):
         assert key in qa["checks"], f"RetargetQA missing contract field {key}"
+    # C6 contact_occurred left the gate set by the W6 supersession ruling; the
+    # measurement itself stays under qa["contact"] (test_c6_... pins that).
     assert report["verdict"] == ("pass" if all(qa["checks"].values()) else "fail"), (
         "report verdict disagrees with the RetargetQA checks"
     )

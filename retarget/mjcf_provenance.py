@@ -36,18 +36,28 @@ if str(REPO) not in sys.path:
 
 from retarget import retarget_smoke as rs  # noqa: E402
 
-#: The MJCF revision this re-run is accounted against.  W6a-v2 landed in
-#: 9a5c384: the v1 45-degree hand pitch was refuted and the hands posed upright
-#: at the end faces (homes +-0.185/0.795, right euler 0, left euler 0-0-pi),
-#: which returned the finger kps bit-identical to the single-hand generation's
-#: table.  Verified: blob(9a5c384) == sha256 of the working-tree XML
-#: (6449871e...).
-MJCF_COMMIT = "9a5c384"
+#: The MJCF revision this re-run is accounted against.  W6a-v5 landed in
+#: 8c58733: 180-degree hand yaw (right `0 0 pi` / left `0 0 0`), fingers into
+#: the box faces, forearm+flange mounts and a visual gantry (ngeom 89 -> 99).
+#: Verified: blob(8c58733) == sha256 of the working-tree XML (7b7a1adf...).
+#: RE-AFFIRMATION (per-joint forcerange/kp/dof_damping diffed against the
+#: 6449871e generation): 0 differences across all 44 actuators -- the three
+#: servo winding tables carry over unchanged; the sha pin moves, the numbers
+#: do not.
+#: NEW PASSIVE CONSTANTS, recorded because they change the scene's physics
+#: without touching the actuator tables: every finger joint now carries a
+#: return spring (stiffness 0.4, springref 0 on the abduction DoF / 0.6 on
+#: the flexion DoFs -- the flexion home).  Springs are NOT a winding-table
+#: input (the tables read actuator forcerange/kp and dof_damping only), but
+#: they do load the DoF: the position gate's explanation balance already
+#: reads them through qfrc_passive inside qfrc_other, so no gate semantics
+#: change.
+MJCF_COMMIT = "8c58733"
 #: The MJCF revision the *previous* smoke-5 numbers were taken on. Kept so the
-#: two data sets can never be silently mixed.  2e7c26a is the W6a-v1 dual-hand
-#: generation (blob ff4d4355..., 45-degree hand pitch) -- the superseded
-#: physics the artefacts were stamped against before v2 landed.
-MJCF_COMMIT_BASELINE = "2e7c26a"
+#: two data sets can never be silently mixed.  9a5c384 is the W6a-v2 upright
+#: generation (blob 6449871e...) -- the superseded physics the artefacts were
+#: stamped against before v5 landed.
+MJCF_COMMIT_BASELINE = "9a5c384"
 
 OUT_DIR = REPO / "runs/p0/smoke5_retarget"
 REPORT_PATH = OUT_DIR / "report.json"

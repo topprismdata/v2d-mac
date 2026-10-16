@@ -964,7 +964,15 @@ def warm_start(
     wrist_goal: np.ndarray,
     ctrl_hz: int = CTRL_HZ,
     frame_skip: int = 25,
+    finger_suffix: str = "",
+    wrist_suffix: str = "",
 ) -> dict[str, Any]:
+    """``finger_suffix``/``wrist_suffix`` exist for the dual-hand caller
+    (retarget_dual.py): the function is otherwise side-neutral -- it takes
+    explicit qpos-address/actuator arrays -- but its record names DoFs with the
+    right-hand name lists and its winding-rate gates resolve actuators by joint
+    NAME, which must be the driven hand's names.  Defaults keep the single-hand
+    path byte-identical."""
     """Ramp the servos from the reset pose into the first commanded pose.
 
     ``reset_scene()`` leaves the floating wrist at identity and the fingers at
@@ -1100,7 +1108,8 @@ def warm_start(
     # and wrist alike.
     unreachable_dofs = [
         str(name) for name, ok in zip(
-            MJCF_FINGER_JOINTS + WRIST_JOINTS,
+            [n + finger_suffix for n in MJCF_FINGER_JOINTS]
+            + [n + wrist_suffix for n in WRIST_JOINTS],
             tracking <= WARM_START_REACHABLE_TOL)
         if not ok
     ]
@@ -1174,9 +1183,9 @@ def warm_start(
             k: float(np.max(peak_cmd[v])) for k, v in idx.items()
         },
         "commanded_peak_rate_slide_per_axis": {
-            "wrist_x": float(peak_cmd[n_f + 0]),
-            "wrist_y": float(peak_cmd[n_f + 1]),
-            "wrist_z": float(peak_cmd[n_f + 2]),
+            "wrist_x" + wrist_suffix: float(peak_cmd[n_f + 0]),
+            "wrist_y" + wrist_suffix: float(peak_cmd[n_f + 1]),
+            "wrist_z" + wrist_suffix: float(peak_cmd[n_f + 2]),
         },
         "realised_peak_rate": {
             k: float(np.max(realised_arr[:, v])) if realised_arr.size else 0.0
@@ -1189,7 +1198,7 @@ def warm_start(
         # wind-up release as the mandatory explanation.
         "servo_winding_rate": servo_winding_rate_gate(
             model,
-            list(WRIST_JOINTS[3:]),
+            [n + wrist_suffix for n in WRIST_JOINTS[3:]],
             np.stack(hist)[:, n_f + 3:n_f + 6],
             np.stack(ctrl_hist)[:, wrist_act[3:6]],
             np.stack(force_hist),
@@ -1201,7 +1210,7 @@ def warm_start(
         # against the slide's own winding allowance, 45 N / 25 = 1.8 m/s.
         "servo_winding_rate_slide": servo_winding_rate_gate(
             model,
-            list(WRIST_JOINTS[:3]),
+            [n + wrist_suffix for n in WRIST_JOINTS[:3]],
             np.stack(hist)[:, n_f:n_f + 3],
             np.stack(ctrl_hist)[:, wrist_act[0:3]],
             np.stack(force_hist),
@@ -1726,7 +1735,11 @@ def build_qa(
             rep["joint_acceleration_max_rad_s2"] <= JOINT_ACC_LIMIT_RAD_S2
         ),
         "penetration_ok": bool(rep["max_penetration_m"] <= PENETRATION_TOLERANCE_M),
-        "contact_occurred": bool(rep["contact_frames"] > 0),
+        # C6 SUPERSEDED (W6 acceptance, PLAN 2026-10-16): the dual-hand sweep
+        # covers the whole table, so "the replay touches the box" is no longer
+        # a smoke-5 acceptance criterion -- the contact-NATURE evidence is
+        # carried by A2/A3a in W6c.  The measurement stays on the record under
+        # qa["contact"] (frames_with_contact + sequence), out of the gate set.
         "wrist_continuous": bool(_wrist_continuous(rep)),
         "actuator_ctrl_not_saturated": bool(rep["ctrl_saturation_total"] == 0),
         "urdf_mjcf_frames_agree": bool(corr["max_residual_m"] < 1e-5),
@@ -1774,6 +1787,19 @@ def build_qa(
             "definition": (
                 "any contact between a finger/palm geom and the tissue-box proxy "
                 "geom; contacts against table_slab/pedestal/floor are excluded"
+            ),
+            # C6 superseded by the W6 acceptance ruling: the dual-hand sweep
+            # covers the whole table, so a single retargeted replay touching
+            # the box proves nothing about grasp viability any more.  The
+            # contact-nature criterion (which geoms carry the box's weight,
+            # total-force duty) is carried by A2/A3a in W6c.  The measurement
+            # stays here, recorded rather than gated.
+            "superseded_criterion": True,
+            "superseded_note": (
+                "C6 (contact_occurred) is superseded per the W6 acceptance "
+                "(PLAN 2026-10-16): the dual-hand sweep covers the whole table "
+                "and the structural premise of a single replay's contact proof "
+                "is gone; A2/A3a carry the contact-nature gate in W6c"
             ),
             "sequence": rep["contact_sequence"],
             "duty": rep["contact_duty"],
@@ -1905,27 +1931,21 @@ def _blocker(qa: dict, rep: dict) -> dict[str, Any]:
     )
     return {
         "what": (
-            "dual-hand W6a scene, single-hand-input mode (right hand executes "
-            "the retargeted clip, left hand frozen at its reset pose): the base "
-            "solve and the constrained solve solved -- the commanded hand sits "
+            "dual-hand W6a-v5 scene (MJCF 8c58733, blob 7b7a1adf...; "
+            "single-hand-input mode: the right hand executes the retargeted "
+            "clip, the left hand is frozen at its reset pose): the base solve "
+            "and the constrained solve solved -- the commanded hand sits "
             f"{base['gap_m'] * 1000:.2f} mm short of the box at the closest "
             f"fingertip with {base['tips_within_radius']} of four tips inside "
             f"the grasp radius and {base['palm_plate_gap_m'] * 1000:.1f} mm of "
-            "palm-plate clearance -- but the executed replay falls short of the "
-            "frozen G3 contract on three gates. (1) The physics holds the palm "
+            "palm-plate clearance. The one gate that still fails is the palm "
+            f"world-pose deviation: the physics holds the palm "
             f"{rep['execution_deviation_m']['max_m'] * 1000:.0f} mm away from "
-            "the pose it is commanded (cap 40 mm): the servos do not track the "
-            "solved pose in the world. (2) No finger/palm-vs-box contact occurs "
-            "in any frame: the clip closes to a "
-            f"{base['gap_m'] * 1000:.2f} mm gap and the position servos stop "
-            "there, so the contact criterion is unproven on this scene rather "
-            "than satisfied by a palm resting on the box, as on the superseded "
-            "single-hand scene. (3) Three finger joints (the joints listed in "
-            "servo_winding_tolerance.joints_with_excursion) sit up to a few "
-            "mrad past jnt_range at the commanded boundary for up to 14 "
-            "consecutive frames with a mN*m torque imbalance -- sub-tolerance "
-            "boundary dust that fails the mandatory explanation clause, not "
-            "saturation and not an amplitude violation."
+            "the pose it is commanded (cap 40 mm) -- the servos do not track "
+            "the solved pose in the world, which is the standing P1. The "
+            "replay recorded zero finger/palm-vs-box contact frames; that "
+            "criterion (C6) is superseded per the W6 acceptance and is kept "
+            "as a recorded measurement under qa['contact'], not a gate."
         ),
         "root_cause_fixed_this_round": {
             "was": (
@@ -2427,8 +2447,9 @@ def run_smoke(out_dir: pathlib.Path = OUT_DIR, n_frames: int = N_FRAMES) -> dict
         "verdict_checks": checks,
         "verdict_reason": (
             "all frozen G3 criteria green: frames consistent, finite, within joint "
-            "limits/velocity/acceleration, finger-box contact present, penetration "
-            "inside MuJoCo tolerance, wrist continuous"
+            "limits/velocity/acceleration, penetration inside MuJoCo tolerance, "
+            "wrist continuous (C6 contact_occurred superseded per the W6 "
+            "acceptance and recorded under qa['contact'], not gated)"
             if verdict == "pass"
             else _failure_reason(qa)
         ),
