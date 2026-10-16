@@ -1,0 +1,41 @@
+{
+ "fps": 30.0,
+ "src_video": "runs/p0/assets/tissue_box.mp4",
+ "video_frames": [
+  "docs/video_frames/f_0001.jpg",
+  "docs/video_frames/f_0025.jpg",
+  "docs/video_frames/f_0049.jpg",
+  "docs/video_frames/f_0067.jpg",
+  "docs/video_frames/f_0091.jpg",
+  "docs/video_frames/f_0115.jpg",
+  "docs/video_frames/f_0160.jpg",
+  "docs/video_frames/f_0190.jpg",
+  "docs/video_frames/f_0220.jpg"
+ ],
+ "segments": [
+  {
+   "name": "接近",
+   "files": [
+    "docs/video_frames/f_0001.jpg",
+    "docs/video_frames/f_0025.jpg",
+    "docs/video_frames/f_0049.jpg"
+   ]
+  },
+  {
+   "name": "触面",
+   "files": [
+    "docs/video_frames/f_0067.jpg",
+    "docs/video_frames/f_0091.jpg",
+    "docs/video_frames/f_0115.jpg"
+   ]
+  },
+  {
+   "name": "抬起",
+   "files": [
+    "docs/video_frames/f_0160.jpg",
+    "docs/video_frames/f_0190.jpg",
+    "docs/video_frames/f_0220.jpg"
+   ]
+  }
+ ]
+}
