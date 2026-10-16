@@ -481,12 +481,13 @@ def test_w6_gate3_both_hands_reach_their_end_faces(model):
         h = hands[hname]
         # W6a-v3: the pad CENTRE's true rectangle distance - no radius term
         gaps[hname] = min(
-            _rect_gap(*d.geom_xpos[g], h["side"]) for g in h["pads"])
+            _rect_gap(*d.geom_xpos[g], h["side"]) - rad
+            for g, rad in zip(h["pads"], h["pad_rad"]))
         # P2: at least one pad ON the face, centre in the mid band
         touches[hname] = [
             (g, tuple(np.round(d.geom_xpos[g], 4)))
-            for g in h["pads"]
-            if _rect_gap(*d.geom_xpos[g], h["side"]) <= tol
+            for g, rad in zip(h["pads"], h["pad_rad"])
+            if _rect_gap(*d.geom_xpos[g], h["side"]) - rad <= tol
             and (BOX_BOT + 0.4 * 2 * HALF_Z) <= d.geom_xpos[g][2] <= (BOX_TOP - 0.01)
         ]
     worst = max(gaps.values())
