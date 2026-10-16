@@ -333,7 +333,7 @@
                 <geom class="distal_collision" name="ff_distal_collision"/>
                 <body name="ff_tip">
                   <geom class="fingertip_visual" name="ff_tip_visual"/>
-                  <geom class="fingertip_collision" name="ff_tip_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1"/>
+                  <geom class="fingertip_collision" name="ff_tip_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="cylinder" size="0.009 0.0055" friction="1.8 0.005 0.0001"/>
                 </body>
               </body>
             </body>
@@ -357,7 +357,7 @@
                 <geom class="distal_collision" name="mf_distal_collision"/>
                 <body name="mf_tip">
                   <geom class="fingertip_visual" name="mf_tip_visual"/>
-                  <geom class="fingertip_collision" name="mf_tip_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1"/>
+                  <geom class="fingertip_collision" name="mf_tip_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="cylinder" size="0.009 0.0055" friction="1.8 0.005 0.0001"/>
                 </body>
               </body>
             </body>
@@ -381,7 +381,7 @@
                 <geom class="distal_collision" name="rf_distal_collision"/>
                 <body name="rf_tip">
                   <geom class="fingertip_visual" name="rf_tip_visual"/>
-                  <geom class="fingertip_collision" name="rf_tip_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1"/>
+                  <geom class="fingertip_collision" name="rf_tip_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="cylinder" size="0.009 0.0055" friction="1.8 0.005 0.0001"/>
                 </body>
               </body>
             </body>
@@ -405,7 +405,7 @@
                 <geom class="thumb_distal_collision" name="th_distal_collision"/>
                 <body name="th_tip">
                   <geom class="thumbtip_visual" name="th_tip_visual"/>
-                  <geom class="thumbtip_collision" name="th_tip_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1"/>
+                  <geom class="thumbtip_collision" name="th_tip_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="cylinder" size="0.009 0.0055" friction="1.8 0.005 0.0001"/>
                 </body>
               </body>
             </body>
@@ -486,7 +486,7 @@
                 <geom class="distal_collision" name="ff_distal_left_collision"/>
                 <body name="ff_tip_left">
                   <geom class="fingertip_visual" name="ff_tip_left_visual"/>
-                  <geom class="fingertip_collision" name="ff_tip_left_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1"/>
+                  <geom class="fingertip_collision" name="ff_tip_left_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="cylinder" size="0.009 0.0055" friction="1.8 0.005 0.0001"/>
                 </body>
               </body>
             </body>
@@ -510,7 +510,7 @@
                 <geom class="distal_collision" name="mf_distal_left_collision"/>
                 <body name="mf_tip_left">
                   <geom class="fingertip_visual" name="mf_tip_left_visual"/>
-                  <geom class="fingertip_collision" name="mf_tip_left_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1"/>
+                  <geom class="fingertip_collision" name="mf_tip_left_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="cylinder" size="0.009 0.0055" friction="1.8 0.005 0.0001"/>
                 </body>
               </body>
             </body>
@@ -534,7 +534,7 @@
                 <geom class="distal_collision" name="rf_distal_left_collision"/>
                 <body name="rf_tip_left">
                   <geom class="fingertip_visual" name="rf_tip_left_visual"/>
-                  <geom class="fingertip_collision" name="rf_tip_left_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1"/>
+                  <geom class="fingertip_collision" name="rf_tip_left_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="cylinder" size="0.009 0.0055" friction="1.8 0.005 0.0001"/>
                 </body>
               </body>
             </body>
@@ -558,7 +558,7 @@
                 <geom class="thumb_distal_collision" name="th_distal_left_collision"/>
                 <body name="th_tip_left">
                   <geom class="thumbtip_visual" name="th_tip_left_visual"/>
-                  <geom class="thumbtip_collision" name="th_tip_left_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1"/>
+                  <geom class="thumbtip_collision" name="th_tip_left_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="cylinder" size="0.009 0.0055" friction="1.8 0.005 0.0001"/>
                 </body>
               </body>
             </body>
@@ -624,22 +624,22 @@
       forcerange="-6 6"/>
     <position name="wrist_rz" joint="wrist_rz" kp="14" ctrlrange="-1.57 1.57"
       forcerange="-6 6"/>
-    <position name="ffa0" joint="ffj0" class="base" kp="0.3261" forcerange="-0.03000 0.03000"/>
+    <position name="ffa0" joint="ffj0" class="base" kp="0.3261" forcerange="-0.02250 0.02250"/>
     <position name="ffa1" joint="ffj1" class="proximal" kp="0.7269" forcerange="-0.10541 0.10541"/>
     <position name="ffa2" joint="ffj2" class="medial" kp="0.2348" forcerange="-0.09369 0.09369"/>
     <position name="ffa3" joint="ffj3" class="distal" kp="0.0449" forcerange="-0.04219 0.04219"/>
-    <position name="mfa0" joint="mfj0" class="base" kp="0.3278" forcerange="-0.03000 0.03000"/>
+    <position name="mfa0" joint="mfj0" class="base" kp="0.3278" forcerange="-0.02251 0.02251"/>
     <position name="mfa1" joint="mfj1" class="proximal" kp="0.7269" forcerange="-0.10388 0.10388"/>
     <position name="mfa2" joint="mfj2" class="medial" kp="0.2348" forcerange="-0.09400 0.09400"/>
     <position name="mfa3" joint="mfj3" class="distal" kp="0.0449" forcerange="-0.04235 0.04235"/>
-    <position name="rfa0" joint="rfj0" class="base" kp="0.3285" forcerange="-0.03000 0.03000"/>
+    <position name="rfa0" joint="rfj0" class="base" kp="0.3285" forcerange="-0.02250 0.02250"/>
     <position name="rfa1" joint="rfj1" class="proximal" kp="0.7266" forcerange="-0.10586 0.10586"/>
     <position name="rfa2" joint="rfj2" class="medial" kp="0.2348" forcerange="-0.09382 0.09382"/>
     <position name="rfa3" joint="rfj3" class="distal" kp="0.0449" forcerange="-0.04219 0.04219"/>
-    <position name="tha0" joint="thj0" class="thumb_base" kp="1.0423" forcerange="-0.09933 0.09933"/>
-    <position name="tha1" joint="thj1" class="thumb_proximal" kp="0.4073" forcerange="-0.03018 0.03018"/>
-    <position name="tha2" joint="thj2" class="thumb_medial" kp="0.4186" forcerange="-0.05201 0.05201"/>
-    <position name="tha3" joint="thj3" class="thumb_distal" kp="0.0968" forcerange="-0.03001 0.03001"/>
+    <position name="tha0" joint="thj0" class="thumb_base" kp="1.0423" forcerange="-0.09423 0.09423"/>
+    <position name="tha1" joint="thj1" class="thumb_proximal" kp="0.4073" forcerange="-0.02256 0.02256"/>
+    <position name="tha2" joint="thj2" class="thumb_medial" kp="0.4186" forcerange="-0.05092 0.05092"/>
+    <position name="tha3" joint="thj3" class="thumb_distal" kp="0.0968" forcerange="-0.02252 0.02252"/>
     <position name="wrist_ax_left" joint="wrist_x_left" kp="15000" ctrlrange="-0.18 0.18"
       forcerange="-45 45"/>
     <position name="wrist_ay_left" joint="wrist_y_left" kp="180" ctrlrange="-0.18 0.18"
@@ -652,21 +652,21 @@
       forcerange="-6 6"/>
     <position name="wrist_rz_left" joint="wrist_rz_left" kp="14" ctrlrange="-1.57 1.57"
       forcerange="-6 6"/>
-    <position name="ffa0_left" joint="ffj0_left" class="base" kp="0.3261" forcerange="-0.03000 0.03000"/>
+    <position name="ffa0_left" joint="ffj0_left" class="base" kp="0.3261" forcerange="-0.02250 0.02250"/>
     <position name="ffa1_left" joint="ffj1_left" class="proximal" kp="0.7269" forcerange="-0.10541 0.10541"/>
     <position name="ffa2_left" joint="ffj2_left" class="medial" kp="0.2348" forcerange="-0.09369 0.09369"/>
     <position name="ffa3_left" joint="ffj3_left" class="distal" kp="0.0449" forcerange="-0.04219 0.04219"/>
-    <position name="mfa0_left" joint="mfj0_left" class="base" kp="0.3278" forcerange="-0.03000 0.03000"/>
+    <position name="mfa0_left" joint="mfj0_left" class="base" kp="0.3278" forcerange="-0.02251 0.02251"/>
     <position name="mfa1_left" joint="mfj1_left" class="proximal" kp="0.7269" forcerange="-0.10388 0.10388"/>
     <position name="mfa2_left" joint="mfj2_left" class="medial" kp="0.2348" forcerange="-0.09400 0.09400"/>
     <position name="mfa3_left" joint="mfj3_left" class="distal" kp="0.0449" forcerange="-0.04235 0.04235"/>
-    <position name="rfa0_left" joint="rfj0_left" class="base" kp="0.3285" forcerange="-0.03000 0.03000"/>
+    <position name="rfa0_left" joint="rfj0_left" class="base" kp="0.3285" forcerange="-0.02250 0.02250"/>
     <position name="rfa1_left" joint="rfj1_left" class="proximal" kp="0.7266" forcerange="-0.10586 0.10586"/>
     <position name="rfa2_left" joint="rfj2_left" class="medial" kp="0.2348" forcerange="-0.09382 0.09382"/>
     <position name="rfa3_left" joint="rfj3_left" class="distal" kp="0.0449" forcerange="-0.04219 0.04219"/>
-    <position name="tha0_left" joint="thj0_left" class="thumb_base" kp="1.0423" forcerange="-0.09933 0.09933"/>
-    <position name="tha1_left" joint="thj1_left" class="thumb_proximal" kp="0.4073" forcerange="-0.03018 0.03018"/>
-    <position name="tha2_left" joint="thj2_left" class="thumb_medial" kp="0.4186" forcerange="-0.05201 0.05201"/>
-    <position name="tha3_left" joint="thj3_left" class="thumb_distal" kp="0.0968" forcerange="-0.03001 0.03001"/>
+    <position name="tha0_left" joint="thj0_left" class="thumb_base" kp="1.0423" forcerange="-0.09423 0.09423"/>
+    <position name="tha1_left" joint="thj1_left" class="thumb_proximal" kp="0.4073" forcerange="-0.02256 0.02256"/>
+    <position name="tha2_left" joint="thj2_left" class="thumb_medial" kp="0.4186" forcerange="-0.05092 0.05092"/>
+    <position name="tha3_left" joint="thj3_left" class="thumb_distal" kp="0.0968" forcerange="-0.02252 0.02252"/>
   </actuator>
 </mujoco>

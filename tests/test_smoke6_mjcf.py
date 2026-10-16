@@ -341,70 +341,52 @@ def test_r1_measured_fingertip_force_stays_under_ten_newtons(model):
     # into the same 10 N bound.
     import grounding.collect_hook_demos as chd  # noqa: PLC0415
     import grounding.envs.lift_hold_env as lhe  # noqa: PLC0415
-    import grounding.reachable_scan as rs_scan  # noqa: PLC0415
+    # W6a-v10: the press posture = the W6a gate-3 solution (runs/w6/
+    # gate3_qpos.json) - the documented two-pad grasp whose static hold was
+    # verified (gate3b <= 0.8cap per joint). The W5-era hook trajectory was
+    # tuned for the single-hand above-box scene and misses the dual-hand
+    # geometry entirely (0.00 N measured - the pads never reach the box).
+    import grounding.reachable_scan as rs_scan  # noqa: PLC0415, F401
 
-    # the EXACT winning configuration from the W5 chamfer scan (run
-    # runs/w5/chamfer_scan.py --only 3): on the chamfered scene the bare-box
-    # seed pose produces no pad contact, while this one passes the frozen
-    # gates with ff_tip|object in its peak-step contacts.
-    hook_cfg = json.loads("""{
-    "family": "reachable_hook",
-    "wrist_world": [
-        0.17,
-        -0.17,
-        0.84
-    ],
-    "rot": [
-        1.8,
-        -1.25,
-        0.0
-    ],
-    "close": [
-        0.3,
-        1.0,
-        1.0,
-        1.0,
-        0.3,
-        1.0,
-        1.0,
-        1.0,
-        0.3,
-        1.0,
-        1.0,
-        1.0,
-        0.0,
-        -0.7,
-        -0.7,
-        -0.7
-    ],
-    "close_params": [
-        1.0,
-        -0.7,
-        0.0
-    ],
-    "sequence": "descend_then_close",
-    "close_ramp": true,
-    "n_transit": 30,
-    "n_desc": 60,
-    "n_close": 80,
-    "settle": 25,
-    "lift_z": 0.16,
-    "lift_rate": 0.004,
-    "lift_hold": 80
-}""")
-
-    hook_env = lhe.LiftHoldEnv(episode_len=400, domain_rand=False)
-    orig_step = hook_env.step
+    gate3 = json.loads((REPO / "runs/w6/gate3_qpos.json").read_text())["qpos"]
+    hand_names = ([f"wrist_{a}{s}" for s in ("", "_left")
+                   for a in ("x", "y", "z", "rx", "ry", "rz")]
+                  + [f"{f}j{i}{s}" for s in ("", "_left")
+                     for f in ("ff", "mf", "rf", "th") for i in range(4)])
 
     def measuring_step(action):
         result = orig_step(action)
         measure_step(hook_env.model, hook_env.data)
         return result
 
-    # measure DURING the replay: reading contacts after the trajectory has
-    # run to completion measures nothing (the hand has moved on)
+    hook_env = lhe.LiftHoldEnv(episode_len=400, domain_rand=False)
+    orig_step = hook_env.step
+
+
+    # measure DURING the hold: reading contacts after the hold has run to
+    # completion measures nothing (the hand has moved on). The press = drive
+    # both hands' position servos to the gate-3 grasp setpoints (static hold
+    # verified <= 0.8 cap per joint by gate3b) and hold 200 control frames.
     hook_env.step = measuring_step
-    rs_scan.run_traj(hook_env, hook_cfg)
+    hook_env.reset(seed=0)
+    m_env = hook_env.unwrapped
+    hand_adrs = [m_env.model.jnt_qposadr[
+        mujoco.mj_name2id(m_env.model, mujoco.mjtObj.mjOBJ_JOINT, n)]
+        for n in hand_names]
+    for frame in range(200):
+        a = np.zeros(m_env.action_space.shape[0], dtype=np.float32)
+        for h in range(2):
+            base = h * 22
+            for k in range(6):
+                a[base + k] = float(gate3[7 + 22 * h + k])
+            for i in range(16):
+                jname = hand_names[22 * h + 6 + i]
+                jid = mujoco.mj_name2id(m_env.model, mujoco.mjtObj.mjOBJ_JOINT, jname)
+                lo, hi = m_env.model.jnt_range[jid]
+                q_target = float(gate3[7 + 22 * h + 6 + i])
+                a[base + 6 + i] = float(np.clip(
+                    2.0 * (q_target - lo) / (hi - lo) - 1.0, -1.0, 1.0))
+        hook_env.step(a)
     hook_env.step = orig_step
     for gid in list(link_runs):
         _fold_link_run(gid)

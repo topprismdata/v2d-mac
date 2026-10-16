@@ -911,12 +911,13 @@ def _tip_geom_ids(model) -> dict[str, int]:
     out: dict[str, int] = {}
     for f in FINGER_PREFIXES:
         bid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, f"{f}_tip")
-        gids = [g for g in range(model.ngeom)
-                if model.geom_bodyid[g] == bid
-                and model.geom_type[g] == mujoco.mjtGeom.mjGEOM_CAPSULE]
-        if len(gids) != 1:
-            raise RuntimeError(f"{f}_tip owns {len(gids)} capsule geoms, expected 1")
-        out[f] = gids[0]
+        # W6a-v10: the tip pad is a CYLINDER (was a sphere) - the tip body
+        # carries a visual mesh geom too, so match the collision geom by name
+        gname = f"{f}_tip_collision"
+        g = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, gname)
+        if g < 0:
+            raise RuntimeError(f"collision geom {gname} not found")
+        out[f] = g
     return out
 
 
@@ -1241,6 +1242,16 @@ def _annotate_hand_geoms(palm_el: ET.Element, solref, solimp) -> None:
             # capsules pure white - they read as cartoon balls in renders.
             # rgba ONLY (size/position are collision physics and frozen).
             geom.set("rgba", "0.72 0.72 0.76 1")
+            # W6a-v10 (W6c round-2 levers): 12 mm ball pad -> 11 mm tall flat
+            # cylindrical pad (flat faces kill the contact-point slide that
+            # decayed normal force 1.09 -> 0.52 N mid-press) and rubber-grade
+            # slide friction 1.0 -> 1.8 (Allegro真机即胶垫; r5 capacity
+            # 2.0 -> 3.3 N = 2.2x box weight). Size change shifts the tip body
+            # mass (geom-derived, ~7.2 g -> ~2.8 g per tip) - re-verified in
+            # R10-v10 (settle/hold/clearance re-measured, deltas reported).
+            geom.set("type", "cylinder")
+            geom.set("size", "0.009 0.0055")
+            geom.set("friction", "1.8 0.005 0.0001")
 
 
 # --- W6a / R10: the left hand is a renamed deep copy of the right ------------
