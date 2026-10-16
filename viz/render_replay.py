@@ -33,11 +33,13 @@ WIDTH, HEIGHT = 1280, 720  # match the source clip so both panes scale identical
 
 PRESETS = [
     # (key, 中文, azimuth deg, elevation deg, distance m)
-    # az 90 puts both ±x hands left/right with the box long side on --
-    # the human clip's composition (verified against an azimuth sweep)
-    ("front", "正面", 90.0, -25.0, 0.80),
-    ("side", "侧面", 0.0, -32.0, 0.72),
-    ("close", "特写", 65.0, -25.0, 0.42),
+    # v5 scene adds the gantry (rail runs along y at z~1.015): dead-on az 90
+    # puts the lens against the rail's end face (renders as a giant cube), so
+    # the presets view from slightly off-axis -- gantry stays in frame without
+    # blocking the lens.  Verified against reset + gate3 frames.
+    ("front", "正面", 105.0, -22.0, 0.80),
+    ("side", "侧面", -20.0, -30.0, 0.72),
+    ("close", "特写", -20.0, -24.0, 0.46),
 ]
 
 

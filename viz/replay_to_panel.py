@@ -59,23 +59,66 @@ NQ = 51                   # allegro_floating.xml nq: [0:7] object free joint,
 # faces in the human clip), so the two replay frames line up with the two
 # video frames the panel will show.
 PLACEHOLDER = [
-    ("静置复位（400 步沉降，出生穿透 −6.2e−17 m）", 0.0),
-    ("双手指垫触及端面（W6a 门 3 配置，间隙 ≤0.116 mm）", 67 / VIDEO_FPS),
+    ("静置复位（400 步沉降）", 0.0),
+    ("双手指垫触及端面（W6a 门 3 配置）", 67 / VIDEO_FPS),
 ]
 
-# W6a gate badges -- every number from committed evidence
-# (PLAN.md W6a 落地 entry + runs/w6/gate3_qpos.json).
-PLACEHOLDER_GATES = [
-    {"id": "w6a_birth", "name": "出生穿透", "verdict": "pass",
-     "measured": "−6.2×10⁻¹⁷ m（精确零）/ 帽 0",
-     "scope": "复位瞬间手指与盒面的最大嵌入深度：双手初始位姿是否零埋入"},
-    {"id": "w6a_settle", "name": "静置 400 步", "verdict": "pass",
-     "measured": "盒 0.029 mm / 手 0.422 mm",
-     "scope": "无策略空置 400 控制步后盒与手的最大漂移：场景自稳"},
-    {"id": "w6a_reach", "name": "双手可及", "verdict": "pass",
-     "measured": "右 0.114 mm / 左 0.116 mm / 帽 0.116 mm",
-     "scope": "门 3：双手指垫到各自端面的最小距离（负=轻微压入，容差内即过）"},
-]
+
+def _fmt_mm(x_m: float) -> str:
+    return f"{x_m:.1e} m" if abs(x_m) < 5e-7 else f"{x_m * 1e3:.3f} mm"
+
+
+def _measure_w6a_gates() -> list[dict]:
+    """Measure the three W6a gates live, mirroring tests/test_scene_w6.py's
+    own protocol and constants (GATE 1 birth contacts, GATE 2 400-step
+    settle, GATE 3 persisted reach), so the placeholder badges always carry
+    the currently committed scene's numbers."""
+    import mujoco
+
+    import grounding.envs.lift_hold_env as lhe
+
+    birth_tol_m, move_tol_m, settle_steps = 1e-9, 1e-3, 400  # test constants
+    env = lhe.LiftHoldEnv(episode_len=50, domain_rand=False)
+    env.reset(seed=0)
+    m = env.model
+
+    # GATE 1: fresh data + mj_forward = the birth state the test fixtures use
+    d = mujoco.MjData(m)
+    mujoco.mj_forward(m, d)
+    birth = min((float(d.contact[i].dist) for i in range(d.ncon)), default=0.0)
+
+    # GATE 2: settle THAT SAME data 400 steps, drift of box + both hand roots
+    obj = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, "object")
+    rr = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, "hand_root")
+    rl = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, "hand_root_left")
+    p0, r0, l0 = d.xpos[obj].copy(), d.xpos[rr].copy(), d.xpos[rl].copy()
+    for _ in range(settle_steps):
+        mujoco.mj_step(m, d)
+    box_move = float(np.linalg.norm(d.xpos[obj] - p0))
+    hand_move = max(float(np.linalg.norm(d.xpos[rr] - r0)),
+                    float(np.linalg.norm(d.xpos[rl] - l0)))
+
+    # GATE 3: the composed reach persisted by the test itself
+    g3 = json.loads(GATE3.read_text())
+    gaps = g3["gaps_mm"]
+    tol_mm = g3["tol_m"] * 1e3
+
+    return [
+        {"id": "w6a_birth", "name": "出生穿透",
+         "verdict": "pass" if birth >= -birth_tol_m else "fail",
+         "measured": f"{_fmt_mm(birth)}（出生接触最小间距）/ 帽 1e-9 m",
+         "scope": "复位瞬间手指与盒面的最大嵌入深度：双手初始位姿是否零埋入"},
+        {"id": "w6a_settle", "name": "静置 400 步",
+         "verdict": "pass" if box_move < move_tol_m and hand_move < move_tol_m
+         else "fail",
+         "measured": f"盒 {_fmt_mm(box_move)} / 手 {_fmt_mm(hand_move)} / 帽 1 mm",
+         "scope": "无策略空置 400 控制步后盒与手的最大漂移：场景自稳"},
+        {"id": "w6a_reach", "name": "双手可及",
+         "verdict": "pass" if max(gaps.values()) <= tol_mm else "fail",
+         "measured": (f"右 {abs(gaps['right']):.3f} mm / "
+                      f"左 {abs(gaps['left']):.3f} mm / 帽 {tol_mm:.3f} mm"),
+         "scope": "门 3：双手指垫到各自端面的最小距离（负=轻微压入，容差内即过）"},
+    ]
 
 
 def _settled_reset_frame() -> tuple[list[float], list[float]]:
@@ -165,7 +208,7 @@ def build() -> dict:
         notes = [n for n, _ in PLACEHOLDER]
 
     gates = (json.loads(GATES_IN.read_text())["gates"]
-             if GATES_IN.exists() else PLACEHOLDER_GATES)
+             if GATES_IN.exists() else _measure_w6a_gates())
 
     payload = {
         "fps": VIDEO_FPS,
