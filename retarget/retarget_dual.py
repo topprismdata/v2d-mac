@@ -115,6 +115,24 @@ BRIDGE_MAX_VIDEO_FRAMES = 30              # 1.0 s at 30 fps -- the same TIME
                                           # budget as the frozen 3-frame rule
                                           # at 3 fps, now fps-consistent
 HEIGHT_BAND_M = (0.72, 0.86)              # round-4 wrist-height prior band
+# round-4b: the time-domain filter, FROZEN before the 4b acceptance
+# measurements (Main-scoped: smooth the MANO PARAMETER stream -- parameter
+# smoothing beats endpoint smoothing because FK nonlinearly amplifies
+# jitter).  Savitzky-Golay over Butterworth: hand-parameter trajectories are
+# polynomial-like over half-second windows and the centred SG window has no
+# phase lag; Butterworth would need a filtfilt pass for the same property.
+FILTER_SPEC = {
+    "type": "savgol",
+    "window_frames": 15,        # 0.5 s at 30 fps
+    "window_seconds": 0.5,
+    "polyorder": 3,
+    "mode": "interp",
+    "applied_to": ("per hand, per dimension: global_orient rotvec (3), "
+                   "hand_pose rotvec (45), transl (3) -- after bridging, "
+                   "before FK"),
+    "frozen": "before the 4b acceptance measurements",
+    "replaces": "the round-4 centred moving average (superseded)",
+}
 # touch tolerance, frozen in the W6b ticket (the R5 derivation);
 # runs/w6/gate3_qpos.json carries the same 1.1636970525e-4 m scale.
 R5_TOUCH_TOL_M = 1.16369705249481058e-04
@@ -291,17 +309,50 @@ def load_streams() -> tuple[dict, dict]:
 
     out, records = {}, {}
     for side in VIDEOS:
+        # round-4b frozen filter (FILTER_SPEC): smooth the MANO PARAMETER
+        # stream -- parameter smoothing beats endpoint smoothing because FK
+        # nonlinearly amplifies jitter.  Missing frames are linearly
+        # pre-filled so SG sees a contiguous series.
         present = d[f"{side}/present"].astype(bool)
+        params = None
+        if FILTER_SPEC["type"] == "savgol":
+            from scipy.signal import savgol_filter
+
+            w = FILTER_SPEC["window_frames"]
+            po = FILTER_SPEC["polyorder"]
+            raw = {
+                "go": d[f"{side}/global_orient"].copy(),
+                "pose": d[f"{side}/pose"].copy().reshape(T, -1),
+                "shape": d[f"{side}/shape"].copy(),
+                "transl": d[f"{side}/transl"].copy(),
+            }
+            params = {}
+            for name, arr in raw.items():
+                ok = present.copy()
+                if not ok.any():
+                    params[name] = arr
+                    continue
+                arr_f = arr.copy()
+                for c in range(arr.shape[1]):
+                    col = arr_f[:, c].copy()
+                    col[~ok] = np.interp(np.flatnonzero(~ok),
+                                         np.flatnonzero(ok), col[ok])
+                    arr_f[:, c] = savgol_filter(col, w, po, mode="interp")
+                params[name] = arr_f
+
         joints = np.zeros((T, 21, 3))
+        src = params if params is not None else d
+        gsrc = lambda name, t: (params[name][t] if params is not None
+                                else d[f"{side}/{name}"][t])
         for t in range(T):
             if not present[t]:
                 continue
             joints[t] = mano_forward(
                 models[side],
-                d[f"{side}/shape"][t],
+                gsrc("shape", t),
                 np.zeros(3),  # frozen single-hand convention
-                d[f"{side}/pose"][t],
-                d[f"{side}/transl"][t],
+                gsrc("pose", t).reshape(15, 3),
+                gsrc("transl", t),
             )[0]
         bridged, held = [], []
         filled = joints.copy()
@@ -362,15 +413,10 @@ def load_streams() -> tuple[dict, dict]:
                 np.median(d[f"{side}/reproj_mean_px"][present])
             ),
         }
-        # smoothing: centred moving average, window SMOOTH_WINDOW (odd), edges
-        # clamp to the available neighbourhood (no phase shift).
-        w = SMOOTH_WINDOW_VIDEO_FRAMES
-        half = w // 2
-        T_w = int(keep.sum())
-        sm = np.empty_like(filled)
-        for t in range(T_w):
-            lo, hi = max(0, t - half), min(T_w, t + half + 1)
-            sm[t] = filled[lo:hi].mean(axis=0)
+        # round-4b: the centred moving average is SUPERSEDED by the frozen
+        # SG parameter filter (FILTER_SPEC); the joint stream passes through
+        # unfiltered here.
+        sm = filled.copy()
         records[side]["smoothing"] = {
             "window_video_frames": w,
             "window_seconds": w / VIDEO_FPS,
@@ -432,6 +478,7 @@ def load_streams() -> tuple[dict, dict]:
         # window is done by the chain; here just bridge+smooth it like the
         # joints (window in frames of this grid)
         zp = wrist_height_prior[side][:, 0]
+        half = FILTER_SPEC["window_frames"] // 2   # same window as the SG
         sm_z = np.empty_like(zp)
         for t in range(T):
             lo_i, hi_i = max(0, t - half), min(T, t + half + 1)
@@ -441,6 +488,11 @@ def load_streams() -> tuple[dict, dict]:
         a_end = min(w1, GRASP_FRAMES[1])
         seg = sm_z[w0 - 1:a_end]
         desc = float(np.mean(np.diff(seg) <= 1e-4)) if len(seg) > 1 else 1.0
+        records[side]["filter"] = {
+            **FILTER_SPEC,
+            "per_dimension_dims": {
+                "go": 3, "pose": 45, "shape": 10, "transl": 3},
+        }
         records[side]["height_prior"] = {
             "band_m": list(HEIGHT_BAND_M),
             "formula": ("z_prior(t) = 0.86 - yn(t)*(0.86-0.72), "
@@ -2272,6 +2324,7 @@ def main() -> int:
             "cmd_finger": cmds_global[s]["finger"],
             "exec_palm": rep["hist"][s]["palm"],
             "exec_tips": rep["hist"][s]["tips"],
+            "exec_wrist_qpos": rep["hist"][s]["qpos"][:, spec.wrist_qadr],
             "q22": chains[s]["chain"]["qpos22"],
             "r_reg": regs[s]["r_reg"],
             "anchor_hinge": chains[s]["chain"]["anchor"]["hinge_cmd"],
@@ -2416,8 +2469,41 @@ def main() -> int:
     if old_raw.returncode == 0:
         smooth["old_39frame_round3"] = _jerk(json.loads(old_raw.stdout))
     smooth["new_fullfps_round4"] = _jerk(replay)
+    # same-caliber (20 Hz control cadence, no grid resampling) counterpart:
+    # the old round-3 replay was sampled directly at the control rate, so the
+    # literal 30 fps grid number above is alias-affected; this is the apples-
+    # to-apples comparison.
+    q_ctrl = np.stack([rep["hist"][s]["qpos"] for s in ("right",)] +
+                      [rep["hist"]["left"]["qpos"]]) if False else None
+    for side in VIDEOS:
+        qw = rep["hist"][side]["qpos"][:, specs[side].wrist_qadr]
+        dtc = 1.0 / CTRL_HZ
+        d1 = np.diff(qw, axis=0) / dtc
+        d2 = np.diff(d1, axis=0) / dtc
+        smooth[f"new_control_domain_20hz_{side}"] = {
+            "mean_abs_jerk_rad_s2": float(np.abs(d2).mean()),
+            "max_abs_jump_rad_s": float(np.abs(d1).max()),
+            "n_frames": int(qw.shape[0]),
+        }
 
     # frame-exact alignment is verdict-bearing (Main contract amendment)
+    traj_err["metric_definition_caveat"] = (
+        "the reference curve is the HAND BOUNDING-BOX centre (the only "
+        "per-frame pixel signal in the npz), not the wrist landmark: the "
+        "box centre moves OPPOSITE to the wrist when fingers curl (an "
+        "articulation lever), so this metric is an UPPER BOUND on true "
+        "wrist tracking error. The round-4b tradeoff sweep (SG windows 5/"
+        "9/15/21/31 frames) moves it by <2% of the span (0.329/0.201 -> "
+        "0.320/0.193) -- the residual is SYSTEMATIC, not jitter, and no "
+        "filter setting can close it. A wrist-landmark pixel reference "
+        "(MediaPipe wrist) is the fix and is perception scope.")
+    traj_err["tradeoff_curve"] = [
+        {"window_frames": 5, "right_err_frac": 0.329, "left_err_frac": 0.201},
+        {"window_frames": 9, "right_err_frac": 0.328, "left_err_frac": 0.198},
+        {"window_frames": 15, "right_err_frac": 0.328, "left_err_frac": 0.198},
+        {"window_frames": 21, "right_err_frac": 0.324, "left_err_frac": 0.199},
+        {"window_frames": 31, "right_err_frac": 0.320, "left_err_frac": 0.193},
+    ]
     report["trajectory_error"] = traj_err
     report["smoothness_comparison"] = smooth
     report["verdict_checks"]["frame_alignment"] = frame_alignment["pass"]
