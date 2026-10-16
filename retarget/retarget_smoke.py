@@ -83,7 +83,7 @@ URDF_TO_MJCF_ACTUATOR_ORDER = [
     MJCF_FINGER_JOINTS.index(mjcf) for _urdf, mjcf in URDF_MJCF_JOINT_PAIRS
 ]
 WRIST_JOINTS = ["wrist_x", "wrist_y", "wrist_z", "wrist_rx", "wrist_ry", "wrist_rz"]
-# The W6a-v2 scene (MJCF_COMMIT 9a5c384, sha256 6449871e...) carries a second,
+# The W6a-v8 scene (MJCF_COMMIT eba5d7b, sha256 8b6a6ddd...) carries a second,
 # mirrored hand: identical upstream naming with a "_left" suffix.  nu 22 -> 44,
 # nq/nv 29/28 -> 51/50.  Smoke 5 is single-hand *input*: the right hand executes
 # the retargeted clip and the left hand is frozen at its initial pose (its
@@ -262,7 +262,12 @@ WRIST_ROT_CEILING_RAD = 0.5
 #     generation's table.  The wrist slides keep their W6a re-scale
 #     (x/z kp=15000/damping=280, y kp=180/damping=25) and the hinges are
 #     untouched (kp 14, damping 1.2), so the rate tables are unchanged across
-#     all three generations.
+#     all three generations;
+#   * W6a-v5 (8c58733, blob 7b7a1adf...) and W6a-v8 (eba5d7b, blob
+#     8b6a6ddd...) re-posed/mounted the hands and re-sized the passive finger
+#     springs (per-joint in v8) -- re-affirmed by per-joint actuator diffs:
+#     ZERO forcerange/kp/dof_damping changes in both steps, so these numbers
+#     are unchanged across all five scene generations.
 SERVO_WINDING_POSITION_CAP_RAD = {
     # right hand (the hand the retargeted clip drives)
     "ffj0": 0.09199632014719411,
@@ -1931,7 +1936,7 @@ def _blocker(qa: dict, rep: dict) -> dict[str, Any]:
     )
     return {
         "what": (
-            "dual-hand W6a-v5 scene (MJCF 8c58733, blob 7b7a1adf...; "
+            "dual-hand W6a-v8 scene (MJCF eba5d7b, blob 8b6a6ddd...; "
             "single-hand-input mode: the right hand executes the retargeted "
             "clip, the left hand is frozen at its reset pose): the base solve "
             "and the constrained solve solved -- the commanded hand sits "

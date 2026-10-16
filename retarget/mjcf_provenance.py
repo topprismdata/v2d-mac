@@ -36,28 +36,49 @@ if str(REPO) not in sys.path:
 
 from retarget import retarget_smoke as rs  # noqa: E402
 
-#: The MJCF revision this re-run is accounted against.  W6a-v5 landed in
-#: 8c58733: 180-degree hand yaw (right `0 0 pi` / left `0 0 0`), fingers into
-#: the box faces, forearm+flange mounts and a visual gantry (ngeom 89 -> 99).
-#: Verified: blob(8c58733) == sha256 of the working-tree XML (7b7a1adf...).
+#: The MJCF revision this re-run is accounted against.  W6a-v8 landed in
+#: eba5d7b (+3adf741/8be7dc9): finger return springs became PER-JOINT --
+#: k_j sized to each joint's static-hold budget (k = min(0.09,
+#: max(0.01, (0.8*cap - gravity)/|seed deviation|)), with thj2/thj3 and
+#: mfj0 stepped down further), springref = the gate-3 solution's per-joint
+#: mean clipped into the joint's range.  Verified: blob(eba5d7b) == sha256
+#: of the working-tree XML (8b6a6ddd...).
 #: RE-AFFIRMATION (per-joint forcerange/kp/dof_damping diffed against the
-#: 6449871e generation): 0 differences across all 44 actuators -- the three
+#: 7b7a1adf generation): 0 differences across all 44 actuators -- the three
 #: servo winding tables carry over unchanged; the sha pin moves, the numbers
 #: do not.
-#: NEW PASSIVE CONSTANTS, recorded because they change the scene's physics
-#: without touching the actuator tables: every finger joint now carries a
-#: return spring (stiffness 0.4, springref 0 on the abduction DoF / 0.6 on
-#: the flexion DoFs -- the flexion home).  Springs are NOT a winding-table
-#: input (the tables read actuator forcerange/kp and dof_damping only), but
-#: they do load the DoF: the position gate's explanation balance already
-#: reads them through qfrc_passive inside qfrc_other, so no gate semantics
-#: change.
-MJCF_COMMIT = "8c58733"
+#:
+#: PASSIVE CONSTANTS, per joint (v8; the v5 single "0.4 + springref" remark is
+#: superseded -- k is no longer a shared constant).  Left hand mirrors right
+#: bit-identically (asserted per mirror pair in the winding-tolerance tests'
+#: spirit; measured off the model):
+#:   ffj0 k=0.0318 ref=-0.144   mfj0 k=0.005  ref=0.132
+#:   ffj1 k=0.09   ref=0.63     mfj1 k=0.0739 ref=0.466
+#:   ffj2 k=0.09   ref=0.58     mfj2 k=0.085  ref=0.64
+#:   ffj3 k=0.0251 ref=-0.014   mfj3 k=0.0315 ref=0.449
+#:   rfj0 k=0.0104 ref=0.101    thj0 k=0.09   ref=0.606
+#:   rfj1 k=0.0445 ref=1.06     thj1 k=0.09   ref=0.573
+#:   rfj2 k=0.09   ref=0.73      thj2 k=0.01  ref=0.938
+#:   rfj3 k=0.0552 ref=0.652    thj3 k=0.01   ref=0.407
+#: (measured k range 0.005-0.09; the 0.005 floor on mfj0 and 0.01 on
+#: thj2/thj3 sit below the quoted 0.01 floor -- recorded as measured, the
+#: sizing formula belongs to W6a's R10-v8 doc.)
+#: Springs are NOT a winding-table input (the tables read actuator
+#: forcerange/kp and dof_damping only), but they do load the DoF: the
+#: position gate's explanation balance already reads them through
+#: qfrc_passive inside qfrc_other, so no gate semantics change.
+#:
+#: WATCH ITEM (handover to W6c, recorded here so it cannot get lost):
+#: mfj0_left under gravity carries a load of 86% of its servo cap -- outside
+#: the 0.8 static-hold budget but below saturation.  First observed by the
+#: v8 static-hold gate; it is contact-physics evidence for W6c's A2/A3a
+#: accounting, not a smoke-5 gate.
+MJCF_COMMIT = "eba5d7b"
 #: The MJCF revision the *previous* smoke-5 numbers were taken on. Kept so the
-#: two data sets can never be silently mixed.  9a5c384 is the W6a-v2 upright
-#: generation (blob 6449871e...) -- the superseded physics the artefacts were
-#: stamped against before v5 landed.
-MJCF_COMMIT_BASELINE = "9a5c384"
+#: two data sets can never be silently mixed.  8c58733 is the W6a-v5
+#: generation (blob 7b7a1adf..., shared-constant springs) -- the superseded
+#: physics the artefacts were stamped against before v8 landed.
+MJCF_COMMIT_BASELINE = "8c58733"
 
 OUT_DIR = REPO / "runs/p0/smoke5_retarget"
 REPORT_PATH = OUT_DIR / "report.json"
