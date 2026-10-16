@@ -68,13 +68,35 @@ def nid(model, objtype, name):
 
 
 # ============================================================== dual-hand stats
+# W6a-v3: 84 hand collision+visual geoms (42 x 2) + 2 forearm cuffs + box +
+# 2 chamfer plates + floor + slab. Named once here; the count itself is derived
+# from the builder's emission, and test_w6_model_statistics checks BOTH the
+# explicit expectation and the additive accounting so a new geom cannot pass
+# by quietly bumping the constant.
+EXPECTED_NGEOM = 91
+
+
 def test_w6_model_statistics(model):
     # 2 hands x (7 freejoint-equivalent wrist DoF + 16 fingers) + object 7
     assert model.nq == 51
     assert model.nv == 50
     assert model.nu == 44
-    # 42 upstream hand geoms x 2 + box + 2 chamfer plates + floor + slab
-    assert model.ngeom == 89
+    assert model.ngeom == EXPECTED_NGEOM
+    # additive accounting: every family counted independently must sum to it
+    n_hand = sum(
+        1 for g in range(model.ngeom)
+        if (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY,
+                              int(model.geom_bodyid[g])) or "")
+        .startswith(("ff_", "mf_", "rf_", "th_", "palm", "hand_root"))
+        and mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, g) != "floor")
+    n_finger = sum(1 for g in range(model.ngeom)
+                   if (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, g)
+                       or "").startswith(("object", "chamfer")))
+    n_static = 2  # floor + table slab
+    assert n_hand + n_finger + n_static == EXPECTED_NGEOM, (
+        f"geom accounting drifted: {n_hand} hand + {n_finger} object + "
+        f"{n_static} static != {EXPECTED_NGEOM} - update EXPECTED_NGEOM with "
+        "the new family counted explicitly, never by silencing this test")
 
 
 def test_w6_both_hand_roots_exist_at_the_end_faces(model, data):
@@ -276,12 +298,23 @@ def _objective(model, d, h, q22, tol):
         if pz - r <= 0.0 or (abs(px) < 0.452 and abs(py) < 0.452
                              and abs(pz - 0.68) < 0.028):
             return 0.5
+    # W6a-v3: TRUE point-to-rectangle distance on the pad CENTRE. The pad
+    # radius no longer absorbs out-of-footprint offset - the v2 solution
+    # "touched" the face only by grazing the y = -0.12 edge with the pad
+    # sphere 11.9 mm outside the rectangle. A centre inside the footprint but
+    # beyond the face plane by more than the tolerance is burial, not touch.
     best = np.inf
-    for g, rad in zip(h["pads"], h["pad_rad"]):
+    for g in h["pads"]:
         px, py, pz = d.geom_xpos[g]
-        gap = _rect_gap(px, py, pz, h["side"]) - rad
-        if gap < -tol:
-            gap += 0.5      # deep interpenetration is not touch
+        s = px - h["side"] * FACE_X
+        dy = max(abs(py) - HALF_Y, 0.0)
+        dz = max(BOX_BOT - pz, pz - BOX_TOP, 0.0)
+        if dy == 0.0 and dz == 0.0:
+            if -s * h["side"] < -tol:
+                return 0.5        # pad centre buried past the face plane
+            gap = abs(s)
+        else:
+            gap = float(np.hypot(np.hypot(s, dy), dz))
         # W6a-v2 P2: the touch must land mid-face, not on the bottom edge
         in_band = (BOX_BOT + 0.4 * 2 * HALF_Z) <= pz <= (BOX_TOP - 0.01)
         best = min(best, gap if in_band else gap + 0.5)
@@ -293,17 +326,12 @@ def _objective(model, d, h, q22, tol):
     return best
 
 
-# Offline posture-constrained scan solutions (REVISION.md R10-v2); refine seeds
-# only - the objective and assertions are seed-independent.
+# Offline posture-constrained scan solutions (REVISION.md R10-v3; strict
+# rectangle-distance criterion, palm/table/posture constraints P1-P3). Refine
+# seeds only - the objective and assertions are seed-independent.
 GATE3_SEEDS = {
-    "right": [-0.075081, -0.060462, 0.025192, 1.485922, -0.730796, -0.632481,
-              -0.025647, 0.809358, 0.559232, 1.438938, 0.447823, -0.011455,
-              0.461726, -0.169228, -0.350707, 1.022862, 1.034151, 0.430002,
-              1.396, 0.189307, -0.040600, 0.246287],
-    "left": [-0.179498, -0.044378, 0.087447, -1.573765, 0.777070, 0.730345,
-             0.185033, 0.126743, 1.077645, 0.612159, -0.436767, 0.424647,
-             0.785736, 0.857879, -0.067007, 0.256394, 0.447655, -0.150882,
-             0.441808, 0.399183, -0.103977, 1.461166],
+    "right": [-0.035954, -0.053617, 0.078879, 1.337585, -0.157081, -0.077287, -0.287087, 1.214734, 1.090627, 0.095416, 0.291949, 1.559421, 1.100877, -0.120596, -0.108949, 0.187543, 0.632502, 0.648451, 0.263, 0.992412, 0.315025, -0.155295],
+    "left": [-0.178961, 0.04363, 0.051572, -1.764295, -0.909718, 0.610392, 0.220807, 1.61, 0.95485, 0.501157, 0.056973, 0.077465, -0.155368, 0.662045, 0.359245, 1.122549, 0.624598, 1.550039, 0.473049, 0.450418, 1.218115, 0.35481],
 }
 
 
@@ -379,14 +407,14 @@ def test_w6_gate3_both_hands_reach_their_end_faces(model):
     touches = {}
     for hname in ("right", "left"):
         h = hands[hname]
+        # W6a-v3: the pad CENTRE's true rectangle distance - no radius term
         gaps[hname] = min(
-            _rect_gap(*d.geom_xpos[g], h["side"]) - rad
-            for g, rad in zip(h["pads"], h["pad_rad"]))
-        # W6a-v2 P2: at least one pad ON the face, hit-z inside the mid band
+            _rect_gap(*d.geom_xpos[g], h["side"]) for g in h["pads"])
+        # P2: at least one pad ON the face, centre in the mid band
         touches[hname] = [
             (g, tuple(np.round(d.geom_xpos[g], 4)))
-            for g, rad in zip(h["pads"], h["pad_rad"])
-            if _rect_gap(*d.geom_xpos[g], h["side"]) - rad <= tol
+            for g in h["pads"]
+            if _rect_gap(*d.geom_xpos[g], h["side"]) <= tol
             and (BOX_BOT + 0.4 * 2 * HALF_Z) <= d.geom_xpos[g][2] <= (BOX_TOP - 0.01)
         ]
     worst = max(gaps.values())

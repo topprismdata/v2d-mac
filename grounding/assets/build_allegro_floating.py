@@ -466,11 +466,20 @@ TEMPLATE_HEAD = """<mujoco model="allegro_floating">
     </body>
 
     <body name="hand_root" pos="{hand_home_r}" euler="{hand_euler_r}">
+      <!-- W6a-v3: visual-only forearm cuff (kills the floating-hand look).
+           contype/conaffinity 0 + mass 0 => zero physical effect; the birth /
+           settle / gate numbers are bit-identical to the cuff-free scene. -->
+      <geom name="forearm_visual" type="capsule" fromto="0 0 0 -0.13 0 0"
+        size="0.024" mass="0" contype="0" conaffinity="0"
+        rgba="0.25 0.25 0.28 1"/>
 {wrist_joints}
 {palm}
     </body>
 
     <body name="hand_root_left" pos="{hand_home_l}" euler="{hand_euler_l}">
+      <geom name="forearm_left_visual" type="capsule" fromto="0 0 0 -0.13 0 0"
+        size="0.024" mass="0" contype="0" conaffinity="0"
+        rgba="0.25 0.25 0.28 1"/>
 {wrist_joints_left}
 {palm_left}
     </body>

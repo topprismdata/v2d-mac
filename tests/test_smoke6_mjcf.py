@@ -973,7 +973,7 @@ def test_generated_xml_is_reproducible_from_the_generator():
 def test_model_loads_and_statistics_are_self_consistent(model):
     # 42 hand geoms x 2 (W6a dual hands) + 3 object (box + 2 chamfers)
     # + floor + table slab (pedestal removed in W6a)
-    assert model.ngeom == 89
+    assert model.ngeom == 91
     assert model.nbody == 46
     assert model.nq == 51
     assert model.nu == 44
@@ -1014,8 +1014,8 @@ def test_r8_lip_geometry_is_refuted_and_withdrawn(model):
     # the +2 geoms vs the pre-W5 scene are the W5 chamfer plates, NOT the lip:
     # the lip geoms themselves stay out (checked by id above). W6a doubles the
     # hand geoms (42 x 2) and drops the pedestal, netting 89.
-    assert model.ngeom == 89, (
-        f"{model.ngeom} geoms: expected 84 hand + 3 object + floor + slab, with "
+    assert model.ngeom == 91, (
+        f"{model.ngeom} geoms: expected 84 hand + 2 cuffs + 3 object + floor + slab, with "
         "the refuted lip still withdrawn and the pedestal still removed")
     n_obj = len(builder.object_geom_names())
     assert model.npair == len(W35E_BOX_PAIRS) * n_obj, (
@@ -1151,5 +1151,5 @@ def test_model_stats_script_runs():
     assert out.returncode == 0, out.stderr
     payload = json.loads(out.stdout)
     # W6a: 84 hand + 3 object + floor + slab
-    assert payload["model_shape"]["ngeom"] == 89
+    assert payload["model_shape"]["ngeom"] == 91
     assert payload["model_shape"]["nu"] == 44

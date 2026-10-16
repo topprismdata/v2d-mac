@@ -168,6 +168,12 @@
     </body>
 
     <body name="hand_root" pos="0.185 0 0.795" euler="0 0 0">
+      <!-- W6a-v3: visual-only forearm cuff (kills the floating-hand look).
+           contype/conaffinity 0 + mass 0 => zero physical effect; the birth /
+           settle / gate numbers are bit-identical to the cuff-free scene. -->
+      <geom name="forearm_visual" type="capsule" fromto="0 0 0 -0.13 0 0"
+        size="0.024" mass="0" contype="0" conaffinity="0"
+        rgba="0.25 0.25 0.28 1"/>
       <joint name="wrist_x" type="slide" axis="1 0 0" range="-0.18 0.18"
         damping="280" armature="0.03"/>
       <joint name="wrist_y" type="slide" axis="0 1 0" range="-0.18 0.18"
@@ -283,6 +289,9 @@
     </body>
 
     <body name="hand_root_left" pos="-0.185 0 0.795" euler="0 0 3.141592653590">
+      <geom name="forearm_left_visual" type="capsule" fromto="0 0 0 -0.13 0 0"
+        size="0.024" mass="0" contype="0" conaffinity="0"
+        rgba="0.25 0.25 0.28 1"/>
       <joint name="wrist_x_left" type="slide" axis="1 0 0" range="-0.18 0.18"
         damping="280" armature="0.03"/>
       <joint name="wrist_y_left" type="slide" axis="0 1 0" range="-0.18 0.18"

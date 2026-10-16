@@ -676,10 +676,10 @@ class LiftHoldEnv(gym.Env):
         # single-hand reset dropped wrist_z by 0.02 to meet the raised box; the
         # dual-hand home is already placed, so the slides stay at 0.
         pre_curl_base = np.array([
-            0.0, 0.9, 0.7, 0.4,
-            0.0, 0.9, 0.7, 0.4,
-            0.0, 0.9, 0.7, 0.4,
-            0.8, 0.5, 0.4, 0.3,
+            0.0, 0.7, 0.55, 0.35,
+            0.0, 0.7, 0.55, 0.35,
+            0.0, 0.7, 0.55, 0.35,
+            0.7, 0.45, 0.35, 0.3,
         ])
         for h in range(N_HANDS):
             wq = self.wrist_qpos_adr[h]
