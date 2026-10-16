@@ -941,21 +941,26 @@ XML sha256 = `6449871e5dea2dc412d04674d8de9d39cf8a3efbc98ac30f5cf23377d2acadec`�
 - 掌向完全自由（v5 裁决覆盖 v4 的 <120°）：实测掌法向 104.6°/141.7°（背对相机，
   恰是视频正确的样子），纯证据量落盘 gate3_qpos.json。
 
-### 二、统一 reset 路径（裸 settle == env.reset）
+- **统一 reset 路径（裸 settle == env.reset）**
 
 v4 报告的"净空 133-147 mm"是 env.reset 路径；裸 MjData settle（qpos0 + ctrl 0）仍是直指姿态——
 两条路径不同。修正机制用 **关节弹簧**（`stiffness=0.4` + `springref`=各指屈曲角）而非 joint `ref`：
 `ref` 只平移关节值（编译姿态仍是直指），表达不了"默认即屈曲"；弹簧让**两条 settle 路径
-都收敛到同一屈曲家位**（实测裸 settle 屈曲 0.15-0.27 rad，指尖抬离桌面 89 mm；env.reset
-经 ctrl 镜像收敛到 springref 附近）。位置伺服仍是主动控制（reset 先 settle 后镜像，弹簧无对抗）；
+都收敛到同一屈曲家位**（实测裸 settle 屈曲 0.15-0.27 rad；env.reset 经 ctrl 镜像收敛到
+springref 附近）。位置伺服仍是主动控制（reset 先 settle 后镜像，弹簧无对抗）；
 执行器 kp/forcerange 未动。指弹簧（0.4 N·m/rad ≈ 指重力矩的 5-20 倍）是新的被动常量，
 已记入本节、知会 W6ServoTol。
 
-### 三、home/净空（v5 朝向下重推导）
+### 三、home/净空（v5 朝向 + 终版 home ±0.235 上实测）
 
-- `HAND_HOME = ±0.235, 0, 0.755`：直指位指尖距端面矩形 ~23 mm（出生零接触）；
-  弹簧卷起后指尖 **z 0.79-0.81，离桌 89 mm ≥ 50 mm** ✓；env reset 指尖 0.829-0.858（129-158 mm）✓。
+- `HAND_HOME = ±0.235, 0, 0.755`：直指位指尖距端面矩形 ~23 mm（出生零接触，仅盒 4 条精确相切）。
+- **裸 settle**：指尖 z 0.782–0.789，离桌 **82–89 mm**；弹簧卷起 0.15–0.27 rad（弹簧-重力平衡，
+  指尖上卷背离桌面）。
+- **env reset**：指尖 z 0.800–0.839，离桌 **100–139 mm**。两条路径视觉同族（立姿、指卷向面）。
 - 门 2 新增**双手 8 指尖净空 ≥ 50 mm 断言** + 手-桌零接触断言（v2 起）。
+- 流程更正：本节初稿误记 sha `b17544ab…`（home 终版 ±0.235 定稿**前**的中间态构建）。
+  正确值 = 提交树内 blob：**`7b7a1adf…`**（git cat-file 复核）。流程新规已执行：
+  落地 sha 必须对象库复核后报告。
 
 ### 四、C6 控制实验 superseded（结构性前提消失）
 
@@ -968,7 +973,7 @@ v4 报告的"净空 133-147 mm"是 env.reset 路径；裸 MjData settle（qpos0 
 ### 五、状态
 
 - ngeom 99 / nbody 49；XML sha256 =
-  `b17544ab7bf4f290fcf137416a3b0a929a689b59e574b37d4f006dc186bd82b5`（逐字节可复现）。
+  XML sha256 = `7b7a1adffab68f0156297f5e654d72b9ef01bc4036874e34870027ffc11563dc`（git cat-file 对象库复核；初稿误记中间态 b17544ab，见 §三流程更正）。
 - 核心电池：scene_w6 12、smoke4_env（C6 superseded 外全绿）、smoke4_reward、scene_init 42、
   p0_plumbing 8、pedestal_load 11+2skip、accept 5+2skip、smoke4_demos 14+6skip+2 既有红灯。
 - 渲染：`docs/human_vs_sim_w6a.png`（v5 图注、每帧置物、龙门入画、指尖离桌可见余量）。
