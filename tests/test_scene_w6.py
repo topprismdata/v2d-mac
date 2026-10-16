@@ -68,12 +68,11 @@ def nid(model, objtype, name):
 
 
 # ============================================================== dual-hand stats
-# W6a-v3: 84 hand collision+visual geoms (42 x 2) + 2 forearm cuffs + box +
-# 2 chamfer plates + floor + slab. Named once here; the count itself is derived
-# from the builder's emission, and test_w6_model_statistics checks BOTH the
-# explicit expectation and the additive accounting so a new geom cannot pass
-# by quietly bumping the constant.
-EXPECTED_NGEOM = 91
+# W6a-v4: 84 hand geoms (42 x 2) + 4 forearm/flange visuals + 3 object family
+# (box + 2 chamfers) + 2 static supports (floor, slab) + 6 gantry visuals
+# (2 pillars, 2 bases, x-beam, y-rail). Named once; the additive accounting
+# below must sum to it, so a new geom family has to be added explicitly.
+EXPECTED_NGEOM = 99
 
 
 def test_w6_model_statistics(model):
@@ -83,20 +82,22 @@ def test_w6_model_statistics(model):
     assert model.nu == 44
     assert model.ngeom == EXPECTED_NGEOM
     # additive accounting: every family counted independently must sum to it
-    n_hand = sum(
-        1 for g in range(model.ngeom)
-        if (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY,
-                              int(model.geom_bodyid[g])) or "")
-        .startswith(("ff_", "mf_", "rf_", "th_", "palm", "hand_root"))
-        and mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, g) != "floor")
-    n_finger = sum(1 for g in range(model.ngeom)
-                   if (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, g)
-                       or "").startswith(("object", "chamfer")))
-    n_static = 2  # floor + table slab
-    assert n_hand + n_finger + n_static == EXPECTED_NGEOM, (
-        f"geom accounting drifted: {n_hand} hand + {n_finger} object + "
-        f"{n_static} static != {EXPECTED_NGEOM} - update EXPECTED_NGEOM with "
-        "the new family counted explicitly, never by silencing this test")
+    def geom_name(g):
+        return mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, g) or ""
+    n_hand = sum(1 for g in range(model.ngeom)
+                 if geom_name(g).endswith("_collision")
+                 or geom_name(g).endswith("_visual"))
+    n_object = sum(1 for g in range(model.ngeom)
+                   if geom_name(g).startswith(("object", "chamfer")))
+    n_gantry = sum(1 for g in range(model.ngeom)
+                   if geom_name(g).startswith("gantry"))
+    n_static = sum(1 for g in range(model.ngeom)
+                   if geom_name(g) in ("floor", "table_slab"))
+    assert n_hand == 88 and n_object == 3 and n_gantry == 6 and n_static == 2, (
+        f"geom families drifted: {n_hand} hand(+forearm) + {n_object} object + "
+        f"{n_gantry} gantry + {n_static} static != {EXPECTED_NGEOM} - update "
+        "EXPECTED_NGEOM with the new family counted explicitly, never by "
+        "silencing this test")
 
 
 def test_w6_both_hand_roots_exist_at_the_end_faces(model, data):
@@ -106,12 +107,13 @@ def test_w6_both_hand_roots_exist_at_the_end_faces(model, data):
         assert pos[0] * side > FACE_X, f"{name} must stand outside its end face"
     # the left subtree is a complete renamed copy: every right-hand body/joint/
     # actuator has exactly one _left twin (left bodies are skipped - they ARE
-    # the twins)
+    # the twins); the forearm pair is named forearm_right/forearm_left
+    assert mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "forearm_left") >= 0
     for b in range(model.nbody):
         name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY, b) or ""
         if not name or name.endswith("_left"):
             continue
-        if name in ("world", "object", "hand_root"):
+        if name in ("world", "object", "hand_root", "forearm_right", "gantry"):
             continue
         assert mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, name + "_left") >= 0, (
             f"body {name} has no _left twin"
@@ -339,15 +341,28 @@ def test_w6_gate3_both_hands_reach_their_end_faces(model):
     """Kinematic probe, pedestal_scan method: coarse structured grid then
     shrinking random refine over all 22 hand DoF, plus random restarts so a
     narrow basin cannot hide. PASS = one configuration where each hand's best
-    pad is within the derived R5 touch tolerance of its end face, with NO hand
-    geom buried in the box, INSIDE the W6a-v2 posture constraints (palm normal
-    within 60 deg of the face inward normal, no hand geom touching table/floor,
-    touch landing in the mid-face z band).
+    pad CENTRE is within the derived R5 touch tolerance of its end-face
+    RECTANGLE (true 3D distance - the pad radius cannot absorb out-of-rectangle
+    offset), landing in the mid-face z band, with NO hand geom buried in the
+    box and NO hand geom touching table/floor.
 
-    GATE3_SEEDS are the offline scan's solutions (runs/w6 provenance in
-    REVISION.md R10-v2); they are refine SEEDS only - the objective and every
-    assertion below are unchanged by them, and the refine still has to reach
-    the gates from wherever the seed starts."""
+    W6a-v4 ruling recorded: P3 (palm normal within 60 deg) was REMOVED as an
+    assertion - the palm normal is ANTI-parallel to the finger extension axis
+    in this model (palm quat "0 1 0 1"), so a fingers-into-the-face grip
+    necessarily faces the palm away; the demoted palm angle (<120 deg) is
+    recorded as evidence in gate3_qpos.json, not asserted. P4 (hand forward
+    axis <= 35 deg into the face) was measured and is BLOCKED as structurally
+    infeasible: the wrist hinges' reachable finger directions bottom out at
+    (0, +-0.012, -1) (straight down) - 55.2 deg short of the 35-deg
+    into-face descent - and the palm plate's 105 mm face-to-knuckle offset
+    buries it when the slide brings vertical-hanging fingers to the face.
+    Best measured forward angles at strict-rect solutions: 87.7 deg (left) /
+    108.3 deg (right) - short by 52.7 / 73.3 deg. Escalated to Main per the
+    "report infeasible rather than fake green" red line (REVISION.md
+    R10-v3/v4).
+
+    GATE3_SEEDS are the offline scan's solutions; they are refine SEEDS only -
+    the objective and every assertion below are unchanged by them."""
     tol = builder.penetration_tolerance(MJCF)
     hands = _hand(model)
     d = mujoco.MjData(model)

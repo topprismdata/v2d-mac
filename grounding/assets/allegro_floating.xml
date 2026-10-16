@@ -141,6 +141,34 @@
     <light pos="0.3 -0.4 1.4" dir="0 0 -1" directional="true"/>
     <geom name="floor" type="plane" size="0 0 0.05" rgba="0.25 0.25 0.28 1"
       friction="0.8 0.02 0.002"/>
+    <!-- W6a-v4: visual gantry (zero physics) - the hands mount on it, they do
+         not float. Beam spans y above the table; pillars land outside the
+         slab; rail hangs under the beam over the box; base blocks ground the
+         pillars. All mass 0, no collision. The geoms live on a JOINTLESS
+         static body (not worldbody) on purpose: the env's placement resolver
+         collects world-body boxes as support surfaces, and a box parked on
+         the gantry beam falls 30 cm to the table - the static body takes the
+         gantry out of that set without any name-based filter. -->
+    <body name="gantry" pos="0 0 0">
+      <geom name="gantry_pillar_negx" type="box" size="0.03 0.03 0.525"
+        pos="0.5 0 0.525" mass="0" contype="0" conaffinity="0"
+        rgba="0.3 0.3 0.33 1"/>
+      <geom name="gantry_pillar_posx" type="box" size="0.03 0.03 0.525"
+        pos="-0.5 0 0.525" mass="0" contype="0" conaffinity="0"
+        rgba="0.3 0.3 0.33 1"/>
+      <geom name="gantry_base_negx" type="box" size="0.12 0.12 0.04"
+        pos="0.5 0 0.04" mass="0" contype="0" conaffinity="0"
+        rgba="0.24 0.24 0.27 1"/>
+      <geom name="gantry_base_posx" type="box" size="0.12 0.12 0.04"
+        pos="-0.5 0 0.04" mass="0" contype="0" conaffinity="0"
+        rgba="0.24 0.24 0.27 1"/>
+      <geom name="gantry_beam_x" type="box" size="0.5 0.03 0.03"
+        pos="0 0 1.05" mass="0" contype="0" conaffinity="0"
+        rgba="0.34 0.34 0.37 1"/>
+      <geom name="gantry_rail_y" type="box" size="0.03 0.55 0.03"
+        pos="0 0 1.015" mass="0" contype="0" conaffinity="0"
+        rgba="0.4 0.4 0.44 1"/>
+    </body>
     <geom name="table_slab" type="box" size="0.45 0.45 0.02" pos="0 0 0.6800"
       material="table" friction="0.9 0.02 0.002"/>
 
@@ -168,12 +196,19 @@
     </body>
 
     <body name="hand_root" pos="0.185 0 0.795" euler="0 0 0">
-      <!-- W6a-v3: visual-only forearm cuff (kills the floating-hand look).
-           contype/conaffinity 0 + mass 0 => zero physical effect; the birth /
-           settle / gate numbers are bit-identical to the cuff-free scene. -->
-      <geom name="forearm_visual" type="capsule" fromto="0 0 0 -0.13 0 0"
-        size="0.024" mass="0" contype="0" conaffinity="0"
-        rgba="0.25 0.25 0.28 1"/>
+      <!-- W6a-v4: visual forearm + flange (user request: the hand must grow
+           from a mount, not float). Welded child body, zero-mass visual-only
+           geoms (contype/conaffinity 0, mass 0) => zero physical effect; the
+           birth / settle / gate numbers are bit-identical to the bare scene.
+           Extends back-and-up 45 deg from the wrist (opposite the fingers). -->
+      <body name="forearm_right" pos="0 0 0">
+        <geom name="forearm_right_visual" type="capsule"
+          fromto="0 0 0 -0.085 0 0.085" size="0.025" mass="0"
+          contype="0" conaffinity="0" rgba="0.35 0.35 0.38 1"/>
+        <geom name="flange_right_visual" type="cylinder"
+          fromto="-0.085 0 0.085 -0.100 0 0.100" size="0.035" mass="0"
+          contype="0" conaffinity="0" rgba="0.45 0.45 0.48 1"/>
+      </body>
       <joint name="wrist_x" type="slide" axis="1 0 0" range="-0.18 0.18"
         damping="280" armature="0.03"/>
       <joint name="wrist_y" type="slide" axis="0 1 0" range="-0.18 0.18"
@@ -289,9 +324,14 @@
     </body>
 
     <body name="hand_root_left" pos="-0.185 0 0.795" euler="0 0 3.141592653590">
-      <geom name="forearm_left_visual" type="capsule" fromto="0 0 0 -0.13 0 0"
-        size="0.024" mass="0" contype="0" conaffinity="0"
-        rgba="0.25 0.25 0.28 1"/>
+      <body name="forearm_left" pos="0 0 0">
+        <geom name="forearm_left_visual" type="capsule"
+          fromto="0 0 0 -0.085 0 0.085" size="0.025" mass="0"
+          contype="0" conaffinity="0" rgba="0.35 0.35 0.38 1"/>
+        <geom name="flange_left_visual" type="cylinder"
+          fromto="-0.085 0 0.085 -0.100 0 0.100" size="0.035" mass="0"
+          contype="0" conaffinity="0" rgba="0.45 0.45 0.48 1"/>
+      </body>
       <joint name="wrist_x_left" type="slide" axis="1 0 0" range="-0.18 0.18"
         damping="280" armature="0.03"/>
       <joint name="wrist_y_left" type="slide" axis="0 1 0" range="-0.18 0.18"
