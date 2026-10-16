@@ -1,0 +1,64 @@
+{
+  "source_clip": "runs/p0/assets/tissue_box.mp4",
+  "clip_fps": 30.0,
+  "frame_stride": 1,
+  "variant": "full-fps",
+  "n_frames": 390,
+  "frames_dir": "runs/w6b/frames_full",
+  "device": "mps",
+  "handedness_swap": 1,
+  "handedness_rule": "ego-view x-order (smoke 6 calibrated: swap=1); a hand left of the image centre is the person's left hand",
+  "frames_with_any_hand": 390,
+  "detection_counts": {
+    "left": 381,
+    "right": 364
+  },
+  "wiring_provenance": "perception/hamer_smoke.py functions reused unchanged: detect_hands, handedness_flags, _batch_from_boxes, _run_hamer_batch, _project_joints_to_frame; smoke 6 report runs/p0/smoke6_hamer/report.json gates this wiring",
+  "checkpoint": {
+    "path": "runs/upstream/hamer/_DATA/hamer_ckpts/checkpoints/hamer.ckpt",
+    "sha256_1kb_limit": "bf27dcbd1fd4712703dab244d8682b2f47d3d1d4bd11e86f9cc9781c2a8b1787"
+  },
+  "lib_versions": {
+    "python": "3.10.19",
+    "machine": "arm64",
+    "macos": "27.0",
+    "platform": "macOS-27.0-arm64-arm-64bit",
+    "torch": "2.5.1",
+    "torchvision": "0.20.1",
+    "numpy": "1.23.5",
+    "scipy": "1.11.4",
+    "opencv-python-headless": "4.10.0.84",
+    "mediapipe": "0.10.21",
+    "smplx": "0.1.28",
+    "timm": "1.0.30",
+    "einops": "0.8.2",
+    "yacs": "0.1.8",
+    "chumpy": "0.70",
+    "pytorch-lightning": "1.9.5",
+    "trimesh": "5.1.1",
+    "hamer_repo_commit": "3a01849f4148352e9260b69bf28b65d1671a4905"
+  },
+  "weights_version": {
+    "hamer_checkpoint": "runs/upstream/hamer/_DATA/hamer_ckpts/checkpoints/hamer.ckpt",
+    "hamer_checkpoint_sha256": "e5cc06f294d88a92dee24e603480aab04de532b49f0e08200804ee7d90e16f53",
+    "hamer_checkpoint_bytes": 2689536166,
+    "hamer_checkpoint_source": "https://huggingface.co/spaces/geopavlakos/HaMeR/resolve/main/_DATA/hamer_ckpts/checkpoints/hamer.ckpt (official author-maintained HF Space mirror of the release checkpoint)",
+    "hamer_repo_commit": "3a01849f4148352e9260b69bf28b65d1671a4905",
+    "model_config": "runs/upstream/hamer/_DATA/hamer_ckpts/model_config.yaml",
+    "mano_left_pkl": "/Users/guohongbin/v2d-mac/runs/mano/mano_v1_2/models/MANO_LEFT.pkl",
+    "mano_right_pkl": "/Users/guohongbin/v2d-mac/runs/mano/mano_v1_2/models/MANO_RIGHT.pkl",
+    "mano_left_sha256": "c4022f7083f2ca7c78b2b3d595abbab52debd32b09d372b16923a801f0ea6a30",
+    "mano_left_bytes": 3821391,
+    "mano_right_sha256": "45d60aa3b27ef9107a7afd4e00808f307fd91111e1cfa35afd5c4a62de264767",
+    "mano_right_bytes": 3821356
+  },
+  "mps_fallback_ops": [
+    {
+      "op": "pad_constant_nd",
+      "occurrences": 1,
+      "sample_message": "MPS: The constant padding of more than 3 dimensions is not currently supported natively. It uses View Ops default implementation to run. This may have performance implications. (Triggered internally at /Users/runner/work/pytorch/pytorch/pytorch/aten/src/ATen/native/mps/operations/Pad.mm:465.)",
+      "category": "UserWarning"
+    }
+  ],
+  "array_layout": "per side: pose (F,15,3) axis-angle hand_pose; shape (F,10) betas; transl (F,3) pred_cam_t metres in the HaMeR camera frame (x right, y down, z forward); global_orient (F,3) axis-angle; absent detections are zero-filled with present=False, never interpolated"
+}

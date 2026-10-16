@@ -53,6 +53,13 @@ SOURCE_CLIP = REPO / "runs/p0/assets/tissue_box.mp4"
 # effective rate of this frame set is 3.0 fps and t = (N-1)/3 s.
 CLIP_FPS = 3.0
 FRAME_STRIDE = 10
+
+# full-fps variant (W6b round-4): every source frame at 30 fps
+FRAMES_DIR_FULL = REPO / "runs/w6b/frames_full"
+OUT_NPZ_FULL = REPO / "runs/w6b/mano_params_fullfps.npz"
+OUT_META_FULL = REPO / "runs/w6b/mano_params_fullfps.meta.json"
+CLIP_FPS_FULL = 30.0
+FRAME_STRIDE_FULL = 1
 # smoke 6's calibrated mirror convention (51/54 detector agreement vs 3/54 for
 # swap=0); frozen there, reused here so this run consumes the same wiring.
 HANDEDNESS_SWAP = 1
@@ -61,9 +68,16 @@ HANDEDNESS_SWAP = 1
 def main() -> int:
     import cv2
 
-    paths = sorted(FRAMES_DIR.glob("f_*.jpg"))
+    full = "--full" in sys.argv
+    frames_dir = FRAMES_DIR_FULL if full else FRAMES_DIR
+    out_npz = OUT_NPZ_FULL if full else OUT_NPZ
+    out_meta = OUT_META_FULL if full else OUT_META
+    clip_fps = CLIP_FPS_FULL if full else CLIP_FPS
+    stride = FRAME_STRIDE_FULL if full else FRAME_STRIDE
+
+    paths = sorted(frames_dir.glob("f_*.jpg"))
     if not paths:
-        raise FileNotFoundError(f"no frames under {FRAMES_DIR}")
+        raise FileNotFoundError(f"no frames under {frames_dir}")
     device = "mps"
     try:
         import torch
@@ -77,8 +91,8 @@ def main() -> int:
     F = len(paths)
     out = {
         "frame_idx": np.arange(1, F + 1, dtype=np.int64),
-        "t": (np.arange(F, dtype=np.float64)) / CLIP_FPS,
-        "fps": np.float64(CLIP_FPS),
+        "t": (np.arange(F, dtype=np.float64)) / clip_fps,
+        "fps": np.float64(clip_fps),
     }
     sides: dict[str, dict[str, np.ndarray]] = {}
     for side in ("left", "right"):
@@ -130,23 +144,26 @@ def main() -> int:
                 j2d - det["keypoints_2d"].astype(np.float64), axis=1
             )
             s["reproj_mean_px"][i] = float(err.mean())
-        print(f"[{i + 1}/{F}] {p.stem}: "
-              f"{sum(1 for k in range(len(dets)))} hand(s) "
-              f"({', '.join('R' if r else 'L' for r in rights)})", flush=True)
+        if full or (i + 1) % 5 == 0 or i == F - 1:
+            print(f"[{i + 1}/{F}] {p.stem}: "
+                  f"{sum(1 for k in range(len(dets)))} hand(s) "
+                  f"({', '.join('R' if r else 'L' for r in rights)})", flush=True)
 
     for side, arrs in sides.items():
         for name, arr in arrs.items():
             out[f"{side}/{name}"] = arr
 
-    OUT_NPZ.parent.mkdir(parents=True, exist_ok=True)
-    np.savez(OUT_NPZ, **out)
+    out_npz.parent.mkdir(parents=True, exist_ok=True)
+    np.savez(out_npz, **out)
 
     present = {s: int(sides[s]["present"].sum()) for s in sides}
     meta = {
         "source_clip": str(SOURCE_CLIP.relative_to(REPO)),
-        "clip_fps": CLIP_FPS,
+        "clip_fps": clip_fps,
+        "frame_stride": stride,
+        "variant": "full-fps" if full else "stride-10",
         "n_frames": F,
-        "frames_dir": str(FRAMES_DIR.relative_to(REPO)),
+        "frames_dir": str(frames_dir.relative_to(REPO)),
         "device": rt.device,
         "handedness_swap": HANDEDNESS_SWAP,
         "handedness_rule": (
@@ -176,9 +193,9 @@ def main() -> int:
             "interpolated"
         ),
     }
-    OUT_META.write_text(json.dumps(meta, indent=2))
-    print(f"wrote {OUT_NPZ} ({F} frames, left {present['left']}, "
-          f"right {present['right']}) and {OUT_META}")
+    out_meta.write_text(json.dumps(meta, indent=2))
+    print(f"wrote {out_npz} ({F} frames, left {present['left']}, "
+          f"right {present['right']}) and {out_meta}")
     return 0
 
 
