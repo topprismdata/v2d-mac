@@ -486,6 +486,36 @@ TEMPLATE_HEAD = """<mujoco model="allegro_floating">
       <geom name="gantry_rail_y" type="box" size="0.03 0.55 0.03"
         pos="0 0 1.015" mass="0" contype="0" conaffinity="0"
         rgba="0.4 0.4 0.44 1"/>
+      <!-- W6a-v6 force chain (GPT P0-3): carriage on the y-rail + Z-lift stage
+           above the right hand's wrist module + drag chain up to the beam +
+           limit stops on the rail ends. An observer can trace hand -> flange ->
+           wrist module -> Z stage -> carriage -> rail -> beam -> pillars ->
+           bases. Static pieces sit within the slides' travel of the mounted
+           module ("short parts close"), so the chain never visually detaches. -->
+      <geom name="gantry_carriage" type="box" size="0.03 0.05 0.04"
+        pos="0.20 0 0.965" mass="0" contype="0" conaffinity="0"
+        rgba="0.5 0.35 0.2 1"/>
+      <geom name="gantry_zstage" type="box" size="0.05 0.05 0.047"
+        pos="0.20 0 0.898" mass="0" contype="0" conaffinity="0"
+        rgba="0.42 0.42 0.46 1"/>
+      <geom name="gantry_drag0" type="box" size="0.016 0.02 0.016"
+        pos="0.22 0 0.955" mass="0" contype="0" conaffinity="0"
+        rgba="0.2 0.2 0.22 1"/>
+      <geom name="gantry_drag1" type="box" size="0.016 0.02 0.016"
+        pos="0.245 0 0.985" mass="0" contype="0" conaffinity="0"
+        rgba="0.2 0.2 0.22 1"/>
+      <geom name="gantry_drag2" type="box" size="0.016 0.02 0.016"
+        pos="0.265 0 1.01" mass="0" contype="0" conaffinity="0"
+        rgba="0.2 0.2 0.22 1"/>
+      <geom name="gantry_drag3" type="box" size="0.016 0.02 0.016"
+        pos="0.28 0 1.035" mass="0" contype="0" conaffinity="0"
+        rgba="0.2 0.2 0.22 1"/>
+      <geom name="gantry_limit_negy" type="box" size="0.05 0.02 0.05"
+        pos="0  0.52 1.015" mass="0" contype="0" conaffinity="0"
+        rgba="0.55 0.3 0.15 1"/>
+      <geom name="gantry_limit_posy" type="box" size="0.05 0.02 0.05"
+        pos="0 -0.52 1.015" mass="0" contype="0" conaffinity="0"
+        rgba="0.55 0.3 0.15 1"/>
     </body>
     <geom name="table_slab" type="box" size="0.45 0.45 0.02" pos="0 0 {slab_z}"
       material="table" friction="0.9 0.02 0.002"/>{pedestal}
@@ -503,31 +533,81 @@ TEMPLATE_HEAD = """<mujoco model="allegro_floating">
     </body>
 
     <body name="hand_root" pos="{hand_home_r}" euler="{hand_euler_r}">
-      <!-- W6a-v4: visual forearm + flange (user request: the hand must grow
-           from a mount, not float). Welded child body, zero-mass visual-only
-           geoms (contype/conaffinity 0, mass 0) => zero physical effect; the
-           birth / settle / gate numbers are bit-identical to the bare scene.
-           Extends back-and-up 45 deg from the wrist (opposite the fingers). -->
-      <body name="forearm_right" pos="0 0 0">
-        <geom name="forearm_right_visual" type="capsule"
-          fromto="0 0 0 -0.085 0 0.085" size="0.025" mass="0"
-          contype="0" conaffinity="0" rgba="0.35 0.35 0.38 1"/>
-        <geom name="flange_right_visual" type="cylinder"
-          fromto="-0.085 0 0.085 -0.100 0 0.100" size="0.035" mass="0"
-          contype="0" conaffinity="0" rgba="0.45 0.45 0.48 1"/>
+      <!-- W6a-v6: wrist mounting module (GPT P0-1 rework - the v4 45-deg
+           capsule read as a cannon implying a wrist DoF that does not exist).
+           Short EE-flange stack on the back of the hand: mounting plate +
+           flange disc (dia 60 mm = 0.53x palm width, within 0.45-0.65) +
+           6-bolt circle + end cap + cable port; total length 55.5 mm <= 60.
+           Welded child body, all geoms mass 0 / no collision => zero physical
+           effect (birth/settle/gate numbers bit-identical). -->
+      <body name="wmount_right" pos="0 0 0">
+        <geom name="wmount_plate" type="box" size="0.0175 0.045 0.035"
+          pos="-0.020 0 0.010" mass="0" contype="0" conaffinity="0"
+          rgba="0.28 0.28 0.31 1"/>
+        <geom name="wmount_flange" type="cylinder"
+          fromto="-0.035 0 0.010 -0.050 0 0.010" size="0.030 0.0075" mass="0"
+          contype="0" conaffinity="0" rgba="0.46 0.46 0.50 1"/>
+        <geom name="wmount_bolt0" type="cylinder"
+          fromto="-0.050 0.0210 0.010 -0.0545 0.0210 0.010" size="0.004 0.00225"
+          mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1"/>
+        <geom name="wmount_bolt1" type="cylinder"
+          fromto="-0.050 0.0105 0.0282 -0.0545 0.0105 0.0282" size="0.004 0.00225"
+          mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1"/>
+        <geom name="wmount_bolt2" type="cylinder"
+          fromto="-0.050 -0.0105 0.0282 -0.0545 -0.0105 0.0282" size="0.004 0.00225"
+          mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1"/>
+        <geom name="wmount_bolt3" type="cylinder"
+          fromto="-0.050 -0.0210 0.010 -0.0545 -0.0210 0.010" size="0.004 0.00225"
+          mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1"/>
+        <geom name="wmount_bolt4" type="cylinder"
+          fromto="-0.050 -0.0105 -0.0082 -0.0545 -0.0105 -0.0082" size="0.004 0.00225"
+          mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1"/>
+        <geom name="wmount_bolt5" type="cylinder"
+          fromto="-0.050 0.0105 -0.0082 -0.0545 0.0105 -0.0082" size="0.004 0.00225"
+          mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1"/>
+        <geom name="wmount_cap" type="cylinder"
+          fromto="-0.050 0 0.010 -0.058 0 0.010" size="0.026 0.004" mass="0"
+          contype="0" conaffinity="0" rgba="0.24 0.24 0.27 1"/>
+        <geom name="wmount_port" type="cylinder"
+          fromto="-0.054 0 0.036 -0.054 0 0.056" size="0.008 0.010" mass="0"
+          contype="0" conaffinity="0" rgba="0.20 0.20 0.22 1"/>
       </body>
 {wrist_joints}
 {palm}
     </body>
 
     <body name="hand_root_left" pos="{hand_home_l}" euler="{hand_euler_l}">
-      <body name="forearm_left" pos="0 0 0">
-        <geom name="forearm_left_visual" type="capsule"
-          fromto="0 0 0 -0.085 0 0.085" size="0.025" mass="0"
-          contype="0" conaffinity="0" rgba="0.35 0.35 0.38 1"/>
-        <geom name="flange_left_visual" type="cylinder"
-          fromto="-0.085 0 0.085 -0.100 0 0.100" size="0.035" mass="0"
-          contype="0" conaffinity="0" rgba="0.45 0.45 0.48 1"/>
+      <body name="wmount_left" pos="0 0 0">
+        <geom name="wmount_plate_left" type="box" size="0.0175 0.045 0.035"
+          pos="-0.020 0 0.010" mass="0" contype="0" conaffinity="0"
+          rgba="0.28 0.28 0.31 1"/>
+        <geom name="wmount_flange_left" type="cylinder"
+          fromto="-0.035 0 0.010 -0.050 0 0.010" size="0.030 0.0075" mass="0"
+          contype="0" conaffinity="0" rgba="0.46 0.46 0.50 1"/>
+        <geom name="wmount_bolt0_left" type="cylinder"
+          fromto="-0.050 0.0210 0.010 -0.0545 0.0210 0.010" size="0.004 0.00225"
+          mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1"/>
+        <geom name="wmount_bolt1_left" type="cylinder"
+          fromto="-0.050 0.0105 0.0282 -0.0545 0.0105 0.0282" size="0.004 0.00225"
+          mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1"/>
+        <geom name="wmount_bolt2_left" type="cylinder"
+          fromto="-0.050 -0.0105 0.0282 -0.0545 -0.0105 0.0282" size="0.004 0.00225"
+          mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1"/>
+        <geom name="wmount_bolt3_left" type="cylinder"
+          fromto="-0.050 -0.0210 0.010 -0.0545 -0.0210 0.010" size="0.004 0.00225"
+          mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1"/>
+        <geom name="wmount_bolt4_left" type="cylinder"
+          fromto="-0.050 -0.0105 -0.0082 -0.0545 -0.0105 -0.0082" size="0.004 0.00225"
+          mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1"/>
+        <geom name="wmount_bolt5_left" type="cylinder"
+          fromto="-0.050 0.0105 -0.0082 -0.0545 0.0105 -0.0082" size="0.004 0.00225"
+          mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1"/>
+        <geom name="wmount_cap_left" type="cylinder"
+          fromto="-0.050 0 0.010 -0.058 0 0.010" size="0.026 0.004" mass="0"
+          contype="0" conaffinity="0" rgba="0.24 0.24 0.27 1"/>
+        <geom name="wmount_port_left" type="cylinder"
+          fromto="-0.054 0 0.036 -0.054 0 0.056" size="0.008 0.010" mass="0"
+          contype="0" conaffinity="0" rgba="0.20 0.20 0.22 1"/>
       </body>
 {wrist_joints_left}
 {palm_left}

@@ -68,11 +68,13 @@ def nid(model, objtype, name):
 
 
 # ============================================================== dual-hand stats
-# W6a-v4: 84 hand geoms (42 x 2) + 4 forearm/flange visuals + 3 object family
-# (box + 2 chamfers) + 2 static supports (floor, slab) + 6 gantry visuals
-# (2 pillars, 2 bases, x-beam, y-rail). Named once; the additive accounting
-# below must sum to it, so a new geom family has to be added explicitly.
-EXPECTED_NGEOM = 99
+# W6a-v6: 84 hand geoms (42 x 2) + 20 wrist-module visuals per pair (plate +
+# flange + 6 bolts + cap + port, x 2 hands) + 3 object family (box + 2
+# chamfers) + 2 static supports (floor, slab) + 14 gantry visuals (2 pillars,
+# 2 bases, x-beam, y-rail, carriage, z-stage, 4 drag links, 2 limit stops).
+# Named once; the additive accounting below must sum to it, so a new geom
+# family has to be added explicitly.
+EXPECTED_NGEOM = 123
 
 
 def test_w6_model_statistics(model):
@@ -93,11 +95,14 @@ def test_w6_model_statistics(model):
                    if geom_name(g).startswith("gantry"))
     n_static = sum(1 for g in range(model.ngeom)
                    if geom_name(g) in ("floor", "table_slab"))
-    assert n_hand == 88 and n_object == 3 and n_gantry == 6 and n_static == 2, (
-        f"geom families drifted: {n_hand} hand(+forearm) + {n_object} object + "
-        f"{n_gantry} gantry + {n_static} static != {EXPECTED_NGEOM} - update "
-        "EXPECTED_NGEOM with the new family counted explicitly, never by "
-        "silencing this test")
+    n_mount = sum(1 for g in range(model.ngeom)
+                  if geom_name(g).startswith("wmount"))
+    assert (n_hand == 84 and n_mount == 20 and n_object == 3
+            and n_gantry == 14 and n_static == 2), (
+        f"geom families drifted: {n_hand} hand + {n_mount} wrist-module + "
+        f"{n_object} object + {n_gantry} gantry + {n_static} static != "
+        f"{EXPECTED_NGEOM} - update EXPECTED_NGEOM with the new family counted "
+        "explicitly, never by silencing this test")
 
 
 def test_w6_both_hand_roots_exist_at_the_end_faces(model, data):
@@ -107,13 +112,13 @@ def test_w6_both_hand_roots_exist_at_the_end_faces(model, data):
         assert pos[0] * side > FACE_X, f"{name} must stand outside its end face"
     # the left subtree is a complete renamed copy: every right-hand body/joint/
     # actuator has exactly one _left twin (left bodies are skipped - they ARE
-    # the twins); the forearm pair is named forearm_right/forearm_left
-    assert mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "forearm_left") >= 0
+    # the twins); the wrist-module pair is named wmount_right/wmount_left
+    assert mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "wmount_left") >= 0
     for b in range(model.nbody):
         name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY, b) or ""
         if not name or name.endswith("_left"):
             continue
-        if name in ("world", "object", "hand_root", "forearm_right", "gantry"):
+        if name in ("world", "object", "hand_root", "wmount_right", "gantry"):
             continue
         assert mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, name + "_left") >= 0, (
             f"body {name} has no _left twin"
