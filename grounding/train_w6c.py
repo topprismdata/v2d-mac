@@ -93,6 +93,16 @@ PENETRATION_CAP_FORMULA = (
 
 SEED = 0
 
+# --- W6c-r2 frozen press-schedule constants (frozen before the r2 search) ---
+# Main lever 1: curl-ramp slope. Measured decay dN/dh ~ -0.22 N/mm over the
+# first 2.6 mm of rise; pad normal ~5 N per rad of curl at the press band
+# -> inverse-compensation slope ~0.044 rad/mm -> ~0.22 rad over a 5 mm lift.
+DCURL_LIFT_SEED = 0.22
+# Main lever 2: pre-press baseline. Friction capacity = mu*N with mu~1.0-1.2;
+# carrying 1.47 N with a 1.6 safety factor needs N >= 1.18 N per the pair
+# (Main's 80%-of-capacity clause).
+PRE_PRESS_N_MIN_N = 1.18
+
 
 def _sha256(path: pathlib.Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -514,8 +524,14 @@ def score_window(metrics: dict) -> float:
     nr = metrics.get("press_normal_r_n", 0.0)
     nl = metrics.get("press_normal_l_n", 0.0)
     s -= max(0.0, 0.15 - min(nr, nl)) * 1.5e3
-    s -= abs(nr - nl) * 250.0
+    s -= abs(nr - nl) * 120.0
     s -= max(0.0, metrics.get("tilt_abs_deg", 0.0) - 4.0) * 50.0
+    # r2 lever 2: the pre-press baseline - the pair should enter the lift at
+    # >= 1.18 N combined pad normal (1.6x safety on the 1.47 N weight)
+    pr = metrics.get("pre_press_n_r")
+    pl = metrics.get("pre_press_n_l")
+    if pr is not None and pl is not None:
+        s -= max(0.0, PRE_PRESS_N_MIN_N - (pr + pl)) * 400.0
     return s
 
 
@@ -539,6 +555,18 @@ SUFFIX_PRESS_DWELL = 20
 SUFFIX_RESEAT_FRAMES = 20
 SUFFIX_PRESS_FRAMES = 14
 SUFFIX_LIFT_FRAMES = 20
+
+
+def suffix_layout(p: dict) -> dict:
+    """Control-frame index layout of the suffix (for phase-aligned metrics)."""
+    n_press = SUFFIX_PRESS_FRAMES
+    n_dwell = int(p.get("n_press_dwell", SUFFIX_PRESS_DWELL))
+    n_lift = int(p.get("n_lift_frames", SUFFIX_LIFT_FRAMES))
+    return {"press_end": SUFFIX_RESEAT_FRAMES + n_press,
+            "dwell_end": SUFFIX_RESEAT_FRAMES + n_press + n_dwell,
+            "lift_end": SUFFIX_RESEAT_FRAMES + n_press + n_dwell + n_lift,
+            "total": SUFFIX_RESEAT_FRAMES + n_press + n_dwell + n_lift
+                     + SUFFIX_HOLD}
 
 
 def suffix_stream(env: LiftHoldEnv, ctrl_at_press_ready: np.ndarray,
@@ -580,17 +608,18 @@ def suffix_stream(env: LiftHoldEnv, ctrl_at_press_ready: np.ndarray,
     d_l[0] = p["dj0_l"]
     push(SUFFIX_PRESS_FRAMES, 0.0, 0.0, d_r / SUFFIX_PRESS_FRAMES,
          d_l / SUFFIX_PRESS_FRAMES)
-    push(SUFFIX_PRESS_DWELL, 0.0, 0.0)
+    push(int(p.get("n_press_dwell", SUFFIX_PRESS_DWELL)), 0.0, 0.0)
     n_lift = int(p.get("n_lift_frames", SUFFIX_LIFT_FRAMES))
     # optional squeeze ramp while lifting: keeps the vise normal force up as
     # the box slides up the curl profile (measured force decay 1.09 -> 0.52 N
     # kills a fixed-curl lift at ~3 mm).
-    dcl = p.get("dcurl_lift", 0.0)
+    dcr = p.get("dcurl_lift_r", p.get("dcurl_lift", 0.0))
+    dcl = p.get("dcurl_lift_l", p.get("dcurl_lift", 0.0))
     for k in range(n_lift):
         cur = cur.copy()
         cur[2] += p["z_lift"] / n_lift
         cur[24] += p["z_lift"] / n_lift
-        cur[6:22] = np.clip(cur[6:22] + dcl / n_lift, lo[6:22], hi[6:22])
+        cur[6:22] = np.clip(cur[6:22] + dcr / n_lift, lo[6:22], hi[6:22])
         cur[28:44] = np.clip(cur[28:44] + dcl / n_lift, lo[28:44], hi[28:44])
         stream.append(cur.copy())
     push(SUFFIX_HOLD, 0.0, 0.0)
@@ -607,9 +636,13 @@ def eval_suffix(env: LiftHoldEnv, snap_data: mujoco.MjData,
     env._z_peak = env._z0
     stream = suffix_stream(env, d.ctrl.copy(), p)
     acts = abs_to_actions(env, stream)
+    layout = suffix_layout(p)
     frames = []
-    for a in acts:
+    pre_press_n = [None, None]
+    for i, a in enumerate(acts):
         obs, _r, _t, _tr, info = env.step(a)
+        if i == layout["dwell_end"] - 1:
+            pre_press_n = list(pad_normal_forces(env))
         er, el = endface_contact_per_hand(env)
         bp = box_pose(env)
         frames.append({"lift": info["lift"], "endface": (er, el),
@@ -618,6 +651,8 @@ def eval_suffix(env: LiftHoldEnv, snap_data: mujoco.MjData,
                        "yaw": bp["yaw_deg"], "tilt": bp["tilt_deg"],
                        "clear": bp["bottom_clearance_m"]})
     metrics = eval_stream_against_gate(env, frames)
+    metrics["pre_press_n_r"] = pre_press_n[0]
+    metrics["pre_press_n_l"] = pre_press_n[1]
     metrics["tilt_abs_deg"] = max(f["tilt"] for f in frames)
     nr, nl = pad_normal_forces(env)
     metrics["press_normal_r_n"] = nr
@@ -646,14 +681,18 @@ def cmd_search(args: argparse.Namespace) -> None:
             "th_r": float(rng.uniform(-0.05, 0.45)),
             "ff_l": float(rng.uniform(-0.05, 0.45)),
             "mf_l": float(rng.uniform(-0.05, 0.45)),
-            "rf_l": float(rng.uniform(-0.05, 0.45)),
+            "rf_l": float(rng.uniform(-0.30, 0.30)),
             "th_l": float(rng.uniform(-0.05, 0.45)),
             "dj0_r": float(rng.uniform(-0.20, 0.10)),
             "dj0_l": float(rng.uniform(-0.20, 0.10)),
             "lrx_delta": float(rng.uniform(-2.0, 0.0)),
             "z_lift": float(rng.uniform(0.005, 0.015)),
-            "dcurl_lift": float(rng.uniform(-0.05, 0.35)),
-            "n_lift_frames": float(rng.choice([20, 30, 40, 50])),
+            # r2: slope frozen at 0.22 (decay inverse-compensation), searched
+            # in a band around it; slow-lift levers 40-80 frames
+            "dcurl_lift_r": float(rng.uniform(0.05, 0.35)),
+            "dcurl_lift_l": float(rng.uniform(-0.20, 0.15)),
+            "n_lift_frames": float(rng.choice([40, 60, 80])),
+            "n_press_dwell": float(rng.choice([10, 20, 30])),
         }
 
     best = (-np.inf, None, None)
@@ -753,12 +792,14 @@ _BOUNDS = {
     "ff_r": (-0.05, 0.45), "mf_r": (-0.05, 0.45),
     "rf_r": (-0.05, 0.45), "th_r": (-0.05, 0.45),
     "ff_l": (-0.05, 0.45), "mf_l": (-0.05, 0.45),
-    "rf_l": (-0.05, 0.45), "th_l": (-0.05, 0.45),
+    "rf_l": (-0.30, 0.30), "th_l": (-0.05, 0.45),
     "dj0_r": (-0.20, 0.10), "dj0_l": (-0.20, 0.10),
     "lrx_delta": (-2.0, 0.0),
     "z_lift": (0.005, 0.015),
-    "dcurl_lift": (-0.05, 0.35),
-    "n_lift_frames": (20, 50),
+    "dcurl_lift_r": (0.05, 0.35),
+    "dcurl_lift_l": (-0.20, 0.15),
+    "n_lift_frames": (40, 80),
+    "n_press_dwell": (10, 30),
 }
 
 
@@ -1412,7 +1453,49 @@ def cmd_report(args: argparse.Namespace) -> None:
         "gate_scope_statement": {"frozen": "before the first scored run "
                                            "(module GATE dict is the source)",
                                  "gates": gates},
-        "verdict": verdict,
+        "verdict": ("fail-scene-level" if args.round2 else verdict),
+        "round2_press_schedule": (None if not args.round2 else {
+            "levers_implemented": [
+                "per-hand curl ramp during lift (slope frozen at 0.22 rad = "
+                "inverse of the measured -0.22 N/mm decay; searched 0.05-0.35 R / -0.20-0.15 L)",
+                "pre-press dwell 0.5-1.5 s with pair-normal objective "
+                "(frozen floor 1.18 N = 1.6x safety on 1.47 N)",
+                "left-hand separate press depth + wrist reorientation + "
+                "left-rf retraction off the top edge",
+                "slow lift 40-80 control frames (quasi-static)",
+            ],
+            "searches": "r2 seeded random+local 650 (round 6) + conditioned "
+                        "108-candidate grid (r2b) on the r1 strong-press base",
+            "decisive_measurement": "pre-press pair normal reached 5.6 N "
+                                    "(2.83/2.80 N per side, friction capacity "
+                                    ">= 5.6 N vs weight 1.47 N) and the box "
+                                    "did not rise 0.1 mm - the curled-finger "
+                                    "press engages the TOP EDGES as a "
+                                    "down-clamp, not the side faces as a "
+                                    "pinch; side-face engagement (dz -0.066 "
+                                    "band) caps at 3.5-3.7 mm because the "
+                                    "spherical pad rolls off its tangent "
+                                    "point during slide (N decay 1.09->0.52 N)",
+            "scene_conclusion": "under the current fingertip pad geometry "
+                                "(12 mm spheres), pad friction 1.0/1.4, and "
+                                "the F4-constrained wrist poses, the tissue "
+                                "box is NOT friction-liftable 5 mm+ clean "
+                                "from the side faces; every >=5 mm centre-z "
+                                "reach is a top-edge down-clamp pivot",
+            "w6a_suggestions": [
+                "raise fingertip_collision tangential friction 1.0 -> >=1.8 "
+                "(rubber-class): at the r5 press (N_pair 1.64 N) capacity "
+                "rises 2.0 -> 3.3 N = 2.2x weight, turning the 3.5 mm stall "
+                "into a clean lift within the same postures",
+                "pad geometry: flat-faced or cylindrical pad >= 10 mm tall "
+                "so the contact point stays fixed during vertical slide "
+                "(kills the measured normal-force decay)",
+                "seed approach height: the W6b terminal placement puts pad "
+                "contact z at +12..+25 mm box-local (face band +/-.40 mm); "
+                "arrive at ~0 mm (mid-height) so presses are side pinches, "
+                "not top-edge clamps",
+            ],
+        }),
         "verdict_reason": {
             "bc_lift_gate": bc_pass,
             "ppo_lift_gate": ppo_pass,
@@ -1462,7 +1545,8 @@ def main() -> None:
     p.add_argument("--policy", required=True)
     p.add_argument("--n", type=int, default=5)
     p.add_argument("--render", action="store_true")
-    sub.add_parser("report")
+    p = sub.add_parser("report")
+    p.add_argument("--round2", action="store_true")
     args = ap.parse_args()
     {"curate": cmd_curate, "checkpoint": cmd_checkpoint,
      "search": cmd_search, "bc": cmd_bc, "ppo": cmd_ppo,
