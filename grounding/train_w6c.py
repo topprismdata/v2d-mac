@@ -1468,9 +1468,50 @@ def cmd_report(args: argparse.Namespace) -> None:
         "gate_scope_statement": {"frozen": "before the first scored run "
                                            "(module GATE dict is the source)",
                                  "gates": gates},
-        "verdict": ("fail-terminal" if args.round5 else
+        "verdict": ("fail-terminal-v13" if args.round6 else
+                    ("fail-terminal" if args.round5 else
                     ("fail-scene-level" if (args.round3 or args.round4) else
-                     ("fail-scene-level" if args.round2 else verdict))),
+                     ("fail-scene-level" if args.round2 else verdict)))),
+
+        "round6_v13_flat_pads": (None if not args.round6 else {
+            "question": "on v13 flat face-parallel mid-height pads "
+                        "(12x12x3 mm, mu 1.8), does the systematic "
+                        "schedule x bias search find a >=5 mm clean lift?",
+            "answer": "NO. 750-eval systematic search (schedule x bias, "
+                      "stop clause met) + 150 scouting evals: best "
+                      "balanced press 1.29/1.29 N, peak bottom clearance "
+                      "0.003 mm, end-face ratios 0",
+            "drag_ceiling_law": "the measured vertical drag ceiling across "
+                                "ALL rounds = min(curl forcerange)/arm = "
+                                "0.159 N*m / ~0.115 m ~ 1.38 N per finger "
+                                "chain (v9: 0.74 N -> v12: 1.26 N -> v13: "
+                                "1.2-1.26 N, tracking the cap). One-sided "
+                                "chain cannot carry the 1.47 N weight "
+                                "(short by 6%); BOTH sides sticking "
+                                "simultaneously = 2.76 N >= 1.47 N - the "
+                                "capacity window is PHYSICALLY OPEN",
+            "terminal_verdict": "the lift gate is UNREACHABLE BY OPEN-LOOP "
+                                "COMMAND SCHEDULES in this scene - measured, "
+                                "mechanism-complete (r1 friction decay, r2 "
+                                "down-clamp wedge, r3 torque wall, r4/r5 "
+                                "position-vs-force trap, r6 flat-pad "
+                                "systematic sweep); 'physically impossible' "
+                                "would OVERSTATE it: the two-sided-stick "
+                                "window is open, but transferring weight to "
+                                "the pads requires closed-loop coordination "
+                                "(force-feedback observation or a grasp-"
+                                "force servo) that no fixed command "
+                                "schedule provides - the quasi-static "
+                                "equilibrium always returns the weight to "
+                                "the table",
+            "concrete_next": "(a) pad normal forces in the observation + PPO "
+                             "with the corrected gate (the both-sides-stick "
+                             "window is the reward signal); (b) a per-hand "
+                             "grasp-force servo mode (position servo relaxed "
+                             "on the 8 lift-chain joints during lift); both "
+                             "are W6c-continued scope, not scene changes",
+            "candidate_total": "~4600 across six rounds",
+        }),
         "round5_force_bias": (None if not args.round5 else {
             "ruling": "Main option (a): qfrc_applied closing bias on the 8 "
                       "lift-chain curl joints (ffj1/2+mfj1/2 both hands), "
@@ -1702,6 +1743,7 @@ def main() -> None:
     p.add_argument("--round3", action="store_true")
     p.add_argument("--round4", action="store_true")
     p.add_argument("--round5", action="store_true")
+    p.add_argument("--round6", action="store_true")
     args = ap.parse_args()
     {"curate": cmd_curate, "checkpoint": cmd_checkpoint,
      "search": cmd_search, "bc": cmd_bc, "ppo": cmd_ppo,
