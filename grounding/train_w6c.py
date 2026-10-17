@@ -1490,7 +1490,10 @@ def _render_episode(env: LiftHoldEnv, out_dir: pathlib.Path, label: str,
     for i, k in enumerate(picks):
         _k, qpos, opos, oquat, lift = snaps[k]
         env.data.qpos[:] = qpos
-        env.data.qpos[0:7] = np.concatenate([opos, oquat])
+        # W6a v19 layout note: address via the object free joint, not
+        # absolute 0:7 (the v19 arm chain occupies qpos head 0:6)
+        oa = env.obj_qpos_adr
+        env.data.qpos[oa:oa + 7] = np.concatenate([opos, oquat])
         mujoco.mj_forward(env.model, env.data)
         cam.lookat[:] = [0.0, 0.0, 0.74]
         preset = ["front", "side", "close", "close"][min(i, 3)]
@@ -2035,6 +2038,32 @@ def cmd_report(args: argparse.Namespace) -> None:
                            "(arm actuator kp/forcerange + hand-root yield "
                            "measurement under contact reaction)",
         },
+        "w6a_audit_response": (None if not getattr(args, "w6a_audit", False) else {
+            "w6a_findings_applied": [
+                "harness artifact confirmed and fixed: l2e_bilateral.py wrote "
+                "d.ctrl directly bypassing _write_arm_ik_ctrl - the arm tip "
+                "froze at the snapshot pose (my 'arm yield' read was a "
+                "harness artifact, exactly as W6a diagnosed); the fix: call "
+                "env.unwrapped._write_arm_ik_ctrl() every harness frame",
+                "train_w6c.py absolute qpos[0:7] writes (evidence render + "
+                "trigger static check) converted to obj_qpos_adr addressing "
+                "per the v19 layout note",
+            ],
+            "margin_arithmetic": "W6a's margin math is the operative lens: at "
+                                 "n_star (1.25, 0.25) the four-pad friction "
+                                 "budget ~2.1 N vs 1.47 N weight = 1.4x, and "
+                                 "the measured ~7 percent N relaxation during "
+                                 "climb consumes it - the zero-drag readings "
+                                 "in my r7e attempt are consistent with "
+                                 "marginal-margin slip, not a contact-model "
+                                 "defect",
+            "next_session_plan": "recapture the trigger checkpoint with the "
+                                 "F4 fix (already done - left N 2.12 N) and "
+                                 "rerun the lift with N* floor >= 0.8 N/pad "
+                                 "(both sides pressing: 1.3/1.0), the "
+                                 "harness IK-refresh fix applied, and the "
+                                 "chamfer contact-band check during climb",
+        }),
         "round_l2a_force_obs_ppo": (None if not getattr(args, "l2a", False) else {
             "design": "obs 107->109 (per-side pad normals, N_OBS derived, "
                       "test pin -> constant); episodes start at the r8 "
@@ -2426,6 +2455,8 @@ def main() -> None:
     p.add_argument("--l2b", action="store_true")
     p.add_argument("--l2d", action="store_true")
     p.add_argument("--v19", action="store_true")
+    p.add_argument("--l2e", action="store_true")
+    p.add_argument("--w6a-audit", action="store_true")
     p.add_argument("--retune", action="store_true")
     p.add_argument("--l2c", action="store_true")
     p.add_argument("--round8", action="store_true")
