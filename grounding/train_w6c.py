@@ -1551,7 +1551,9 @@ def static_hold_recheck() -> dict:
     d = mujoco.MjData(m)
     seed = np.asarray(json.loads(SEED_PATH.read_text())["qpos"], dtype=np.float64)
     d.qpos[:] = seed
-    d.qpos[0:7] = [0.0, 0.0, 0.74, 1.0, 0.0, 0.0, 0.0]
+    oa = m.jnt_qposadr[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT,
+                                         "object_free")]
+    d.qpos[oa:oa + 7] = [0.0, 0.0, 0.74, 1.0, 0.0, 0.0, 0.0]
     mujoco.mj_forward(m, d)
     refs = dict(zip([f"{f}j{i}" for f in ("ff", "mf", "rf", "th")
                      for i in range(4)], builder.FINGER_SPRINGREF))
