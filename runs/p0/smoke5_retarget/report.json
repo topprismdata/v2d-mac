@@ -1932,7 +1932,7 @@
     "urdf": "/Users/guohongbin/v2d-mac/runs/upstream/dex-retargeting/assets/robots/hands/allegro_hand/allegro_hand_right.urdf",
     "urdf_sha256": "c0b80e9f740514eb98407a8b6aaa887a964392c8b8003912f7bf9ab88d8c55c3",
     "scene": "/Users/guohongbin/v2d-mac/grounding/assets/allegro_floating.xml",
-    "scene_sha256": "29896fe50740a63ac5055e1dc575d0693969dbc2bd5e3ff01f54609983fecd46",
+    "scene_sha256": "76de50ef8aeeb36124b13c64891bdf3d28dbf018183ffb1f8e9cf7c5df1b9a47",
     "ctrl_hz": 20
   },
   "versions": {
@@ -1946,10 +1946,10 @@
   },
   "qa_report": "/Users/guohongbin/v2d-mac/runs/p0/smoke5_retarget/retarget_qa.json",
   "mjcf_commit": {
-    "mjcf_commit": "98c498a",
+    "mjcf_commit": "ccc9b62",
     "mjcf_commit_message": "p0(w6a-v21): rf/th forcerange hardware alignment \u2014 v12 precedent completed",
     "scene": "grounding/assets/allegro_floating.xml",
-    "scene_sha256": "29896fe50740a63ac5055e1dc575d0693969dbc2bd5e3ff01f54609983fecd46",
+    "scene_sha256": "76de50ef8aeeb36124b13c64891bdf3d28dbf018183ffb1f8e9cf7c5df1b9a47",
     "scene_sha256_at_mjcf_commit": "29896fe50740a63ac5055e1dc575d0693969dbc2bd5e3ff01f54609983fecd46",
     "scene_sha256_at_baseline_commit": "bc75a8e4e542346d32091ddb1a47d42956f5749b23bf9332891cb2636aa321ca",
     "scene_matches_mjcf_commit": true,
