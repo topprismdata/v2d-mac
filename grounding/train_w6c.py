@@ -1437,6 +1437,17 @@ def penetration_disposition(eval_res: dict) -> dict:
     }
 
 
+def _round_verdict(args, verdict: str) -> str:
+    if getattr(args, "round7b", False): return "fail-r7b"
+    if getattr(args, "round7", False): return "fail-r7"
+    if getattr(args, "round6", False): return "fail-terminal-v13"
+    if getattr(args, "round5", False): return "fail-terminal"
+    if getattr(args, "round3", False) or getattr(args, "round4", False):
+        return "fail-scene-level"
+    if getattr(args, "round2", False): return "fail-scene-level"
+    return verdict
+
+
 def cmd_report(args: argparse.Namespace) -> None:
     """Assemble runs/w6c/report.json (evidence-native: every number either
     read from this run's artifacts or computed here from the pinned tree)."""
@@ -1543,12 +1554,46 @@ def cmd_report(args: argparse.Namespace) -> None:
         "gate_scope_statement": {"frozen": "before the first scored run "
                                            "(module GATE dict is the source)",
                                  "gates": gates},
-        "verdict": ("fail-r7" if args.round7 else
-                    ("fail-terminal-v13" if args.round6 else
-                    ("fail-terminal" if args.round5 else
-                    ("fail-scene-level" if (args.round3 or args.round4) else
-                     ("fail-scene-level" if args.round2 else verdict))))),
+        "verdict": _round_verdict(args, verdict),
 
+        "round7b_asymmetric_corner": (None if not args.round7b else {
+            "grid": "18 asymmetric combos (left target 0.20/0.25/0.30 x "
+                    "right ramp 1.15->1.30 / 1.20->1.35 / const 1.25 x "
+                    "wrist slow/mid) + 8 bias-primary combos (bias0_r "
+                    "0.10/0.15 with compensated command retraction)",
+            "result": "all 26: zero lift (peak -0.04..0.00 mm), end-face "
+                      "ratios 0 - the light-touch left servo could not hold "
+                      "its target while the strong right press held, and "
+                      "the compensated retraction simply unloaded the press "
+                      "(right pre-press 1.25 -> 0.00 N as comp grows)",
+            "final_null_result": "saturated two-side press experiment: "
+                                 "ff_r 0.45 (servo saturated at 0.179 N*m) "
+                                 "+ bias to 0.175 on top -> end normals "
+                                 "2.17/2.45 N (cone 4+ N vs weight 1.47 N) "
+                                 "and STILL zero lift and zero vertical "
+                                 "drag - the contact SEPARATES before the "
+                                 "drag can transfer weight: press "
+                                 "penetration (~0.1-0.3 mm) < per-frame "
+                                 "rise, and the position servo re-establishes "
+                                 "equilibrium with the box resting faster "
+                                 "than kinetic friction engages",
+            "level2_proposal_pending_approval": "force observation in obs "
+                                                "(pad normals per side, +2 "
+                                                "dims -> obs 109) + test "
+                                                "sync (test_c1/test_w6 "
+                                                "shape pins) + PPO 24+ "
+                                                "iters pre-registered eval "
+                                                ">=5 mm; OR grasp-force "
+                                                "servo as an action "
+                                                "dimension. Both are "
+                                                "control-interface changes "
+                                                "- awaiting Main",
+            "seven_round_total": "~5000 candidates; six distinct mechanisms "
+                                 "characterized and closed; the capacity "
+                                 "window (2.76 >= 1.47 N) remains open but "
+                                 "unreachable by every realizable controller "
+                                 "in the current interface",
+        }),
         "round7_force_servo": (None if not args.round7 else {
             "ruling_implemented": "closed-loop grasp-force servo: per-side "
                                   "bias integral bias += k*(N* - N_side) on "
@@ -1859,6 +1904,7 @@ def main() -> None:
     p.add_argument("--round5", action="store_true")
     p.add_argument("--round6", action="store_true")
     p.add_argument("--round7", action="store_true")
+    p.add_argument("--round7b", action="store_true")
     args = ap.parse_args()
     {"curate": cmd_curate, "checkpoint": cmd_checkpoint,
      "search": cmd_search, "bc": cmd_bc, "ppo": cmd_ppo,

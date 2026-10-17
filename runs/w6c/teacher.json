@@ -1,36 +1,30 @@
 {
  "best_params": {
-  "k": 0.05,
-  "n_star": 1.0,
-  "bias0": 0.03,
-  "rate": 0.002,
-  "dz_reseat": -0.005675000295746427,
-  "ff_r": 0.3543883810158213,
-  "mf_r": 0.1306551122310487,
-  "rf_r": 0.2747654588993538,
-  "th_r": 0.10246181181468426,
-  "ff_l": 0.06561234091870491,
-  "mf_l": 0.339916976507881,
-  "rf_l": -0.226406455354483,
-  "th_l": 0.19844412663977906,
-  "dj0_r": 0.018289375222568988,
-  "dj0_l": 0.014926249574710936,
-  "lrx_delta": -1.7593174934502198,
-  "z_lift": 0.01243394845411055,
-  "dcurl_lift_r": 0.08259719958107382,
-  "dcurl_lift_l": 0.04333234219269352,
-  "n_lift_frames": 60.0,
-  "n_press_dwell": 20.315695263586672,
-  "grasp_bias_nm": 0.0,
-  "relax": 0.3,
-  "lift_rate": 0.003
+  "dz_reseat": -0.013081792465014801,
+  "ff_r": 0.45,
+  "mf_r": 0.2,
+  "rf_r": -0.15,
+  "th_r": -0.15,
+  "ff_l": 0.0640451261010732,
+  "mf_l": 0.03728253405364522,
+  "rf_l": -0.15,
+  "th_l": -0.15,
+  "dj0_r": -0.08690763143584461,
+  "dj0_l": -0.19449028684209257,
+  "lrx_delta": -1.1432124949487046,
+  "z_lift": 0.01,
+  "dcurl_lift_r": 0.0,
+  "dcurl_lift_l": 0.0,
+  "n_lift_frames": 5.0,
+  "n_press_dwell": 20.0,
+  "grasp_bias_nm": 0.05
  },
  "best_metrics": {
   "window_frames": 0,
   "window_start": 0,
-  "peak_lift_m": 2.378841522987507e-06,
+  "peak_lift_m": -2.3693771550203913e-05,
   "window_min_lift_m": 0.0,
-  "final_lift_m": -4.756635275982024e-05,
+  "final_lift_m": -8.480303686819735e-05,
   "endface_ratio_right": 0.0,
   "endface_ratio_left": 0.0,
   "slip_m": 0.0,
@@ -38,9 +32,9 @@
   "tilt_abs_deg_window": 0.0,
   "support_mean_n": null,
   "pass": false,
-  "tilt_abs_deg": 0.06848455876142015
+  "tilt_abs_deg": 1.8720229771736052
  },
- "best_score": 0.0035682622844812606,
+ "best_score": -0.03554065732530587,
  "pass": false,
  "gate": {
   "lift_window_frames": 20,
@@ -54,8 +48,8 @@
   "final_lift_min_m": 0.003,
   "note": "frozen before the first scored run; box-local-frame end-face classifier includes the top chamfer plates (gate2 plateau); the band is the demonstrated semantic, not a skill ceiling - overshoots are reported as band misses, never as passes"
  },
- "n_grid": 16,
+ "n_grid": 4,
  "search_summary": {
-  "mode": "r7-v2 anchored force servo (16)"
+  "mode": "r7c saturated servo + bias + left light servo (4)"
  }
 }
