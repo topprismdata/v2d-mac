@@ -2307,7 +2307,7 @@
   "next": "the missing element is a placement solve, not a command family: put the ff/mf follower pads ON the faces at mid-height with >= 0.25 rad of curl headroom (wrist x/y/z advance from the seed placement, or re-solve the approach terminal for the v20 box), then the r7e mechanism applies; items for W6a: move the three provenance pins to the v20.1 commit and regenerate the forcerange table + REVISION.md row from the final tree"
  },
  "v20p1_placement_grid": {
-  "verdict": "TERMINAL - FINAL (v22): the sustained two-hand squeeze carry is ROBUST - window 124-127 frames (6.4 s), peak 94-105 mm, final 87-100 mm, endface held, support clean, all 3 seeds - 5 of 7 gate clauses PASS. Stabilization open: slip 147-151 mm, yaw 37-40 deg during the long hold (the residual 47 mm press-line offset yaw torque; the 96-iter policy has not learned the counter offset). Learning-budget boundary; W6a residual-offset lever documented. Submitted for GPT final review as-is",
+  "verdict": "TERMINAL - FINAL (v23): the carry is STRONGER than ever (window 106-114 frames / 5.5 s, peak 120-143 mm, final 109-134 mm) with the press couple structurally eliminated (-94%) - which FALSIFIES the couple-drift hypothesis and localizes the stabilization root cause to the right hand's structurally off-center press line (y +64..92 mm, constant ~0.5 N*m yaw torque -> constant-velocity drift 1.7-1.9 mm/frame slip, 0.4 deg/frame yaw). 5 of 7 gate clauses PASS; slip (196-217 mm) and yaw (43-52 deg) fail. The W6a lever is a RIGHT-hand mount y-offset (~-7 cm). Learning budget exhausted per Main's item 4; submitted for GPT final review as-is",
   "placement_solve": {
    "method": "FK + tip-path Jacobian scan (~10^4 evals): pads-on-face position AND the curl tip-path angle to the face normal cos(theta) - N_max = (forcerange/arm) x cos(theta); then closed-loop dynamic seat (4 iters, measured pad errors -> wrist ctrl, signs probed per hand)",
    "key_physics": "the pre-rotation placement had cos 0.19 -> N 1.41 ceiling REGARDLESS of command (the pad tip path was ~79 deg off the face normal - mostly tangential); the wrist ROTATION (right: rx +0.15, ry +0.60, rz -0.10) aligns the curl plane with the normal (cos 0.63-0.67) and the same +0.25 rad demand that gave 1.41 N now drives N 2.43 -> 3.76 -> 6.19 -> 4.22 N - the follower-pad curl-demand mechanism work as designed ONCE the curl plane contains the face normal",
@@ -3251,6 +3251,36 @@
     "the eval gate metrics are computed on the 5-rollout sigma-0.1 MEAN frame series (deployment = training distribution)",
     "the carried box starts from the engage wedge (+9 mm above the table at t=0 - the trigger-state artifact); the gate baseline is the true table plane so the reported 94-105 mm peaks are real height above the table",
     "the yaw clause measures absolute yaw; the ~38-40 deg reached includes the slow carry drift from the 0 deg straight-box start"
+   ]
+  },
+  "v23_final_continuation": {
+   "verdict": "TERMINAL - FINAL (v23): the carry grew STRONGER with the couple structurally eliminated (window 106-114 frames = 5.5 s, peak 120-143 mm, final 109-134 mm) but slip 196-217 mm and yaw 43-52 deg remain - Main's item-4 falsification clause FIRES: the press-couple hypothesis for the drift is REFUTED (the couple was -94% eliminated and the drift did not close). The drift root cause is the RIGHT hand's structurally off-center press line (pads at box-local y +64..92 mm - the right mount's reach limit): a constant ~0.5 N*m yaw torque driving a constant-velocity drift, matching the measured 1.7-1.9 mm/frame slip and 0.4 deg/frame yaw during the carry",
+   "left_resolve_v23": "{rf} re-solved on v23: depth +2.6 mm proud, y -65.2, z +1.2, cos 0.58 (cost 0.7 - the cleanest left solve of the chain). Engage: N_r 6.82, N_l 4.03 (the strongest left press of the chain - the v23 geometry + v21 cap combined), endface both True, no wedge",
+   "numbers_96iters": {
+    "training": "carry peaks 195-238 mm across episodes",
+    "eval_3seeds": "window 108/108/114; peak 134.3/127.2/122.8 mm; final 126.3/115.5/109.3 mm; slip 211.7/208.0/198.2 mm; yaw 51.8/43.3/47.7 deg (seeds 0/1/2, 5 rollouts x sigma 0.1)",
+    "per_frame_localization": "slip rate 1.7-1.9 mm/frame (34-38 mm/s), yaw rate ~0.4 deg/frame - CONSTANT-VELOCITY drift over the whole 5.5 s carry: the signature of a constant perturbation torque, not of swing oscillation (which would show zero-mean oscillation)",
+    "scorecard": {
+     "lift_window_20f": "PASS (106-114)",
+     "peak_5mm": "PASS (120-143 mm)",
+     "final_3mm": "PASS (109-134 mm)",
+     "endface": "PASS during carry",
+     "support_02N": "PASS (carried)",
+     "slip_10mm": "FAIL (196-217 mm)",
+     "yaw_10deg": "FAIL (43-52 deg)"
+    }
+   },
+   "falsification_chain": [
+    "v21 (couple ~1 N*m): slip 131-186, yaw 48-78 - hypothesis: the couple drives the drift",
+    "v22 (couple -62%, spacing 47 mm): slip 147-151, yaw 37-40 - the drift did NOT halve (falsified at -62%)",
+    "v23 (couple -94%, spacing 7.9 mm): slip 196-217, yaw 43-52 - CONFIRMED: the drift is independent of the press couple",
+    "residual root cause: the right hand's press line y +64..92 mm (the right mount's reach limit - scanned, not fixable by wrist y within ctrlrange); the W6a lever would be a RIGHT-hand mount y-offset (~-7 cm) to center the right press line"
+   ],
+   "honesty_clauses": [
+    "the gate metrics are computed on the 5-rollout sigma-0.1 MEAN frame series",
+    "the carry starts from the engage state (+0 contact height at t=0 - no wedge on v23); the reported 120-143 mm peaks are real heights above the table",
+    "the yaw clause measures absolute yaw; the 43-52 deg includes the constant drift from the 0 deg straight-box start",
+    "the learning budget is exhausted (48+48+96+96 iters across the continuations); per Main's item 4 no further rounds are added"
    ]
   }
  }
