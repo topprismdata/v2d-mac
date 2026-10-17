@@ -2020,6 +2020,21 @@ def cmd_report(args: argparse.Namespace) -> None:
                              "panel/visual target with its own schedule "
                              "derivation pass"],
         }),
+        "l2e_bilateral_first": (True if getattr(args, "l2e", False) else None) and {
+            "grid": "24 bilateral-first combos (sync/left-lead 1-2 frames x "
+                    "ff_r 0.30/0.45 x mf_r 0.20/0.35 x dz -8/-16 mm)",
+            "press_drift_assert": "PASSED - lateral drift 0.1-0.2 mm "
+                                  "(assert <= 2 mm): the v19 'box shoved "
+                                  "away' signature is eliminated by the "
+                                  "bilateral-first press order",
+            "lift_result": "still zero (peak 0.01 mm) - the vertical drag "
+                           "through the flat pads does not transfer even "
+                           "with the box held centered; per the Main stop "
+                           "clause this opens lever (b): the arm-servo "
+                           "stiffness audit, requested from W6aScene "
+                           "(arm actuator kp/forcerange + hand-root yield "
+                           "measurement under contact reaction)",
+        },
         "round_l2a_force_obs_ppo": (None if not getattr(args, "l2a", False) else {
             "design": "obs 107->109 (per-side pad normals, N_OBS derived, "
                       "test pin -> constant); episodes start at the r8 "
@@ -2390,6 +2405,7 @@ def main() -> None:
     p.add_argument("--l2d", action="store_true")
     p.add_argument("--v19", action="store_true")
     p.add_argument("--retune", action="store_true")
+    p.add_argument("--l2e", action="store_true")
     p.add_argument("--vise-guard", action="store_true")
     p.add_argument("--reward", default="band")
     p = sub.add_parser("eval")
