@@ -225,7 +225,8 @@ def make_closure_env(episode_len: int = EP_LEN, seed: int = 0):
 
 # ---------------------------------------------------------------- reward
 def closure_reward(env, info, prev=None, rate_w=8.0,
-                   abs_slip_w=0.5, abs_yaw_w=0.1):
+                   abs_slip_w=0.5, abs_yaw_w=0.1, lift_cap_m=0.050,
+                   pen_cap=3.0):
     """prev: {'yaw': deg, 'slip': m} from the previous frame - the
     stabilization continuation adds yaw-RATE and slip-RATE penalties
     (weight rate_w) that damp swing kinetic energy directly."""
@@ -235,7 +236,11 @@ def closure_reward(env, info, prev=None, rate_w=8.0,
     slip = float(np.linalg.norm(
         env.data.xpos[env.obj_body][:2] - env._v21_xy0))
     yaw = abs(bp["yaw_deg"])
-    r = 6.0 * min(clear / 0.005, 1.0)
+    # round 3 re-balance: the lift term is LINEAR to lift_cap_m (50 mm) -
+    # "carry 20 mm steadily" now outscores "0 mm perfectly still"; the
+    # rate/smoothness penalties are CAPPED per frame - the total penalty
+    # is bounded, so stasis is no longer the optimal solution
+    r = 6.0 * min(clear / lift_cap_m, 1.0)
     if clear >= 0.005:
         r += 0.3
     # stabilization round 2: the RATE terms are the main objective (damp
@@ -252,8 +257,8 @@ def closure_reward(env, info, prev=None, rate_w=8.0,
         if p[2] > half + 0.002:
             r -= 1.0
     if prev is not None:
-        r -= rate_w * abs(bp["yaw_deg"] - prev["yaw"]) / 1.0
-        r -= rate_w * abs(slip - prev["slip"]) / 0.001
+        r -= min(rate_w * abs(bp["yaw_deg"] - prev["yaw"]) / 1.0, pen_cap)
+        r -= min(rate_w * abs(slip - prev["slip"]) / 0.001, pen_cap)
     new_prev = {"yaw": bp["yaw_deg"], "slip": slip}
     return r, new_prev
 
@@ -274,7 +279,8 @@ def grip_floor(a: np.ndarray) -> np.ndarray:
 def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0,
           resume: str | None = None, rate_w: float = 8.0,
           act_rate_w: float = 0.5, smooth_w: float = 1.0,
-          curriculum: str = "40,80,160"):
+          curriculum: str = "40,80,160", round_tag: str = "r3",
+          lift_cap_m: float = 0.050, pen_cap: float = 3.0):
 
     caps = [int(v) for v in curriculum.split(",")]
     stage_size = max(1, iters // len(caps))
@@ -370,7 +376,9 @@ def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0,
                 a_np[24] = a_np[24] + BASE_Z
             obs_raw, r_env, term, trunc, info = env.step(
                 np.clip(a_np, -1.0, 1.0))
-            shaped, prev = closure_reward(env, info, prev, rate_w)
+            shaped, prev = closure_reward(env, info, prev, rate_w,
+                                          lift_cap_m=lift_cap_m,
+                                          pen_cap=pen_cap)
             if smooth_w > 0.0 and prev_a is not None:
                 shaped -= smooth_w * float(np.mean(np.abs(a_np - prev_a)))
             if act_rate_w > 0.0 and prev_a is not None:
@@ -450,7 +458,7 @@ def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0,
                   "log_std": log_std.detach().cpu(),
                   "norm": {"mean": norm.mean, "var": norm.var, "n": norm.n},
                   "eval": m, "iter": it}
-            torch.save(ck, OUT_DIR / f"v21_ppo_eval{it+1}.pt")
+            torch.save(ck, OUT_DIR / f"{round_tag}_ppo_eval{it+1}.pt")
             print(f"[v21 {it:3d}] eval pass={m['passed']} "
                   f"window={m['window_frames_max']} "
                   f"peak={m['peak_mm_max']:.2f}mm score={score:.1f}")
@@ -458,9 +466,10 @@ def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0,
             if consec_pass >= 2:
                 early_stop = True
             if score > best["score"]:
-                best = {"score": score, "path": f"v21_ppo_eval{it+1}.pt"}
-                torch.save(ck, OUT_DIR / "v21_ppo_best.pt")
-    (OUT_DIR / "v21_ppo_curve.json").write_text(
+                best = {"score": score,
+                        "path": f"{round_tag}_ppo_eval{it+1}.pt"}
+                torch.save(ck, OUT_DIR / f"{round_tag}_ppo_best.pt")
+    (OUT_DIR / f"{round_tag}_ppo_curve.json").write_text(
         json.dumps({"curve": curve, "best": best, "early_stop": early_stop},
                    indent=1, default=float))
     print(f"v21 ppo done; best {best}; early_stop={early_stop}")
@@ -642,6 +651,9 @@ def main():
     ap.add_argument("--act-rate-w", type=float, default=0.5)
     ap.add_argument("--smooth-w", type=float, default=1.0)
     ap.add_argument("--curriculum", default="40,80,160")
+    ap.add_argument("--round-tag", default="r3")
+    ap.add_argument("--lift-cap-m", type=float, default=0.050)
+    ap.add_argument("--pen-cap", type=float, default=3.0)
     args = ap.parse_args()
     if args.cmd == "capture":
         print(json.dumps(capture_engage(), indent=1, default=float))
@@ -649,7 +661,8 @@ def main():
         train(args.iters, args.steps, args.eval_every, args.seed,
               resume=args.resume, rate_w=args.rate_w,
               act_rate_w=args.act_rate_w, smooth_w=args.smooth_w,
-              curriculum=args.curriculum)
+              curriculum=args.curriculum, round_tag=args.round_tag,
+              lift_cap_m=args.lift_cap_m, pen_cap=args.pen_cap)
     elif args.cmd == "eval":
         import torch
         dev = "mps" if torch.backends.mps.is_available() else "cpu"
