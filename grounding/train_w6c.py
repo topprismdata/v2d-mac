@@ -550,9 +550,23 @@ def make_start_env(episode_len: int, domain_rand: bool,
     return env
 
 
-def load_checkpoint() -> tuple[np.ndarray, np.ndarray]:
-    z = np.load(CHECKPOINT_PATH)
+def load_checkpoint(path: pathlib.Path | None = None) -> tuple[np.ndarray, np.ndarray]:
+    z = np.load(path or CHECKPOINT_PATH)
     return z["qpos"], z["ctrl"]
+
+
+TRIGGER_CHECKPOINT_PATH = OUT_DIR / "trigger_checkpoint.npz"
+
+
+def make_trigger_env(episode_len: int, noise: bool) -> LiftHoldEnv:
+    """L2A: episodes start at the r8 force-press transient (+1.26 mm, N 1.59/
+    2.36 N) - the state the policy must learn to hold and raise."""
+    env = LiftHoldEnv(episode_len=episode_len, ctrl_hz=CTRL_HZ,
+                      domain_rand=False,
+                      start_state=load_checkpoint(TRIGGER_CHECKPOINT_PATH),
+                      start_noise=(0.02, 0.002, 0.02) if noise else None,
+                      grasp_bias_nm=0.0)
+    return env
 
 
 # ------------------------------------------------------------------- search
@@ -1009,6 +1023,23 @@ class RunningNorm:
                        -10.0, 10.0)
 
 
+def l2a_reward(env: LiftHoldEnv, info: dict) -> float:
+    """r8/L2A reward: the +1.29 mm weight-transfer transient, created and
+    HELD. Main = box centre z (saturating at the 5 mm gate); sustain term for
+    consecutive z>0 frames; shaping = log(N_right*N_left) (both sides
+    transferring simultaneously); slip penalty on the existing slip read."""
+    import math
+
+    r = 0.0
+    lift = max(0.0, info["lift"])
+    r += min(lift, 0.005) / 0.005 * 3.0          # saturating main term
+    r += min(lift / 0.001, 1.0) * 1.0            # sub-mm sustain shaping
+    n_r, n_l = env._pad_normals_obs()
+    if n_r > 0.1 and n_l > 0.05:
+        r += 0.5 * math.log(max(n_r * n_l, 1e-3) + 1.0)
+    return r * REWARD_SCALE
+
+
 def band_bonus(env: LiftHoldEnv, info: dict) -> float:
     """Shaped per-frame bonus: the demonstrated lift semantic. Pays when the
     box is inside the band with BOTH hands' end faces engaged and the slab
@@ -1059,7 +1090,10 @@ def cmd_ppo(args: argparse.Namespace) -> None:
     curve_rows = []
     best_score = -np.inf
     for it in range(args.iters):
-        env = make_start_env(args.episode_len, domain_rand=False, noise=True)
+        if getattr(args, "start", "checkpoint") == "trigger":
+            env = make_trigger_env(args.episode_len, noise=True)
+        else:
+            env = make_start_env(args.episode_len, domain_rand=False, noise=True)
         ep_frames = []          # (obs, act, rew, done, value)
         ep_returns = []
         ep_lifts = []
@@ -1083,7 +1117,9 @@ def cmd_ppo(args: argparse.Namespace) -> None:
                 # REWARD_SCALE keeps per-step returns near O(1) so the value
                 # head's MSE does not dominate the shared Adam update
                 # (measured v_loss 5.6e4 unscaled in the smoke run).
-                r_shaped = (r + band_bonus(env, info)) * REWARD_SCALE
+                shaped = (l2a_reward(env, info) if args.reward == "l2a"
+                          else band_bonus(env, info))
+                r_shaped = (r + shaped) * REWARD_SCALE
                 done = term or trunc
                 ep_frames.append((o_n, a_np, r_shaped, float(done),
                                   float(v), float(logp)))
@@ -1144,7 +1180,8 @@ def cmd_ppo(args: argparse.Namespace) -> None:
               f"ent={stats['entropy']:.3f}")
         if (it + 1) % args.eval_every == 0:
             m = eval_policy(lambda o: actor_forward(actor, norm, o, dev),
-                            n_episodes=3)
+                            n_episodes=3,
+                            start=getattr(args, "start", "checkpoint"))
             print(f"[ppo {it:3d}] eval pass={m['pass']} "
                   f"window={m['window_frames_max']} "
                   f"peak={m['peak_lift_mm_mean']:.2f}mm "
@@ -1176,11 +1213,17 @@ def actor_forward(actor, norm: RunningNorm, obs: np.ndarray, dev: str) -> np.nda
 
 # -------------------------------------------------------------------- eval
 def eval_policy(act_fn, n_episodes: int = 5, render_dir: pathlib.Path | None = None,
-                label: str = "policy") -> dict:
-    """Deterministic frozen-gate evaluation from the checkpoint start."""
-    env = make_start_env(episode_len=SUFFIX_RESEAT_FRAMES + SUFFIX_PRESS_FRAMES
-                         + SUFFIX_PRESS_DWELL + 60 + SUFFIX_HOLD + 20,
-                         domain_rand=False, noise=False)
+                label: str = "policy", start: str = "checkpoint") -> dict:
+    """Deterministic frozen-gate evaluation from the start state."""
+    if start == "trigger":
+        env = make_trigger_env(
+            episode_len=SUFFIX_PRESS_DWELL + 60 + SUFFIX_HOLD + 60,
+            domain_rand=False, noise=False)
+    else:
+        env = make_start_env(
+            episode_len=SUFFIX_RESEAT_FRAMES + SUFFIX_PRESS_FRAMES
+            + SUFFIX_PRESS_DWELL + 60 + SUFFIX_HOLD + 20,
+            domain_rand=False, noise=False)
     episodes = []
     for ep in range(n_episodes):
         obs, _ = env.reset(seed=SEED + ep)
@@ -1332,7 +1375,8 @@ def cmd_eval(args: argparse.Namespace) -> None:
         raise SystemExit("policy must be bc|ppo")
     out_dir = (OUT_DIR / "evidence") if args.render else None
     res = eval_policy(act_fn_global, n_episodes=args.n,
-                      render_dir=out_dir, label=label)
+                      render_dir=out_dir, label=label,
+                      start=getattr(args, "start", "checkpoint"))
     (OUT_DIR / f"eval_{label}.json").write_text(json.dumps(res, indent=1, default=float))
     print(json.dumps({k: v for k, v in res.items() if k != "episodes"},
                      indent=1, default=float))
@@ -1708,6 +1752,19 @@ def cmd_report(args: argparse.Namespace) -> None:
                                "makes visible to the policy",
             "candidate_total": "~5200 across eight rounds",
         }),
+        "round_l2a_force_obs_ppo": (None if not getattr(args, "l2a", False) else {
+            "design": "obs 107->109 (per-side pad normals, N_OBS derived, "
+                      "test pin -> constant); episodes start at the r8 "
+                      "trigger transient (+1.26 mm, N 1.59/2.36 N); reward "
+                      "= l2a (saturating centre-z 5 mm + sustain + "
+                      "log(N_r*N_l) both-side shaping); PPO 24 iters x 1536 "
+                      "steps, eval every 4 (3 episodes, pre-registered gate "
+                      ">=5 mm/20 frames/no slip/dual end-face contact)",
+            "eval_pre_registered": True,
+            "result": (json.loads((OUT_DIR / "eval_ppo.json").read_text())
+                       if (OUT_DIR / "eval_ppo.json").exists() else None),
+            "curve_present": (OUT_DIR / "ppo_curve.csv").exists(),
+        }),
         "round7c_torque_inversion": (None if not args.round7c else {
             "ruling_implemented": "torque-space inversion: per control frame "
                                   "from the press-dwell, finger ctrl = q + "
@@ -2000,10 +2057,12 @@ def main() -> None:
     p.add_argument("--episode-len", type=int, default=200)
     p.add_argument("--eval-every", type=int, default=4)
     p.add_argument("--init-from-bc", action="store_true")
+    p.add_argument("--reward", default="band")
     p = sub.add_parser("eval")
     p.add_argument("--policy", required=True)
     p.add_argument("--n", type=int, default=5)
     p.add_argument("--render", action="store_true")
+    p.add_argument("--start", default="checkpoint")
     p = sub.add_parser("report")
     p.add_argument("--round2", action="store_true")
     p.add_argument("--round3", action="store_true")
@@ -2013,6 +2072,7 @@ def main() -> None:
     p.add_argument("--round7", action="store_true")
     p.add_argument("--round7b", action="store_true")
     p.add_argument("--round7c", action="store_true")
+    p.add_argument("--l2a", action="store_true")
     p.add_argument("--round8", action="store_true")
     p.add_argument("--round7d", action="store_true")
     args = ap.parse_args()

@@ -572,10 +572,11 @@ def test_w6_gate3_both_hands_reach_their_end_faces(model):
 
 # ============================================================== env-level pins
 def test_w6_env_action_and_observation_shapes():
-    from grounding.envs.lift_hold_env import LiftHoldEnv  # noqa: PLC0415
+    from grounding.envs.lift_hold_env import LiftHoldEnv, N_OBS  # noqa: PLC0415
 
     env = LiftHoldEnv()
-    assert env.observation_space.shape == (107,)
+    assert env.observation_space.shape == (N_OBS,)
+    assert N_OBS == 109  # r7d/L2A: +2 per-side pad normal forces
     env.close()
 
 

@@ -59,7 +59,10 @@ N_HANDS = 2
 N_ACT = N_ACT_PER_HAND * N_HANDS     # 44: right hand block first, left appended
 # observation width (see LiftHoldEnv._obs): 13 object fields, two 43-field hand
 # blocks, 8 history fields
-N_OBS = 13 + N_HANDS * (3 + 4 + N_FINGER + N_FINGER + 4) + 8
+# r7d/L2A (Main ruling): +2 per-side pad normal forces - the force observation
+# that lets a policy see which side is transferring weight (the static-trap
+# breaker signal)
+N_OBS = 13 + N_HANDS * (3 + 4 + N_FINGER + N_FINGER + 4) + 8 + 2
 # W6a scene naming: the right hand keeps upstream MJCF names, the left hand
 # appends this suffix to every body / joint / actuator / geom name. Finger body
 # names still START with their finger prefix ("ff_tip_left"), so
@@ -662,7 +665,30 @@ class LiftHoldEnv(gym.Env):
             obj_angvel,  # 3
         ] + hand_blocks + [
             self._history,  # 8  4-frame history of (box dz, right-wrist dz)
+            self._pad_normals_obs(),  # 2  per-side pad normal (N) (r7d/L2A)
         ]).astype(np.float32)
+
+    def _pad_normals_obs(self) -> np.ndarray:
+        """Per-side summed normal force (N) on hand-vs-box contacts."""
+        n_r, n_l = 0.0, 0.0
+        for ci in range(self.data.ncon):
+            c = self.data.contact[ci]
+            g1, g2 = int(c.geom1), int(c.geom2)
+            if self.obj_geom not in (g1, g2):
+                continue
+            other = g2 if g1 == self.obj_geom else g1
+            if int(other) not in self.finger_geom_ids:
+                continue
+            f = np.zeros(6)
+            mujoco.mj_contactForce(self.model, self.data, ci, f)
+            left = (mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_BODY,
+                                      int(self.model.geom_bodyid[other])) or ""
+                    ).endswith("_left")
+            if left:
+                n_l += float(np.linalg.norm(f[:3]))
+            else:
+                n_r += float(np.linalg.norm(f[:3]))
+        return np.array([n_r, n_l], dtype=np.float64)
 
     def observation_space_shape(self) -> tuple[int, ...]:
         return self.observation_space.shape  # type: ignore[return-value]
