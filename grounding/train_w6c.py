@@ -2066,6 +2066,32 @@ def cmd_report(args: argparse.Namespace) -> None:
                                  "harness IK-refresh fix applied, and the "
                                  "chamfer contact-band check during climb",
         }),
+        "r7e_flat_pad_force_mode": (None if not getattr(args, "w6a_audit", False) else {
+            "experiment": "force-source fingers (tau 0.10/0.14/0.175 N*m = "
+                          "near cap) with 10-30 frame blend transitions, on "
+                          "the F4-fixed trigger state, harness IK refresh "
+                          "applied (W6a collab)",
+            "result": "N collapses to 0.00/0.06 N in ALL variants - the "
+                      "contact BREAKS at force-mode entry and never "
+                      "re-establishes",
+            "mechanism_final": "FLAT pads break contact under curl "
+                               "rotation: the force source rotates the pad "
+                               "face away from face-parallel (the 12x12 mm "
+                               "flat face tolerates only a few degrees), so "
+                               "force control LOSES the contact that "
+                               "position control held. The cylinder pads "
+                               "(v10-v12) kept contact under rotation "
+                               "(rolling) but had the migration decay. The "
+                               "geometric lock is now complete: with pads "
+                               "mounted on a rotating curl chain, position "
+                               "control holds contact but cannot add drag "
+                               "demand (static trap), and force control "
+                               "adds demand but breaks contact (flat pads) "
+                               "or migrates it (cylinders). The missing "
+                               "hardware element is a pad whose orientation "
+                               "stays face-normal under curl - a follower "
+                               "joint or slide-mount (W6a mechanical item)",
+        }),
         "round_l2a_force_obs_ppo": (None if not getattr(args, "l2a", False) else {
             "design": "obs 107->109 (per-side pad normals, N_OBS derived, "
                       "test pin -> constant); episodes start at the r8 "
