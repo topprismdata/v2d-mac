@@ -3,11 +3,18 @@
 Input : runs/w6b/mano_params.npz  (39 frames, effective 3 fps -- see
         retarget/mano_persist.py for the stride provenance; left 36/39,
         right 35/39 detected, gaps bridged only where stated below)
-Scene : grounding/assets/allegro_floating.xml (sha 6449871e...), nq/nv/nu
-        51/50/44: object free joint first (7), then right hand (22), left (22).
-        The left hand is the SAME right-hand mechanism under a yaw-pi mount
-        (hand_root_left euler 0-0-pi), so the chirality mirror is a property
-        of the INPUT transform, and the mount is a property of the SCENE.
+Scene : grounding/assets/allegro_floating.xml (v20.1, sha bc75a8e4...),
+        nq/nv/nu 65/64/50: six arm hinge qpos first, then the object free
+        joint (7), right hand (wrist 6 + fingers 16 + follower-pad hinges 8),
+        left hand likewise.  The box free joint and every seed slice are
+        name-addressed (box_free_qadr / SideSpec qadr) -- the v14-era
+        hard-coded ``qpos[0:7]`` layout died with the arm scene.  The arm
+        chain is driven by the W6a-v19 analytic follower (write_arm_ik_ctrl,
+        verbatim from the W6c env); the retargeted wrist/finger commands
+        stay the sole hand driver.  The left hand is the SAME right-hand
+        mechanism under a yaw-pi mount (hand_root_left euler 0-0-pi), so the
+        chirality mirror is a property of the INPUT transform, and the mount
+        is a property of the SCENE.
 
 Chain per hand (the smoke-5 single-hand chain, side-parameterised; the math
 is reused verbatim, only body/joint/actuator ids differ):
@@ -227,6 +234,11 @@ class SideSpec:
             assert i >= 0, f"body {n} missing"
             return i
 
+        def gid(n):
+            i = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, n)
+            assert i >= 0, f"geom {n} missing"
+            return i
+
         wj = [jid(n) for n in self.wrist_joints]
         fj = [jid(n) for n in self.finger_joints]
         self.wrist_qadr = np.array([model.jnt_qposadr[j] for j in wj])
@@ -236,13 +248,31 @@ class SideSpec:
         self.wrist_act_id = np.array([aid(n) for n in self.wrist_act])
         self.finger_act_id = np.array([aid(n) for n in self.finger_act])
         bodies = {bid(n) for n in self.hand_bodies}
+        # v20 follower pads: the ff/mf pads hang off dedicated pad child
+        # bodies (ff_pad, mf_pad, ...) that the frozen HAND_BODIES list
+        # predates.  They are the hand's PRIMARY contact surface (the scene
+        # gate is measured on them), so include them by name where the
+        # generation has them.
+        for f in ("ff", "mf"):
+            i = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY,
+                                  f"{f}_pad{self.suffix}")
+            if i >= 0:
+                bodies.add(i)
         self.hand_geoms = {
             g for g in range(model.ngeom) if int(model.geom_bodyid[g]) in bodies
         }
         tip_bodies = {bid(n) for n in self.tip_bodies}
-        self.tip_geoms = sorted(
+        body_tips = {
             g for g in self.hand_geoms if int(model.geom_bodyid[g]) in tip_bodies
-        )
+        }
+        # pad-of-record resolution by GEOM NAME -- the scene test's _hand()
+        # pattern.  On v20 the ff/mf collision geoms moved into the pad
+        # bodies, so body membership alone drops exactly the two pads the
+        # grasp is verified on (observed: gate-1 coll reduced to rf/th, the
+        # ff/mf touches invisible, best-pad z-band penalty +0.5 m).
+        name_tips = {gid(f"{f}_tip{self.suffix}_collision")
+                     for f in ("ff", "mf", "rf", "th")}
+        self.tip_geoms = sorted(body_tips | name_tips)
         palm_id = bid(self.palm)
         self.plate_geoms = sorted(
             g for g in self.hand_geoms if int(model.geom_bodyid[g]) == palm_id
@@ -283,6 +313,61 @@ def obj_ids(model):
         mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "object_chamfer_posx"),
         mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "object_chamfer_negx"),
     )
+
+
+def box_free_qadr(model) -> int:
+    """The object free joint's qpos address, resolved by NAME.
+
+    The v14-and-earlier scenes laid the box out first (qpos 0:7); the v19+
+    arm scenes put the six arm hinge qpos slots ahead of it, so the
+    historical hard-coded ``qpos[0:7]`` box writes silently clobbered the
+    arm state and teleported the box.  Every box-slot access goes through
+    this; nothing else may hard-code the slot."""
+    import mujoco
+
+    j = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, "object_free")
+    assert j >= 0, "joint object_free missing"
+    return int(model.jnt_qposadr[j])
+
+
+ARM_ACT_NAMES = (
+    "arm_yaw_r", "arm_pitch_r", "arm_elbow_r",
+    "arm_yaw_l", "arm_pitch_l", "arm_elbow_l",
+)
+
+
+def write_arm_ik_ctrl(model, data) -> None:
+    """W6a-v19 arm follower, verbatim semantics from the W6c env
+    (grounding/envs/lift_hold_env.py::_write_arm_ik_ctrl): analytic 3-DoF
+    IK from each shoulder anchor to the hand root's live world position,
+    written into the 6 arm servo targets every control step.
+
+    The retargeted wrist/finger commands stay the sole hand driver; the arm
+    is a kinematic follower so the serial chain stops fighting the wrist
+    servos (on v19+ scenes an unfollowed arm parks at qpos0 and drags the
+    hands ~0.5 m off every commanded pose -- observed as 550-623 mm
+    pad-to-rect distances in the first v20.1 re-run attempt)."""
+    import mujoco
+
+    L = 0.16  # link length (matches the MJCF arm_upper/forearm geoms)
+    aids = [mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, n)
+            for n in ARM_ACT_NAMES]
+    for s, sfx in ((0, ""), (1, "_left")):
+        bid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY,
+                                f"hand_root{sfx}")
+        target = data.xpos[bid]
+        shoulder = np.array([0.235 if s == 0 else -0.235, 0.0, 1.0])
+        dx, dy, dz = target - shoulder
+        yaw = float(np.arctan2(dy, dx))
+        r = float(np.hypot(dx, dy))
+        dist = float(np.clip(np.linalg.norm([dx, dy, dz]), 1e-6, 2 * L - 1e-6))
+        elbow = float(np.pi - np.arccos(
+            np.clip((2 * L * L - dist ** 2) / (2 * L * L), -1.0, 1.0)))
+        pitch = float(np.arctan2(dz, r) - np.arccos(
+            np.clip(dist ** 2 / (2 * L * dist), -1.0, 1.0)))
+        data.ctrl[aids[s * 3 + 0]] = yaw
+        data.ctrl[aids[s * 3 + 1]] = pitch
+        data.ctrl[aids[s * 3 + 2]] = elbow
 
 
 # --------------------------------------------------------------------------
@@ -1022,7 +1107,8 @@ def grasp_registration(model, data, spec: SideSpec, go_rotvec: np.ndarray) -> di
 
     g3 = json.loads((REPO / "runs/w6/gate3_qpos.json").read_text())
     q = np.asarray(g3["qpos"], float)
-    q[0:7] = [0.0, 0.0, 0.74, 1.0, 0.0, 0.0, 0.0]
+    ba = box_free_qadr(model)
+    q[ba:ba + 7] = [0.0, 0.0, 0.74, 1.0, 0.0, 0.0, 0.0]
     data.qpos[:] = q
     data.qvel[:] = 0.0
     mujoco.mj_forward(model, data)
@@ -1193,6 +1279,7 @@ def reset_scene_dual(model, data, specs: dict, first_cmd: dict | None = None) ->
         data.ctrl[spec.wrist_act_id] = wrist
     data.qvel[:] = 0.0
     for _ in range(400):
+        write_arm_ik_ctrl(model, data)
         mujoco.mj_step(model, data)
     return rs._max_support_penetration(model, data)
 
@@ -1327,6 +1414,7 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
             sat = int(np.sum(np.abs(cmds[side]["wrist"][t] - w) > 1e-9)
                       + np.sum(np.abs(cmds[side]["finger"][t] - f) > 1e-9))
             hist[side]["ctrl_sat"].append(sat)
+        write_arm_ik_ctrl(model, data)
         for _ in range(frame_skip):
             mujoco.mj_step(model, data)
 
@@ -1401,7 +1489,8 @@ def metric_calibration(model, data) -> dict:
 
     g3 = json.loads((REPO / "runs/w6/gate3_qpos.json").read_text())
     q = np.asarray(g3["qpos"], float)
-    q[0:7] = [0.0, 0.0, 0.74, 1.0, 0.0, 0.0, 0.0]  # the trap, undone
+    _ba = box_free_qadr(model)
+    q[_ba:_ba + 7] = [0.0, 0.0, 0.74, 1.0, 0.0, 0.0, 0.0]  # the trap, undone
     data.qpos[:] = q
     data.qvel[:] = 0.0
     mujoco.mj_forward(model, data)
@@ -1538,7 +1627,8 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
         dist, buried, fwd_deg, per_pad, ctr = measure(spec, coll)
         # executed final state: contact-physics evidence
         data.qpos[:] = cmds[side]["exec_qpos"][-1]
-        data.qpos[0:7] = cmds[side]["exec_obj"][-1]
+        _ba = box_free_qadr(model)
+        data.qpos[_ba:_ba + 7] = cmds[side]["exec_obj"][-1]
         _mj.mj_forward(model, data)
         dist_e, buried_e, fwd_deg_e, per_pad_e, ctr_e = measure(spec, coll)
         # GPT round-3 upgrade: >= 2 pads per hand inside the rectangle
@@ -1837,6 +1927,7 @@ def gpt_triptych(model, data, rep, specs) -> dict:
     from PIL import Image
 
     obj_body, box_geom, _, _ = obj_ids(model)
+    ba = box_free_qadr(model)
     half = model.geom_size[box_geom].copy()
     coll = {s: [g for g in specs[s].tip_geoms if model.geom_contype[g] != 0]
             for s in VIDEOS}
@@ -1858,14 +1949,14 @@ def gpt_triptych(model, data, rep, specs) -> dict:
     best_k, best_score = None, -1
     for k in range(rep["n_frames"]):
         data.qpos[:] = rep["qpos_full"][k]
-        data.qpos[0:7] = rep["obj_world"][k]
+        data.qpos[ba:ba + 7] = rep["obj_world"][k]
         mujoco.mj_forward(model, data)
         n = pad_rect_counts()
         score = min(n["right"], n["left"]) * 10 + n["right"] + n["left"]
         if score > best_score:
             best_score, best_k = score, k
     data.qpos[:] = rep["qpos_full"][best_k]
-    data.qpos[0:7] = rep["obj_world"][best_k]
+    data.qpos[ba:ba + 7] = rep["obj_world"][best_k]
     mujoco.mj_forward(model, data)
     contact_n = pad_rect_counts()
 
@@ -1880,7 +1971,7 @@ def gpt_triptych(model, data, rep, specs) -> dict:
     saved = []
     for tag, k in (("approach", approach_k), ("two_pad_contact", best_k)):
         data.qpos[:] = rep["qpos_full"][k]
-        data.qpos[0:7] = rep["obj_world"][k]
+        data.qpos[ba:ba + 7] = rep["obj_world"][k]
         mujoco.mj_forward(model, data)
         cam.lookat[:] = [0.0, 0.0, 0.74]
         cam.azimuth, cam.elevation, cam.distance = 105.0, -22.0, 0.80
@@ -1918,6 +2009,7 @@ def render_comparison(model, data, rep, out_png: Path) -> dict:
     import mujoco
     from PIL import Image, ImageDraw
 
+    ba = box_free_qadr(model)
     W, H = 640, 360
     renderer = mujoco.Renderer(model, height=H, width=W)
     cam = mujoco.MjvCamera()
@@ -1932,7 +2024,7 @@ def render_comparison(model, data, rep, out_png: Path) -> dict:
         img = Image.open(src).convert("RGB").resize((W, H))
         rows.append(np.asarray(img))
         data.qpos[:] = rep["qpos_full"][k]
-        data.qpos[0:7] = rep["obj_world"][k]
+        data.qpos[ba:ba + 7] = rep["obj_world"][k]
         mujoco.mj_forward(model, data)
         cam.lookat[:] = [0.0, 0.0, 0.74]
         cam.azimuth, cam.elevation, cam.distance = presets[i]
@@ -2113,10 +2205,10 @@ def main() -> int:
     blend_record = {}
     for side in VIDEOS:
         spec = specs[side]
-        if side == "right":
-            seed_w, seed_f = g3q[7:13], g3q[13:29]
-        else:
-            seed_w, seed_f = g3q[29:35], g3q[35:51]
+        # name-addressed seed slices: the v14 seed layout (box 0:7, right
+        # wrist 7:13, ...) died with the v19+ arm scene; the addresses come
+        # off the frozen MJCF by joint name instead.
+        seed_w, seed_f = g3q[spec.wrist_qadr], g3q[spec.finger_qadr]
         seed_w = np.clip(seed_w, ctrl_lo[spec.wrist_act_id], ctrl_hi[spec.wrist_act_id])
         seed_f = np.clip(seed_f, ctrl_lo[spec.finger_act_id], ctrl_hi[spec.finger_act_id])
         w0, f0 = cmds_global[side]["wrist"][-1], cmds_global[side]["finger"][-1]
@@ -2187,15 +2279,18 @@ def main() -> int:
     report["terminal_target_provenance"]["blend"] = blend_record
     report["terminal_target_provenance"]["table_clearance_clamp"] = clamp_rec
     report["terminal_target_provenance"]["gate3_seed_file"] = (
-        "runs/w6/gate3_qpos.json @ commit cc16641 (round-3: 2 pads per hand "
-        "in the end-face rectangle mid-band; Main-verified micro-metre)")
+        "runs/w6/gate3_qpos.json regenerated by the scene test on the v20 "
+        "arm scene (41f22f5) and bit-identically re-derived on v20.1 "
+        "(e170b6d): 2 pads per hand in the end-face rectangle mid-band, "
+        "written by test_w6_gate3_both_hands_reach_their_end_faces")
     report["terminal_target_provenance"]["gate3_seed_file_sha256"] = _sha256_1kb(
         REPO / "runs/w6/gate3_qpos.json")
-    report["terminal_target_provenance"]["gate3_seed_anchor_commit"] = "cc16641"
+    report["terminal_target_provenance"]["gate3_seed_anchor_commit"] = "e170b6d"
     report["terminal_target_provenance"]["gate3_seed_note"] = (
         "the scene test rewrites this file atomically on each run; the seed "
-        "is anchored by reading the qpos array at runtime and by the "
-        "cc16641 blob in the report provenance")
+        "is anchored by reading the qpos array at runtime and by the file "
+        "sha in this report; the r6 re-run verified the regeneration is "
+        "deterministic (bit-identical before/after test_scene_w6)")
     report["scene"]["xml_sha256_full"] = _sha256_full(SCENE_XML)
     report["scene"]["scene_commit_pin"] = "a15b1fb (v6) / bdf7a5f (v7 visual-only); Main GO sha noted as b17544ab..., which does not match any byte level of the delivered XML -- scene pinned here by commit + full sha instead"
     report["findings"] = [
@@ -2291,15 +2386,18 @@ def main() -> int:
     report["terminal_target_provenance"]["blend"] = blend_record
     report["terminal_target_provenance"]["table_clearance_clamp"] = clamp_rec
     report["terminal_target_provenance"]["gate3_seed_file"] = (
-        "runs/w6/gate3_qpos.json @ commit cc16641 (round-3: 2 pads per hand "
-        "in the end-face rectangle mid-band; Main-verified micro-metre)")
+        "runs/w6/gate3_qpos.json regenerated by the scene test on the v20 "
+        "arm scene (41f22f5) and bit-identically re-derived on v20.1 "
+        "(e170b6d): 2 pads per hand in the end-face rectangle mid-band, "
+        "written by test_w6_gate3_both_hands_reach_their_end_faces")
     report["terminal_target_provenance"]["gate3_seed_file_sha256"] = _sha256_1kb(
         REPO / "runs/w6/gate3_qpos.json")
-    report["terminal_target_provenance"]["gate3_seed_anchor_commit"] = "cc16641"
+    report["terminal_target_provenance"]["gate3_seed_anchor_commit"] = "e170b6d"
     report["terminal_target_provenance"]["gate3_seed_note"] = (
         "the scene test rewrites this file atomically on each run; the seed "
-        "is anchored by reading the qpos array at runtime and by the "
-        "cc16641 blob in the report provenance")
+        "is anchored by reading the qpos array at runtime and by the file "
+        "sha in this report; the r6 re-run verified the regeneration is "
+        "deterministic (bit-identical before/after test_scene_w6)")
     report["scene"]["xml_sha256_full"] = _sha256_full(SCENE_XML)
     report["scene"]["scene_commit_pin"] = "a15b1fb (v6) / bdf7a5f (v7 visual-only); Main GO sha noted as b17544ab..., which does not match any byte level of the delivered XML -- scene pinned here by commit + full sha instead"
     report["findings"] = [
@@ -2310,10 +2408,14 @@ def main() -> int:
                 "spring torque 0.4*(q-0.6) at the seed: ffj2_r needs 0.279 Nm "
                 "vs forcerange 0.094 Nm (mfj2_r 0.354/0.094, mfj1_r 0.247/"
                 "0.104, thj3_r 0.197/0.030; left ffj1 0.279/0.105, rfj2 0.251/"
-                "0.094 ...). Realised terminal finger error 0.1-0.64 rad per "
-                "joint on BOTH hands; right pads still contact the face "
-                "(executed rect 6.07 mm, 22 end-face contact frames); left "
-                "pads fall 44.9 mm short."),
+                "0.094 ...). r6 executed terminal: right best pad 15.1 mm off "
+                "the face rectangle (band penalty) with 35 end-face contact "
+                "frames; left best pad 8.3 mm with 39 contact frames -- both "
+                "hands ride above the mid band instead of seating. v14 "
+                "baseline (r5n): right 14.9 mm, left SEATED 0.29 mm with 3 "
+                "contact frames; the v20 follower pads (5 g, k=0.02, "
+                "springref 0.047) are the suspected compliance path "
+                "(see r5n_comparison)."),
             "consequence": "the executed terminal cannot reproduce the seed's "
                            "deep curls; the >=2-pad terminal criterion needs "
                            "either servo/spring re-budget (scene generation) "
@@ -2321,31 +2423,30 @@ def main() -> int:
         },
         {
             "finding": "the registered LEFT approach dips below the table "
-                       "(th_distal_left vs table_slab -0.26 mm, 130/163 "
-                       "control frames from frame 0)",
+                       "(gate3, zero hand-vs-support contact over the whole "
+                       "clip)",
             "evidence": (
-                "the video's own left-hand rest pose sits at table height; "
-                "the MANO depth axis (the absolute-height signal) is "
-                "unusable (4.8-6.3 m weak-perspective), so the approach "
-                "height rides on the image-plane mapping alone"),
-            "consequence": "gate3 (zero support contact) fails on the left "
-                           "by a 0.26 mm graze; right hand is clean",
+                "r6: left 23 support-contact control frames [32, 243-265], "
+                "right 12 [5-18]; the video's own left-hand rest pose sits "
+                "at table height; the MANO depth axis (the absolute-height "
+                "signal) is unusable (4.8-6.3 m weak-perspective), so the "
+                "approach height rides on the image-plane mapping alone"),
+            "consequence": "gate3 fails on both hands' residual grazes "
+                           "(frame sets bit-near r5n: 12/23 frames)",
         },
         {
-            "finding": "right-hand base placement drifts to y +0.17 m during "
-                       "the approach (spread-phase closest-gap objective); "
-                       "the approach is not video-like on that axis, and the "
-                       "drifting hand knocks the box over its rear-top "
-                       "corner: the recorded object pose at the terminal is "
-                       "TILTED (see replay_frames.json obj series), so the "
-                       "gate-1 rect distances at the terminal are measured "
-                       "against a no-longer-upright box",
-            "consequence": "the right terminal numbers satisfy the rect "
-                           "formula but against a disturbed box pose; the "
-                           "next iteration must constrain the base-solve y "
-                           "corridor (video shows the hands entering along "
-                           "the +-x face normals) before the touch numbers "
-                           "carry full weight",
+            "finding": "box disturbance at the terminal is resolved on v20.1: "
+                       "the recorded object pose stays upright through the "
+                       "replay",
+            "evidence": (
+                "terminal box tilt 2.15 deg from identity, 5.0 mm total "
+                "displacement (r5n-era finding: a y+0.17 m drifting right "
+                "hand knocked the box over its rear-top corner; the base-y "
+                "corridor now holds -- both bases in-corridor at y "
+                "+0.0086/+0.0081 m)"),
+            "consequence": "the executed terminal rect distances are "
+                           "measured against a live, near-upright box; no "
+                           "further corridor work is verdict-bearing",
         },
     ]
     report["replay"]["fps_scope"] = (
