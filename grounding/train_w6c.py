@@ -1440,6 +1440,7 @@ def penetration_disposition(eval_res: dict) -> dict:
 def _round_verdict(args, verdict: str) -> str:
     if getattr(args, "round7d", False): return "fail-terminal-v13-compliance"
     if getattr(args, "round7d", False): return "fail-terminal-v13-compliance"
+    if getattr(args, "round8", False): return "fail-r8-transition"
     if getattr(args, "round7c", False): return "fail-terminal-v13-forced-source"
     if getattr(args, "round7b", False): return "fail-r7b"
     if getattr(args, "round7", False): return "fail-r7"
@@ -1672,6 +1673,40 @@ def cmd_report(args: argparse.Namespace) -> None:
                                            "learned) can hold the vertical "
                                            "slide",
             "candidate_total": "~5200 across seven rounds + diagnostics",
+        }),
+        "round8_v14_straight_line": (None if not args.round8 else {
+            "grid": "8 combos (N*r 1.2/1.3 x wrist 1/2 mm/s x N*l 0.25/0.35), "
+                    "force-source fingers + N-stable trigger + vertical ramp",
+            "result": "all 8 identical: no pass, eval peak -0.03 mm",
+            "frame_level_finding": "the force-source press TRANSIENTLY "
+                                   "lifted the box to +1.29 mm (centre) "
+                                   "BEFORE the trigger - weight transfer "
+                                   "through the force press DOES happen "
+                                   "briefly; the trigger's wrist ramp then "
+                                   "collapses it (N -> 0 both sides within "
+                                   "one frame of the ramp start, box "
+                                   "settles to -0.015 mm); freeze-after-"
+                                   "trigger variant: +1.1 mm transient, "
+                                   "settles +0.57 mm",
+            "path_assert": "pad path ratio 102.9 mm/mm (assert 0.02): the "
+                           "metric catches DETACHED pads swinging freely "
+                           "(contact broken pads), not the pressed pads' "
+                           "path - a contact-integrity indicator, not a "
+                           "pure path measurement",
+            "mu_eff_measured": 0.34,
+            "verdict_rationale": "the +1.29 mm transient proves weight "
+                                 "transfer happens; the collapse at the "
+                                 "trigger transition shows the press state "
+                                 "is a transient wedge, not a sustainable "
+                                 "grasp - the schedule family is exhausted "
+                                 "including the force-source trigger form",
+            "level2_A_status": "pre-approved, next: obs 107->109 (per-side "
+                               "pad normals), test sync, PPO 24+ iters, "
+                               "eval >=5 mm pre-registered - one budget "
+                               "cycle; the +1.29 mm transient is the "
+                               "learning target the force observation "
+                               "makes visible to the policy",
+            "candidate_total": "~5200 across eight rounds",
         }),
         "round7c_torque_inversion": (None if not args.round7c else {
             "ruling_implemented": "torque-space inversion: per control frame "
@@ -1978,6 +2013,7 @@ def main() -> None:
     p.add_argument("--round7", action="store_true")
     p.add_argument("--round7b", action="store_true")
     p.add_argument("--round7c", action="store_true")
+    p.add_argument("--round8", action="store_true")
     p.add_argument("--round7d", action="store_true")
     args = ap.parse_args()
     {"curate": cmd_curate, "checkpoint": cmd_checkpoint,

@@ -19,7 +19,7 @@
  ],
  "scene": {
   "xml": "/Users/guohongbin/v2d-mac/grounding/assets/allegro_floating.xml",
-  "xml_sha256": "6ec76dee6d85faa5bdd1496bcde529f4de14781ac4aa0edfef4e9591b97add79",
+  "xml_sha256": "257ef61110d0c1c03dbbe9dc639440b01337ec2a0b8a1ba31a2109e5909da100",
   "seed_file": "/Users/guohongbin/v2d-mac/runs/w6/gate3_qpos.json",
   "seed_sha256": "9b88eec25e8d70eefb766b9ddbb0e49bcde1186a7ba5435cb022814da795aa7b",
   "actuator_table_untouched": true
@@ -52,14 +52,14 @@
  "approach_checkpoint": {
   "n_approach_frames": 105,
   "obj_xpos": [
-   -0.0001684088160030079,
-   0.0008680010906979838,
-   0.7399684342730664
+   0.00046419778874651424,
+   0.0008491500982785271,
+   0.739987672885239
   ],
-  "obj_yaw_deg": 2.223797465359758,
+  "obj_yaw_deg": 4.057569177514791,
   "ctrl_hz": 20,
   "seed": 0,
-  "checkpoint_sha256": "cf3e50cc05d5ca691702923adad2364ddb0e0d9a44cc7dbe1d5dff2100fa44ab"
+  "checkpoint_sha256": "33286ddeea132d878d8b10feeaeabeca1446a8d548d99f059f311ea9056c417c"
  },
  "teacher_search": {
   "best_params": {
@@ -1279,7 +1279,7 @@
    }
   }
  },
- "verdict": "fail-terminal-v13-compliance",
+ "verdict": "fail-r8-transition",
  "round7b_asymmetric_corner": {
   "grid": "18 asymmetric combos (left target 0.20/0.25/0.30 x right ramp 1.15->1.30 / 1.20->1.35 / const 1.25 x wrist slow/mid) + 8 bias-primary combos (bias0_r 0.10/0.15 with compensated command retraction)",
   "result": "all 26: zero lift (peak -0.04..0.00 mm), end-face ratios 0 - the light-touch left servo could not hold its target while the strong right press held, and the compensated retraction simply unloaded the press (right pre-press 1.25 -> 0.00 N as comp grows)",
@@ -1295,12 +1295,16 @@
   "feasible_corner": "N_left <= 0.3 N (light touch, counts for the contact clause) + N_right >= 1.12 N (within the 1.38 N ceiling): mathematically feasible (net surplus ~0.7 N) but not found by any schedule - reaching it requires force observation in the policy (obs pin 107 is test-locked; extension needs a coordinated test update) or the force-servo mode as an action dimension",
   "candidate_total": "~4750 across seven rounds"
  },
- "round7d_mu_diagnostic": {
-  "step1_mu_measurement": "force-source press at N 0.5-0.6 N + pure vertical wrist 1 mm/s: t_up = 0.00 N, mu_eff = 0.00 - NO vertical drag transmitted in either control mode; box rose +6.6..+7.7 mm then fell back (the top-edge hook/wedge signature, not friction)",
-  "step2_straight_lift": "position-control deep press (ff_r 0.55-0.75) + pure vertical climb: box +6.6..+7.7 mm transient then stall; pad xy drift 8.6-14.7 mm (Main's <0.02 mm/mm assert fails by ~400x)",
-  "final_mechanism": "curl servo COMPLIANCE: kp 0.73 (ffa1/mfa1) and 0.235 (ffa2/mfa2) N*m/rad -> a 1 N vertical drag at the ~50 mm arm deflects ffj2 by 0.21 rad (12 deg) - the loaded pad path is dominated by servo deflection, not the commanded translation; the pads swing to the top edge (hook) instead of sliding vertically, in BOTH position and force control. Friction itself is fine (the hook drag lifted the box 7 mm); the pad PATH is the uncontrollable element",
-  "quantified_fix_needs_ruling": "curl kp is an actuator parameter (red-lined): kp x5 (ffa2/mfa2 0.235 -> ~1.2) keeps the 1.47 N drag deflection <= 0.04 rad (2.3 deg) - the pad path becomes vertical within the assert; alternatively a mechanical pad guide. Without it, no controller (position, force, hybrid, closed-loop, learned) can hold the vertical slide",
-  "candidate_total": "~5200 across seven rounds + diagnostics"
+ "round7d_mu_diagnostic": null,
+ "round8_v14_straight_line": {
+  "grid": "8 combos (N*r 1.2/1.3 x wrist 1/2 mm/s x N*l 0.25/0.35), force-source fingers + N-stable trigger + vertical ramp",
+  "result": "all 8 identical: no pass, eval peak -0.03 mm",
+  "frame_level_finding": "the force-source press TRANSIENTLY lifted the box to +1.29 mm (centre) BEFORE the trigger - weight transfer through the force press DOES happen briefly; the trigger's wrist ramp then collapses it (N -> 0 both sides within one frame of the ramp start, box settles to -0.015 mm); freeze-after-trigger variant: +1.1 mm transient, settles +0.57 mm",
+  "path_assert": "pad path ratio 102.9 mm/mm (assert 0.02): the metric catches DETACHED pads swinging freely (contact broken pads), not the pressed pads' path - a contact-integrity indicator, not a pure path measurement",
+  "mu_eff_measured": 0.34,
+  "verdict_rationale": "the +1.29 mm transient proves weight transfer happens; the collapse at the trigger transition shows the press state is a transient wedge, not a sustainable grasp - the schedule family is exhausted including the force-source trigger form",
+  "level2_A_status": "pre-approved, next: obs 107->109 (per-side pad normals), test sync, PPO 24+ iters, eval >=5 mm pre-registered - one budget cycle; the +1.29 mm transient is the learning target the force observation makes visible to the policy",
+  "candidate_total": "~5200 across eight rounds"
  },
  "round7c_torque_inversion": {
   "ruling_implemented": "torque-space inversion: per control frame from the press-dwell, finger ctrl = q + tau_des/kp (per-joint kp 0.7269/0.2348, per-joint tau capped at forcerange) - the finger becomes a pure force source; contact state machine (N > 0.1 -> force mode, N <= 0.05 -> v2 anchored position fallback, anti-throw); allocation left 0.25 N light / right 1.15-1.25 N, lift trigger and gate unchanged",
