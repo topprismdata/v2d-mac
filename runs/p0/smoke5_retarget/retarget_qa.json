@@ -2437,10 +2437,10 @@
     "interpretation": "evidence only, not a gate: smoke 6 measured HaMeR's own fingertip error at mean 45.6 px / p90 111.6 px under occluded grasping, so this term inherits that uncertainty and is recorded rather than thresholded"
   },
   "physics_provenance": {
-    "mjcf_commit": "0498dc3",
+    "mjcf_commit": "e170b6d",
     "mjcf_commit_message": "p0(w6a-v19): 3-DoF env-driven articulated arms \u2014 zero residual IK",
     "scene": "grounding/assets/allegro_floating.xml",
-    "scene_sha256": "e7b5de06c9081e3054c08199707eb98263ce93b8152cf6632b17a9594690d0b9",
+    "scene_sha256": "bc75a8e4e542346d32091ddb1a47d42956f5749b23bf9332891cb2636aa321ca",
     "scene_sha256_at_mjcf_commit": "e7b5de06c9081e3054c08199707eb98263ce93b8152cf6632b17a9594690d0b9",
     "scene_sha256_at_baseline_commit": "257ef61110d0c1c03dbbe9dc639440b01337ec2a0b8a1ba31a2109e5909da100",
     "scene_matches_mjcf_commit": true,

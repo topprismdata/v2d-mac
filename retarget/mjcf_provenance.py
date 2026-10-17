@@ -82,7 +82,7 @@ from retarget import retarget_smoke as rs  # noqa: E402
 #: the 0.8 static-hold budget but below saturation.  First observed by the
 #: v8 static-hold gate; it is contact-physics evidence for W6c's A2/A3a
 #: accounting, not a smoke-5 gate.
-MJCF_COMMIT = "0498dc3"
+MJCF_COMMIT = "e170b6d"
 #: The MJCF revision the *previous* smoke-5 numbers were taken on. Kept so the
 #: two data sets can never be silently mixed.  83bcedb is the W6a-v14
 #: generation (blob 257ef611..., pre-arm scene) -- the superseded physics
