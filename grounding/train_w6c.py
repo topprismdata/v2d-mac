@@ -1438,6 +1438,8 @@ def penetration_disposition(eval_res: dict) -> dict:
 
 
 def _round_verdict(args, verdict: str) -> str:
+    if getattr(args, "round7d", False): return "fail-terminal-v13-compliance"
+    if getattr(args, "round7d", False): return "fail-terminal-v13-compliance"
     if getattr(args, "round7c", False): return "fail-terminal-v13-forced-source"
     if getattr(args, "round7b", False): return "fail-r7b"
     if getattr(args, "round7", False): return "fail-r7"
@@ -1632,6 +1634,44 @@ def cmd_report(args: argparse.Namespace) -> None:
                                "test update) or the force-servo mode as an "
                                "action dimension",
             "candidate_total": "~4750 across seven rounds",
+        }),
+        "round7d_mu_diagnostic": (None if not args.round7d else {
+            "step1_mu_measurement": "force-source press at N 0.5-0.6 N + pure "
+                                    "vertical wrist 1 mm/s: t_up = 0.00 N, "
+                                    "mu_eff = 0.00 - NO vertical drag "
+                                    "transmitted in either control mode; box "
+                                    "rose +6.6..+7.7 mm then fell back (the "
+                                    "top-edge hook/wedge signature, not "
+                                    "friction)",
+            "step2_straight_lift": "position-control deep press (ff_r "
+                                   "0.55-0.75) + pure vertical climb: box "
+                                   "+6.6..+7.7 mm transient then stall; "
+                                   "pad xy drift 8.6-14.7 mm (Main's "
+                                   "<0.02 mm/mm assert fails by ~400x)",
+            "final_mechanism": "curl servo COMPLIANCE: kp 0.73 (ffa1/mfa1) "
+                               "and 0.235 (ffa2/mfa2) N*m/rad -> a 1 N "
+                               "vertical drag at the ~50 mm arm deflects "
+                               "ffj2 by 0.21 rad (12 deg) - the loaded pad "
+                               "path is dominated by servo deflection, not "
+                               "the commanded translation; the pads swing to "
+                               "the top edge (hook) instead of sliding "
+                               "vertically, in BOTH position and force "
+                               "control. Friction itself is fine (the hook "
+                               "drag lifted the box 7 mm); the pad PATH is "
+                               "the uncontrollable element",
+            "quantified_fix_needs_ruling": "curl kp is an actuator "
+                                           "parameter (red-lined): kp x5 "
+                                           "(ffa2/mfa2 0.235 -> ~1.2) keeps "
+                                           "the 1.47 N drag deflection "
+                                           "<= 0.04 rad (2.3 deg) - the pad "
+                                           "path becomes vertical within "
+                                           "the assert; alternatively a "
+                                           "mechanical pad guide. Without "
+                                           "it, no controller (position, "
+                                           "force, hybrid, closed-loop, "
+                                           "learned) can hold the vertical "
+                                           "slide",
+            "candidate_total": "~5200 across seven rounds + diagnostics",
         }),
         "round7c_torque_inversion": (None if not args.round7c else {
             "ruling_implemented": "torque-space inversion: per control frame "
@@ -1938,6 +1978,7 @@ def main() -> None:
     p.add_argument("--round7", action="store_true")
     p.add_argument("--round7b", action="store_true")
     p.add_argument("--round7c", action="store_true")
+    p.add_argument("--round7d", action="store_true")
     args = ap.parse_args()
     {"curate": cmd_curate, "checkpoint": cmd_checkpoint,
      "search": cmd_search, "bc": cmd_bc, "ppo": cmd_ppo,
