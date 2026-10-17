@@ -5,6 +5,7 @@ press, force-source hold, climb with N-hold, gate + morphology + mu_eff.
 """
 import hashlib
 import itertools
+import os
 import json
 import pathlib
 import sys
@@ -28,18 +29,28 @@ FS = 25
 # the curl plane with the face normal, wx +20 mm, wz +50 mm, curls
 # (0.40, 0.30); pads seat x +0.0663 z -0.003; N 4.2-6.2 N on +0.25 rad
 # demand (>= the 2.16 N/side liftable threshold).
-# LEFT (terminal no-solution): every in-face-band pose has cos <= 0.2
-# (N ceiling <= 0.85 N) and every normal-aligned pose (cos 0.5-0.68)
-# puts the pads 4-14 cm outside the lateral face band - in-band and
-# normal-aligned are geometrically exclusive for the left mount's ff/mf
-# curl chain (~10^4 FK evals over wrist x/z/rotations/curls/spread).
-# The left keeps its best in-band placement; the bilateral gate clauses
-# are therefore expected to fail on the left side - recorded as such.
+# LEFT (v21, rf set + y): the y-augmented rescan found NO ff/mf solution
+# (in-band poses sit 24-32 mm proud, arc-structural), but the RF set
+# SOLVES: wrist y +30 mm, x +10 mm, rot (rx +0.20, ry +0.60, rz -0.15),
+# rf curls (0.40, 0.45) -> rf tip lands (-0.0573, -0.0908, -0.0081)
+# in-band at mid-height. The left ff/mf fingers park open at 0.35.
 PL_RIGHT = {"wx": 0.020, "wz": 0.050, "drx": 0.15, "dry": 0.60,
             "drz": -0.10, "curl1": 0.40, "curl2": 0.30}
-PL_LEFT = {"wx": -0.010, "wz": -0.075, "ff1": 0.45, "ff2": 0.30,
-           "mf1": 0.30, "mf2": 0.45, "ffj0": -0.20, "ffj3": -0.30,
-           "mfj0": +0.20}
+PL_LEFT = {"wy": 0.030, "wx": 0.010, "wz": -0.045, "drx": 0.20, "dry": 0.60,
+           "drz": -0.15, "rf1": 0.40, "rf2": 0.45, "park": 0.35}
+# v21: the left press/demand set is RF (rfj1/rfj2 left, actuators
+# rfa1/rfa2_left at ctrl 37/38; W6a 98c498a raised their forceranges to
+# 0.180/0.159). The right set stays ff/mf (actuators 7/8/11/12).
+LEFT_PRESS_ACTS = (37, 38)
+LEFT_PRESS_JOINTS = ("rfj1_left", "rfj2_left")
+# Climb-engage criterion (runner machinery, decoupled from the frozen
+# GATE clauses): the vise is a COUPLED system - the box is held when
+# mu_pad x (N_r + N_l) > W (1.4715 N at mu 0.34 -> sum >= 4.5 N) and each
+# side keeps contact. The earlier per-side 2.4 N threshold blocked the
+# climb even when the sum capacity was 2.0-2.4 N (right 4.3-5.5 + left
+# 1.6-1.85): the sum form is the physically-correct statement.
+ENGAGE_SUM_N = 4.5
+ENGAGE_MIN_SIDE = 1.0
 
 
 def table_support_n(env) -> float:
@@ -88,24 +99,17 @@ def main() -> None:
 
     d0_base = start_snap()
 
-    jn = [[f"{f}j{i}{s}" for f in ("ff", "mf") for i in (1, 2)]
-          for s in ("", "_left")]
-    JQ = [[m.jnt_qposadr[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT, j)]
-           for j in jn[si]] for si in range(2)]
-    AK = [[m.actuator_gainprm[mujoco.mj_name2id(
-        m, mujoco.mjtObj.mjOBJ_ACTUATOR, f"{f}a{i}{s}")][0]
-        for f in ("ff", "mf") for i in (1, 2)] for s in ("", "_left")]
-    AC = [[m.actuator_ctrlrange[mujoco.mj_name2id(
-        m, mujoco.mjtObj.mjOBJ_ACTUATOR, f"{f}a{i}{s}")].tolist()
-        for f in ("ff", "mf") for i in (1, 2)] for s in ("", "_left")]
+    def jadr_local(name):
+        jid = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT, name)
+        return int(m.jnt_qposadr[jid])
+
     padg = [[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM,
                                f"{f}_tip{s}_collision")
              for f in ("ff", "mf")] for s in ("", "_left")]
     lo_c = m.actuator_ctrlrange[:, 0]
     hi_c = m.actuator_ctrlrange[:, 1]
-    press_idx = [[7, 8, 11, 12], [29, 30, 33, 34]]
 
-    def run(timing, ff_r, mf_r, dz_mm, nr_star=4.0, nl_star=4.0, rate=1.0,
+    def run(timing, ff_r, mf_r, dz_mm, nr_star=4.0, nl_star=6.8, rate=1.0,
             mode_pin=None, capture=None, d0=None):
         """mode_pin: None = the auto force/pos hybrid per side; else a pinned
         ("force"|"pos", "force"|"pos") pair with no auto-flip. capture: list
@@ -126,29 +130,43 @@ def main() -> None:
         # edge where the curl path is tangential.
         seat = start_ctrl = d.ctrl.copy()
         clear = seat.copy()
-        for i_ in press_idx[0] + press_idx[1]:
+        for i_ in (7, 8, 11, 12) + LEFT_PRESS_ACTS:
             clear[i_] = 0.40
         clear[2] += 0.050
         clear[24] += 0.045
         transit = clear.copy()
-        place = transit.copy()
-        place[0] += PL_RIGHT["wx"]; place[2] += PL_RIGHT["wz"]
-        place[3] += PL_RIGHT["drx"]; place[4] += PL_RIGHT["dry"]
-        place[5] += PL_RIGHT["drz"]
-        place[7] = PL_RIGHT["curl1"]; place[8] = PL_RIGHT["curl2"]
-        place[11] = PL_RIGHT["curl1"]; place[12] = PL_RIGHT["curl2"]
-        place[22] += PL_LEFT["wx"]; place[24] += PL_LEFT["wz"]
-        place[29] = PL_LEFT["ff1"]; place[30] = PL_LEFT["ff2"]
-        place[33] = PL_LEFT["mf1"]; place[34] = PL_LEFT["mf2"]
-        place[28] += PL_LEFT["ffj0"]; place[31] += PL_LEFT["ffj3"]
-        place[32] += PL_LEFT["mfj0"]
+        # right placement first (rotation-aligned ff/mf), LEFT channels
+        # parked open - the right ramp moves the box, so the left rf seat
+        # must happen AFTER the box stops moving
+        place_r = transit.copy()
+        place_r[0] += PL_RIGHT["wx"]; place_r[2] += PL_RIGHT["wz"]
+        place_r[3] += PL_RIGHT["drx"]; place_r[4] += PL_RIGHT["dry"]
+        place_r[5] += PL_RIGHT["drz"]
+        place_r[7] = PL_RIGHT["curl1"]; place_r[8] = PL_RIGHT["curl2"]
+        place_r[11] = PL_RIGHT["curl1"]; place_r[12] = PL_RIGHT["curl2"]
         for a, b, n in ((seat, clear, 12), (clear, transit, 10),
-                        (transit, place, 15)):
+                        (transit, place_r, 15)):
             for k in range(n):
                 f = (k + 1) / n
                 d.ctrl[:] = a + (b - a) * f
                 for _ in range(FS):
                     mujoco.mj_step(m, d)
+        for _ in range(15 * FS):
+            mujoco.mj_step(m, d)
+        # left rf placement (v21): wrist y/x + rotation, rf curls; the
+        # left ff/mf fingers stay parked open so their pads stay clear
+        place_l = d.ctrl.copy()
+        place_l[23] += PL_LEFT["wy"]; place_l[22] += PL_LEFT["wx"]
+        place_l[25] += PL_LEFT["drx"]; place_l[26] += PL_LEFT["dry"]
+        place_l[27] += PL_LEFT["drz"]
+        place_l[37] = PL_LEFT["rf1"]; place_l[38] = PL_LEFT["rf2"]
+        for k in range(15):
+            f = (k + 1) / 15
+            d.ctrl[:] = place_r + (place_l - place_r) * f
+            for _ in range(FS):
+                mujoco.mj_step(m, d)
+        for _ in range(10 * FS):
+            mujoco.mj_step(m, d)
         face_x = float(m.geom_size[env.obj_geom][0])
         pad_r = float(m.geom_size[mujoco.mj_name2id(
             m, mujoco.mjtObj.mjOBJ_GEOM, "ff_tip_collision")][0])
@@ -161,48 +179,79 @@ def main() -> None:
         # (signs probed: ctrl + seats right, ctrl - seats left; ctrl z
         # down seats down; corrections clipped to the wrist ctrl ranges)
         cr_lo, cr_hi = m.actuator_ctrlrange[:, 0], m.actuator_ctrlrange[:, 1]
-        for _ in range(4):
+        # closed-loop seat: the wrist y slide has a measured ~0.5 pad gain
+        # (ctrl +30 mm -> pad +15 mm), so the y correction runs at x2 gain
+        # and MUST converge before the x correction - at the wrong y the
+        # rf tip sits on a different arc segment where the x slide moves
+        # the tip tangentially (no net seat). z gain is ~1.
+        for _ in range(6):
+            bl_l = pad_local("rf_tip_left_collision")
+            y_err = bl_l[1] - (-0.095)
+            d.ctrl[23] = float(np.clip(d.ctrl[23] - y_err * 2.0,
+                                       cr_lo[23], cr_hi[23]))
             z_r = (pad_local("ff_tip_collision")[2]
                    + pad_local("mf_tip_collision")[2]) / 2.0
-            z_l = (pad_local("ff_tip_left_collision")[2]
-                   + pad_local("mf_tip_left_collision")[2]) / 2.0
+            z_l = bl_l[2]
             x_r = (pad_local("ff_tip_collision")[0]
                    + pad_local("mf_tip_collision")[0]) / 2.0 - (face_x + pad_r)
-            x_l = -(pad_local("ff_tip_left_collision")[0]
-                    + pad_local("mf_tip_left_collision")[0]) / 2.0 \
-                + (face_x + pad_r)
+            x_l = -(bl_l[0]) + (face_x + pad_r)
             d.ctrl[2] = float(np.clip(d.ctrl[2] - z_r, cr_lo[2], cr_hi[2]))
             d.ctrl[24] = float(np.clip(d.ctrl[24] - z_l, cr_lo[24], cr_hi[24]))
             d.ctrl[0] = float(np.clip(
                 d.ctrl[0] + float(np.clip(x_r, -0.012, 0.012)),
                 cr_lo[0], cr_hi[0]))
-            d.ctrl[22] = float(np.clip(
-                d.ctrl[22] - float(np.clip(x_l, -0.012, 0.012)),
-                cr_lo[22], cr_hi[22]))
+            if abs(y_err) < 0.004:
+                d.ctrl[22] = float(np.clip(
+                    d.ctrl[22] - float(np.clip(x_l, -0.015, 0.015)),
+                    cr_lo[22], cr_hi[22]))
             for _ in range(10 * FS):
                 mujoco.mj_step(m, d)
         for _ in range(20 * FS):
             mujoco.mj_step(m, d)
+        if os.environ.get("V20_DEBUG"):
+            bl = pad_local("rf_tip_left_collision")
+            n_r, n_l = W.pad_normal_forces(env)
+            print(f"[dbg] post-seat: rf_tip=({bl[0]:+.4f},{bl[1]:+.4f},{bl[2]:+.4f}) "
+                  f"N=({n_r:.2f},{n_l:.2f}) box=({d.xpos[bid][0]:+.4f},{d.xpos[bid][1]:+.4f}) "
+                  f"ff_tip_r=({pad_local('ff_tip_collision')[0]:+.4f},{pad_local('ff_tip_collision')[2]:+.4f}) "
+                  f"q37/38=({d.qpos[jadr_local('rfj1_left')]:.2f},{d.qpos[jadr_local('rfj2_left')]:.2f})")
         xy_press0 = d.xpos[bid][:2].copy()
         tgt = d.ctrl.copy()
+        # per-hand press actuators and depth mapping (v21: the left set is
+        # rf - ff_r drives rfj1, mf_r drives rfj2)
+        press_acts = ((7, 8, 11, 12), LEFT_PRESS_ACTS)
+        press_depths = ((ff_r, ff_r, mf_r, mf_r), (ff_r, mf_r))
+        all_press = tuple(press_acts[0]) + tuple(press_acts[1])
         for h in range(2):
-            for j, depth in ((0, ff_r), (1, ff_r), (2, mf_r), (3, mf_r)):
-                idx = press_idx[h][j]
+            for idx, depth in zip(press_acts[h], press_depths[h]):
                 tgt[idx] = d.ctrl[idx] + depth
-        start = {i_: d.ctrl[i_] for i_ in press_idx[0] + press_idx[1]}
+        start = {i_: d.ctrl[i_] for i_ in all_press}
         for k in range(20 + timing):
             fl = min(1.0, (k + 1) / 20.0)
             fr = min(1.0, max(0.0, (k + 1 - timing) / 20.0))
             for h, frac in ((0, fl), (1, fr)):
-                for i_, idx in enumerate(press_idx[h]):
-                    s = start[press_idx[h][i_]]
+                for idx in press_acts[h]:
+                    s = start[idx]
                     d.ctrl[idx] = s + (tgt[idx] - s) * frac
             for _ in range(FS):
                 mujoco.mj_step(m, d)
         press_drift = float(np.linalg.norm(d.xpos[bid][:2] - xy_press0)) * 1e3
+        if os.environ.get("V20_DEBUG"):
+            bl = pad_local("rf_tip_left_collision")
+            n_r, n_l = W.pad_normal_forces(env)
+            print(f"[dbg] post-press: rf_tip=({bl[0]:+.4f},{bl[1]:+.4f},{bl[2]:+.4f}) "
+                  f"N=({n_r:.2f},{n_l:.2f}) ctrl37/38=({d.ctrl[37]:.2f},{d.ctrl[38]:.2f}) "
+                  f"q37/38=({d.qpos[jadr_local('rfj1_left')]:.2f},{d.qpos[jadr_local('rfj2_left')]:.2f})")
         anchor = d.ctrl.copy()
         mode = ["force", "force"] if mode_pin is None else list(mode_pin)
         n_star = (nr_star, nl_star)
+        # v21 per-hand demand joints: (joint name, actuator ctrl index).
+        # Right stays ff/mf (4 joints); the left set is RF (2 joints,
+        # forceranges 0.180/0.159 per W6a 98c498a)
+        demand_sets = (
+            tuple(zip(("ffj1", "ffj2", "mfj1", "mfj2"), press_acts[0])),
+            tuple(zip(LEFT_PRESS_JOINTS, LEFT_PRESS_ACTS)),
+        )
         stable = 0
         lifting = False
         z_ramped = 0.0
@@ -216,8 +265,8 @@ def main() -> None:
                         mode[si] = "pos"
                     elif nn > 0.1 and mode[si] == "pos":
                         mode[si] = "force"
-            ok = (n_l >= n_star[1] * 0.9 and mode[1] == "force") and \
-                 (n_r >= n_star[0] * 0.9 and mode[0] == "force")
+            ok = (n_r + n_l >= ENGAGE_SUM_N and n_r >= ENGAGE_MIN_SIDE
+                  and n_l >= ENGAGE_MIN_SIDE)
             stable = stable + 1 if ok else 0
             if not lifting and stable >= 5 and \
                     1.8 * (n_r + n_l) >= 1.2 * 1.4715:
@@ -231,35 +280,18 @@ def main() -> None:
                 d.ctrl[24] += rate * 0.002 * 1e-3 / 0.02
                 z_ramped += rate * 0.002 * 1e-3 / 0.02
             for si, nstar in enumerate(n_star):
-                # the four demand joints are ffj1,ffj2,mfj1,mfj2 whose
-                # actuators sit at press_idx[si] = [7,8,11,12] per hand - the
-                # pre-fix si*22+6+j write hit ffa0..ffa3 instead, so the mf
-                # curl never got a force demand and ffj0 (spread) was driven
-                # against the press: the pinch stayed at the settle N (~1.5)
-                # instead of the r7e +0.2 rad demand level (~3.6-4.3 N)
-                for j in range(4):
-                    idx = press_idx[si][j]
+                # constant-torque force source: per-joint angular demand
+                # ctrl = q + demand (torque saturates at the actuator
+                # forcerange). Right ff/mf: n_star 4.0 -> +0.20 rad (the
+                # r7e-calibrated level, realized 4.15-4.98 N in the
+                # placement grid). Left rf: v21 forceranges 0.180/0.159
+                # raise the same +0.30 rad demand from a 1.85 N cap to a
+                # ~3.1 N capacity (W6a 98c498a), so nl_star runs at the
+                # scaled setpoint 6.8.
+                for jname, idx in demand_sets[si]:
                     if mode[si] == "force":
-                        # constant-torque force source expressed as a per-
-                        # joint angular demand. Calibration: on v20.1 the
-                        # +0.20 rad curl demand holds N 3.62/4.33 N (r7e
-                        # re-check) - the only pinch level whose friction
-                        # (N x mu_eff 0.34 ~ 1.2 N/side) exceeds the half
-                        # box weight 0.736 N. n_star=4.0 -> +0.20 rad; the
-                        # pre-fix tau/kp form (0.034 N m at kp 0.84-1.46)
-                        # demanded 0.02-0.04 rad and never left the settle
-                        # pinch (~1.5 N), whatever actuator it wrote.
-                        # MEASURED (v20p1 grid): the demand does NOT convert
-                        # on this chain - N stays 1.66 +-0.03 (the rf-distal
-                        # kiss) for press depth -0.20..+0.80, descend
-                        # -24..-55 mm and demand +-0.20..0.25 rad; the ff/mf
-                        # pad tip path is tangential/away from the face at
-                        # the trigger height (dx/dq +134 mm/rad) and 30-50
-                        # mm short in x at the seed height. The r7e point
-                        # came from a hand-built mid-face pad pose the
-                        # checkpoint chain does not reach.
                         demand = min(nstar * 0.05, 0.30)
-                        q = d.qpos[JQ[si][j]]
+                        q = d.qpos[jadr_local(jname)]
                         d.ctrl[idx] = float(np.clip(q + demand,
                                                     lo_c[idx], hi_c[idx]))
                     else:
@@ -271,6 +303,21 @@ def main() -> None:
             n_r, n_l = W.pad_normal_forces(env)
             pad_z = float(np.mean([d.geom_xpos[g][2] for pair in padg
                                    for g in pair]))
+            if os.environ.get("V20_DEBUG") and i == 40:
+                for ci in range(d.ncon):
+                    c = d.contact[ci]
+                    g1, g2 = int(c.geom1), int(c.geom2)
+                    og1 = m.geom_bodyid[g1] == m.geom_bodyid[env.obj_geom]
+                    og2 = m.geom_bodyid[g2] == m.geom_bodyid[env.obj_geom]
+                    if not (og1 or og2):
+                        continue
+                    other = g2 if og1 else g1
+                    f6 = np.zeros(6)
+                    mujoco.mj_contactForce(m, d, ci, f6)
+                    fr = d.xmat[env.obj_body].reshape(3, 3).T @ f6[:3]
+                    print(f"[dbg] f40 CONTACT {env.geom_label[other]:24s} "
+                          f"F_world=({fr[0]:+.2f},{fr[1]:+.2f},{fr[2]:+.2f})N "
+                          f"pos=({c.pos[0]-d.xpos[bid][0]:+.3f},{c.pos[1]-d.xpos[bid][1]:+.3f},{c.pos[2]-d.xpos[bid][2]:+.3f})")
             rows.append({"lift": float(d.xpos[bid][2] - env._z0),
                          "endface": (er, el), "sup": table_support_n(env),
                          "xpos": bp["xpos"][:2].copy(),

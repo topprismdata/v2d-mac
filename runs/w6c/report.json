@@ -2307,7 +2307,7 @@
   "next": "the missing element is a placement solve, not a command family: put the ff/mf follower pads ON the faces at mid-height with >= 0.25 rad of curl headroom (wrist x/y/z advance from the seed placement, or re-solve the approach terminal for the v20 box), then the r7e mechanism applies; items for W6a: move the three provenance pins to the v20.1 commit and regenerate the forcerange table + REVISION.md row from the final tree"
  },
  "v20p1_placement_grid": {
-  "verdict": "TERMINAL FAIL - FINAL, y-dimension included: the wrist y slide was rescanned (Main review accepted); left ff/mf stays exclusive (in-band now but 24-32 mm proud, arc-structural), left rf SOLVES the placement (in-band, mid-height, landed dynamically) but its normal caps at 1.85 N < 2.16 N (torque x cos 0.50) and the wrist-servo preload channel slides the tip off its arc. The bilateral rf+ff/mf probe ENGAGES (self-centering confirmed) but the normals decay 30-60% during the climb and mu x sum(N) loses the knife-edge against W. Single-sided: no lift. The lift gate is unreachable by command families on this hand set + box geometry - submitted for GPT final review as-is",
+  "verdict": "TERMINAL FAIL - FINAL (v21 included): the rf force cap removed the force ceiling (in-grid n_r 6.19-7.37 / n_l 1.77-3.11 N) and the coupled-vise climb ENGAGES with the box self-centering, but open-loop staging cannot close a balanced symmetric vise: the pads drape over the box top during the climb and press it down (contact vectors measured), throttled-balanced seats degenerate into a +24 deg bind, window never forms (peak -0.13..-0.03 mm). The remaining gap is a coupled-closure CONTROLLER (learning problem), not force, placement geometry, or command schedule - submitted for GPT final review as-is",
   "placement_solve": {
    "method": "FK + tip-path Jacobian scan (~10^4 evals): pads-on-face position AND the curl tip-path angle to the face normal cos(theta) - N_max = (forcerange/arm) x cos(theta); then closed-loop dynamic seat (4 iters, measured pad errors -> wrist ctrl, signs probed per hand)",
    "key_physics": "the pre-rotation placement had cos 0.19 -> N 1.41 ceiling REGARDLESS of command (the pad tip path was ~79 deg off the face normal - mostly tangential); the wrist ROTATION (right: rx +0.15, ry +0.60, rz -0.10) aligns the curl plane with the normal (cos 0.63-0.67) and the same +0.25 rad demand that gave 1.41 N now drives N 2.43 -> 3.76 -> 6.19 -> 4.22 N - the follower-pad curl-demand mechanism work as designed ONCE the curl plane contains the face normal",
@@ -3131,6 +3131,29 @@
    "bilateral_probe": "right ff/mf rotated placement + left rf placement, press demands both sides, engage threshold lowered to n_star 2.5 (runner setpoint, NOT the frozen gate): LIFT ENGAGED at frame 17 (N 3.30/3.15 - the box self-centers: the weak side loads as the box slides), climb ran 10.1 mm of wrist ramp - but the normals DECAY during the climb (3.3->1.39 / 3.15->1.23: pads slide up the faces, curl geometry degrades with wrist height), mu_pad x sum(N) 1.2-1.5 N vs W 1.47 N - knife-edge lost. Peak clearance +0.05 mm; yaw to +11.9 deg",
    "dimension_list_complete": "the terminal proof now covers: wrist x/z +-60 mm, wrist y (0..+60 mm ctrl / ~30 mm pad), rotations rx/ry/rz as deltas and absolutes (incl. abandoning F4), per-finger curls ff/mf/rf/th, spread/distal offsets, finger sets {ff/mf},{rf},{th},{mf+rf},{rf+th}, wrist-servo preload, and the single-sided mode",
    "final_ceiling": "the best bilateral state realizes N_r 4.15-4.98 + N_l 1.60-1.85 N with mu_pad 0.34 -> vertical friction 1.96-2.32 N vs W 1.47 N in the STATIC seat, but the normals DECAY 30-60% during the climb as the wrists rise (pad-to-face geometry degrades), and the decay is monotone across every variant - the lift window (20 frames >= 5 mm) never forms"
+  },
+  "v21_bilateral_grid": {
+   "verdict": "TERMINAL FAIL - v21 rf force cap (x1.7) landed and is confirmed in-grid (n_r_max 6.19-7.37 N, n_l_max 1.77-3.11 N - the force ceiling is NO LONGER the blocker); the remaining blocker is CHOREOGRAPHY: a balanced, symmetric vise closure cannot be established by open-loop staging",
+   "grid": "32/32 FAIL: window 0, peak -0.13..-0.03 mm, n_r_max 6.19-7.37 N, n_l_max 1.77-3.11 N (runs/w6c/v20_grid.json; xml pinned in meta)",
+   "runner_changes_v21": [
+    "left press/demand set switched to RF (rfj1/rfj2 left, ctrl 37/38; ff_r drives rfj1, mf_r drives rfj2)",
+    "left placement = the rf+y solve (wrist y +30, x +10, rot rx +0.20 ry +0.60 rz -0.15, rf curls 0.40/0.45; ff/mf parked open 0.35)",
+    "placement sequenced right-first-then-left (simultaneous ramps let the right-hand knock move the box under the left rf)",
+    "force source per-hand joint sets; left demand setpoint scaled to the new cap (nl_star 6.8 -> +0.30 rad, capped)",
+    "climb-engage criterion switched to the coupled-vise sum form: sum(N) >= 4.5 N (mu x sum >= W at mu 0.34) with each side >= 1.0 N - the per-side 2.4 N form blocked the climb while the sum capacity was 2.0-2.4 N (runner machinery; the frozen GATE clauses are the window/slip/yaw/endface/support metrics, untouched)"
+   ],
+   "what_works_now": [
+    "right rotated placement presses 4.3-7.4 N (validated again in-grid: n_r_max 6.19-7.37)",
+    "left rf placement seats in-band at mid-height (closed-loop with the measured y-slide gain 0.5 compensated at x2; the y-gain was the reason the first integrated attempts showed n_l = 0)",
+    "climb ENGAGES (sum criterion) and the wrists ramp 8-12 mm with the box self-centering - the coupled-vise mechanism exists"
+   ],
+   "decay_quantification": {
+    "trace": "N_r 6.79 (f5) -> 5.37 (f20) -> 5.11 (f40) -> 5.85 (f60) -> 5.61 (f79); N_l 2.80 (f5) -> 2.56 (f20) -> 2.41 (f40) -> 1.57 (f60) -> 0.00 (f79)",
+    "mechanism": "the pads slide UP the faces at the wrist rate (0.1 mm/frame) while the box stays on the table - vertical slip, not capacity loss: mu(XML) = 1.8 pad x N 5-6 N gives 9+ N of vertical capacity; the pads lose GEOMETRY, not grip",
+    "contact_vectors_f40": "mf_tip F=(+0.31,-0.22,-0.87) N pressing the TOP face downward at z +51 mm; rf_distal F=(+3.31,-0.58,-0.83); rf_tip_left F=(+2.09,-0.92,-0.78) - every contact carries a DOWNWARD component: the fingers drape over the box top as the wrists rise and press it against the table"
+   },
+   "balanced_vise_probe": "throttling the right demand to match the left (1.7-1.85 N/side) and halving the seat clip: the alternating seat degenerated (N 10.0/14.8 N, box yaw +24 deg, clearance -0.03 mm) - each side's correction increases the other's penetration; symmetric closure needs a COUPLED controller (both wrists' x/y/z + curls coordinated against the measured 6-DoF box pose), which is a learning problem, not an open-loop schedule",
+   "yaw_note": "the box inherits +6.2 deg yaw from the trigger checkpoint quaternion; every press attempt adds 2-18 deg more (the one-sided/binding presses twist it) - Main's item-3 condition (yaw-only failure with window/slip passing) never occurred: window never formed"
   }
  }
 }
