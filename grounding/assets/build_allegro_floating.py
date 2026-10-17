@@ -1220,6 +1220,15 @@ def _name_hand_geoms(palm_el: ET.Element) -> None:
             geom.set("name", _geom_name(body_name, role))
 
 
+def _metal_hand_visuals(palm_el: ET.Element) -> None:
+    """W6a-v13: override the hand visual geoms to an industrial metallic tone
+    (GPT 批 "指部金属质感"). Visual-only - zero physical effect."""
+    for geom in palm_el.iter("geom"):
+        cls = geom.get("class") or ""
+        if "visual" in cls:
+            geom.set("rgba", "0.45 0.45 0.50 1")
+
+
 def _annotate_hand_geoms(palm_el: ET.Element, solref, solimp) -> None:
     """R3. Stamp the stiffened contact onto the four fingertip pads only.
 
@@ -1242,15 +1251,17 @@ def _annotate_hand_geoms(palm_el: ET.Element, solref, solimp) -> None:
             # capsules pure white - they read as cartoon balls in renders.
             # rgba ONLY (size/position are collision physics and frozen).
             geom.set("rgba", "0.72 0.72 0.76 1")
-            # W6a-v10 (W6c round-2 levers): 12 mm ball pad -> 11 mm tall flat
-            # cylindrical pad (flat faces kill the contact-point slide that
-            # decayed normal force 1.09 -> 0.52 N mid-press) and rubber-grade
-            # slide friction 1.0 -> 1.8 (Allegro真机即胶垫; r5 capacity
-            # 2.0 -> 3.3 N = 2.2x box weight). Size change shifts the tip body
-            # mass (geom-derived, ~7.2 g -> ~2.8 g per tip) - re-verified in
-            # R10-v10 (settle/hold/clearance re-measured, deltas reported).
-            geom.set("type", "cylinder")
-            geom.set("size", "0.009 0.0055")
+            # W6a-v13 (GPT re-verify condition #1): flat box pad replaces the
+            # cylinder - the cylinder's curved surface still allowed the
+            # contact point to roll over the top edge during closure (r5's
+            # terminal mechanism). A thin flat box (12x12x3 mm) gives
+            # plane-on-plane contact: closure torque -> pure normal pressure,
+            # zero contact point migration. Rubber-grade friction 1.8 kept.
+            # The tip body mass shifts (geom-derived: ~6.8 g sphere ->
+            # ~0.43 g box) - re-verified in R10-v13 (hold gate gravity terms
+            # decrease => easier hold; settle/clearance re-measured).
+            geom.set("type", "box")
+            geom.set("size", "0.006 0.006 0.0015")
             geom.set("friction", "1.8 0.005 0.0001")
 
 
@@ -1437,6 +1448,7 @@ def _upstream_parts() -> tuple[str, str, str, list, ET.Element, list]:
     _name_hand_geoms(palm_el)
     _annotate_hand_geoms(palm_el, CONTACT_SOLREF, CONTACT_SOLIMP)
     _add_finger_home_springs(palm_el)
+    _metal_hand_visuals(palm_el)
     palm = _indent(palm_el, 6)
 
     excludes = [(ex.get("body1"), ex.get("body2"))
@@ -1501,6 +1513,7 @@ def build(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
     _name_hand_geoms(left_el)
     _annotate_hand_geoms(left_el, CONTACT_SOLREF, CONTACT_SOLIMP)
     _add_finger_home_springs(left_el, "_left")
+    _metal_hand_visuals(left_el)
     palm_left = _indent(left_el, 6)
     excludes = _exclude_lines(exclude_pairs)
     excludes_left = _exclude_lines(exclude_pairs, suffix="_left")
