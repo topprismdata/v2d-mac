@@ -1325,6 +1325,48 @@ def _annotate_hand_geoms(palm_el: ET.Element, solref, solimp) -> None:
             geom.set("friction", "1.8 0.005 0.0001")
 
 
+def _add_follower_pads(palm_el: ET.Element) -> None:
+    """W6a-v20: passive follower pads on the lift-chain fingertips (ff/mf).
+
+    The flat pad geom moves from a rigid mount on the tip body to a dedicated
+    pad body on two light orthogonal hinges (spring-centred to the mount
+    frame: stiffness 0.02 N*m/rad, damping 0.002, range +-0.6 rad).  At the
+    grasp operating point the springrest orientation IS the proven
+    face-parallel orientation (identity mount), and contact normal torque
+    dominates the light spring, so under curl the loaded face stays
+    face-parallel instead of breaking planar contact (r7e root cause:
+    curl rotation tilted the rigid flat pad a few degrees and the plane
+    contact collapsed).  rf/th pads stay rigid (not on the lift chain).
+
+    Fully passive: zero actuators, zero ctrl dims, zero obs entries — the
+    trained checkpoints remain bit-valid (v19 precedent).
+    """
+    for body in palm_el.iter("body"):
+        bname = body.get("name") or ""
+        if not bname.endswith(_TIP_BODY_SUFFIXES):
+            continue
+        if not (bname.startswith("ff") or bname.startswith("mf")):
+            continue  # rf/th pads stay rigid
+        sfx = "_left" if bname.endswith("_left") else ""
+        f = bname[: -len("_tip_left")] if sfx else bname[: -len("_tip")]
+        pad = ET.SubElement(body, "body", {"name": f"{f}_pad{sfx}", "pos": "0 0 0"})
+        for axis, nm in (("0 1 0", "rx"), ("1 0 0", "ry")):
+            ET.SubElement(pad, "joint", {
+                "name": f"{f}_pad{nm}{sfx}", "type": "hinge",
+                "pos": "0 0 0", "axis": axis, "range": "-0.6 0.6",
+                "stiffness": "0.02", "damping": "0.002", "springref": "0"})
+        moved = []
+        for geom in list(body.findall("geom")):
+            cls = geom.get("class") or ""
+            if "visual" in cls or "tip" not in cls:
+                continue  # the visual pad mesh stays rigid on the tip body
+            body.remove(geom)
+            geom.set("mass", "0.005")  # 5 g: MuJoCo DoF-inertia floor + springrest mass
+            pad.append(geom)
+            moved.append(geom.get("name"))
+        assert moved, f"{bname}: no collision geom found to move into the pad body"
+
+
 # --- W6a / R10: the left hand is a renamed deep copy of the right ------------
 def _left_palm_from(raw_palm_el: ET.Element) -> ET.Element:
     """Deep-copy the RAW (pre-naming) upstream palm subtree and append ``_left``
@@ -1515,6 +1557,7 @@ def _upstream_parts() -> tuple[str, str, str, list, ET.Element, list]:
     _name_hand_geoms(palm_el)
     _annotate_hand_geoms(palm_el, CONTACT_SOLREF, CONTACT_SOLIMP)
     _add_finger_home_springs(palm_el)
+    _add_follower_pads(palm_el)
     _metal_hand_visuals(palm_el)
     palm = _indent(palm_el, 6)
 
@@ -1580,6 +1623,7 @@ def build(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
     _name_hand_geoms(left_el)
     _annotate_hand_geoms(left_el, CONTACT_SOLREF, CONTACT_SOLIMP)
     _add_finger_home_springs(left_el, "_left")
+    _add_follower_pads(left_el)
     _metal_hand_visuals(left_el)
     palm_left = _indent(left_el, 6)
     excludes = _exclude_lines(exclude_pairs)

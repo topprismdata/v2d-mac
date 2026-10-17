@@ -378,12 +378,15 @@ def test_r1_measured_fingertip_force_stays_under_ten_newtons(model):
         for h in range(2):
             base = h * 22
             for k in range(6):
-                a[base + k] = float(gate3[13 + 22 * h + k])
+                a[base + k] = float(gate3[int(m_env.model.jnt_qposadr[
+                    mujoco.mj_name2id(m_env.model, mujoco.mjtObj.mjOBJ_JOINT,
+                    ("wrist_x", "wrist_y", "wrist_z", "wrist_rx", "wrist_ry",
+                     "wrist_rz")[k] + ("" if h == 0 else "_left"))])])
             for i in range(16):
                 jname = hand_names[22 * h + 6 + i]
                 jid = mujoco.mj_name2id(m_env.model, mujoco.mjtObj.mjOBJ_JOINT, jname)
                 lo, hi = m_env.model.jnt_range[jid]
-                q_target = float(gate3[13 + 22 * h + 6 + i])
+                q_target = float(gate3[int(m_env.model.jnt_qposadr[jid])])
                 a[base + 6 + i] = float(np.clip(
                     2.0 * (q_target - lo) / (hi - lo) - 1.0, -1.0, 1.0))
         hook_env.step(a)
@@ -956,10 +959,10 @@ def test_model_loads_and_statistics_are_self_consistent(model):
     # 42 hand geoms x 2 (W6a dual hands) + 3 object (box + 2 chamfers)
     # + floor + table slab (pedestal removed in W6a)
     assert model.ngeom == 145
-    assert model.nbody == 55
-    assert model.nq == 57
+    assert model.nbody == 59
+    assert model.nq == 65
     assert model.nu == 50
-    assert model.nv == 56
+    assert model.nv == 64
     obj = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "object")
     assert float(model.body_mass[obj]) == pytest.approx(BOX_MASS_KG)
 

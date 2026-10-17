@@ -1012,7 +1012,24 @@ springref 附近）。位置伺服仍是主动控制（reset 先 settle 后镜�
   2. `test_revision_md_records_the_forcerange_table`——本文档 v17.1 中文追加后
      力矩臂表匹配失败。
 
-### 八、状态
+### 八、W6a-v20（被动随动垫 — 接触下自对中，checkpoint 兼容）
+
+- **机制**：ff/mf 四垫（rf/th 保持刚性）从 tip 刚性挂载改为独立 pad body +
+  2 正交 hinge（stiffness 0.02 N·m/rad、damping 0.002、range ±0.6、springref 0，
+  垫 geom 5 g）。弹簧rest=挂载系——gate3 工作位形下即已证面平行姿态；
+  接触法向力矩 ≫ 轻弹簧（1.5N×3mm=0.0045 ≫ 0.02×偏差），卷曲旋转被被动铰吸收。
+- **机制验收（r7e 复测条件）**：压紧 N 3.8/4.8 N（v19 同 harness 的 3 倍——自对中贴合），
+  +0.20 rad 卷曲需求下 N 持 2.58/4.44 N **不塌零**（v20 前 r7e 力模式 N 崩 0.00），
+  pad 铰偏转 38–49 mrad 吸收旋转 ✓。抬升传递由 W6c 力控机器复跑（N* 1.5N/垫 规格已定）。
+- **零策略涟漪**：ctrl 50 / obs 109 不变，checkpoint 有效（v19 先例）。
+- **涟漪记账**：nq 57→65（4 pad × 2 hinge）、nv 56→64、nbody 55→59（ngeom 145 不变——
+  geom 改挂不改名）。gate3_qpos.json 65-wide（reader 全部切 jnt_qposadr 名字寻址，
+  scene_w6 gate3b + smoke6 probe）；
+  `_pad_checkpoint` 重写为名字映射（51-wide checkpoint → 65-wide，pad 槽补零）。
+- **已知布局隐患（W6c 已修其两处，此处重申）**：任何绝对 `qpos[0:7]` 写在 65-wide 上
+  错写臂铰——统一走 `obj_qpos_adr`。
+
+### 九、状态
 
 - ngeom 99 / nbody 49；XML sha256 =
   XML sha256 = `7b7a1adffab68f0156297f5e654d72b9ef01bc4036874e34870027ffc11563dc`（git cat-file 对象库复核；初稿误记中间态 b17544ab，见 §三流程更正）。
@@ -1148,7 +1165,24 @@ XML sha256 = `c0114a640011b160900e2c38354c8c93475535924e81110172c8c02079f58928`
   2. `test_revision_md_records_the_forcerange_table`——本文档 v17.1 中文追加后
      力矩臂表匹配失败。
 
-### 八、状态
+### 八、W6a-v20（被动随动垫 — 接触下自对中，checkpoint 兼容）
+
+- **机制**：ff/mf 四垫（rf/th 保持刚性）从 tip 刚性挂载改为独立 pad body +
+  2 正交 hinge（stiffness 0.02 N·m/rad、damping 0.002、range ±0.6、springref 0，
+  垫 geom 5 g）。弹簧rest=挂载系——gate3 工作位形下即已证面平行姿态；
+  接触法向力矩 ≫ 轻弹簧（1.5N×3mm=0.0045 ≫ 0.02×偏差），卷曲旋转被被动铰吸收。
+- **机制验收（r7e 复测条件）**：压紧 N 3.8/4.8 N（v19 同 harness 的 3 倍——自对中贴合），
+  +0.20 rad 卷曲需求下 N 持 2.58/4.44 N **不塌零**（v20 前 r7e 力模式 N 崩 0.00），
+  pad 铰偏转 38–49 mrad 吸收旋转 ✓。抬升传递由 W6c 力控机器复跑（N* 1.5N/垫 规格已定）。
+- **零策略涟漪**：ctrl 50 / obs 109 不变，checkpoint 有效（v19 先例）。
+- **涟漪记账**：nq 57→65（4 pad × 2 hinge）、nv 56→64、nbody 55→59（ngeom 145 不变——
+  geom 改挂不改名）。gate3_qpos.json 65-wide（reader 全部切 jnt_qposadr 名字寻址，
+  scene_w6 gate3b + smoke6 probe）；
+  `_pad_checkpoint` 重写为名字映射（51-wide checkpoint → 65-wide，pad 槽补零）。
+- **已知布局隐患（W6c 已修其两处，此处重申）**：任何绝对 `qpos[0:7]` 写在 65-wide 上
+  错写臂铰——统一走 `obj_qpos_adr`。
+
+### 九、状态
 
 - ngeom **135**（84 手 + 24 腕部模块/过渡/台阶 + 3 盒族 + 2 支撑 + 22 龙门）、nbody 49；
   `EXPECTED_NGEOM = 135` + 族加法记账；smoke6 计数同步。
@@ -1317,7 +1351,24 @@ W6b 二轮 finding F4：v8 的 static-hold 门**只验弹簧需求、重力"另�
   2. `test_revision_md_records_the_forcerange_table`——本文档 v17.1 中文追加后
      力矩臂表匹配失败。
 
-### 八、状态
+### 八、W6a-v20（被动随动垫 — 接触下自对中，checkpoint 兼容）
+
+- **机制**：ff/mf 四垫（rf/th 保持刚性）从 tip 刚性挂载改为独立 pad body +
+  2 正交 hinge（stiffness 0.02 N·m/rad、damping 0.002、range ±0.6、springref 0，
+  垫 geom 5 g）。弹簧rest=挂载系——gate3 工作位形下即已证面平行姿态；
+  接触法向力矩 ≫ 轻弹簧（1.5N×3mm=0.0045 ≫ 0.02×偏差），卷曲旋转被被动铰吸收。
+- **机制验收（r7e 复测条件）**：压紧 N 3.8/4.8 N（v19 同 harness 的 3 倍——自对中贴合），
+  +0.20 rad 卷曲需求下 N 持 2.58/4.44 N **不塌零**（v20 前 r7e 力模式 N 崩 0.00），
+  pad 铰偏转 38–49 mrad 吸收旋转 ✓。抬升传递由 W6c 力控机器复跑（N* 1.5N/垫 规格已定）。
+- **零策略涟漪**：ctrl 50 / obs 109 不变，checkpoint 有效（v19 先例）。
+- **涟漪记账**：nq 57→65（4 pad × 2 hinge）、nv 56→64、nbody 55→59（ngeom 145 不变——
+  geom 改挂不改名）。gate3_qpos.json 65-wide（reader 全部切 jnt_qposadr 名字寻址，
+  scene_w6 gate3b + smoke6 probe）；
+  `_pad_checkpoint` 重写为名字映射（51-wide checkpoint → 65-wide，pad 槽补零）。
+- **已知布局隐患（W6c 已修其两处，此处重申）**：任何绝对 `qpos[0:7]` 写在 65-wide 上
+  错写臂铰——统一走 `obj_qpos_adr`。
+
+### 九、状态
 
 - 全套门：scene_w6 13/13（含重力版 static hold）；核心电池同 v8。
 - gate3_qpos.json：双手完整 qpos（物体关节置零 + 本节文档标注）。

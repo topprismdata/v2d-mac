@@ -550,13 +550,34 @@ def _pad_checkpoint(q: np.ndarray, c: np.ndarray) -> tuple[np.ndarray, np.ndarra
     elbow_r+l at 0-5, object_free moved 0 -> 6) and the 6 arm actuators
     APPENDED at ctrl tail (44-50, owned by _write_arm_ik_ctrl)."""
     _m = mujoco.MjModel.from_xml_path(str(MJCF))
-    if _m.nq >= len(q) + 6 and _m.jnt_qposadr[
-            mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_JOINT,
-                              "object_free")] == 6:
+    obj_adr = _m.jnt_qposadr[
+        mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_JOINT, "object_free")]
+    if _m.nq >= len(q) + 6 and obj_adr == 6:
         q19 = np.zeros(_m.nq)
         q19[0:6] = 0.0                      # arm chain (env-driven)
         q19[6:13] = q[0:7]                  # object free joint
-        q19[13:_m.nq] = q[7:len(q)]         # hand joints
+        # v20: pad-hinge slots interleaved inside each hand block stay zero;
+        # hand joints are mapped by NAME so the block layout can shift freely
+        legacy_fingers = [f"{f}j{i}" for f in ("ff", "mf", "rf", "th")
+                          for i in range(4)]
+        legacy_fingers += [f"{f}j{i}_left" for f in ("ff", "mf", "rf", "th")
+                           for i in range(4)]
+        wrist_names = [f"wrist_{a}" for a in ("x", "y", "z", "rx", "ry", "rz")]
+        wrist_names += [w + "_left" for w in wrist_names]
+        for jb in range(1, _m.nbody):
+            for jj in range(int(_m.body_jntnum[jb])):
+                jid = int(_m.body_jntadr[jb]) + jj
+                jname = mujoco.mj_id2name(_m, mujoco.mjtObj.mjOBJ_JOINT, jid)
+                if (not jname or jname.startswith("arm_")
+                        or jname == "object_free"):
+                    continue  # arm chain stays env-driven; object handled above
+                dst = int(_m.jnt_qposadr[jid])
+                if jname in legacy_fingers:
+                    q19[dst] = q[13 + legacy_fingers.index(jname)]
+                elif jname in wrist_names:
+                    src = 7 + wrist_names.index(jname) if not jname.endswith(
+                        "_left") else 29 + wrist_names.index(jname)
+                    q19[dst] = q[src]
     else:
         q19 = np.zeros(_m.nq); q19[:min(len(q), _m.nq)] = q[:_m.nq]
     c19 = np.zeros(_m.nu); c19[:min(len(c), _m.nu)] = c[:_m.nu]

@@ -79,8 +79,8 @@ EXPECTED_NGEOM = 145
 
 def test_w6_model_statistics(model):
     # 2 hands x (7 freejoint-equivalent wrist DoF + 16 fingers) + object 7
-    assert model.nq == 57
-    assert model.nv == 56
+    assert model.nq == 65
+    assert model.nv == 64
     assert model.nu == 50
     assert model.ngeom == EXPECTED_NGEOM
     # additive accounting: every family counted independently must sum to it
@@ -228,7 +228,8 @@ def test_w6_gate3b_static_hold_spring_demand_within_servo_caps(model):
                 jn = f"{f}j{i}{sfx}"
                 jid = nid(model, mujoco.mjtObj.mjOBJ_JOINT, jn)
                 aid = nid(model, mujoco.mjtObj.mjOBJ_ACTUATOR, f"{f}a{i}{sfx}")
-                qj = float(q[19 + (0 if sfx == "" else 22) + 4 * FINGERS.index(f) + i])
+                qadr = int(model.jnt_qposadr[nid(model, mujoco.mjtObj.mjOBJ_JOINT, jn)])
+                qj = float(q[qadr])
                 cap = 0.8 * float(model.actuator_forcerange[aid][1])
                 demand = abs(KJ[4 * FINGERS.index(f) + i] * (qj - refs[f"{f}j{i}"]))
                 if demand > worst[1]:
