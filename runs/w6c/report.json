@@ -1319,6 +1319,15 @@
   "diagnosis": "NOT a policy/collision/integration issue - the press schedule (reseat depth, curl depths, dwell) needs the same per-scene re-tuning every scene generation required (v9->v10->v12->v13->v14 each re-tuned); the arm-chain dynamics additionally change the hand's impedance boundary condition",
   "next": "re-tune the press schedule on v19 (the r4c-style grid recipe, ~30 min) or accept v14 as the training scene of record with v19 as the visual/panel target"
  },
+ "v19_retune": {
+  "grid": "24 combos (anchored/q-follow x ff_r 0.30-0.60 x mf_r 0.20/0.35 x dz -16/-8 mm), r4c-style on v19",
+  "result": "NO lift in any combo - peak 0.02-0.03 mm, ratios 0: the press contact builds (N 1.8-6.0 N observed in the trace runs) but the box is SHOVED away (right pads drift 90->122 mm outward = the box slides -x on the table) instead of being pinched - the v19 arm-chain hand impedance plus the one-sided-first press order lets the box escape laterally before the left hand closes",
+  "next_options": [
+   "(a) simultaneous bilateral press scheduling (press both sides before either pushes: the left hand must close FIRST or together, not after)",
+   "(b) arm-servo stiffness audit (the v19 arm holds the hand root; if its servos yield under contact reaction the whole hand bounces off)",
+   "(c) accept v14 as the training scene of record (the eight-round mechanism chain stands there) and v19 as the panel/visual target with its own schedule derivation pass"
+  ]
+ },
  "round_l2a_force_obs_ppo": {
   "design": "obs 107->109 (per-side pad normals, N_OBS derived, test pin -> constant); episodes start at the r8 trigger transient (+1.26 mm, N 1.59/2.36 N); reward = l2a (saturating centre-z 5 mm + sustain + log(N_r*N_l) both-side shaping); PPO 24 iters x 1536 steps, eval every 4 (3 episodes, pre-registered gate >=5 mm/20 frames/no slip/dual end-face contact)",
   "eval_pre_registered": true,

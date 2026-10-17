@@ -1997,6 +1997,29 @@ def cmd_report(args: argparse.Namespace) -> None:
                     "recipe, ~30 min) or accept v14 as the training scene "
                     "of record with v19 as the visual/panel target",
         }),
+        "v19_retune": (None if not getattr(args, "v19", False) else {
+            "grid": "24 combos (anchored/q-follow x ff_r 0.30-0.60 x "
+                    "mf_r 0.20/0.35 x dz -16/-8 mm), r4c-style on v19",
+            "result": "NO lift in any combo - peak 0.02-0.03 mm, ratios 0: "
+                      "the press contact builds (N 1.8-6.0 N observed in "
+                      "the trace runs) but the box is SHOVED away "
+                      "(right pads drift 90->122 mm outward = the box "
+                      "slides -x on the table) instead of being pinched - "
+                      "the v19 arm-chain hand impedance plus the "
+                      "one-sided-first press order lets the box escape "
+                      "laterally before the left hand closes",
+            "next_options": ["(a) simultaneous bilateral press scheduling "
+                             "(press both sides before either pushes: the "
+                             "left hand must close FIRST or together, not "
+                             "after)", "(b) arm-servo stiffness audit (the "
+                             "v19 arm holds the hand root; if its servos "
+                             "yield under contact reaction the whole hand "
+                             "bounces off)", "(c) accept v14 as the "
+                             "training scene of record (the eight-round "
+                             "mechanism chain stands there) and v19 as the "
+                             "panel/visual target with its own schedule "
+                             "derivation pass"],
+        }),
         "round_l2a_force_obs_ppo": (None if not getattr(args, "l2a", False) else {
             "design": "obs 107->109 (per-side pad normals, N_OBS derived, "
                       "test pin -> constant); episodes start at the r8 "
@@ -2366,6 +2389,7 @@ def main() -> None:
     p.add_argument("--l2c", action="store_true")
     p.add_argument("--l2d", action="store_true")
     p.add_argument("--v19", action="store_true")
+    p.add_argument("--retune", action="store_true")
     p.add_argument("--vise-guard", action="store_true")
     p.add_argument("--reward", default="band")
     p = sub.add_parser("eval")
@@ -2386,6 +2410,7 @@ def main() -> None:
     p.add_argument("--l2b", action="store_true")
     p.add_argument("--l2d", action="store_true")
     p.add_argument("--v19", action="store_true")
+    p.add_argument("--retune", action="store_true")
     p.add_argument("--l2c", action="store_true")
     p.add_argument("--round8", action="store_true")
     p.add_argument("--round7d", action="store_true")
