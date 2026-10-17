@@ -66,4 +66,6 @@ weights/
 !runs/w6c/search_curve.json
 !runs/w6c/bc_demos.npz
 !runs/w6c/approach_checkpoint.npz
+!runs/w6c/v20_lift.py
+!runs/w6c/v20_grid.json
 !runs/w6c/evidence/*.png

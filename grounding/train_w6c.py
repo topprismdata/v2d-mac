@@ -192,15 +192,21 @@ def build_approach_stream(env: LiftHoldEnv) -> tuple[list[np.ndarray], np.ndarra
       P2c descend to the seed z;
       P3  curl to the seed targets (the sweep arrives at the end faces);
       quiet hold.
-    Measured result: box lands within 2.2 deg yaw / 2 mm xy of pristine.
+    The terminal left wrist carries the F4 rx -1.67 re-orientation (the L2C
+    fix); each hand ramps to its own seed-derived goal.
     Returns (stream, ctrl0); stream[k] is the ABSOLUTE 44-vector for frame k."""
     ctrl0 = env.data.ctrl[:N_ACT].copy()
     rw, rf_, lw, lf = _abs_cmd_from_seed()
     lo, hi = env.ctrl_low, env.ctrl_high
+    # F4: the left hand's gravity-closed curl plane taxes the seed wrist
+    # attitude - the L2C fix re-orients the left wrist (rx -1.67). The
+    # approach terminal carries it so every episode starts from the working
+    # attitude (matches the F4-fixed trigger capture).
+    lw = np.array(lw, dtype=np.float64)
+    lw[3] -= 1.67
     target = np.clip(np.concatenate([rw, rf_, lw, lf]), lo, hi)
 
     open_f = np.zeros(32)
-    lo, hi = env.ctrl_low, env.ctrl_high
     z_up = float(np.clip(0.10, lo[2], hi[2]))
 
     stream: list[np.ndarray] = []
@@ -210,10 +216,15 @@ def build_approach_stream(env: LiftHoldEnv) -> tuple[list[np.ndarray], np.ndarra
         nonlocal cur, stream
         stream, cur = _ramp_blocks(cur, goal, rate, stream)
 
-    def wrist_phase(goal_wrist: np.ndarray, rate: np.ndarray) -> None:
+    def wrist_phase(goal_wrist_r: np.ndarray, goal_wrist_l: np.ndarray,
+                    rate: np.ndarray) -> None:
+        """Per-hand wrist goals: each hand ramps to ITS OWN target (the
+        pre-fix bug fed the right-hand goal to the left block, so the left
+        wrist never ramped and the hold boundary jumped by the seed
+        difference)."""
         goal = cur.copy()
-        goal[0:6] = np.clip(goal_wrist, lo[0:6], hi[0:6])
-        goal[22:28] = np.clip(goal_wrist, lo[22:28], hi[22:28])
+        goal[0:6] = np.clip(goal_wrist_r, lo[0:6], hi[0:6])
+        goal[22:28] = np.clip(goal_wrist_l, lo[22:28], hi[22:28])
         r = np.concatenate([rate, np.zeros(16), rate, np.zeros(16)])
         phase(goal, r)
 
@@ -229,15 +240,20 @@ def build_approach_stream(env: LiftHoldEnv) -> tuple[list[np.ndarray], np.ndarra
     # sweeps the box when the wrists advance - measured +13..20 deg yaw).
     finger_phase(open_f, 0.08)
     # P2a rise above the box top so the open fingers clear it
-    up = cur[0:6].copy()
-    up[2] = cur[2] + z_up
-    wrist_phase(up, np.full(6, 0.004))
-    # P2b advance to the seed x/y/rot at altitude
-    p2b = target[0:6].copy()
-    p2b[2] = cur[2]
-    wrist_phase(p2b, np.array(RATE_WRIST))
+    up_r = cur[0:6].copy()
+    up_r[2] = cur[2] + z_up
+    up_l = cur[22:28].copy()
+    up_l[2] = cur[24] + z_up
+    wrist_phase(up_r, up_l, np.full(6, 0.004))
+    # P2b advance to the seed x/y/rot at altitude (per hand)
+    p2b_r = target[0:6].copy()
+    p2b_r[2] = cur[2]
+    p2b_l = target[22:28].copy()
+    p2b_l[2] = cur[24]
+    wrist_phase(p2b_r, p2b_l, np.array(RATE_WRIST))
     # P2c descend to the seed z
-    wrist_phase(target[0:6], np.array([0.004, 0.004, 0.003, 0.05, 0.05, 0.05]))
+    wrist_phase(target[0:6], target[22:28],
+                np.array([0.004, 0.004, 0.003, 0.05, 0.05, 0.05]))
     # P3 curl to the seed targets (the sweep arrives at the face)
     finger_phase(np.concatenate([target[6:22], target[28:44]]), 0.04)
     stream += [target.copy()] * APPROACH_HOLD
@@ -573,11 +589,17 @@ def _pad_checkpoint(q: np.ndarray, c: np.ndarray) -> tuple[np.ndarray, np.ndarra
                     continue  # arm chain stays env-driven; object handled above
                 dst = int(_m.jnt_qposadr[jid])
                 if jname in legacy_fingers:
-                    q19[dst] = q[13 + legacy_fingers.index(jname)]
+                    idx = legacy_fingers.index(jname)
+                    # right fingers q[13:29]; left fingers q[35:51] (the
+                    # legacy 51-dof block is [obj7, rw6, rf16, lw6, lf16])
+                    q19[dst] = q[13 + idx if idx < 16 else 35 + (idx - 16)]
                 elif jname in wrist_names:
-                    src = 7 + wrist_names.index(jname) if not jname.endswith(
-                        "_left") else 29 + wrist_names.index(jname)
-                    q19[dst] = q[src]
+                    idx = wrist_names.index(jname)
+                    # right wrist q[7:13]; left wrist q[29:35] - the index
+                    # must be taken WITHIN the hand's half, not in the full
+                    # 12-name list (the full-list index shifted every left
+                    # source six slots into the finger block)
+                    q19[dst] = q[7 + idx if idx < 6 else 29 + (idx - 6)]
     else:
         q19 = np.zeros(_m.nq); q19[:min(len(q), _m.nq)] = q[:_m.nq]
     c19 = np.zeros(_m.nu); c19[:min(len(c), _m.nu)] = c[:_m.nu]
@@ -2140,13 +2162,56 @@ def cmd_report(args: argparse.Namespace) -> None:
                       "abs_to_actions rate-limit assert fires) - the "
                       "wrist_phase goals for the LEFT hand receive the "
                       "RIGHT hand's seed values (goal[22:28] = target[0:6] "
-                      "applies right-wrist values to the left block), so "
-                      "the left wrist never ramps and the P3 boundary "
+                      "applies right-wrist values to the left block), so the "
+                      "left wrist never ramps and the P3 boundary "
                       "discontinuity trips the limit. Fix: per-hand wrist "
                       "goals (left = seed left values + the F4 -1.67 rx "
                       "offset). One focused pass from here; the v20.1 "
                       "settle is correct (13/13 suites green, box 0.7400) "
                       "and the morphology audit machinery is live",
+        }),
+        "v20p1_grid_final": (None if not getattr(args, "v20p1", False) else {
+            "verdict": "FAIL - no gate-passing candidate in the 24+8 "
+                       "v20.1 finale grid (32/32: lift window 0, peak "
+                       "-0.01..+0.03 mm)",
+            "grid_artifact": "runs/w6c/v20_grid.json (32 combos, every "
+                             "combo with window/peak/final/support/slip/yaw/"
+                             "endface/press-drift/morphology; xml sha "
+                             "pinned in its meta)",
+            "chain_fixed": [
+                "wrist_phase per-hand goals + F4 rx -1.67 terminal (the "
+                "0.583 rad hold-boundary jump -> hold-boundary step 0.0, "
+                "checkpoint regenerated 65-dof)",
+                "_pad_checkpoint left-block source off-by-six (left wrist "
+                "read left-finger values)",
+                "v20_lift start adapter zip off-by-six (object quat into "
+                "the right wrist - the 0.753 wedge source) -> sanctioned "
+                "make_trigger_env path (settle 0.7399)",
+                "climb rate 50 mm/frame -> 0.1 mm/frame (l2e twin scale)",
+                "force source wrote ffa0..ffa3 instead of the demand "
+                "joints' actuators; recalibrated to radians (n_star=4.0 -> "
+                "+0.20 rad)",
+            ],
+            "mechanism_final": "the bilateral contact on the checkpoint "
+                               "chain is a ring-finger distal kiss at "
+                               "N 1.66 +/- 0.03 N/side (liftable threshold "
+                               "2.16 N/side at mu_eff 0.34). The ff/mf "
+                               "follower pads never face-press: at the "
+                               "trigger height the pad tip path under curl "
+                               "runs AWAY from the face (dx/dq +134 mm/rad "
+                               "- tangential, the r7e lock in pad form); at "
+                               "the seed placement they sit 30-50 mm short "
+                               "in x (the W6-era seed is stale for the v20 "
+                               "box half x 0.06). The e170b6d r7e point "
+                               "(+0.2 rad -> N 3.62/4.33) requires a "
+                               "hand-built mid-face pad pose no checkpoint "
+                               "chain reaches. Next: a placement solve "
+                               "(pads ON the faces at mid-height with "
+                               ">= 0.25 rad curl headroom), not another "
+                               "command family.",
+            "full_section": "see the v20p1_grid_final block committed in "
+                            "runs/w6c/report.json (per-combo table, "
+                            "diagnostics, suite status)",
         }),
         "round_l2a_force_obs_ppo": (None if not getattr(args, "l2a", False) else {
             "design": "obs 107->109 (per-side pad normals, N_OBS derived, "
