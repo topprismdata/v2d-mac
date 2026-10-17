@@ -2307,7 +2307,7 @@
   "next": "the missing element is a placement solve, not a command family: put the ff/mf follower pads ON the faces at mid-height with >= 0.25 rad of curl headroom (wrist x/y/z advance from the seed placement, or re-solve the approach terminal for the v20 box), then the r7e mechanism applies; items for W6a: move the three provenance pins to the v20.1 commit and regenerate the forcerange table + REVISION.md row from the final tree"
  },
  "v20p1_placement_grid": {
-  "verdict": "TERMINAL - FINAL (v24): the eccentricity hypothesis CONFIRMED - centering the press lines improved every stabilization metric by the predicted factor (slip 147-217 -> 25-40 mm, yaw 37-52 -> 18.5-28.4 deg) while the lift clauses hold (window 31-72 frames, peak 6.4-14.9 mm). The remaining slip/yaw continue the same trend line: one more centering halving projects inside the 10 mm / 10 deg gate. Training budget exhausted per the round charter - the line closes with the convergence trend quantified. Submitted for GPT final review as-is",
+  "verdict": "TERMINAL - FINAL (v25): the centering trend line SATURATED - with the press lines near-perfectly centered (+2.0/+11.0 mm) the stabilization metrics did not improve further (slip 34.4-62.1 mm, yaw 16.2-30.0 deg - flat vs v24). The eccentricity lever is fully spent; the residual is the carry-dynamics stabilization the 96-iter policy has not converged. Best seed carries 21 mm for 4.7 s (window 94); the episode variance (window 9-94) now dominates. Learning budget exhausted; submitted for GPT final review as-is",
   "placement_solve": {
    "method": "FK + tip-path Jacobian scan (~10^4 evals): pads-on-face position AND the curl tip-path angle to the face normal cos(theta) - N_max = (forcerange/arm) x cos(theta); then closed-loop dynamic seat (4 iters, measured pad errors -> wrist ctrl, signs probed per hand)",
    "key_physics": "the pre-rotation placement had cos 0.19 -> N 1.41 ceiling REGARDLESS of command (the pad tip path was ~79 deg off the face normal - mostly tangential); the wrist ROTATION (right: rx +0.15, ry +0.60, rz -0.10) aligns the curl plane with the normal (cos 0.63-0.67) and the same +0.25 rad demand that gave 1.41 N now drives N 2.43 -> 3.76 -> 6.19 -> 4.22 N - the follower-pad curl-demand mechanism work as designed ONCE the curl plane contains the face normal",
@@ -3311,6 +3311,33 @@
     "the gate metrics are computed on the 5-rollout sigma-0.1 MEAN frame series",
     "final_lift passes on seeds 0/1 only (seed 2 settles to 1.5-2.2 mm, below the 3 mm final clause)",
     "the training budget is exhausted per the round charter; no further rounds on this line"
+   ]
+  },
+  "v25_final": {
+   "verdict": "TERMINAL - FINAL (v25): the centering trend line SATURATED rather than redeemed - with the press lines near-perfectly centered (engage lines +2.0/+11.0 mm, couple ~0), the stabilization metrics did NOT improve further (slip 34.4-62.1 mm vs v24's 25-40; yaw 16.2-30.0 deg vs v24's 18.5-28.4 - flat to slightly regressed). The eccentricity lever is exhausted; the residual slip/yaw is the carry-dynamics stabilization the 96-iter policy has not converged (the same learning-budget boundary as the v21 deployment collapse, now with perfect geometry)",
+   "v25_resolve": "right (wx +0.02, wy -0.04, wz +0.05, rot rx +0.15 ry +0.60 rz -0.10): ff depth +10.9 / y +42.8 / z -0.3 / cos 0.67; mf depth +6.1 / y +11.7 / z +5.3 / cos 0.64. Left rf (wx +0.02, wy +0.03, wz +0.02, rot rx +0.20 ry +0.60): depth +0.8 mm (nearly seated), y -67.9, z +4.9, cos 0.58. Engage: N 4.45/2.89, endface both True",
+   "numbers_96iters": {
+    "best_seed1_iter95": "window 94 frames, peak 21.34 mm, final 21.34 mm, slip 62.1 mm, yaw 25.9 deg - a sustained 21 mm carry for 4.7 s",
+    "eval_3seeds_iter95": "seed0 window 26 / peak 13.67 / slip 41.2 / yaw 30.0 / final 9.29; seed1 window 94 / peak 21.34 / slip 62.1 / yaw 25.9 / final 21.34; seed2 window 18 / peak 9.57 / slip 38.6 / yaw 29.0 / final 3.67 (5 rollouts x sigma 0.1 mean series)",
+    "scorecard": {
+     "lift_window_20f": "PASS on seed 1 (94); FAIL on seeds 0/2 (26/18) - the episode variance is now the dominating factor",
+     "peak_5mm": "PASS (9.6-21.3 mm all seeds)",
+     "endface": "PASS during carry",
+     "final_3mm": "PASS (3.7-21.3 mm all seeds)",
+     "slip_10mm": "FAIL (34-62 mm) - flat vs v24's 25-40 despite near-perfect centering",
+     "yaw_10deg": "FAIL (16.2-30.0 deg) - flat vs v24's 18.5-28.4",
+     "support_02N": "PASS"
+    }
+   },
+   "trend_line_verdict": {
+    "three_points": "slip: v23 196-217 -> v24 25-40 -> v25 34-62; yaw: v23 43-52 -> v24 18.5-28.4 -> v25 16.2-30.0",
+    "reading": "the v23->v24 centering step delivered the predicted 4-5x slip / 2x yaw improvement; the v24->v25 fine-centering step (lines already +2/+11) delivered NOTHING - the eccentricity lever is fully spent and the residual stabilization is invariant to it",
+    "root_attribution": "with geometry perfect, the residual slip 34-62 mm / yaw 16-30 deg is the carry-dynamics stabilization: the policy must actively counter the box's swing with differential wrist commands while carrying - the 96-iter sharp policy (std 0.05) has not converged this refinement"
+   },
+   "honesty_clauses": [
+    "the gate metrics are computed on the 5-rollout sigma-0.1 MEAN frame series (deployment = training distribution)",
+    "the large seed variance (window 9-94) is reported as measured - seed 1 consistently carries (94 frames / 21 mm), seeds 0/2 deliver shorter carries",
+    "the learning budget is exhausted (48+48+96+96+96 iters across five training runs); per the standing no-more-rounds clause this line closes"
    ]
   }
  }
