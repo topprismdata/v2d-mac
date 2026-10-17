@@ -356,7 +356,12 @@ def write_arm_ik_ctrl(model, data) -> None:
         bid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY,
                                 f"hand_root{sfx}")
         target = data.xpos[bid]
-        shoulder = np.array([0.235 if s == 0 else -0.235, 0.0, 1.0])
+        # shoulder anchor read off the model's arm_yaw body (the v22 env
+        # pattern): the mount y-offsets (v25: r-95/l+35 mm) must not be
+        # hard-coded here
+        yaw_bid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY,
+                                    f"arm_yaw{'_l' if s else '_r'}")
+        shoulder = model.body_pos[yaw_bid].astype(float)
         dx, dy, dz = target - shoulder
         yaw = float(np.arctan2(dy, dx))
         r = float(np.hypot(dx, dy))
