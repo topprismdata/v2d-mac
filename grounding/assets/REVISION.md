@@ -970,7 +970,18 @@ springref 附近）。位置伺服仍是主动控制（reset 先 settle 后镜�
 其守护的性质（盒子运动必须接触驱动）由冻结的验收门接触证据判据（A2/A3a）与
 `W_OFF_TABLE` 奖励项继续承担；按 W6c 方向改造为逐手接触归因检查。已注记 superseded。
 
-### 五、状态
+### 五、W6a-v17 追加（per-body 分布：手侧臂段 + 龙门侧球壳 junction）
+
+- **审计驱动重设计**：390 帧 replay 包络实测——right 手 max |Δxyz| = 0.2157 m、left = 0.1805 m。
+  v16 静态 Z 台/肩/前臂被替换为**龙门 body 上的包络尺寸球壳 junction**
+  （right R=0.220 m > 0.2157、left R=0.190 m > 0.1805）。
+- **手侧臂段**（挂 hand_root，跟手动）：forearm → elbow → upper arm 各手 3 geom。
+  upper 臂尖在每帧 replay 都落在龙门球壳内——**junction 覆盖：right worst 207.6 mm < 220 mm（余 12.4 mm）、
+  left worst 145.2 mm < 190 mm（余 44.8 mm）**，ALL PASS。
+- **零物理**：所有新 geom mass=0/contype=0。出生/静置/门位级一致。
+- ngeom 143 / nbody 51 / gantry 族 24 / 手侧臂段族 6。
+
+### 六、状态
 
 - ngeom 99 / nbody 49；XML sha256 =
   XML sha256 = `7b7a1adffab68f0156297f5e654d72b9ef01bc4036874e34870027ffc11563dc`（git cat-file 对象库复核；初稿误记中间态 b17544ab，见 §三流程更正）。
@@ -1064,7 +1075,18 @@ XML sha256 = `c0114a640011b160900e2c38354c8c93475535924e81110172c8c02079f58928`
   与手侧 wmount 在回放位形重叠——接触链：手 → wmount → 静态前臂 → 肩 → Z 台 → 横梁。
 - ngeom 141 / nbody 49 / gantry 族 28 geom。
 
-### 五、状态
+### 五、W6a-v17 追加（per-body 分布：手侧臂段 + 龙门侧球壳 junction）
+
+- **审计驱动重设计**：390 帧 replay 包络实测——right 手 max |Δxyz| = 0.2157 m、left = 0.1805 m。
+  v16 静态 Z 台/肩/前臂被替换为**龙门 body 上的包络尺寸球壳 junction**
+  （right R=0.220 m > 0.2157、left R=0.190 m > 0.1805）。
+- **手侧臂段**（挂 hand_root，跟手动）：forearm → elbow → upper arm 各手 3 geom。
+  upper 臂尖在每帧 replay 都落在龙门球壳内——**junction 覆盖：right worst 207.6 mm < 220 mm（余 12.4 mm）、
+  left worst 145.2 mm < 190 mm（余 44.8 mm）**，ALL PASS。
+- **零物理**：所有新 geom mass=0/contype=0。出生/静置/门位级一致。
+- ngeom 143 / nbody 51 / gantry 族 24 / 手侧臂段族 6。
+
+### 六、状态
 
 - ngeom **135**（84 手 + 24 腕部模块/过渡/台阶 + 3 盒族 + 2 支撑 + 22 龙门）、nbody 49；
   `EXPECTED_NGEOM = 135` + 族加法记账；smoke6 计数同步。
@@ -1191,7 +1213,18 @@ W6b 二轮 finding F4：v8 的 static-hold 门**只验弹簧需求、重力"另�
   与手侧 wmount 在回放位形重叠——接触链：手 → wmount → 静态前臂 → 肩 → Z 台 → 横梁。
 - ngeom 141 / nbody 49 / gantry 族 28 geom。
 
-### 五、状态
+### 五、W6a-v17 追加（per-body 分布：手侧臂段 + 龙门侧球壳 junction）
+
+- **审计驱动重设计**：390 帧 replay 包络实测——right 手 max |Δxyz| = 0.2157 m、left = 0.1805 m。
+  v16 静态 Z 台/肩/前臂被替换为**龙门 body 上的包络尺寸球壳 junction**
+  （right R=0.220 m > 0.2157、left R=0.190 m > 0.1805）。
+- **手侧臂段**（挂 hand_root，跟手动）：forearm → elbow → upper arm 各手 3 geom。
+  upper 臂尖在每帧 replay 都落在龙门球壳内——**junction 覆盖：right worst 207.6 mm < 220 mm（余 12.4 mm）、
+  left worst 145.2 mm < 190 mm（余 44.8 mm）**，ALL PASS。
+- **零物理**：所有新 geom mass=0/contype=0。出生/静置/门位级一致。
+- ngeom 143 / nbody 51 / gantry 族 24 / 手侧臂段族 6。
+
+### 六、状态
 
 - 全套门：scene_w6 13/13（含重力版 static hold）；核心电池同 v8。
 - gate3_qpos.json：双手完整 qpos（物体关节置零 + 本节文档标注）。
