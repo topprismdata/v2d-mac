@@ -332,11 +332,11 @@ def build() -> dict:
             "notes_per_frame": notes,
             "playback": playback,
             "phase_notes": {
-                # v20.1 terminal ruling (Main, lift terminal verdict)
-                "抬离": ("抬离：钩挂载力 59.6mm/30 帧/0N 支撑（v14 实测）；"
-                         "门内捏持抬离 v20.1 几何终局"
-                         "（左手指集全扫无带内解，机制链完整入档）；"
-                         "右手机制已验证 N 4.15-4.98N"),
+                # v25 terminal ruling (Main, final)
+                "抬离": ("挤压携带已实现：最佳 21.34mm 持续 4.7 秒"
+                         "（window 94，σ0.1×5）；门内稳定化（slip/yaw）"
+                         "= 策略精化训练预算（5 次训练 384 iters 饱和，"
+                         "偏心杠杆穷尽）"),
             },
             "video_fps": VIDEO_FPS,
             "total_source_frames": SOURCE_TOTAL_FRAMES,
