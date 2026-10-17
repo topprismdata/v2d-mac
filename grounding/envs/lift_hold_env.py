@@ -57,6 +57,8 @@ N_FINGER = 16
 N_ACT_PER_HAND = N_WRIST + N_FINGER  # 22 - the single-hand env's whole action
 N_HANDS = 2
 N_ACT = N_ACT_PER_HAND * N_HANDS     # 44: right hand block first, left appended
+N_ARM_ACT = 6                        # W6a-v19: 3 arm servos x 2 hands (env-written, policy-invisible)
+N_CTRL = N_ACT + N_ARM_ACT           # 50: the full MuJoCo ctrl width
 # observation width (see LiftHoldEnv._obs): 13 object fields, two 43-field hand
 # blocks, 8 history fields
 # r7d/L2A (Main ruling): +2 per-side pad normal forces - the force observation
@@ -568,8 +570,8 @@ class LiftHoldEnv(gym.Env):
                 name = f"{bname}#geom{g}"
                 self.geom_name_to_id[name] = g
             self.geom_label.append(name)
-        self.ctrl_low = m.actuator_ctrlrange[:, 0].copy()
-        self.ctrl_high = m.actuator_ctrlrange[:, 1].copy()
+        self.ctrl_low = m.actuator_ctrlrange[:N_ACT, 0].copy()
+        self.ctrl_high = m.actuator_ctrlrange[:N_ACT, 1].copy()
         # world-body box geoms the object can rest on (table slab, pedestal, ...)
         self.support_geoms: set[str] = set()
         for g in range(m.ngeom):
@@ -1182,7 +1184,7 @@ class LiftHoldEnv(gym.Env):
         """
         a = np.clip(np.asarray(action, dtype=np.float64), -1.0, 1.0)
 
-        ctrl = self.data.ctrl.copy()
+        ctrl = self.data.ctrl[:N_ACT].copy()
         for h in range(N_HANDS):
             base = h * N_ACT_PER_HAND
             # wrist: pose DELTA, integrated into the setpoint then clipped to ctrlrange
@@ -1199,8 +1201,39 @@ class LiftHoldEnv(gym.Env):
             hi = self.ctrl_high[base + N_WRIST: base + N_ACT_PER_HAND]
             ctrl[base + N_WRIST: base + N_ACT_PER_HAND] = \
                 lo + (a[fbase:fbase + N_FINGER] + 1.0) * 0.5 * (hi - lo)
-        self.data.ctrl[:] = np.clip(ctrl, self.ctrl_low, self.ctrl_high)
+        self.data.ctrl[:N_ACT] = np.clip(ctrl, self.ctrl_low[:N_ACT], self.ctrl_high[:N_ACT])
+        self._write_arm_ik_ctrl()
         self._ctrl_ref = self.data.ctrl.copy()
+
+    def _write_arm_ik_ctrl(self) -> None:
+        """W6a-v19: analytic 3-DoF arm IK, env-side, every step.
+
+        Solves the closed-form 2-link-in-yaw-plane IK from each shoulder
+        anchor to the hand root's live world position and writes the 6 arm
+        servo targets into ctrl[N_ACT:].  The policy never sees these dims
+        (its action is still N_ACT=44) and no arm state enters obs — the
+        trained checkpoints stay bit-valid, the arm is a visual follower.
+        """
+        L = 0.16  # link length (matches the MJCF arm_upper/forearm geoms)
+        for s in range(2):
+            sfx = "" if s == 0 else "_left"
+            bid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY,
+                                    f"hand_root{sfx}")
+            target = self.data.xpos[bid]
+            sx = 0.235 if s == 0 else -0.235
+            shoulder = np.array([sx, 0.0, 1.0])
+            dx, dy, dz = target - shoulder
+            yaw = float(np.arctan2(dy, dx))
+            r = float(np.hypot(dx, dy))
+            dist = float(np.clip(np.linalg.norm([dx, dy, dz]), 1e-6, 2 * L - 1e-6))
+            elbow = float(np.pi - np.arccos(
+                np.clip((2 * L * L - dist ** 2) / (2 * L * L), -1.0, 1.0)))
+            pitch = float(np.arctan2(dz, r) - np.arccos(
+                np.clip(dist ** 2 / (2 * L * dist), -1.0, 1.0)))
+            base = N_ACT + s * 3
+            self.data.ctrl[base + 0] = yaw
+            self.data.ctrl[base + 1] = pitch
+            self.data.ctrl[base + 2] = elbow
 
     def step(self, action: np.ndarray):
         if not isinstance(action, np.ndarray) or action.shape != (N_ACT,):

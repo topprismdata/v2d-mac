@@ -74,14 +74,14 @@ def nid(model, objtype, name):
 # 2 bases, x-beam, y-rail, carriage, z-stage, 4 drag links, 2 limit stops).
 # Named once; the additive accounting below must sum to it, so a new geom
 # family has to be added explicitly.
-EXPECTED_NGEOM = 143
+EXPECTED_NGEOM = 145
 
 
 def test_w6_model_statistics(model):
     # 2 hands x (7 freejoint-equivalent wrist DoF + 16 fingers) + object 7
-    assert model.nq == 51
-    assert model.nv == 50
-    assert model.nu == 44
+    assert model.nq == 57
+    assert model.nv == 56
+    assert model.nu == 50
     assert model.ngeom == EXPECTED_NGEOM
     # additive accounting: every family counted independently must sum to it
     def geom_name(g):
@@ -95,16 +95,14 @@ def test_w6_model_statistics(model):
                    if geom_name(g).startswith("gantry"))
     n_static = sum(1 for g in range(model.ngeom)
                    if geom_name(g) in ("floor", "table_slab"))
-    n_armseg = sum(1 for g in range(model.ngeom)
-                   if geom_name(g).startswith("arm_r") or geom_name(g).startswith("arm_l"))
     n_arm = sum(1 for g in range(model.ngeom)
-                if geom_name(g).startswith("arm_r") or geom_name(g).startswith("arm_l"))
+                if geom_name(g).startswith("arm_"))
     n_mount = sum(1 for g in range(model.ngeom)
                   if geom_name(g).startswith("wmount"))
     assert (n_hand == 84 and n_mount == 24 and n_object == 3
-            and n_gantry == 24 and n_static == 2 and n_armseg == 6), (
+            and n_gantry == 22 and n_static == 2 and n_arm == 10), (
         f"geom families drifted: {n_hand} hand + {n_mount} wrist-module + "
-        f"{n_object} object + {n_gantry} gantry + {n_static} static != "
+        f"{n_object} object + {n_gantry} gantry + {n_static} static + {n_arm} arm != "
         f"{EXPECTED_NGEOM} - update EXPECTED_NGEOM with the new family counted "
         "explicitly, never by silencing this test")
 
@@ -122,7 +120,8 @@ def test_w6_both_hand_roots_exist_at_the_end_faces(model, data):
         name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY, b) or ""
         if not name or name.endswith("_left"):
             continue
-        if name in ("world", "object", "hand_root", "wmount_right", "gantry", "arm_right"):
+        if name in ("world", "object", "hand_root", "wmount_right", "gantry", "arm_yaw_r", "arm_upper_r", "arm_elbow_r",
+                                "arm_yaw_l", "arm_upper_l", "arm_elbow_l"):
             continue
         assert mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, name + "_left") >= 0, (
             f"body {name} has no _left twin"
@@ -229,7 +228,7 @@ def test_w6_gate3b_static_hold_spring_demand_within_servo_caps(model):
                 jn = f"{f}j{i}{sfx}"
                 jid = nid(model, mujoco.mjtObj.mjOBJ_JOINT, jn)
                 aid = nid(model, mujoco.mjtObj.mjOBJ_ACTUATOR, f"{f}a{i}{sfx}")
-                qj = float(q[13 + (0 if sfx == "" else 22) + 4 * FINGERS.index(f) + i])
+                qj = float(q[19 + (0 if sfx == "" else 22) + 4 * FINGERS.index(f) + i])
                 cap = 0.8 * float(model.actuator_forcerange[aid][1])
                 demand = abs(KJ[4 * FINGERS.index(f) + i] * (qj - refs[f"{f}j{i}"]))
                 if demand > worst[1]:

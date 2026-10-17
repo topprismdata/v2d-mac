@@ -991,7 +991,28 @@ springref 附近）。位置伺服仍是主动控制（reset 先 settle 后镜�
 - **电池**：83 passed / 1 skipped（scene_w6 13/13 + smoke4_env + reward + scene_init）。
 - **视觉线 16 轮定版**：v17 结构 + 任务带全覆盖 + 尾段诚实注记。
 
-### 七、状态
+### 七、W6a-v19（3-DoF env 驱动铰接臂 — 解析 IK 伺服，checkpoint 全兼容）
+
+- **结构**：每臂 3 铰（yaw + pitch + elbow），肩锚在龙门 (±0.235, 0, 1.000)。
+  连杆 2 段 capsule（L1=L2=0.16 m，10 g/段 + 2 个 5 g 关节盘），臂尖 22 mm 球。
+  6 个 position servo（kp=60, forcerange ±8 N·m, ctrlrange ±3.2）。
+- **IK**：env 侧每 step 解析 3-DoF IK（`yaw=atan2(Δy,Δx)` + 平面内二连杆余弦定理），
+  写 ctrl[44:50]。策略 action 仍 44 维 / obs 109 维零变化——**已训 checkpoint 全部有效**。
+- **残差**：390 帧 replay，right/left worst tip-to-wrist = **0.0000 mm**（运动学直写）。
+  闭环伺服稳态 0.52 mm（reset 后 ~100 ms 摆入暂态，稳态紧跟踪）。
+- **涟漪记账**：nq 51→57、nv 50→56、nu 44→50、ngeom 143→145（v17 手侧臂 6 geom 移除，
+  v19 臂 10 geom + junction 球 2 移除 + gantry 网格不变）、nbody 51→55。
+  gate3_qpos.json 布局 51→57 wide（reader 偏移 13→19、probe 偏移 7→13 全部同步）。
+  test_scene_init 的 qpos[:3] 硬编码改 obj_qpos_adr 寻址。
+- **y 包络前置测量**：right 180.8 mm / left 122.9 mm ≫ 40 mm → 2 铰不可行，
+  3 铰方案经 Main 批准（A 裁决）。reach 需求 right 0.3175 m / left 0.2547 m → L=0.16 m。
+- **遗留（预存，HEAD 即挂，非 v19 引入）**：
+  1. `test_r1_forcerange_is_the_shared_budget_times_the_moment_arm`——v12 引入 1.7
+     forcerange 缩放后恒等式测试未同步（模型值 0.17919 = 1.7 × 0.10541 正确，测试期望未缩放值）。
+  2. `test_revision_md_records_the_forcerange_table`——本文档 v17.1 中文追加后
+     力矩臂表匹配失败。
+
+### 八、状态
 
 - ngeom 99 / nbody 49；XML sha256 =
   XML sha256 = `7b7a1adffab68f0156297f5e654d72b9ef01bc4036874e34870027ffc11563dc`（git cat-file 对象库复核；初稿误记中间态 b17544ab，见 §三流程更正）。
@@ -1106,7 +1127,28 @@ XML sha256 = `c0114a640011b160900e2c38354c8c93475535924e81110172c8c02079f58928`
 - **电池**：83 passed / 1 skipped（scene_w6 13/13 + smoke4_env + reward + scene_init）。
 - **视觉线 16 轮定版**：v17 结构 + 任务带全覆盖 + 尾段诚实注记。
 
-### 七、状态
+### 七、W6a-v19（3-DoF env 驱动铰接臂 — 解析 IK 伺服，checkpoint 全兼容）
+
+- **结构**：每臂 3 铰（yaw + pitch + elbow），肩锚在龙门 (±0.235, 0, 1.000)。
+  连杆 2 段 capsule（L1=L2=0.16 m，10 g/段 + 2 个 5 g 关节盘），臂尖 22 mm 球。
+  6 个 position servo（kp=60, forcerange ±8 N·m, ctrlrange ±3.2）。
+- **IK**：env 侧每 step 解析 3-DoF IK（`yaw=atan2(Δy,Δx)` + 平面内二连杆余弦定理），
+  写 ctrl[44:50]。策略 action 仍 44 维 / obs 109 维零变化——**已训 checkpoint 全部有效**。
+- **残差**：390 帧 replay，right/left worst tip-to-wrist = **0.0000 mm**（运动学直写）。
+  闭环伺服稳态 0.52 mm（reset 后 ~100 ms 摆入暂态，稳态紧跟踪）。
+- **涟漪记账**：nq 51→57、nv 50→56、nu 44→50、ngeom 143→145（v17 手侧臂 6 geom 移除，
+  v19 臂 10 geom + junction 球 2 移除 + gantry 网格不变）、nbody 51→55。
+  gate3_qpos.json 布局 51→57 wide（reader 偏移 13→19、probe 偏移 7→13 全部同步）。
+  test_scene_init 的 qpos[:3] 硬编码改 obj_qpos_adr 寻址。
+- **y 包络前置测量**：right 180.8 mm / left 122.9 mm ≫ 40 mm → 2 铰不可行，
+  3 铰方案经 Main 批准（A 裁决）。reach 需求 right 0.3175 m / left 0.2547 m → L=0.16 m。
+- **遗留（预存，HEAD 即挂，非 v19 引入）**：
+  1. `test_r1_forcerange_is_the_shared_budget_times_the_moment_arm`——v12 引入 1.7
+     forcerange 缩放后恒等式测试未同步（模型值 0.17919 = 1.7 × 0.10541 正确，测试期望未缩放值）。
+  2. `test_revision_md_records_the_forcerange_table`——本文档 v17.1 中文追加后
+     力矩臂表匹配失败。
+
+### 八、状态
 
 - ngeom **135**（84 手 + 24 腕部模块/过渡/台阶 + 3 盒族 + 2 支撑 + 22 龙门）、nbody 49；
   `EXPECTED_NGEOM = 135` + 族加法记账；smoke6 计数同步。
@@ -1254,7 +1296,28 @@ W6b 二轮 finding F4：v8 的 static-hold 门**只验弹簧需求、重力"另�
 - **电池**：83 passed / 1 skipped（scene_w6 13/13 + smoke4_env + reward + scene_init）。
 - **视觉线 16 轮定版**：v17 结构 + 任务带全覆盖 + 尾段诚实注记。
 
-### 七、状态
+### 七、W6a-v19（3-DoF env 驱动铰接臂 — 解析 IK 伺服，checkpoint 全兼容）
+
+- **结构**：每臂 3 铰（yaw + pitch + elbow），肩锚在龙门 (±0.235, 0, 1.000)。
+  连杆 2 段 capsule（L1=L2=0.16 m，10 g/段 + 2 个 5 g 关节盘），臂尖 22 mm 球。
+  6 个 position servo（kp=60, forcerange ±8 N·m, ctrlrange ±3.2）。
+- **IK**：env 侧每 step 解析 3-DoF IK（`yaw=atan2(Δy,Δx)` + 平面内二连杆余弦定理），
+  写 ctrl[44:50]。策略 action 仍 44 维 / obs 109 维零变化——**已训 checkpoint 全部有效**。
+- **残差**：390 帧 replay，right/left worst tip-to-wrist = **0.0000 mm**（运动学直写）。
+  闭环伺服稳态 0.52 mm（reset 后 ~100 ms 摆入暂态，稳态紧跟踪）。
+- **涟漪记账**：nq 51→57、nv 50→56、nu 44→50、ngeom 143→145（v17 手侧臂 6 geom 移除，
+  v19 臂 10 geom + junction 球 2 移除 + gantry 网格不变）、nbody 51→55。
+  gate3_qpos.json 布局 51→57 wide（reader 偏移 13→19、probe 偏移 7→13 全部同步）。
+  test_scene_init 的 qpos[:3] 硬编码改 obj_qpos_adr 寻址。
+- **y 包络前置测量**：right 180.8 mm / left 122.9 mm ≫ 40 mm → 2 铰不可行，
+  3 铰方案经 Main 批准（A 裁决）。reach 需求 right 0.3175 m / left 0.2547 m → L=0.16 m。
+- **遗留（预存，HEAD 即挂，非 v19 引入）**：
+  1. `test_r1_forcerange_is_the_shared_budget_times_the_moment_arm`——v12 引入 1.7
+     forcerange 缩放后恒等式测试未同步（模型值 0.17919 = 1.7 × 0.10541 正确，测试期望未缩放值）。
+  2. `test_revision_md_records_the_forcerange_table`——本文档 v17.1 中文追加后
+     力矩臂表匹配失败。
+
+### 八、状态
 
 - 全套门：scene_w6 13/13（含重力版 static hold）；核心电池同 v8。
 - gate3_qpos.json：双手完整 qpos（物体关节置零 + 本节文档标注）。

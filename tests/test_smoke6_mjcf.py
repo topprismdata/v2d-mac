@@ -378,12 +378,12 @@ def test_r1_measured_fingertip_force_stays_under_ten_newtons(model):
         for h in range(2):
             base = h * 22
             for k in range(6):
-                a[base + k] = float(gate3[7 + 22 * h + k])
+                a[base + k] = float(gate3[13 + 22 * h + k])
             for i in range(16):
                 jname = hand_names[22 * h + 6 + i]
                 jid = mujoco.mj_name2id(m_env.model, mujoco.mjtObj.mjOBJ_JOINT, jname)
                 lo, hi = m_env.model.jnt_range[jid]
-                q_target = float(gate3[7 + 22 * h + 6 + i])
+                q_target = float(gate3[13 + 22 * h + 6 + i])
                 a[base + 6 + i] = float(np.clip(
                     2.0 * (q_target - lo) / (hi - lo) - 1.0, -1.0, 1.0))
         hook_env.step(a)
@@ -932,8 +932,8 @@ def test_frozen_box_and_scene_constants():
 
 def test_action_semantics_unchanged(model):
     """W6a: two hands x the original 22-actuator block, right block first."""
-    assert model.nu == N_ACT * 2
-    assert model.nu == 44
+    assert model.nu == N_ACT * 2 + 6  # + W6a-v19 arm servos (env-written)
+    assert model.nu == 50
     for i, name in enumerate(("wrist_ax", "wrist_ay", "wrist_az",
                               "wrist_rx", "wrist_ry", "wrist_rz")):
         assert mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, name) == i
@@ -955,11 +955,11 @@ def test_generated_xml_is_reproducible_from_the_generator():
 def test_model_loads_and_statistics_are_self_consistent(model):
     # 42 hand geoms x 2 (W6a dual hands) + 3 object (box + 2 chamfers)
     # + floor + table slab (pedestal removed in W6a)
-    assert model.ngeom == 143
-    assert model.nbody == 49
-    assert model.nq == 51
-    assert model.nu == 44
-    assert model.nv == 50
+    assert model.ngeom == 145
+    assert model.nbody == 55
+    assert model.nq == 57
+    assert model.nu == 50
+    assert model.nv == 56
     obj = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "object")
     assert float(model.body_mass[obj]) == pytest.approx(BOX_MASS_KG)
 
@@ -996,7 +996,7 @@ def test_r8_lip_geometry_is_refuted_and_withdrawn(model):
     # the +2 geoms vs the pre-W5 scene are the W5 chamfer plates, NOT the lip:
     # the lip geoms themselves stay out (checked by id above). W6a doubles the
     # hand geoms (42 x 2) and drops the pedestal, netting 89.
-    assert model.ngeom == 143, (
+    assert model.ngeom == 145, (
         f"{model.ngeom} geoms: expected 84 hand + 2 cuffs + 3 object + floor + slab, with "
         "the refuted lip still withdrawn and the pedestal still removed")
     n_obj = len(builder.object_geom_names())
@@ -1133,5 +1133,5 @@ def test_model_stats_script_runs():
     assert out.returncode == 0, out.stderr
     payload = json.loads(out.stdout)
     # W6a-v4: 84 hand + 4 forearm/flange + 3 object + floor + slab + 6 gantry
-    assert payload["model_shape"]["ngeom"] == 143
-    assert payload["model_shape"]["nu"] == 44
+    assert payload["model_shape"]["ngeom"] == 145
+    assert payload["model_shape"]["nu"] == 50

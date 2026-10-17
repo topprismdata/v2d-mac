@@ -516,18 +516,65 @@ TEMPLATE_HEAD = """<mujoco model="allegro_floating">
       <geom name="gantry_limit_posy" type="box" size="0.05 0.02 0.05"
         pos="0 -0.52 1.015" mass="0" contype="0" conaffinity="0"
         rgba="0.55 0.3 0.15 1"/>
-      <!-- W6a-v17: envelope-sized shoulder housing on the RAIL side.
-           Radius covers the hand's full replay displacement (right 0.2157 m,
-           left 0.1805 m, measured over 390 frames) — the hand-mounted arm
-           segments sweep inside this housing at every replay pose, so the
-           hand→arm→gantry junction never shows a gap. Industrial analogue:
-           the large shoulder pod of a Cartesian Z-stage. -->
-      <geom name="gantry_junction_r" type="sphere" size="0.220"
-        pos="0.235 0 1.000" mass="0" contype="0" conaffinity="0"
-        rgba="0.30 0.30 0.34 1"/>
-      <geom name="gantry_junction_l" type="sphere" size="0.190"
-        pos="-0.235 0 1.000" mass="0" contype="0" conaffinity="0"
-        rgba="0.30 0.30 0.34 1"/>
+      <!-- W6a-v19: 3-DoF articulated arm per hand (yaw + pitch + elbow).
+           Analytic IK in the env writes these 3 servo targets each step
+           from the hand root's x-y-z; tip tracks the hand root with zero
+           residual over the 390-frame replay. Link mass 10 g each (under
+           0.5% of box mass — noise-level dynamics ripple). -->
+      <body name="arm_yaw_r" pos="0.235 0 1.000">
+        <joint name="arm_yaw_r" type="hinge" axis="0 0 1" pos="0 0 0"
+               range="-3.2 3.2" damping="0.3" armature="0.001"/>
+        <geom name="arm_yaw_disc_r" type="cylinder" size="0.024 0.012"
+              pos="0 0 0" mass="0.005" contype="0" conaffinity="0"
+              rgba="0.28 0.28 0.31 1"/>
+        <body name="arm_upper_r" pos="0 0 0">
+          <joint name="arm_pitch_r" type="hinge" axis="0 -1 0" pos="0 0 0"
+                 range="-3.2 3.2" damping="0.3" armature="0.001"/>
+          <geom name="arm_upper_r" type="capsule"
+                fromto="0 0 0 0.160 0 0" size="0.012" mass="0.010"
+                contype="0" conaffinity="0" rgba="0.38 0.38 0.42 1"/>
+          <body name="arm_elbow_r" pos="0.160 0 0">
+            <joint name="arm_elbow_r" type="hinge" axis="0 -1 0" pos="0 0 0"
+                   range="-3.2 3.2" damping="0.3" armature="0.001"/>
+            <geom name="arm_elbow_disc_r" type="cylinder" size="0.020 0.014"
+                  pos="0 0 0" mass="0.005" contype="0" conaffinity="0"
+                  rgba="0.28 0.28 0.31 1"/>
+            <geom name="arm_forearm_r" type="capsule"
+                  fromto="0 0 0 0.160 0 0" size="0.010" mass="0.010"
+                  contype="0" conaffinity="0" rgba="0.35 0.35 0.39 1"/>
+            <geom name="arm_wrist_r" type="sphere" size="0.022"
+                  pos="0.160 0 0" mass="0" contype="0" conaffinity="0"
+                  rgba="0.28 0.28 0.31 1"/>
+          </body>
+        </body>
+      </body>
+      <body name="arm_yaw_l" pos="-0.235 0 1.000">
+        <joint name="arm_yaw_l" type="hinge" axis="0 0 1" pos="0 0 0"
+               range="-3.2 3.2" damping="0.3" armature="0.001"/>
+        <geom name="arm_yaw_disc_l" type="cylinder" size="0.024 0.012"
+              pos="0 0 0" mass="0.005" contype="0" conaffinity="0"
+              rgba="0.28 0.28 0.31 1"/>
+        <body name="arm_upper_l" pos="0 0 0">
+          <joint name="arm_pitch_l" type="hinge" axis="0 -1 0" pos="0 0 0"
+                 range="-3.2 3.2" damping="0.3" armature="0.001"/>
+          <geom name="arm_upper_l" type="capsule"
+                fromto="0 0 0 0.160 0 0" size="0.012" mass="0.010"
+                contype="0" conaffinity="0" rgba="0.38 0.38 0.42 1"/>
+          <body name="arm_elbow_l" pos="0.160 0 0">
+            <joint name="arm_elbow_l" type="hinge" axis="0 -1 0" pos="0 0 0"
+                   range="-3.2 3.2" damping="0.3" armature="0.001"/>
+            <geom name="arm_elbow_disc_l" type="cylinder" size="0.020 0.014"
+                  pos="0 0 0" mass="0.005" contype="0" conaffinity="0"
+                  rgba="0.28 0.28 0.31 1"/>
+            <geom name="arm_forearm_l" type="capsule"
+                  fromto="0 0 0 0.160 0 0" size="0.010" mass="0.010"
+                  contype="0" conaffinity="0" rgba="0.35 0.35 0.39 1"/>
+            <geom name="arm_wrist_l" type="sphere" size="0.022"
+                  pos="0.160 0 0" mass="0" contype="0" conaffinity="0"
+                  rgba="0.28 0.28 0.31 1"/>
+          </body>
+        </body>
+      </body>
       <!-- W6a-v7: shared-beam dual-carriage answer + left end module. The
            physics fact is ONE y-rail with TWO carriages (one per hand); each
            carriage carries a Z stage and a short bridge arm down to its
@@ -581,20 +628,6 @@ TEMPLATE_HEAD = """<mujoco model="allegro_floating">
            6-bolt circle + end cap + cable port; total length 55.5 mm <= 60.
            Welded child body, all geoms mass 0 / no collision => zero physical
            effect (birth/settle/gate numbers bit-identical). -->
-    <body name="arm_right" pos="0 0 0">
-      <!-- W6a-v17: hand-side arm segments. Forearm → elbow → upper arm.
-           The upper arm's tip is inside the rail-side junction sphere at
-           every replay pose (envelope-sized). All mass=0/no-collision. -->
-      <geom name="arm_r_forearm" type="capsule"
-        fromto="0 0 0.005 0 0 0.065" size="0.013" mass="0"
-        contype="0" conaffinity="0" rgba="0.38 0.38 0.42 1"/>
-      <geom name="arm_r_elbow" type="sphere" size="0.016"
-        pos="0 0 0.075" mass="0" contype="0" conaffinity="0"
-        rgba="0.28 0.28 0.31 1"/>
-      <geom name="arm_r_upper" type="capsule"
-        fromto="0 0 0.075 0 0 0.190" size="0.011" mass="0"
-        contype="0" conaffinity="0" rgba="0.35 0.35 0.39 1"/>
-    </body>
       <body name="wmount_right" pos="0 0 0">
         <geom name="wmount_transition" type="box" size="0.010 0.038 0.028"
           pos="-0.004 0 0.010" mass="0" contype="0" conaffinity="0"
@@ -638,20 +671,6 @@ TEMPLATE_HEAD = """<mujoco model="allegro_floating">
     </body>
 
     <body name="hand_root_left" pos="{hand_home_l}" euler="{hand_euler_l}">
-    <body name="arm_left" pos="0 0 0">
-      <!-- W6a-v17: hand-side arm segments. Forearm → elbow → upper arm.
-           The upper arm's tip is inside the rail-side junction sphere at
-           every replay pose (envelope-sized). All mass=0/no-collision. -->
-      <geom name="arm_l_forearm" type="capsule"
-        fromto="0 0 0.005 0 0 0.065" size="0.013" mass="0"
-        contype="0" conaffinity="0" rgba="0.38 0.38 0.42 1"/>
-      <geom name="arm_l_elbow" type="sphere" size="0.016"
-        pos="0 0 0.075" mass="0" contype="0" conaffinity="0"
-        rgba="0.28 0.28 0.31 1"/>
-      <geom name="arm_l_upper" type="capsule"
-        fromto="0 0 0.075 0 0 0.190" size="0.011" mass="0"
-        contype="0" conaffinity="0" rgba="0.35 0.35 0.39 1"/>
-    </body>
       <body name="wmount_left" pos="0 0 0">
         <geom name="wmount_transition_left" type="box" size="0.010 0.038 0.028"
           pos="-0.004 0 0.010" mass="0" contype="0" conaffinity="0"
@@ -706,6 +725,7 @@ TEMPLATE_HEAD = """<mujoco model="allegro_floating">
 {hand_actuators}
 {wrist_actuators_left}
 {hand_actuators_left}
+{arm_actuators}
   </actuator>
 </mujoco>
 """
@@ -1631,6 +1651,24 @@ def main() -> None:
     build(verbose=True)
 
 
+def _arm_actuator_lines() -> list[str]:
+    """W6a-v19: 6 position servos driving the 3-DoF arm hinges.
+
+    High-stiffness servos (no load on the arm — only its own 25 g), sized
+    so the analytic IK command tracks with negligible lag at the 2 ms
+    timestep. The env writes these 6 ctrl dims each step; the policy never
+    sees them (obs/ctrl layout for the policy is unchanged).
+    """
+    lines = []
+    for sfx in ("_r", "_l"):
+        for j in ("yaw", "pitch", "elbow"):
+            rng = {"yaw": "-3.2 3.2", "pitch": "-3.2 3.2", "elbow": "-3.2 3.2"}[j]
+            lines.append(
+                f'    <position name="arm_{j}{sfx}" joint="arm_{j}{sfx}" '
+                f'kp="60" forcerange="-8 8" dampratio="1.0" ctrlrange="{rng}"/>')
+    return lines
+
+
 def _verify_out(xml_text: str, out: pathlib.Path | None = None) -> None:
     """Refuse to leave a broken artefact on disk."""
     import tempfile
@@ -1733,6 +1771,7 @@ def _emit(assets: str, defaults: str, palm: str, excludes: str,
         wrist_actuators="\n".join(_wrist_actuator_lines()),
         hand_actuators="\n".join(_hand_actuator_lines()),
         wrist_actuators_left="\n".join(_wrist_actuator_lines("_left")),
+        arm_actuators="\n".join(_arm_actuator_lines()),
         hand_actuators_left="\n".join(_hand_actuator_lines("_left")),
     )
 

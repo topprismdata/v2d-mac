@@ -1,7 +1,7 @@
 """Smoke 4.3 - RED-first self-check of the floating-Allegro lift/hold env.
 
 Acceptance criteria (hard-coded, deliberately unforgiving):
-  C1 model shape      nu == 44 (2 hands x (6 wrist + 16 finger)), object body has a freejoint,
+  C1 model shape      nu == 50 (2 hands x (6 wrist + 16 finger) + 6 arm servos), object body has a freejoint,
                       cams cam_overhead / cam_wrist exist
   C2 action space     Box(-1, 1, (44,))
   C3 100 random steps produce no NaN/Inf in obs / reward / qpos
@@ -52,7 +52,7 @@ def test_c1_model_shape(env_cls):
 
     probe = env_cls(evaluator_only=True)
     m = probe.model
-    assert m.nu == 44, f"expected 44 actuators (2 hands x (6 wrist + 16 finger)), got {m.nu}"
+    assert m.nu == 50, f"expected 50 actuators (2 hands x (6 wrist + 16 finger)), got {m.nu}"
     wrist = [mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_ACTUATOR, i) for i in range(6)]
     assert wrist == [
         "wrist_ax", "wrist_ay", "wrist_az", "wrist_rx", "wrist_ry", "wrist_rz",

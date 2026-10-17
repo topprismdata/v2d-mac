@@ -193,12 +193,12 @@ def test_reset_never_births_a_penetrating_box(env_cls, seed, kwargs):
                 default=0.0)
     assert worst >= -BIRTH_PENETRATION_TOL_M, (
         f"{kwargs} seed={seed}: birth contact {worst:+.6f} m at "
-        f"{u.data.qpos[:3]} (placement {report})")
+        f"{u.data.qpos[u.obj_qpos_adr:u.obj_qpos_adr+3]} (placement {report})")
     # ... and it did not get thrown out of the pose it was given while settling
     settled = np.asarray(report["placed_xy_m"] + [report["resting_z_m"]])
-    assert float(np.linalg.norm(u.data.qpos[:3] - settled)) < REST_MOVE_TOL_M, (
-        f"{kwargs} seed={seed}: box moved {u.data.qpos[:3]} -> "
-        f"{u.data.qpos[:3]} from its own placement {report}")
+    assert float(np.linalg.norm(u.data.qpos[u.obj_qpos_adr:u.obj_qpos_adr+3] - settled)) < REST_MOVE_TOL_M, (
+        f"{kwargs} seed={seed}: box moved {u.data.qpos[u.obj_qpos_adr:u.obj_qpos_adr+3]} -> "
+        f"{u.data.qpos[u.obj_qpos_adr:u.obj_qpos_adr+3]} from its own placement {report}")
     env.close()
 
 
@@ -206,8 +206,8 @@ def test_reset_never_births_a_penetrating_box(env_cls, seed, kwargs):
 def _rest_probe(env, steps=399):
     """Free-run the box with the hand frozen at its reset pose."""
     u = env.unwrapped
-    p0 = u.data.qpos[:3].copy()
-    q0 = u.data.qpos[3:7].copy()
+    p0 = u.data.qpos[u.obj_qpos_adr:u.obj_qpos_adr+3].copy()
+    q0 = u.data.qpos[u.obj_qpos_adr+3:u.obj_qpos_adr+7].copy()
     worst = 0.0
     for _ in range(steps):
         u.data.ctrl[:] = u._ctrl_ref
@@ -230,7 +230,7 @@ def test_bare_box_at_rest_does_not_creep(env_cls, kwargs):
         f"from {p0} - a rest pose this scene cannot hold")
     assert float(np.linalg.norm(v)) < REST_LINVEL_TOL, f"|v| = {np.linalg.norm(v)} m/s"
     assert float(np.linalg.norm(w)) < REST_ANGVEL_TOL, f"|w| = {np.linalg.norm(w)} rad/s"
-    assert float(np.linalg.norm(u.data.qpos[3:7] - q0)) < REST_MOVE_TOL_M, "box rotated"
+    assert float(np.linalg.norm(u.data.qpos[u.obj_qpos_adr+3:u.obj_qpos_adr+7] - q0)) < REST_MOVE_TOL_M, "box rotated"
     env.close()
 
 
