@@ -212,11 +212,15 @@ PEDESTAL_H = PEDESTAL_H_M
 # Birth safety at these homes (measured): palm plates hover 10 mm above the
 # box top (palm bottom z 0.790 vs box top 0.78), fingertips at z ~0.835 over
 # the ends, zero birth contacts, settle quiet (box 0.03 mm, roots <0.5 mm).
-HAND_HOME_RIGHT = "0.235 0 0.755"   # +x end: straight fingers at the face mid-band
+# v23: dual re-centering — the right mount shifts -30 mm in y so both press
+# lines converge (gap 122 -> 47.1 -> 7.9 mm; couple 403 -> 155 -> 26 mN*m).
+RIGHT_MOUNT_Y_M = -0.030
+HAND_HOME_RIGHT = f"0.235 {RIGHT_MOUNT_Y_M} 0.755"   # +x end: mid-band approach
 # v22: left mount shifted +75 mm in y -- aligns the left rf press line with
 # the right ff/mf line so the +/-x face presses stop forming a yaw couple
 # (W6c: 403 -> 155 mN*m at the gate3 pose; swing equilibrium yaw collapses).
 LEFT_MOUNT_Y_M = 0.075
+LEFT_MOUNT_Y_M = 0.075 + 0.025  # v23: +25 mm on top of v22 (press-line scan)
 HAND_HOME_LEFT = f"-0.235 {LEFT_MOUNT_Y_M} 0.755"   # -x end, y-offset mount
 # W6a-v5 (Main ruling): BOTH hands yaw 180 deg vs v4 - the finger extension
 # axis points AT the box centre (right hand euler 0 0 pi -> fingers -x world;
@@ -525,7 +529,7 @@ TEMPLATE_HEAD = """<mujoco model="allegro_floating">
            from the hand root's x-y-z; tip tracks the hand root with zero
            residual over the 390-frame replay. Link mass 10 g each (under
            0.5% of box mass — noise-level dynamics ripple). -->
-      <body name="arm_yaw_r" pos="0.235 0 1.000">
+      <body name="arm_yaw_r" pos="0.235 {right_mount_y} 1.000">
         <joint name="arm_yaw_r" type="hinge" axis="0 0 1" pos="0 0 0"
                range="-3.2 3.2" damping="0.3" armature="0.001"/>
         <geom name="arm_yaw_disc_r" type="cylinder" size="0.024 0.012"
@@ -1815,6 +1819,7 @@ def _emit(assets: str, defaults: str, palm: str, excludes: str,
         lip=lip_geom_lines(lip_overhang_m, lip_h_m),
         chamfer=chamfer_geom_lines(chamfer_m),
         hand_home_r=HAND_HOME_RIGHT,
+        right_mount_y=f"{RIGHT_MOUNT_Y_M:g}",
         hand_euler_r=HAND_EULER_RIGHT,
         hand_home_l=HAND_HOME_LEFT,
         left_mount_y=f"{LEFT_MOUNT_Y_M:g}",

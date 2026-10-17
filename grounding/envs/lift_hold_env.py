@@ -179,7 +179,9 @@ W_PEDESTAL_LOAD_CAP = 12.0   # ... capped at this many box weights (see above)
 # Where the C6 control parks the box. This is a REQUEST, not the answer: the
 # resolver below is allowed to slide it (see _resolve_object_placement) and the
 # slide is reported in the reset info dict.
-OUT_OF_REACH_REQUEST_XY = (0.0, 0.35)
+# v23: the request corner moved to the -x/-y quadrant -- the far corner from
+# BOTH mounts (the +y corner now sits next to the left mount at y=+0.10).
+OUT_OF_REACH_REQUEST_XY = (-0.30, -0.28)
 # The box must come to rest with its WHOLE footprint on ONE support face, at
 # least this far inside that face's edge. Anything else is a placement that tips
 # or falls the moment it is born.
@@ -952,14 +954,22 @@ class LiftHoldEnv(gym.Env):
             break
         return best
 
-    @staticmethod
-    def _clearance(x: float, y: float,
+    def _clearance(self, x: float, y: float,
                    half_xy: tuple[float, float]) -> float:
-        """Distance from the hand's home (world origin) to the box footprint."""
+        """Distance from the NEAREST hand mount to the box footprint (v23: the
+        mounts carry y offsets, so the origin-centred circle no longer covers
+        the left palm)."""
         hx, hy = half_xy
-        gx = max(0.0, abs(x) - hx)
-        gy = max(0.0, abs(y) - hy)
-        return float(np.hypot(gx, gy))
+        best = float("inf")
+        for sfx in ("", "_left"):
+            bid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY,
+                                    f"hand_root{sfx}")
+            mx, my = (float(self.model.body_pos[bid][0]),
+                      float(self.model.body_pos[bid][1]))
+            gx = max(0.0, abs(x - mx) - hx)
+            gy = max(0.0, abs(y - my) - hy)
+            best = min(best, float(np.hypot(gx, gy)))
+        return best
 
     def _search_placement(self, x: float, y: float, half_xy: tuple[float, float],
                           *, min_clearance: float

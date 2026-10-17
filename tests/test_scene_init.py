@@ -2,12 +2,14 @@
 
 The C6 control ("park the box where the hand cannot touch it") was passing for
 the wrong reason. ``_support_height`` sampled the box CENTRE only, so the park
-pose at y=0.35 m - whose footprint is y in [0.23, 0.47] m, straddling the
-pedestal edge at y=0.30 m - was assigned the bare table height (0.70 m) and the
+pose straddling the pedestal edge at y=0.30 m was assigned the bare table
+height (0.70 m) and the
 box was born 60 mm INSIDE the pedestal (birth contact table: four
 ``pedestal|object -0.0600`` entries). The solver threw it off the table during
 reset's 400 settle steps; it came to rest on the FLOOR (z=0.0394) and the flail
-then moved it 0.57 mm, comfortably under the 1e-3 m gate. The control measured a
+then moved it 0.57 mm, comfortably under the 1e-3 m gate. (v23: the out-of-reach
+corner moved to the -x/-y quadrant, far from both y-offset hand mounts; the
+dual-mount clearance check replaced the origin-centred circle.) The control measured a
 box that was not on the table any more.
 
 These tests pin the three properties the fix must hold:
@@ -285,7 +287,8 @@ def test_placement_report_names_the_pose_it_chose(env_cls):
     report = info["placement"]
     assert set(report) == {"requested_xy_m", "placed_xy_m", "resting_z_m",
                            "edge_margin_m", "clearance_m", "moved"}
-    assert report["requested_xy_m"] == [0.0, 0.35]
+    # v23: the request corner moved to the -x/-y quadrant (far from both mounts)
+    assert report["requested_xy_m"] == [-0.30, -0.28]
     assert report["placed_xy_m"] != report["requested_xy_m"]
     assert report["edge_margin_m"] > 0.0
     env.close()
