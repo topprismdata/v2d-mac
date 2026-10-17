@@ -1279,7 +1279,7 @@
    }
   }
  },
- "verdict": "fail-r8-transition",
+ "verdict": "fail-l2a-gate-milestone-lift",
  "round7b_asymmetric_corner": {
   "grid": "18 asymmetric combos (left target 0.20/0.25/0.30 x right ramp 1.15->1.30 / 1.20->1.35 / const 1.25 x wrist slow/mid) + 8 bias-primary combos (bias0_r 0.10/0.15 with compensated command retraction)",
   "result": "all 26: zero lift (peak -0.04..0.00 mm), end-face ratios 0 - the light-touch left servo could not hold its target while the strong right press held, and the compensated retraction simply unloaded the press (right pre-press 1.25 -> 0.00 N as comp grows)",

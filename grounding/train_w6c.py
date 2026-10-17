@@ -1492,9 +1492,9 @@ def penetration_disposition(eval_res: dict) -> dict:
 
 
 def _round_verdict(args, verdict: str) -> str:
-    if getattr(args, "round7d", False): return "fail-terminal-v13-compliance"
-    if getattr(args, "round8", False): return "fail-r8-transition"
     if getattr(args, "l2a", False): return "fail-l2a-gate-milestone-lift"
+    if getattr(args, "round8", False): return "fail-r8-transition"
+    if getattr(args, "round7d", False): return "fail-terminal-v13-compliance"
     if getattr(args, "round7c", False): return "fail-terminal-v13-forced-source"
     if getattr(args, "round7b", False): return "fail-r7b"
     if getattr(args, "round7", False): return "fail-r7"
