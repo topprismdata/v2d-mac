@@ -1438,6 +1438,7 @@ def penetration_disposition(eval_res: dict) -> dict:
 
 
 def _round_verdict(args, verdict: str) -> str:
+    if getattr(args, "round7c", False): return "fail-terminal-v13-forced-source"
     if getattr(args, "round7b", False): return "fail-r7b"
     if getattr(args, "round7", False): return "fail-r7"
     if getattr(args, "round6", False): return "fail-terminal-v13"
@@ -1631,6 +1632,37 @@ def cmd_report(args: argparse.Namespace) -> None:
                                "test update) or the force-servo mode as an "
                                "action dimension",
             "candidate_total": "~4750 across seven rounds",
+        }),
+        "round7c_torque_inversion": (None if not args.round7c else {
+            "ruling_implemented": "torque-space inversion: per control frame "
+                                  "from the press-dwell, finger ctrl = q + "
+                                  "tau_des/kp (per-joint kp 0.7269/0.2348, "
+                                  "per-joint tau capped at forcerange) - the "
+                                  "finger becomes a pure force source; "
+                                  "contact state machine (N > 0.1 -> force "
+                                  "mode, N <= 0.05 -> v2 anchored position "
+                                  "fallback, anti-throw); allocation left "
+                                  "0.25 N light / right 1.15-1.25 N, lift "
+                                  "trigger and gate unchanged",
+            "result": "12-combo sweep (arm_eff 0.03/0.045/0.06 x right N* "
+                      "1.15/1.25 x lift rate): ALL zero lift (peak "
+                      "-0.01..0.02 mm), end-face ratios 0",
+            "mechanism_reading": "the force source HOLDS contact force "
+                                 "constant (that part works - press normals "
+                                 "stay near target), but a constant normal "
+                                 "force still produces zero vertical drag "
+                                 "in the quasi-static equilibrium: the "
+                                 "drag demand is set by the box's weight "
+                                 "transfer, and weight transfer requires "
+                                 "the box to already be moving - the same "
+                                 "static-trap closure as r4, now proven "
+                                 "independent of the finger control mode "
+                                 "(position, force-bias, pure force source "
+                                 "all identical)",
+            "level2_go": "Main pre-approved Level-2 A on r7c failure: obs "
+                         "107->109 (per-side pad normals appended), test "
+                         "sync (shape pins), PPO 24+ iters, eval >=5 mm "
+                         "pre-registered, one budget cycle",
         }),
         "round6_v13_flat_pads": (None if not args.round6 else {
             "question": "on v13 flat face-parallel mid-height pads "
@@ -1905,6 +1937,7 @@ def main() -> None:
     p.add_argument("--round6", action="store_true")
     p.add_argument("--round7", action="store_true")
     p.add_argument("--round7b", action="store_true")
+    p.add_argument("--round7c", action="store_true")
     args = ap.parse_args()
     {"curate": cmd_curate, "checkpoint": cmd_checkpoint,
      "search": cmd_search, "bc": cmd_bc, "ppo": cmd_ppo,

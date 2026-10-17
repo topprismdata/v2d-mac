@@ -1279,7 +1279,7 @@
    }
   }
  },
- "verdict": "fail-r7b",
+ "verdict": "fail-terminal-v13-forced-source",
  "round7b_asymmetric_corner": {
   "grid": "18 asymmetric combos (left target 0.20/0.25/0.30 x right ramp 1.15->1.30 / 1.20->1.35 / const 1.25 x wrist slow/mid) + 8 bias-primary combos (bias0_r 0.10/0.15 with compensated command retraction)",
   "result": "all 26: zero lift (peak -0.04..0.00 mm), end-face ratios 0 - the light-touch left servo could not hold its target while the strong right press held, and the compensated retraction simply unloaded the press (right pre-press 1.25 -> 0.00 N as comp grows)",
@@ -1294,6 +1294,12 @@
   "cone_coupling_law": "a pad contact contributes vertical drag up to mu*N, but every DOWN-dragging contact taxes it: N_strong >= (W + mu*N_weak)/mu. The left hand's F4 geometry taxes 0.34-2.5 N across postures; the right chain ceiling is 1.38 N < (1.47 + tax) in every achieved posture - the precise arithmetic reason all seven rounds failed",
   "feasible_corner": "N_left <= 0.3 N (light touch, counts for the contact clause) + N_right >= 1.12 N (within the 1.38 N ceiling): mathematically feasible (net surplus ~0.7 N) but not found by any schedule - reaching it requires force observation in the policy (obs pin 107 is test-locked; extension needs a coordinated test update) or the force-servo mode as an action dimension",
   "candidate_total": "~4750 across seven rounds"
+ },
+ "round7c_torque_inversion": {
+  "ruling_implemented": "torque-space inversion: per control frame from the press-dwell, finger ctrl = q + tau_des/kp (per-joint kp 0.7269/0.2348, per-joint tau capped at forcerange) - the finger becomes a pure force source; contact state machine (N > 0.1 -> force mode, N <= 0.05 -> v2 anchored position fallback, anti-throw); allocation left 0.25 N light / right 1.15-1.25 N, lift trigger and gate unchanged",
+  "result": "12-combo sweep (arm_eff 0.03/0.045/0.06 x right N* 1.15/1.25 x lift rate): ALL zero lift (peak -0.01..0.02 mm), end-face ratios 0",
+  "mechanism_reading": "the force source HOLDS contact force constant (that part works - press normals stay near target), but a constant normal force still produces zero vertical drag in the quasi-static equilibrium: the drag demand is set by the box's weight transfer, and weight transfer requires the box to already be moving - the same static-trap closure as r4, now proven independent of the finger control mode (position, force-bias, pure force source all identical)",
+  "level2_go": "Main pre-approved Level-2 A on r7c failure: obs 107->109 (per-side pad normals appended), test sync (shape pins), PPO 24+ iters, eval >=5 mm pre-registered, one budget cycle"
  },
  "round6_v13_flat_pads": {
   "question": "on v13 flat face-parallel mid-height pads (12x12x3 mm, mu 1.8), does the systematic schedule x bias search find a >=5 mm clean lift?",
