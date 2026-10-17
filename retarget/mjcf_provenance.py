@@ -36,16 +36,17 @@ if str(REPO) not in sys.path:
 
 from retarget import retarget_smoke as rs  # noqa: E402
 
-#: The MJCF revision this re-run is accounted against.  W6a-v14 landed in
-#: 83bcedb: the curl servos ffa2/mfa2 (ffj2/mfj2, both hands) raised x5 --
-#: kp 0.235 -> 1.174 N m/rad, the r7d compliance endgame fix (the soft curl
-#: servo deflected 12 deg/N and the pad path was uncontrollable).  Exactly
-#: four position winding-table keys moved (ffj2 0.6783 -> 0.1357, mfj2
-#: 0.6806 -> 0.1361); the other 30 keys measured identical, the rate gates
-#: are unchanged (kp does not enter |forcerange|/dof_damping), the flat-pad
-#: contact criterion is geometry-identical and carries over, and the
-#: per-joint spring table is unchanged.  Verified: blob(83bcedb) == sha256
-#: of the working-tree XML (257ef611...).
+#: The MJCF revision this re-run is accounted against.  W6a-v19 landed in
+#: 0498dc3: six env-IK-driven arm servos added BEHIND the hand actuator block
+#: (arm_yaw/pitch/elbow per hand, kp = 60 N m/rad, forcerange +-8 N m,
+#: ctrl [44:50]; nq/nu 51/44 -> 57/50, ngeom 145).  W6a measured zero
+#: hand-arm mechanical coupling (neq = 0, independent kinematic trees, zero
+#: arm collision geoms), and the per-joint actuator diff v14 -> v19 is ZERO
+#: across the existing 44 -- the 32+6 winding-table keys are BIT-IDENTICAL
+#: and carry over; the six arm rows are recorded separately in
+#: retarget_smoke.SERVO_WINDING_ARM_SERVOS with their env-IK provenance
+#: (not acceptance joints, not policy-controlled).  Verified:
+#: blob(0498dc3) == sha256 of the working-tree XML (e7b5de06...).
 #: The pad-touch criterion (flat pads): gate-3 touch offset = the flat pad's
 #: own half-thickness (1.5 mm), derived programmatically from the geom
 #: (tests/test_scene_w6.py::_surface_rad); the sweep-clearance radius for
@@ -54,9 +55,9 @@ from retarget import retarget_smoke as rs  # noqa: E402
 #: are untouched by every step since v2 (hinges 5.0 rad/s x6; slides
 #: x/z 45/280 = 0.1607 m/s, y 45/25 = 1.8 m/s, x2 hands), re-affirmed by
 #: per-joint diff on each landing.  The per-joint spring table below is
-#: unchanged through v14 (re-diffed, 0 entries).
+#: unchanged through v19 (re-diffed, 0 entries).
 #:
-#: PASSIVE CONSTANTS, per joint (v8 sizing, unchanged through v14; the v5
+#: PASSIVE CONSTANTS, per joint (v8 sizing, unchanged through v19; the v5
 #: single "0.4 + springref" remark is superseded -- k is no longer a shared
 #: constant).  Left hand mirrors right bit-identically (asserted per mirror
 #: pair in the winding-tolerance tests' spirit; measured off the model):
@@ -81,13 +82,12 @@ from retarget import retarget_smoke as rs  # noqa: E402
 #: the 0.8 static-hold budget but below saturation.  First observed by the
 #: v8 static-hold gate; it is contact-physics evidence for W6c's A2/A3a
 #: accounting, not a smoke-5 gate.
-MJCF_COMMIT = "83bcedb"
+MJCF_COMMIT = "0498dc3"
 #: The MJCF revision the *previous* smoke-5 numbers were taken on. Kept so the
-#: two data sets can never be silently mixed.  1fd969f is the W6a-v13
-#: generation (blob 6ec76dee..., flat pads with the pre-x5 curl servos) --
-#: the superseded physics the artefacts were stamped against before v14
-#: landed.
-MJCF_COMMIT_BASELINE = "1fd969f"
+#: two data sets can never be silently mixed.  83bcedb is the W6a-v14
+#: generation (blob 257ef611..., pre-arm scene) -- the superseded physics
+#: the artefacts were stamped against before v19 landed.
+MJCF_COMMIT_BASELINE = "83bcedb"
 
 OUT_DIR = REPO / "runs/p0/smoke5_retarget"
 REPORT_PATH = OUT_DIR / "report.json"

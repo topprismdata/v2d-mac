@@ -83,11 +83,14 @@ URDF_TO_MJCF_ACTUATOR_ORDER = [
     MJCF_FINGER_JOINTS.index(mjcf) for _urdf, mjcf in URDF_MJCF_JOINT_PAIRS
 ]
 WRIST_JOINTS = ["wrist_x", "wrist_y", "wrist_z", "wrist_rx", "wrist_ry", "wrist_rz"]
-# The W6a-v8 scene (MJCF_COMMIT eba5d7b, sha256 8b6a6ddd...) carries a second,
+# The W6a-v19 scene (MJCF_COMMIT 0498dc3, sha256 e7b5de06...) carries a second,
 # mirrored hand: identical upstream naming with a "_left" suffix.  nu 22 -> 44,
-# nq/nv 29/28 -> 51/50.  Smoke 5 is single-hand *input*: the right hand executes
-# the retargeted clip and the left hand is frozen at its initial pose (its
-# servos are simply never commanded, so ctrl stays 0 = its reset pose).
+# nq/nv 29/28 -> 51/50; v19 added six env-IK-driven arm servos behind the hand
+# block (nu 44 -> 50, ctrl [44:50], see SERVO_WINDING_ARM_SERVOS -- zero
+# hand-arm mechanical coupling, measured).  Smoke 5 is single-hand *input*:
+# the right hand executes the retargeted clip and the left hand is frozen at
+# its initial pose (its servos are simply never commanded, so ctrl stays 0 =
+# its reset pose).
 MJCF_FINGER_JOINTS_LEFT = [n + "_left" for n in MJCF_FINGER_JOINTS]
 WRIST_JOINTS_LEFT = [n + "_left" for n in WRIST_JOINTS]
 URDF_TIP_FRAMES = ["link_3.0_tip", "link_7.0_tip", "link_11.0_tip", "link_15.0_tip"]
@@ -355,6 +358,30 @@ SERVO_WINDING_RATE_CAP_M_S = {
     "wrist_y_left": 1.8,
     "wrist_z_left": 0.16071428571428573,
 }
+# W6a-v19 (0498dc3, blob e7b5de06...): the articulated arms add six position
+# servos -- arm_yaw/pitch/elbow per hand, kp = 60 N m/rad, forcerange +-8 N m,
+# ctrlrange +-3.2, living at ctrl indices [44:50] AFTER the 44 hand actuators.
+# They are DRIVEN BY THE ENV'S IK at every env step: NOT acceptance joints,
+# never commanded by the policy, and smoke5's single-input replay leaves them
+# at ctrl 0 (static at their zero pose -- W6a measured zero hand-arm
+# mechanical coupling: neq = 0, independent kinematic trees, zero arm
+# collision geoms).  Recorded here for provenance completeness; they carry NO
+# winding-table rows because no smoke-5 gate reads them.  Values are measured
+# off the model, and tests/test_smoke5_winding_tolerance.py re-derives them.
+SERVO_WINDING_ARM_SERVOS = {
+    "arm_yaw_r":   {"kp_Nm_per_rad": 60.0, "forcerange_Nm": 8.0, "ctrl_index": 44},
+    "arm_pitch_r": {"kp_Nm_per_rad": 60.0, "forcerange_Nm": 8.0, "ctrl_index": 45},
+    "arm_elbow_r": {"kp_Nm_per_rad": 60.0, "forcerange_Nm": 8.0, "ctrl_index": 46},
+    "arm_yaw_l":   {"kp_Nm_per_rad": 60.0, "forcerange_Nm": 8.0, "ctrl_index": 47},
+    "arm_pitch_l": {"kp_Nm_per_rad": 60.0, "forcerange_Nm": 8.0, "ctrl_index": 48},
+    "arm_elbow_l": {"kp_Nm_per_rad": 60.0, "forcerange_Nm": 8.0, "ctrl_index": 49},
+}
+# The hand actuators occupy ctrl [0:44] contiguously (right wrist 0:6, right
+# fingers 6:22, left wrist 22:28, left fingers 28:44); the arm servos start
+# exactly there.  Everything in this module that addresses actuators by
+# index (slides [:6], fingers [6:22], graded blocks [:22]) is addressing the
+# hand block and is unaffected by the arm block behind it.
+MJCF_ARM_ACTUATOR_BASE = 44
 # The warm-start ramp may not command a DoF faster than that DoF's own servo
 # can deliver.  For the re-scaled x/z slides the derived winding allowance
 # 45/280 = 0.1607 m/s is now BELOW the old free-space measured trackable rate
