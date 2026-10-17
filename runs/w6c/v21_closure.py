@@ -224,7 +224,10 @@ def make_closure_env(episode_len: int = EP_LEN, seed: int = 0):
 
 
 # ---------------------------------------------------------------- reward
-def closure_reward(env, info) -> float:
+def closure_reward(env, info, prev=None, rate_w=2.0):
+    """prev: {'yaw': deg, 'slip': m} from the previous frame - the
+    stabilization continuation adds yaw-RATE and slip-RATE penalties
+    (weight rate_w) that damp swing kinetic energy directly."""
     bp = W.box_pose(env)
     clear = bp["bottom_clearance_m"]
     n_r, n_l = W.pad_normal_forces(env)
@@ -243,7 +246,11 @@ def closure_reward(env, info) -> float:
         p = _padp(env, g)
         if p[2] > half + 0.002:
             r -= 1.0
-    return r
+    if prev is not None:
+        r -= rate_w * abs(bp["yaw_deg"] - prev["yaw"]) / 1.0
+        r -= rate_w * abs(slip - prev["slip"]) / 0.001
+    new_prev = {"yaw": bp["yaw_deg"], "slip": slip}
+    return r, new_prev
 
 
 # ------------------------------------------------------------------ ppo
@@ -259,7 +266,9 @@ def grip_floor(a: np.ndarray) -> np.ndarray:
     return a
 
 
-def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0):
+def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0,
+          resume: str | None = None, rate_w: float = 2.0,
+          act_rate_w: float = 0.5):
     import torch
     import torch.nn as nn
 
@@ -297,6 +306,16 @@ def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0):
     norm = Norm()
     opt = torch.optim.Adam(list(actor.parameters()) + [log_std]
                            + list(critic.parameters()), lr=3e-4)
+    if resume and (OUT_DIR / resume).exists():
+        ck = torch.load(OUT_DIR / resume, map_location="cpu",
+                        weights_only=False)
+        actor.load_state_dict(ck["actor"])
+        critic.load_state_dict(ck["critic"])
+        with torch.no_grad():
+            log_std.copy_(ck["log_std"].to(dev))
+        norm.mean, norm.var, norm.n = (ck["norm"]["mean"],
+                                       ck["norm"]["var"], ck["norm"]["n"])
+        print(f"[v21] resumed from {resume} (iter {ck.get('iter')})")
 
     def to_t(x):
         return torch.tensor(x, dtype=torch.float32, device=dev)
@@ -306,9 +325,13 @@ def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0):
 
     curve = []
     best = {"score": -np.inf, "path": None}
+    consec_pass = 0
+    early_stop = False
     env = make_closure_env(EP_LEN, seed)
     for it in range(iters):
         ep_frames, ep_returns, ep_peaks = [], [], []
+        prev = None
+        prev_a = None
         obs_raw, _ = env.reset(seed=int(rng.integers(1 << 31)))
         norm.update(obs_raw)
         done = False
@@ -318,8 +341,7 @@ def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0):
             o_n = norm.norm(obs_raw)
             with torch.no_grad():
                 mu = actor(to_t(o_n))
-                hi = 0.05 if it >= iters - 8 else 2.0   # entropy anneal
-                std = log_std.exp().clamp(0.05, hi)
+                std = log_std.exp().clamp(0.05, 0.05)  # continuation: sharpened
                 dist = torch.distributions.Normal(mu, std)
                 a_t = dist.sample()
                 logp = dist.log_prob(a_t).sum(-1)
@@ -330,7 +352,11 @@ def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0):
             a_np[24] = a_np[24] + BASE_Z
             obs_raw, r_env, term, trunc, info = env.step(
                 np.clip(a_np, -1.0, 1.0))
-            shaped = closure_reward(env, info)
+            shaped, prev = closure_reward(env, info, prev, rate_w)
+            if act_rate_w > 0.0 and prev_a is not None:
+                da = np.abs(a_np[[0, 1, 22, 23]] - prev_a[[0, 1, 22, 23]])
+                shaped -= act_rate_w * float(da.mean())
+            prev_a = a_np.copy()
             r_shaped = (r_env + shaped) * W.REWARD_SCALE
             done = term or trunc
             ep_frames.append((o_n, a_np, r_shaped, float(done),
@@ -343,6 +369,8 @@ def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0):
                 obs_raw, _ = env.reset(seed=int(rng.integers(1 << 31)))
                 norm.update(obs_raw)
                 done = False
+                prev = None
+                prev_a = None
                 ep_rew = 0.0
         ep_returns.append(ep_rew)
         ep_peaks.append(ep_peak)
@@ -404,12 +432,16 @@ def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0):
             print(f"[v21 {it:3d}] eval pass={m['passed']} "
                   f"window={m['window_frames_max']} "
                   f"peak={m['peak_mm_max']:.2f}mm score={score:.1f}")
+            consec_pass = consec_pass + 1 if m["passed"] else 0
+            if consec_pass >= 2:
+                early_stop = True
             if score > best["score"]:
                 best = {"score": score, "path": f"v21_ppo_eval{it+1}.pt"}
                 torch.save(ck, OUT_DIR / "v21_ppo_best.pt")
     (OUT_DIR / "v21_ppo_curve.json").write_text(
-        json.dumps({"curve": curve, "best": best}, indent=1, default=float))
-    print(f"v21 ppo done; best {best}")
+        json.dumps({"curve": curve, "best": best, "early_stop": early_stop},
+                   indent=1, default=float))
+    print(f"v21 ppo done; best {best}; early_stop={early_stop}")
 
 
 def table_support_n(env) -> float:
@@ -583,11 +615,16 @@ def main():
     ap.add_argument("--eval-every", type=int, default=12)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--ckpt", default="v21_ppo_best.pt")
+    ap.add_argument("--resume", default=None)
+    ap.add_argument("--rate-w", type=float, default=2.0)
+    ap.add_argument("--act-rate-w", type=float, default=0.5)
     args = ap.parse_args()
     if args.cmd == "capture":
         print(json.dumps(capture_engage(), indent=1, default=float))
     elif args.cmd == "train":
-        train(args.iters, args.steps, args.eval_every, args.seed)
+        train(args.iters, args.steps, args.eval_every, args.seed,
+              resume=args.resume, rate_w=args.rate_w,
+              act_rate_w=args.act_rate_w)
     elif args.cmd == "eval":
         import torch
         dev = "mps" if torch.backends.mps.is_available() else "cpu"
