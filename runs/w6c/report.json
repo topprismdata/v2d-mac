@@ -2307,7 +2307,7 @@
   "next": "the missing element is a placement solve, not a command family: put the ff/mf follower pads ON the faces at mid-height with >= 0.25 rad of curl headroom (wrist x/y/z advance from the seed placement, or re-solve the approach terminal for the v20 box), then the r7e mechanism applies; items for W6a: move the three provenance pins to the v20.1 commit and regenerate the forcerange table + REVISION.md row from the final tree"
  },
  "v20p1_placement_grid": {
-  "verdict": "TERMINAL FAIL - FINAL (v21 included): the rf force cap removed the force ceiling (in-grid n_r 6.19-7.37 / n_l 1.77-3.11 N) and the coupled-vise climb ENGAGES with the box self-centering, but open-loop staging cannot close a balanced symmetric vise: the pads drape over the box top during the climb and press it down (contact vectors measured), throttled-balanced seats degenerate into a +24 deg bind, window never forms (peak -0.13..-0.03 mm). The remaining gap is a coupled-closure CONTROLLER (learning problem), not force, placement geometry, or command schedule - submitted for GPT final review as-is",
+  "verdict": "TERMINAL FAIL - FINAL (v21 coupled PPO included): the force ceiling cleared (v21 cap), the placement geometry solved (right ff/mf rotation-aligned + left rf in-band), the climb engages with self-centering, and the coupled-closure lifts ARE expressed in training episodes (5-11.4 mm true-plane) - but deterministic deployment collapses to the wedge release in every rollout (48 iters x 3 configs). The remaining gap is the PPO deployment toolkit (entropy annealing + grip-maintenance training budget), a learning-budget item - submitted for GPT final review as-is",
   "placement_solve": {
    "method": "FK + tip-path Jacobian scan (~10^4 evals): pads-on-face position AND the curl tip-path angle to the face normal cos(theta) - N_max = (forcerange/arm) x cos(theta); then closed-loop dynamic seat (4 iters, measured pad errors -> wrist ctrl, signs probed per hand)",
    "key_physics": "the pre-rotation placement had cos 0.19 -> N 1.41 ceiling REGARDLESS of command (the pad tip path was ~79 deg off the face normal - mostly tangential); the wrist ROTATION (right: rx +0.15, ry +0.60, rz -0.10) aligns the curl plane with the normal (cos 0.63-0.67) and the same +0.25 rad demand that gave 1.41 N now drives N 2.43 -> 3.76 -> 6.19 -> 4.22 N - the follower-pad curl-demand mechanism work as designed ONCE the curl plane contains the face normal",
@@ -3154,6 +3154,29 @@
    },
    "balanced_vise_probe": "throttling the right demand to match the left (1.7-1.85 N/side) and halving the seat clip: the alternating seat degenerated (N 10.0/14.8 N, box yaw +24 deg, clearance -0.03 mm) - each side's correction increases the other's penetration; symmetric closure needs a COUPLED controller (both wrists' x/y/z + curls coordinated against the measured 6-DoF box pose), which is a learning problem, not an open-loop schedule",
    "yaw_note": "the box inherits +6.2 deg yaw from the trigger checkpoint quaternion; every press attempt adds 2-18 deg more (the one-sided/binding presses twist it) - Main's item-3 condition (yaw-only failure with window/slip passing) never occurred: window never formed"
+  },
+  "v21_coupled_ppo": {
+   "verdict": "TERMINAL FAIL - the coupled-closure controller is EXPRESSIBLE and PARTIALLY LEARNED (training-episode lifts 5-11.4 mm above the true table plane at iters 27-36) but deployment (deterministic policy + eval wrapper) collapses to the wedge release (-8.9 mm) in every rollout; 48 iters x 3 configurations (yaw-wiped, yaw-preserved, true-table baseline) exhausted the round budget",
+   "build": {
+    "obs": "env N_OBS 109 -> 113 (name-addressed +4: box yaw deg/10, residual table support N/1.4715, cumulative xy slip m/0.01, bottom clearance m/0.005); test pin updated (test_scene_w6 N_OBS == 113, green)",
+    "episodes": "start at the v21 engage checkpoint (captured: right ff/mf rotated placement + left rf+y placement + force onset; N_r 6.36, N_l 2.72, endface both True); residual baseline wrist climb 0.1 mm/frame composed under the policy action",
+    "reward": "+6 x min(clear/5mm,1) + 0.3 sustain - 3 x slip excess - 0.5 x |yaw|/10 + 0.3 x min(N_r N_l / 9, 1) - 1 per pad above the box top (the measured f40 drape signature), x REWARD_SCALE",
+    "net": "113 -> 256 x2 -> 44 actor-critic, PPO GAE 0.99/0.95, 4 epochs, minibatch 256"
+   },
+   "training_evidence": "coupled-closure lifts ARE expressed: training-episode peaks 5.2-11.4 mm above the true table plane (iters 27-36, true-baseline run) and 30-72 mm in the earlier yaw-wiped run - the mechanism chain (placement + rf cap + engage + residual climb + learned coupling) produces real lifts in stochastic rollouts",
+   "deployment_gap": "every deterministic/stochastic eval rollout collapses identically (peak -8.94 mm, window 0): the mean policy relaxes the vise and the wedged engage state releases (the box drops from its +9 mm jam to the table; the -8.94 reading is the tilted-corner artifact of that release). Two found bugs fixed en route: (1) the env start_noise branch REPLACES the box quaternion absolutely, wiping the 7.9 deg engage yaw and de-seating the placed hands (yaw-preserved jitter moved into the start-state protocol); (2) the gate baseline was the wedged engage height - re-anchored to the true table plane (rest_z in the checkpoint) so a wedged start cannot masquerade as lift",
+   "control_class_exhaustion": [
+    "open-loop press schedules (v20/v21 grids, 5 rounds, ~100 combos): window never forms",
+    "placement solves: ff/mf, rf, th, mf+rf, rf+th x y-augmented (~10^4 FK evals): right solved; left rf solved in-band at mid-height",
+    "force caps: v21 rf x1.7 (normals 6.19-7.37 / 1.77-3.11 N realized in-grid)",
+    "residual PPO (48 iters x 3 configs): lifts expressed in training; deterministic deployment collapses",
+    "remaining: LONGER training with entropy annealing + deterministic-grip maintenance (standard PPO deployment toolkit) - a LEARNING-BUDGET item, not physics/interface"
+   ],
+   "honesty_clauses": [
+    "the engage state inherits a ~9 mm wedge (the force-onset press jams the box on the top edge; 20 mm of wrist descent could not release the 3-point bind) - episodes start above the table and the gate baseline was re-anchored to the true table plane so the wedge cannot masquerade as lift; the wedge inheritance is a trigger-state artifact (Main's item-3 class), disclosed",
+    "the engage yaw is 8.5 deg (trigger-inherited) - the yaw budget to the 10 deg gate is ~1.5 deg before the policy acts",
+    "training used stochastic rollouts; all deployment evals are deterministic-mean (the collapse is the deployment gap)"
+   ]
   }
  }
 }

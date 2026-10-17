@@ -68,4 +68,9 @@ weights/
 !runs/w6c/approach_checkpoint.npz
 !runs/w6c/v20_lift.py
 !runs/w6c/v20_grid.json
+!runs/w6c/v21_closure.py
+!runs/w6c/v21_engage_checkpoint.npz
+!runs/w6c/v21_engage_meta.json
+!runs/w6c/v21_ppo_curve.json
+!runs/w6c/v21_replay_frames.json
 !runs/w6c/evidence/*.png

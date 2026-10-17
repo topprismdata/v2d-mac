@@ -580,7 +580,7 @@ def test_w6_env_action_and_observation_shapes():
 
     env = LiftHoldEnv()
     assert env.observation_space.shape == (N_OBS,)
-    assert N_OBS == 109  # r7d/L2A: +2 per-side pad normal forces
+    assert N_OBS == 113  # r7d/L2A: +2 per-side pad normal forces; v21: +4 closure [yaw, support, slip, clear]
     env.close()
 
 

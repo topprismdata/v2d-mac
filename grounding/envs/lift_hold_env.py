@@ -64,7 +64,7 @@ N_CTRL = N_ACT + N_ARM_ACT           # 50: the full MuJoCo ctrl width
 # r7d/L2A (Main ruling): +2 per-side pad normal forces - the force observation
 # that lets a policy see which side is transferring weight (the static-trap
 # breaker signal)
-N_OBS = 13 + N_HANDS * (3 + 4 + N_FINGER + N_FINGER + 4) + 8 + 2
+N_OBS = 13 + N_HANDS * (3 + 4 + N_FINGER + N_FINGER + 4) + 8 + 2 + 4
 # W6a scene naming: the right hand keeps upstream MJCF names, the left hand
 # appends this suffix to every body / joint / actuator / geom name. Finger body
 # names still START with their finger prefix ("ff_tip_left"), so
@@ -668,7 +668,35 @@ class LiftHoldEnv(gym.Env):
         ] + hand_blocks + [
             self._history,  # 8  4-frame history of (box dz, right-wrist dz)
             self._pad_normals_obs(),  # 2  per-side pad normal (N) (r7d/L2A)
+            self._closure_extras(),  # 4  v21 coupled-closure: yaw/table-contact/slip/clear
         ]).astype(np.float32)
+
+    def _closure_extras(self) -> np.ndarray:
+        """v21 coupled-closure observables (W6cLift20): box yaw (deg/10),
+        residual table support (N, /1.4715 = weight units), cumulative xy
+        slip (m, /0.01), and box-bottom clearance (m, /0.005 = the gate
+        scale). Named-addressed append; see N_OBS."""
+        m, d = self.model, self.data
+        q = d.xquat[self.obj_body]
+        yaw_deg = float(np.degrees(2.0 * np.arctan2(q[3], q[0])))
+        slip = float(np.linalg.norm(
+            d.xpos[self.obj_body][:2] - getattr(self, "_v21_xy0",
+                                                d.xpos[self.obj_body][:2])))
+        clear = float(d.xpos[self.obj_body][2] - self.box_half_z
+                      - (self._z0 - self.box_half_z))
+        sup = 0.0
+        for ci in range(d.ncon):
+            c = d.contact[ci]
+            g1, g2 = int(c.geom1), int(c.geom2)
+            if self.obj_geom not in (g1, g2):
+                continue
+            other = g2 if g1 == self.obj_geom else g1
+            if self.geom_label[other] in self.support_geoms:
+                f = np.zeros(6)
+                mujoco.mj_contactForce(m, d, ci, f)
+                sup += float(np.linalg.norm(f[:3]))
+        return np.array([yaw_deg / 10.0, sup / 1.4715, slip / 0.01,
+                         clear / 0.005], dtype=np.float64)
 
     def _pad_normals_obs(self) -> np.ndarray:
         """Per-side summed normal force (N) on hand-vs-box contacts."""
@@ -818,6 +846,7 @@ class LiftHoldEnv(gym.Env):
         self._prev_obj_pos = d.xpos[self.obj_body].copy()
         self._prev_dist = float(np.linalg.norm(d.xpos[self.palm] - d.xpos[self.obj_body]))
         self._ctrl_ref = d.ctrl.copy()
+        self._v21_xy0 = d.xpos[self.obj_body][:2].copy()
         self._history = np.zeros(8)
         self.last_contact_pairs = []
         self.last_contact_force = 0.0
