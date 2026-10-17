@@ -43,6 +43,12 @@ if str(REPO) not in sys.path:
 
 from retarget import retarget_smoke as rs  # noqa: E402
 
+# v20.1 environment exemption (R10 s11): dex_retargeting is a heavy optional
+# env dep (per Main: installed deliberately on the retarget chain, not in the
+# .venv-mj suite interpreter).
+pytest.importorskip("dex_retargeting", reason="dex_retargeting is a heavy "
+                    "optional env dep -- environment-exempt (R10 s11)")
+
 QA_PATH = REPO / "runs/p0/smoke5_retarget/retarget_qa.json"
 REPORT_PATH = REPO / "runs/p0/smoke5_retarget/report.json"
 

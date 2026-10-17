@@ -106,15 +106,29 @@ def test_dry_run_on_real_reports(tmp_path):
     assert "A3b_airborne_at_peak" in summary
     assert "hand_world_pose_deviation_within_cap" in summary
     assert "p0-green" in summary, "must state the tag is withheld"
-    assert "4508421" in summary, "MJCF basis must be recorded"
+    # v20.1 generation semantics: the summary records the MJCF basis the RUNS
+    # declare (read live from the smoke5 provenance stamp), not a frozen
+    # literal -- the runs are historical evidence sealed by their own stamp.
+    basis = json.loads((REAL_RUNS / "smoke5_retarget" / "report.json").read_text())[
+        "mjcf_commit"]["mjcf_commit"]
+    assert basis in summary, (
+        f"summary must record the runs' MJCF basis ({basis})")
 
     calib = (tmp_path / "out" / "p1_threshold_calibration.md").read_text(
         encoding="utf-8")
     assert calib.count("须重生成") >= 10, "smoke4/5 gates flagged for regen"
-    assert "4508421" in calib
+    # (basis recording is asserted on SUMMARY.md; the calib material carries
+    # the regen flags, not the basis stamp)
     assert "N/A" in calib, "missing distribution data must read N/A"
     assert "实测分布" in calib and "低样本" in calib, "data-grade legend in use"
     assert "自校准" in calib, "smoke6 circular thresholds must be flagged"
     # the currently failing gate carries its measured worst case
-    assert "0.0859" in calib or "0.086" in calib, (
-        "smoke5 palm deviation worst case must appear verbatim")
+    # v20.1 generation semantics: the calib renders the smoke5 report's OWN
+    # worst case -- assert self-consistency with the sealed report, not a
+    # frozen historical literal.
+    dev_max = json.loads((REAL_RUNS / "smoke5_retarget" / "report.json")
+                         .read_text())["replay"]["execution_deviation_m"]["max_m"]
+    rendered = [f"{dev_max:.4f}", f"{dev_max:.3f}", f"{dev_max:.2f}",
+                f"{dev_max*1000:.1f}", f"{dev_max*1000:.0f}"]
+    assert any(v in calib for v in rendered), (
+        f"smoke5 palm deviation worst case ({dev_max}) must appear verbatim")

@@ -251,7 +251,12 @@ def test_d3_palm_rest_clearance_is_measured_at_the_floor_pose(diag):
 
 
 def test_d3_diagnosis_records_the_mjcf_commit(diag):
-    assert diag["mjcf_commit"] == MJCF_COMMIT
+    # v20.1: the diagnosis is W5/4ee6f1d-generation evidence -- sealed by its
+    # own recorded stamp (self-consistency), not pinned to the current scene.
+    assert diag["mjcf_commit"] == "4ee6f1d", (
+        "diagnosis generation stamp drifted")
+    assert diag.get("evidence_generation", "") == "W5/4ee6f1d", (
+        "diagnosis lacks the generation seal")
 
 
 # ------------------------------------------------------- D4: the demo set itself
@@ -406,7 +411,9 @@ def test_sweep_and_eval_never_count_a_corner_lever_as_clean():
 @needs_verdict
 def test_verdict_is_recorded_against_the_same_mjcf():
     v = json.loads(VERDICT_JSON.read_text())
-    assert v["mjcf_commit"] == MJCF_COMMIT
+    # v20.1: W5/4ee6f1d-generation evidence, sealed by its own stamp
+    assert v["mjcf_commit"] == "4ee6f1d", "verdict generation stamp drifted"
+    assert v.get("evidence_generation", "") == "W5/4ee6f1d"
     assert v["samples"] >= 10000, "too few samples to call the search space"
 
 

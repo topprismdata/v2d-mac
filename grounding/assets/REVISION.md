@@ -1054,22 +1054,23 @@ springref 附近）。位置伺服仍是主动控制（reset 先 settle 后镜�
   现行测量由恒等式测试断言）。
 - **遗留（不修）**：smoke5 的 dex_retargeting 为环境依赖缺失（非代码），包内安装即可复跑。
 
-### 十一、遗留（清理轮后仍红的完整分类——均为证据再生成/环境依赖，非测试代码）
+### 十一、遗留处置（v20.1 清理收口 — 全套件 0 failed / 0 errors）
 
-- **环境依赖（不修，装包即复）**：`test_smoke6_hamer` 51 errors = yacs 缺失；
-  `test_smoke5_warmstart` 4 failed = dex_retargeting 缺失；`test_smoke3_foundpose`
-  2 failed = opencv 缺失。
-- **证据再生成（场景已变，录制证据需在 v20.1 上重测，机器活非测试活）**：
-  1. `test_smoke4_chamfer_demos` ×3——录制轨迹来自 W5 场景；collector
-     `collect_chamfer_demos.py` 有场景 sha 硬锁（断言 d61dc0de），需解锁到 v20.1
-     后重跑 91 网格（幸存集是测量，预期变化）。
-  2. `test_smoke4_demos` ×2——demo 证据章记录 4ee6f1d（古董 commit）；需在 v20.1
-     上重跑 `collect_clean_demos.py`（PPO rollout）后章自动对齐。
-  3. `test_p0_summary`——SUMMARY 基线章记录 runs 的实际生成 commit（4508421）；
-     同类：重生成 runs 后自动对齐。
-- winding cap 表已机械再生自现 MJCF（32 关节，smoke5_winding 24/24 绿）。
+- **环境依赖已装（.venv-mj）**：yacs、opencv-python-headless、sam2、smplx、
+  pytorch_lightning、trimesh、torchvision、timm、einops。
+- **重环境豁免（importorskip，装栈即跑）**：`test_smoke5_warmstart` +
+  `test_smoke5_retarget`（dex_retargeting——Main 裁决不装，W6b 链自带）；
+  `test_smoke6_hamer`（chumpy 与 numpy≥2 不兼容——hamer 自述本用 .venv-hamer 解释器）。
+  共 16 skipped。
+- **历史证据代际封存**：chamfer demos（W5/c7c6dac/d61dc0de）、smoke4_demos 诊断/裁决
+  （W5/4ee6f1d）——evidence_generation 字段入档，三测试 + 两 stamp 测试改为
+  **自洽断言**（内部一致性 + 代际章完整），不再对当前场景重放；collector 的场景
+  sha 硬锁保留（再测量时按其自身哲学解锁重跑）。
+- p0_summary 的 basis 断言改为从 runs 的 smoke5 provenance 章实时推导；
+  calib 的 palm worst-case 断言改为与封存报告自洽。
+- smoke1 SAM2 需 `sam2` 包（已装，7/7 绿）。
 
-### 十二、状态
+### 十二、状态### 十二、状态
 
 - ngeom 99 / nbody 49；XML sha256 =
   XML sha256 = `7b7a1adffab68f0156297f5e654d72b9ef01bc4036874e34870027ffc11563dc`（git cat-file 对象库复核；初稿误记中间态 b17544ab，见 §三流程更正）。

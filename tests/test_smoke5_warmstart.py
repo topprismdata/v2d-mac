@@ -43,6 +43,10 @@ from retarget import retarget_smoke as rs  # noqa: E402
 REPORT_PATH = REPO / "runs/p0/smoke5_retarget/report.json"
 
 
+
+mujoco = pytest.importorskip("mujoco")
+pytest.importorskip("dex_retargeting",
+                    reason="dex_retargeting is a heavy optional env dep; smoke5_warmstart is environment-exempt (R10 s11) -- install it to run")
 def _first_command():
     """The exact (finger, wrist) command the replay's frame 0 applies."""
     mujoco_mod, model, data = rs.load_scene()

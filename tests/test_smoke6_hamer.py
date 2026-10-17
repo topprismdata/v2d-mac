@@ -56,6 +56,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+# v20.1 environment exemption (R10 s11): the hamer criterion chain needs the
+# MANO model stack whose chumpy dependency is numpy>=2-incompatible -- same
+# heavy-optional-env class as dex_retargeting. Install a chumpy-compatible
+# stack (numpy<1.24 pin) to run these checks.
+pytest.importorskip("chumpy", reason="hamer/MANO stack needs chumpy, which is numpy>=2-incompatible -- heavy optional env, exempted (R10 s11)")
+
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 

@@ -9,5 +9,6 @@
   "palm_force_into_box_N": 26.516939861137708,
   "box_weight_N": 1.4715,
   "palm_overload_ratio": 18.020346490749375,
-  "clean_lift_exists": false
+  "clean_lift_exists": false,
+  "evidence_generation": "W5/4ee6f1d"
 }
