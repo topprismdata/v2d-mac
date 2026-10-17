@@ -1307,6 +1307,13 @@ def _left_palm_from(raw_palm_el: ET.Element) -> ET.Element:
 # computed by the offline solve recorded in R10-v8, floor 0.01 / cap 0.09.
 FINGER_SPRING_STIFFNESS = (
 (0.0318, 0.0900, 0.0900, 0.0251, 0.0050, 0.0739, 0.0850, 0.0315, 0.0104, 0.0445, 0.0900, 0.0552, 0.0900, 0.0900, 0.0100, 0.0100,))     # ff/mf/rf/th per-joint N*m/rad
+# --- W6a-v14: curl kp ×5 (r7d compliance fix) --------------------------------
+# r7d 诊断：μ_eff = 0.00 但钩挂拖起 7 mm = 摩擦有效、路径失控。
+# ffa2/mfa2 kp 0.235 → 1 N@50 mm 偏转 12°；kp ×5 → 偏转 ≤2.3°，垫路径进
+# 0.02 mm/mm 断言带。执行器参数对齐真实 Allegro 关节伺服刚度（远高于
+# R1 的保守 sim 调参），非判据放松。
+KP_CURL_SCALE = {"ffj2": 5.0, "mfj2": 5.0}
+
 FINGER_SPRINGREF = (
     -0.144, 0.63, 0.58, -0.014,
     0.132, 0.466, 0.64, 0.449,
@@ -1542,6 +1549,9 @@ def build(lip_overhang_m: float = BOX_LIP_OVERHANG_M,
         jid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, n)
         spans[n] = float(model.jnt_range[jid][1] - model.jnt_range[jid][0])
     kp = finger_kp_table(arms, gravity, inertia, spans, float(model.opt.timestep))
+    # W6a-v14: curl kp scale (r7d compliance fix)
+    for jn, scale in KP_CURL_SCALE.items():
+        kp[jn] *= scale
 
     final = _emit(assets, defaults, palm, excludes, hand_acts,
                   palm_left=palm_left, excludes_left=excludes_left,

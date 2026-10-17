@@ -1263,6 +1263,22 @@ W6b 二轮 finding F4：v8 的 static-hold 门**只验弹簧需求、重力"另�
   （+4：桅杆 ×2 + 领圈 ×2），`EXPECTED_NGEOM = 139`（+4 具名 mast 族）。
 - 渲染：`docs/human_vs_sim_w6a.png`（v8 家位重渲，桅杆/领圈/圆柱垫入画）。
 
+## W6a-v14（2026-10-15）：卷曲 kp ×5（r7d 合规修复）
+
+r7d 诊断闭环：μ_eff = 0.00 但钩挂拖起 7 mm = 摩擦有效、路径失控。
+ffa2/mfa2 kp 0.235 → 1 N@50 mm 偏转 12°；kp ×5 → 偏转 ≤2.3°，
+垫路径进 0.02 mm/mm 断言带。执行器参数对齐真实 Allegro 关节伺服刚度。
+
+- `KP_CURL_SCALE = {"ffj2": 5.0, "mfj2": 5.0}` — 只动 r7d 点名的远端卷曲关节。
+  ffj0/thj* 等不动。执行器 forcerange 不变（W6a-v12 硬件对齐独立于 kp）。
+- **求解器稳定性验证**：400 步 settle max|qvel| 3.17（弹簧瞬态），末 100 步均值
+  0.069 rad/s 收敛 ✓。timestep 0.002 不变（30 fps 控制率/物理 substeps 合同不变）。
+- 出生 −6.2e−17；静置盒 0.029 mm；净空 57.0 mm；static hold 门 PASS。
+- XML sha256 = `257ef61110d0c1c03dbbe9dc639440b01337ec2a0b8a1ba31a2109e5909da100`
+  （cat-file 对象库复核）。
+- 电池：核心 9 套件 121 passed / 11 skipped / 2 R9 既有红灯。
+- **复盘**：从"控制模式"挖到"执行器物理参数"——八轮机制的最后一层。
+
 ## W6a-v13（2026-10-15）：平垫替代圆柱垫 + 指部金属质感（GPT 终验条件 #1）
 
 ### 一、平垫（GPT 终验条件 #1 的针对性修复）
