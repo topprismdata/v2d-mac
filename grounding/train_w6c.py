@@ -1614,10 +1614,9 @@ def penetration_disposition(eval_res: dict) -> dict:
 
 
 def _round_verdict(args, verdict: str) -> str:
+    if getattr(args, "l2d", False): return "fail-l2d-hook-dominant-final"
     if getattr(args, "l2c", False): return "fail-l2c-pinch-carry-slip-yaw"
     if getattr(args, "l2b", False): return "fail-l2b-hook-carry"
-    if getattr(args, "l2d", False): return "fail-l2d-hook-dominant-final"
-    if getattr(args, "l2d", False): return "fail-l2d-hook-dominant-final"
     if getattr(args, "l2a", False): return "fail-l2a-gate-milestone-lift"
     if getattr(args, "round8", False): return "fail-r8-transition"
     if getattr(args, "round7d", False): return "fail-terminal-v13-compliance"
