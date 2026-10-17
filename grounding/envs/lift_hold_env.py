@@ -1253,8 +1253,13 @@ class LiftHoldEnv(gym.Env):
             bid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY,
                                     f"hand_root{sfx}")
             target = self.data.xpos[bid]
-            sx = 0.235 if s == 0 else -0.235
-            shoulder = np.array([sx, 0.0, 1.0])
+            # v22: shoulder anchor read off the model's arm_yaw body (the left
+            # mount carries a +75 mm y offset -- layout-proof, no constant dupe)
+            arm_sfx = "_r" if s == 0 else "_l"   # arm bodies use _r/_l, hands use ""/_left
+            yaw_bid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY,
+                                        f"arm_yaw{arm_sfx}")
+            assert yaw_bid >= 0, f"arm_yaw{arm_sfx} body missing"
+            shoulder = self.model.body_pos[yaw_bid].astype(float)
             dx, dy, dz = target - shoulder
             yaw = float(np.arctan2(dy, dx))
             r = float(np.hypot(dx, dy))
