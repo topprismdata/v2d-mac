@@ -2307,7 +2307,7 @@
   "next": "the missing element is a placement solve, not a command family: put the ff/mf follower pads ON the faces at mid-height with >= 0.25 rad of curl headroom (wrist x/y/z advance from the seed placement, or re-solve the approach terminal for the v20 box), then the r7e mechanism applies; items for W6a: move the three provenance pins to the v20.1 commit and regenerate the forcerange table + REVISION.md row from the final tree"
  },
  "v20p1_placement_grid": {
-  "verdict": "TERMINAL - FINAL (stabilization continuation included): the lift-side clauses PASS and IMPROVED with continued training (window 72-108 frames, peak 11.4-34.2 mm, final 9.2-34.2 mm - a sustained two-hand squeeze carry up to 34 mm / 5.4 s) while the stabilization pair (slip 131-180 mm, yaw 70-83 deg) remains unconverged at the 96-iter budget - the swing is structural (opposite-side press lines give a ~1 N*m net yaw torque on this mount). Learning-budget boundary reached; W6a lever (left mount y-offset) documented. Submitted for GPT final review as-is",
+  "verdict": "TERMINAL - FINAL (v22): the sustained two-hand squeeze carry is ROBUST - window 124-127 frames (6.4 s), peak 94-105 mm, final 87-100 mm, endface held, support clean, all 3 seeds - 5 of 7 gate clauses PASS. Stabilization open: slip 147-151 mm, yaw 37-40 deg during the long hold (the residual 47 mm press-line offset yaw torque; the 96-iter policy has not learned the counter offset). Learning-budget boundary; W6a residual-offset lever documented. Submitted for GPT final review as-is",
   "placement_solve": {
    "method": "FK + tip-path Jacobian scan (~10^4 evals): pads-on-face position AND the curl tip-path angle to the face normal cos(theta) - N_max = (forcerange/arm) x cos(theta); then closed-loop dynamic seat (4 iters, measured pad errors -> wrist ctrl, signs probed per hand)",
    "key_physics": "the pre-rotation placement had cos 0.19 -> N 1.41 ceiling REGARDLESS of command (the pad tip path was ~79 deg off the face normal - mostly tangential); the wrist ROTATION (right: rx +0.15, ry +0.60, rz -0.10) aligns the curl plane with the normal (cos 0.63-0.67) and the same +0.25 rad demand that gave 1.41 N now drives N 2.43 -> 3.76 -> 6.19 -> 4.22 N - the follower-pad curl-demand mechanism work as designed ONCE the curl plane contains the face normal",
@@ -3228,6 +3228,30 @@
     "yaw_10deg": "FAIL (70-83 deg)"
    },
    "final_statement": "5 of 7 gate clauses PASS including the entire lift triplet (window/peak/final) - the W6c chain achieves a real, sustained two-hand squeeze carry of the tissue-box proxy on v21 (up to 34 mm, 5.4 s) and the remaining two clauses are the swing damping of the coupled carry: a learning-budget boundary (96 iters at std 0.05, curve in v21_ppo_curve.json), with the structural lever (left-hand mount y-offset) documented for W6a"
+  },
+  "v22_final_continuation": {
+   "verdict": "TERMINAL - FINAL (v22): the left-mount y-offset (W6a 49dd3d1, press-line spacing 122 -> 47 mm, couple -62%) plus the continued training lifted the carry to a robust sustained hold: window 124-127 frames (6.4 s, gate >= 20), peak 94-105 mm (gate >= 5), final 87-100 mm (gate >= 3), endface held, support clean - 5 of 7 gate clauses PASS across all 3 seeds. Stabilization remains open: slip 147-151 mm (gate 10), yaw 37-40 deg (gate 10) - the carried box drifts and yaws slowly during the long hold",
+   "v22_left_resolve": "per Main item 1, the left finger sets were re-scanned on the v22 geometry (straight box): {ff/mf} does NOT solve within criteria (the ff pad rides z +13.8 mm / x +14.6 mm proud in every scanned cell - structural), {rf} SOLVES cleanly (depth +1.3 mm, y -42.8 mm deep in-band - the yaw-couple arm halved, z -0.2 mm, cos 0.51) -> per the fallback the {rf} set is maintained",
+   "continuation": "resumed from v21_ppo_eval60.pt onto the v22 geometry (obs/action layouts unchanged; 96 iters, rate penalties w 2.0, differential-wrist regularizer 0.5, std <= 0.05, early stop = 2 consecutive gate passes)",
+   "numbers_96iters": {
+    "training": "returns +13..+47 stable positive, carry peaks 165-210 mm every episode",
+    "eval_3seeds": "window 124/127/125; peak 101.1/102.7/94.4 mm; final 95.8/100.0/91.2 mm; slip 146.9/150.6/148.7 mm; yaw 40.1/38.1/37.7 deg (seeds 0/1/2, 5 rollouts x sigma 0.1 mean series)",
+    "scorecard": {
+     "lift_window_20f": "PASS (124-127)",
+     "peak_5mm": "PASS (94-105 mm)",
+     "final_3mm": "PASS (87-100 mm)",
+     "endface": "PASS during carry",
+     "support_02N": "PASS (carried)",
+     "slip_10mm": "FAIL (147-151 mm)",
+     "yaw_10deg": "FAIL (37-40 deg)"
+    }
+   },
+   "stabilization_analysis": "the carried box drifts ~15 cm and yaws ~38-40 deg over the 6.4 s hold - the remaining 47 mm press-line offset still yields a net yaw torque, and the policy (96 iters) has not learned the sustained differential wrist offset that counters it. The drift rate is slow (~2.3 cm/s over the hold); a longer training budget or the W6a residual offset are the open levers. Main's item-3 yaw-only ruling condition does not apply (slip fails alongside yaw - both are the same carry drift)",
+   "honesty_clauses": [
+    "the eval gate metrics are computed on the 5-rollout sigma-0.1 MEAN frame series (deployment = training distribution)",
+    "the carried box starts from the engage wedge (+9 mm above the table at t=0 - the trigger-state artifact); the gate baseline is the true table plane so the reported 94-105 mm peaks are real height above the table",
+    "the yaw clause measures absolute yaw; the ~38-40 deg reached includes the slow carry drift from the 0 deg straight-box start"
+   ]
   }
  }
 }
