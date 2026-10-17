@@ -70,7 +70,9 @@ APPROACH_HOLD = 20              # quiet frames after the approach ramp
 GATE = {
     "lift_window_frames": 20,       # consecutive control frames (20 Hz -> 1 s)
     "lift_min_m": 0.005,            # box bottom >= 5 mm off the table
-    "lift_band_max_m": 0.015,       # demonstrated semantic band: 5-15 mm
+    # "lift_band_max_m" removed from the gate by Main ruling (l2b): the
+    # 5-15 mm band was reward shaping, never part of the gate definition.
+    # Band overshoot is recorded in the metrics, never failed.
     "endface_contact_ratio_min": 0.8,   # per hand, gate2-style classifier
     "slip_max_m": 0.010,            # box xy displacement inside the window
     "yaw_max_deg": 10.0,            # box stays upright (anti-knock clause)
@@ -487,9 +489,11 @@ def eval_stream_against_gate(env: LiftHoldEnv, frames: list[dict]) -> dict:
         "support_mean_n": (float(sup[start:start + best].mean())
                            if best else None),
     }
+    # Main ruling (l2b): the original gate never had an upper bound - the
+    # 5-15 mm band was l2a reward shaping and is NOT part of the gate
+    # definition. Band overshoot is recorded, not failed.
     ok = (
         best >= GATE["lift_window_frames"]
-        and metrics["peak_lift_m"] <= GATE["lift_band_max_m"] + 1e-4
         and metrics["final_lift_m"] >= GATE["final_lift_min_m"]
         and metrics["endface_ratio_right"] >= GATE["endface_contact_ratio_min"]
         and metrics["endface_ratio_left"] >= GATE["endface_contact_ratio_min"]
@@ -1023,6 +1027,23 @@ class RunningNorm:
                        -10.0, 10.0)
 
 
+def l2b_reward(env: LiftHoldEnv, info: dict) -> float:
+    """L2B (Main ruling): band-limited lift reward - target band 10-50 mm
+    sustained (the human clip's lift magnitude, panel-friendly); over-band
+    lift is penalised (the 142.7 mm overshoot must come down into band)."""
+    import math
+
+    lift = max(0.0, info["lift"])
+    r = min(lift, 0.010) / 0.010 * 2.0                 # up to band floor
+    if 0.010 <= lift <= 0.050:
+        r += 2.5                                        # in-band bonus
+    r -= max(0.0, lift - 0.050) / 0.010 * 1.5          # over-band penalty
+    n_r, n_l = env._pad_normals_obs()
+    if n_r > 0.1 and n_l > 0.05:
+        r += 0.5 * math.log(max(n_r * n_l, 1e-3) + 1.0)
+    return r * REWARD_SCALE
+
+
 def l2a_reward(env: LiftHoldEnv, info: dict) -> float:
     """r8/L2A reward: the +1.29 mm weight-transfer transient, created and
     HELD. Main = box centre z (saturating at the 5 mm gate); sustain term for
@@ -1127,7 +1148,8 @@ def cmd_ppo(args: argparse.Namespace) -> None:
                 # REWARD_SCALE keeps per-step returns near O(1) so the value
                 # head's MSE does not dominate the shared Adam update
                 # (measured v_loss 5.6e4 unscaled in the smoke run).
-                shaped = (l2a_reward(env, info) if args.reward == "l2a"
+                shaped = (l2b_reward(env, info) if args.reward == "l2b"
+                          else l2a_reward(env, info) if args.reward == "l2a"
                           else band_bonus(env, info))
                 r_shaped = (r + shaped) * REWARD_SCALE
                 done = term or trunc
@@ -1192,11 +1214,28 @@ def cmd_ppo(args: argparse.Namespace) -> None:
             m = eval_policy(lambda o: actor_forward(actor, norm, o, dev),
                             n_episodes=3,
                             start=getattr(args, "start", "checkpoint"))
+            # L2B hard requirement: EVERY eval checkpoint archived (the
+            # noisy score tracker lost the 142.7 mm policy in r8)
+            torch.save({"actor": actor.state_dict(),
+                        "critic": critic.state_dict(),
+                        "log_std": log_std.detach().cpu(),
+                        "norm": {"mean": norm.mean, "var": norm.var,
+                                 "n": norm.n},
+                        "eval_metrics": m, "iter": it},
+                       OUT_DIR / f"ppo_policy_eval{it+1}.pt")
             print(f"[ppo {it:3d}] eval pass={m['pass']} "
                   f"window={m['window_frames_max']} "
                   f"peak={m['peak_lift_mm_mean']:.2f}mm "
                   f"sup={m['support_mean_n_mean']}N")
-            score = score_window(m)
+            # L2B: gate-aligned selection - window first, in-band peak
+            # second, penalties only where the pre-registered gate has them
+            score = (min(m["window_frames"], 20) * 20.0
+                     + min(m["peak_lift_m"], 0.050) / 0.050 * 300.0
+                     + 200.0 * min(m["endface_ratio_right"]
+                                   + m["endface_ratio_left"], 2.0)
+                     - max(0.0, m["slip_m"] - 0.006) * 2e3
+                     - max(0.0, abs(m["yaw_abs_deg"]) - 8.0) * 30.0
+                     + (500.0 if m["pass"] else 0.0))
             if score > best_score:
                 best_score = score
                 torch.save({"actor": actor.state_dict(),
@@ -1249,11 +1288,22 @@ def eval_policy(act_fn, n_episodes: int = 5, render_dir: pathlib.Path | None = N
             obs, _r, term, trunc, info = env.step(a)
             er, el = endface_contact_per_hand(env)
             bp = box_pose(env)
+            n_r, n_l = env._pad_normals_obs()
+            pad_z = float(np.mean([env.data.geom_xpos[
+                mujoco.mj_name2id(env.model, mujoco.mjtObj.mjOBJ_GEOM,
+                                  f'{f}_tip{s}_collision')][2]
+                for s in ('', '_left') for f in ('ff', 'mf')]))
             frames.append({"lift": info["lift"], "endface": (er, el),
                            "sup": info["support_force"],
                            "xpos": bp["xpos"][:2].copy(),
                            "yaw": bp["yaw_deg"],
-                           "clear": bp["bottom_clearance_m"]})
+                           "tilt": bp["tilt_deg"],
+                           "clear": bp["bottom_clearance_m"],
+                           "n_r": n_r, "n_l": n_l, "pad_z": pad_z,
+                           "qpos": env.data.qpos.copy(),
+                           "obj7": np.concatenate([
+                               env.data.xpos[env.obj_body],
+                               env.data.xquat[env.obj_body]]).copy()})
             for gi, gj in hand_obj_contacts(env):
                 for i in range(env.data.ncon):
                     c = env.data.contact[i]
@@ -1269,6 +1319,32 @@ def eval_policy(act_fn, n_episodes: int = 5, render_dir: pathlib.Path | None = N
             if term or trunc:
                 break
         m = eval_stream_against_gate(env, frames)
+        # L2B anti-cheat audit + morphology (per-frame, window-relative)
+        lifts = np.array([f["clear"] for f in frames])
+        w0 = int(np.argmax(lifts >= 0.005)) if (lifts >= 0.005).any() else -1
+        win = frames[w0:w0 + GATE["lift_window_frames"]] if w0 >= 0 else []
+        audit = {
+            "window_found": w0 >= 0,
+            "support_max_N_window": (max(f["sup"] for f in win) if win else None),
+            "endface_any_break_window": (any(not (f["endface"][0] and f["endface"][1])
+                                             for f in win) if win else None),
+            "both_sides_N_positive_frames": (sum(1 for f in win
+                                                 if f["n_r"] > 0.05 and f["n_l"] > 0.05)
+                                             if win else 0),
+            "pad_climb_mm": (max(f["pad_z"] for f in win) - min(f["pad_z"] for f in win)
+                             if win else None),
+            "box_rise_mm": (max(f["lift"] for f in win) * 1e3 if win else None),
+            "morphology": None,
+        }
+        if win and audit["box_rise_mm"]:
+            ratio = (audit["pad_climb_mm"] or 0.0) / max(audit["box_rise_mm"], 1e-6)
+            both = audit["both_sides_N_positive_frames"] >= len(win) * 0.8
+            audit["morphology"] = ("pinch-carry" if both and ratio < 3.0
+                                   else "hook/wedge-dominant")
+        m["audit"] = audit
+        m["replay_frames"] = [
+            {"t": k / 20.0, "qpos": f["qpos"].tolist(), "obj": f["obj7"].tolist()}
+            for k, f in enumerate(frames)] if frames else []
         nr, nl = pad_normal_forces(env)
         m["press_normal_r_n"] = nr
         m["press_normal_l_n"] = nl
@@ -1492,6 +1568,7 @@ def penetration_disposition(eval_res: dict) -> dict:
 
 
 def _round_verdict(args, verdict: str) -> str:
+    if getattr(args, "l2b", False): return "fail-l2b-hook-carry"
     if getattr(args, "l2a", False): return "fail-l2a-gate-milestone-lift"
     if getattr(args, "round8", False): return "fail-r8-transition"
     if getattr(args, "round7d", False): return "fail-terminal-v13-compliance"
@@ -1771,6 +1848,45 @@ def cmd_report(args: argparse.Namespace) -> None:
                       "steps, eval every 4 (3 episodes, pre-registered gate "
                       ">=5 mm/20 frames/no slip/dual end-face contact)",
             "eval_pre_registered": True,
+            "l2b_result": {
+                "verdict": "fail-gate (hook-carry caught by anti-cheat audit)",
+                "training": "14 iters band-limited reward from resume: "
+                            "returns -0.39 -> +0.21, best evals window 23-30 "
+                            "frames with peak 16-86 mm, support 0.0 N",
+                "gate_audit": {
+                    "eval3": {"window": 23, "peak_mm": 16.0, "support": 0.0,
+                              "slip_mm": 98.8, "yaw_deg": 52.6,
+                              "endface_break": True,
+                              "morphology": "hook/wedge-dominant"},
+                    "eval6": {"window": 30, "peak_mm": 59.6, "support": 0.0,
+                              "slip_mm": 91.8, "yaw_deg": 75.3,
+                              "endface_break": False,
+                              "both_sides_N_frames": 13,
+                              "morphology": "hook/wedge-dominant"},
+                    "clause_verdicts": "window PASS; support PASS; "
+                                       "end-face PASS (eval6); SLIP FAIL "
+                                       "(92-99 mm vs 10); YAW FAIL (53-75 "
+                                       "deg vs 10); morphology hook-carry, "
+                                       "not pinch-carry",
+                },
+                "audit_significance": "the anti-cheat audit caught exactly "
+                                      "what it was built for: the policy "
+                                      "family converges to HOOK-CARRY (pad "
+                                      "climb >> box rise, box dragged while "
+                                      "sliding 92-99 mm) - a real lift of "
+                                      "the box, but not the pinch-lift "
+                                      "semantics. The pinch-carry gap "
+                                      "traces to the left-hand "
+                                      "participation ceiling (F4), "
+                                      "consistent with every round since "
+                                      "r2",
+                "deliverables": ["per-eval checkpoints archived "
+                                 "(ppo_policy_eval{3,6,9,12}.pt - the r8 "
+                                 "checkpoint-loss bug fixed)",
+                                 "replay-format trajectory export wired "
+                                 "into eval_policy",
+                                 "morphology audit in every eval record"],
+            },
             "result_summary": "38 iters total (24+14 resumed): training "
                               "peak 0.76 -> 2.14 mm monotonic, returns "
                               "-1.72 -> -0.33 (learning throughout); "
@@ -2105,6 +2221,7 @@ def main() -> None:
     p.add_argument("--round7b", action="store_true")
     p.add_argument("--round7c", action="store_true")
     p.add_argument("--l2a", action="store_true")
+    p.add_argument("--l2b", action="store_true")
     p.add_argument("--round8", action="store_true")
     p.add_argument("--round7d", action="store_true")
     args = ap.parse_args()
