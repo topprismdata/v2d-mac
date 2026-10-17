@@ -76,13 +76,10 @@ def main() -> None:
     obj_adr = int(m.jnt_qposadr[mujoco.mj_name2id(
         m, mujoco.mjtObj.mjOBJ_JOINT, "object_free")])
     obj_body = int(m.body("object").id)
-    # v19: qpos = 6 arm angles + 51-dim base.  Replay frames carry the base
-    # only; arm angles come from the env's analytic IK (scene_fidelity.arm_ik,
-    # same closed form as lift_hold_env._write_arm_ik_ctrl) re-derived per
-    # rendered frame so the visual arms track the hands exactly (no servo lag
-    # in renders).  BASE0 = base slice start = the object free joint address.
-    BASE0 = obj_adr
-    NQ_BASE = 51
+    # v20.1: replay frames carry the FULL model qpos (65 = 6 arm/pad angles
+    # + 51-dim base) -- the executed arm/pad angles ship with the data, so
+    # the renderer writes qpos directly and no IK runs here.  The object
+    # free joint is still placed from frame["obj"] (the pinned trap).
 
     cam = mujoco.MjvCamera()
     cam.type = mujoco.mjtCamera.mjCAMERA_FREE
@@ -93,13 +90,9 @@ def main() -> None:
     for key, _cn, az, el, dist in PRESETS:
         outs = []
         for i, fr in enumerate(frames):
-            d.qpos[BASE0:BASE0 + NQ_BASE] = np.asarray(fr["qpos"])
+            d.qpos[:] = np.asarray(fr["qpos"])
             # --- the trap: object comes from obj, never from qpos -------
             d.qpos[obj_adr:obj_adr + 7] = np.asarray(fr["obj"])
-            mujoco.mj_forward(m, d)
-            # v19 articulated arms: IK from the now-known hand positions,
-            # then a second forward so the arm chain lands on its target
-            scene_fidelity.arm_ik(m, d)
             mujoco.mj_forward(m, d)
 
             cam.lookat[:] = d.xpos[obj_body]

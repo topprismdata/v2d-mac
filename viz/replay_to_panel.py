@@ -54,9 +54,15 @@ OUT_JS = REPO / "viz/panel_data_v2.js"
 VIDEO_FPS = 30.0          # source clip; keep in step with extract_video_frames.py
 SOURCE_TOTAL_FRAMES = 390  # tissue_box.mp4: 13.0 s at 30 fps (PLAN.md pinned)
 REPLAY_FPS = 20.0         # W6b retarget replay rate (replay_frames.json "fps")
-NQ = 51                   # allegro_floating.xml nq: [0:7] object free joint,
-                          # [7:29] right (6 wrist slides + 16 fingers),
-                          # [29:51] left (same, *_left joints)
+BASE_QPOS = 51            # v19-era base: [0:7] object free joint, then hands
+NQ_MIN = 51               # frames must carry at least the base; v20.1 carries
+                          # the full model nq (65 = base + arm/pad angles)
+
+
+def _model_nq() -> int:
+    import mujoco
+    return int(mujoco.MjModel.from_xml_path(
+        str(REPO / "grounding/assets/allegro_floating.xml")).nq)
 
 # Placeholder frames: t=2.233 s is source frame 67 (pads seat on the end
 # faces in the human clip), so the two replay frames line up with the two
@@ -131,13 +137,8 @@ def _settled_reset_frame() -> tuple[list[float], list[float]]:
 
     env = lhe.LiftHoldEnv(episode_len=50, domain_rand=False)
     env.reset(seed=0)
-    m = env.model
-    nq = int(m.nq)
-    if nq != NQ:
-        raise SystemExit(f"model nq={nq} but converter pins NQ={NQ} -- "
-                         "update the pinned schema before converting")
-    adr = int(m.jnt_qposadr[mujoco.mj_name2id(
-        m, mujoco.mjtObj.mjOBJ_JOINT, "object_free")])
+    adr = int(env.model.jnt_qposadr[mujoco.mj_name2id(
+        env.model, mujoco.mjtObj.mjOBJ_JOINT, "object_free")])
     qpos = env.data.qpos.copy()
     return qpos.tolist(), qpos[adr:adr + 7].tolist()
 
@@ -151,8 +152,9 @@ def _placeholder_frames() -> list[dict]:
     q_reset, obj = _settled_reset_frame()
     g3 = json.loads(GATE3.read_text())
     q_reach = [float(v) for v in g3["qpos"]]
-    if len(q_reach) != NQ:
-        raise SystemExit(f"gate3 qpos length {len(q_reach)} != {NQ}")
+    # legacy gate3 evidence carries the 51-dim base; pad the v20.1 arm/pad
+    # angle head with zeros (placeholder-only path, cosmetically straight arm)
+    q_reach = [0.0] * (len(q_reset) - len(q_reach)) + q_reach
     return [{"t": t, "qpos": q, "obj": obj}
             for (_, t), q in zip(PLACEHOLDER, [q_reset, q_reach])]
 
@@ -169,10 +171,11 @@ def _convert_replay(raw: dict | list) -> tuple[list[dict], float]:
         if "qpos" not in fr:
             raise SystemExit(f"replay frame {i}: missing 'qpos'")
         q = [float(v) for v in fr["qpos"]]
-        if len(q) != NQ:
-            raise SystemExit(f"replay frame {i}: qpos length {len(q)} != {NQ} "
-                             f"({pathlib.Path(str(REPLAY_IN)).name} must carry the "
-                             "full allegro_floating.xml qpos)")
+        if len(q) < NQ_MIN:
+            raise SystemExit(f"replay frame {i}: qpos length {len(q)} < {NQ_MIN} "
+                             f"({pathlib.Path(str(REPLAY_IN)).name} must carry at "
+                             "least the 51-dim base, v20.1 carries the full "
+                             "model nq incl. arm/pad angles)")
         obj = fr.get("obj")
         if obj is None:
             # no separate object pose -> the free-joint slice of qpos is it
@@ -329,12 +332,11 @@ def build() -> dict:
             "notes_per_frame": notes,
             "playback": playback,
             "phase_notes": {
-                # current honest state (Main ruling, v18 batch): hook load-
-                # bearing achieved; in-gate pinch lift is a vise-alignment
-                # convergence domain, not a training problem
-                "抬离": ("抬离：钩挂载力已实现（59.6mm/30 帧/0N 支撑，审计确认）；"
-                         "门内捏持抬离=vise 对齐收敛域"
-                         "（pinch 形态已达成，slip/yaw 未收敛）"),
+                # v20.1 terminal ruling (Main, lift terminal verdict)
+                "抬离": ("抬离：钩挂载力 59.6mm/30 帧/0N 支撑（v14 实测）；"
+                         "门内捏持抬离 v20.1 几何终局"
+                         "（左手指集全扫无带内解，机制链完整入档）；"
+                         "右手机制已验证 N 4.15-4.98N"),
             },
             "video_fps": VIDEO_FPS,
             "total_source_frames": SOURCE_TOTAL_FRAMES,

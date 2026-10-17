@@ -47,6 +47,8 @@ def main() -> None:
 
     gid = lambda n: mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, n)
     bid = lambda n: mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, n)
+    obj_adr = int(m.jnt_qposadr[mujoco.mj_name2id(
+        m, mujoco.mjtObj.mjOBJ_JOINT, "object_free")])
 
     arms = {}
     for side, sfx in (("right", "_r"), ("left", "_l")):
@@ -63,11 +65,8 @@ def main() -> None:
     j2 = {s: [] for s in arms}
     j3 = {s: [] for s in arms}
     for fr in frames:
-        d.qpos[:] = 0.0
-        d.qpos[6:6 + 51] = np.asarray(fr["qpos"])
-        d.qpos[6:13] = np.asarray(fr["obj"])  # object-placement trap pinned in W6d
-        mujoco.mj_forward(m, d)
-        scene_fidelity.arm_ik(m, d)   # the renderer's exact IK path
+        d.qpos[:] = np.asarray(fr["qpos"])          # v20.1: full qpos incl. arm/pad angles
+        d.qpos[obj_adr:obj_adr + 7] = np.asarray(fr["obj"])  # object-placement trap pinned in W6d
         mujoco.mj_forward(m, d)
         for s, parts in arms.items():
             hp = d.xpos[parts["hand"]]
@@ -85,7 +84,7 @@ def main() -> None:
     def stat(v):
         return f"min {min(v)*1e3:8.4f} mm | max {max(v)*1e3:8.4f} mm"
 
-    lines = ["J1 arm_wrist centre -> hand_root (IK residual -- verdict carrier)"]
+    lines = ["J1 arm_wrist centre -> hand_root (executed-trajectory follow residual)"]
     for s in arms:
         lines.append(f"  {s:5s} {stat(j1[s])}")
     lines.append("J2 forearm wrist-end -> elbow disc centre (rigid hinge, mm)")
@@ -95,7 +94,7 @@ def main() -> None:
     for s in arms:
         lines.append(f"  {s:5s} {stat(j3[s])}")
 
-    lines += ["", "per-frame J1 IK residual (mm):", "  frame   " +
+    lines += ["", "per-frame J1 follow residual (mm):", "  frame   " +
               "  ".join(f"{f:>8d}" for f in SAMPLES)]
     for s in arms:
         vals = "  ".join(f"{j1[s][f]*1e3:8.5f}" for f in SAMPLES)

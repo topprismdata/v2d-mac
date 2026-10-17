@@ -206,33 +206,6 @@ def build_fidelity_spec():
     return spec
 
 
-L_LINK = 0.16  # v19 arm link length (matches arm_upper/forearm capsules)
-
-
-def arm_ik(m, d) -> None:
-    """W6a-v19 analytic 3-DoF arm IK (same closed form as
-    lift_hold_env._write_arm_ik_ctrl): solve yaw/pitch/elbow per side from
-    each shoulder anchor (±0.235, 0, 1.0) to the live hand-root position and
-    write qpos[0:6].  Requires a prior mj_forward so hand positions are
-    current; call mj_forward again afterwards to place the arm chain."""
-    for s, sfx in ((0, ""), (1, "_left")):
-        bid = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, f"hand_root{sfx}")
-        tx, ty, tz = d.xpos[bid]
-        sx = 0.235 if s == 0 else -0.235
-        dx, dy, dz = tx - sx, ty - 0.0, tz - 1.0
-        yaw = float(np.arctan2(dy, dx))
-        r = float(np.hypot(dx, dy))
-        dist = float(np.clip(np.linalg.norm([dx, dy, dz]), 1e-6, 2 * L_LINK - 1e-6))
-        elbow = float(np.pi - np.arccos(
-            np.clip((2 * L_LINK ** 2 - dist ** 2) / (2 * L_LINK ** 2), -1.0, 1.0)))
-        pitch = float(np.arctan2(dz, r) - np.arccos(
-            np.clip(dist ** 2 / (2 * L_LINK * dist), -1.0, 1.0)))
-        base = s * 3
-        d.qpos[base + 0] = yaw
-        d.qpos[base + 1] = pitch
-        d.qpos[base + 2] = elbow
-
-
 def build_fidelity_model():
     """Compile the fidelity spec; returns the MjModel for RENDERING only."""
     m = build_fidelity_spec().compile()
