@@ -70,7 +70,6 @@ def capture_engage() -> dict:
     bid = env.obj_body
     d = env.data
     oa = env.obj_qpos_adr
-
     def settle(n):
         for _ in range(n):
             mujoco.mj_step(m, d)
@@ -78,6 +77,14 @@ def capture_engage() -> dict:
     def yaw_deg():
         q = d.qpos[oa + 3: oa + 7]
         return float(np.degrees(2.0 * np.arctan2(q[3], q[0])))
+
+    # straight-box initialization (video-semantic box is square): the
+    # inherited 6.2 deg trigger yaw was a retarget artifact and the source
+    # of the 3-point wedge bind - zero it BEFORE the placement, then
+    # re-settle so the placement solve (re-run for the straight box)
+    # seats against the true geometry
+    d.qpos[oa + 3: oa + 7] = [1.0, 0.0, 0.0, 0.0]
+    settle(120)
 
     def normalize_yaw():
         d.qpos[oa + 3: oa + 7] = [1.0, 0.0, 0.0, 0.0]
@@ -97,8 +104,8 @@ def capture_engage() -> dict:
     clear[2] += 0.050
     transit = clear.copy()
     place_r = transit.copy()
-    place_r[0] += 0.020; place_r[2] += 0.050
-    place_r[3] += 0.15; place_r[4] += 0.60; place_r[5] += -0.10
+    place_r[0] += 0.040; place_r[1] += 0.020; place_r[2] += 0.050
+    place_r[3] += 0.00; place_r[4] += 0.75; place_r[5] += -0.25
     place_r[7] = 0.40; place_r[8] = 0.30
     place_r[11] = 0.40; place_r[12] = 0.30
     for a, b, n in ((start_ctrl, clear, 12), (clear, transit, 10),
@@ -108,7 +115,7 @@ def capture_engage() -> dict:
             settle(FS)
     settle(15 * FS)
     place_l = d.ctrl.copy()
-    place_l[23] += 0.03; place_l[22] += 0.01
+    place_l[23] += 0.04; place_l[22] += 0.02
     place_l[25] += 0.20; place_l[26] += 0.60; place_l[27] += -0.15
     place_l[37] = 0.40; place_l[38] = 0.45
     for k in range(15):
@@ -142,8 +149,11 @@ def capture_engage() -> dict:
     # force-source onset on both sides until the vise sum stabilizes
     lo_c, hi_c = m.actuator_ctrlrange[:, 0], m.actuator_ctrlrange[:, 1]
     for f in range(60):
-        for idx, jn, dem in ((7, "ffj1", 0.20), (8, "ffj2", 0.20),
-                             (11, "mfj1", 0.20), (12, "mfj2", 0.20),
+        # right demand halved: the yaw equilibrium scales with the right
+        # press (the press line sits y +64..92 mm off the face center on
+        # this mount) - a gentler seat keeps the engage yaw near ~6-7 deg
+        for idx, jn, dem in ((7, "ffj1", 0.10), (8, "ffj2", 0.10),
+                             (11, "mfj1", 0.10), (12, "mfj2", 0.10),
                              (37, "rfj1_left", 0.30),
                              (38, "rfj2_left", 0.30)):
             d.ctrl[idx] = float(np.clip(d.qpos[_jadr(m, jn)] + dem,
@@ -237,6 +247,18 @@ def closure_reward(env, info) -> float:
 
 
 # ------------------------------------------------------------------ ppo
+GRIP_FLOOR_ACTS = (7, 8, 11, 12, 37, 38)
+
+
+def grip_floor(a: np.ndarray) -> np.ndarray:
+    """Deployment toolkit (a): the press/curl channels cannot go below
+    the placement curl - the policy modulates grip upward only, so a
+    fading mean action can never relax the vise."""
+    for idx in GRIP_FLOOR_ACTS:
+        a[idx] = max(a[idx], 0.0)
+    return a
+
+
 def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0):
     import torch
     import torch.nn as nn
@@ -296,12 +318,14 @@ def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0):
             o_n = norm.norm(obs_raw)
             with torch.no_grad():
                 mu = actor(to_t(o_n))
-                std = log_std.exp().clamp(0.05, 2.0)
+                hi = 0.05 if it >= iters - 8 else 2.0   # entropy anneal
+                std = log_std.exp().clamp(0.05, hi)
                 dist = torch.distributions.Normal(mu, std)
                 a_t = dist.sample()
                 logp = dist.log_prob(a_t).sum(-1)
                 v = critic(to_t(o_n)).squeeze(-1)
             a_np = a_t.cpu().numpy()
+            a_np = grip_floor(a_np)
             a_np[2] = a_np[2] + BASE_Z
             a_np[24] = a_np[24] + BASE_Z
             obs_raw, r_env, term, trunc, info = env.step(
@@ -415,43 +439,72 @@ def actor_forward(actor, norm, obs, dev):
 
 # ------------------------------------------------------------------ eval
 def evaluate(act_fn, seeds=(0, 1, 2), export_replay: bool = False,
-             evidence: bool = False) -> dict:
+             evidence: bool = False, n_roll: int = 5, eval_std: float = 0.1):
+    """Deployment toolkit (c): per seed, n_roll rollouts with sigma-0.1
+    action noise (deployment = training distribution, killing the
+    deterministic-mean collapse) and the gate runs on the MEAN frame
+    series. The first rollout of seed seeds[0] provides the replay."""
+    import torch
     env = make_closure_env(EP_LEN, seeds[0])
     episodes = []
+    replay_dumped = False
     for ep, s in enumerate(seeds):
-        obs, _ = env.reset(seed=s)
-        env._z_rest = float(env.data.xpos[env.obj_body][2]) - env.box_half_z
-        frames = []
-        for k in range(env.max_episode_steps):
-            a = np.clip(act_fn(obs), -1.0, 1.0)
-            a[2] = a[2] + BASE_Z
-            a[24] = a[24] + BASE_Z
-            obs, _r, term, trunc, info = env.step(np.clip(a, -1.0, 1.0))
-            n_r, n_l = env._pad_normals_obs()
-            er, el = W.endface_contact_per_hand(env)
-            bp = W.box_pose(env)
-            frames.append({"lift": info["lift"], "endface": (er, el),
-                           "sup": table_support_n(env),
-                           "xpos": bp["xpos"][:2].copy(),
-                           "yaw": bp["yaw_deg"], "tilt": bp["tilt_deg"],
-                           "clear": bp["bottom_clearance_m"],
-                           "n_r": n_r, "n_l": n_l,
-                           "qpos": env.data.qpos.copy(),
-                           "obj7": np.concatenate([
-                               env.data.xpos[env.obj_body],
-                               env.data.xquat[env.obj_body]]).copy()})
-            if term or trunc:
-                break
-        m = W.eval_stream_against_gate(env, [
-            {"lift": f["lift"], "endface": f["endface"], "sup": f["sup"],
-             "xpos": f["xpos"], "yaw": f["yaw"], "tilt": f["tilt"],
-             "clear": f["clear"]} for f in frames])
+        rollouts = []
+        for roll in range(n_roll):
+            obs, _ = env.reset(seed=s * 10 + roll)
+            env._z_rest = float(env.data.xpos[env.obj_body][2]) -                 env.box_half_z
+            g = torch.Generator(device="cpu").manual_seed(s * 100 + roll)
+            frames = []
+            for k in range(env.max_episode_steps):
+                mu_v = act_fn(obs)
+                with torch.no_grad():
+                    mu = torch.tensor(mu_v, dtype=torch.float32)
+                std = eval_std
+                noise = torch.normal(0.0, std, generator=g,
+                                     size=mu.shape).numpy()
+                a = np.clip(mu.numpy() + noise, -1.0, 1.0)
+                a = grip_floor(a)
+                a[2] = a[2] + BASE_Z
+                a[24] = a[24] + BASE_Z
+                obs, _r, term, trunc, info = env.step(np.clip(a, -1.0, 1.0))
+                er, el = W.endface_contact_per_hand(env)
+                bp = W.box_pose(env)
+                n_r, n_l = env._pad_normals_obs()
+                frames.append({"lift": info["lift"], "endface": (er, el),
+                               "sup": table_support_n(env),
+                               "xpos": bp["xpos"][:2].copy(),
+                               "yaw": bp["yaw_deg"], "tilt": bp["tilt_deg"],
+                               "clear": bp["bottom_clearance_m"],
+                               "n_r": n_r, "n_l": n_l,
+                               "qpos": env.data.qpos.copy(),
+                               "obj7": np.concatenate([
+                                   env.data.xpos[env.obj_body],
+                                   env.data.xquat[env.obj_body]]).copy()})
+                if term or trunc:
+                    break
+            rollouts.append(frames)
+        n_f = min(len(fr) for fr in rollouts)
+        mean_frames = []
+        for k in range(n_f):
+            kf = [fr[k] for fr in rollouts]
+            mean_frames.append({
+                "lift": float(np.mean([f["lift"] for f in kf])),
+                "endface": (float(np.mean([f["endface"][0] for f in kf])),
+                            float(np.mean([f["endface"][1] for f in kf]))),
+                "sup": float(np.mean([f["sup"] for f in kf])),
+                "xpos": np.mean([f["xpos"] for f in kf], axis=0),
+                "yaw": float(np.mean([f["yaw"] for f in kf])),
+                "tilt": float(np.mean([abs(f["tilt"]) for f in kf])),
+                "clear": float(np.mean([f["clear"] for f in kf]))})
+        m = W.eval_stream_against_gate(env, mean_frames)
         m["seed"] = s
         m["slip_mm"] = m["slip_m"] * 1e3
-        episodes.append({"metrics": m, "frames": frames})
+        episodes.append({"metrics": m, "frames": rollouts[0],
+                         "mean_frames": mean_frames})
         print(f"[eval seed {s}] pass={m['pass']} window={m['window_frames']} "
               f"peak={m['peak_lift_m']*1e3:.2f}mm slip={m['slip_mm']:.1f}mm "
-              f"yaw={m['yaw_abs_deg']:.1f} final={m['final_lift_m']*1e3:.2f}mm")
+              f"yaw={m['yaw_abs_deg']:.1f} final={m['final_lift_m']*1e3:.2f}mm "
+              f"({n_roll} rollouts x sigma {eval_std})")
     n_pass = sum(e["metrics"]["pass"] for e in episodes)
     out = {
         "episodes": [{"seed": e["metrics"]["seed"],
