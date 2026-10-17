@@ -36,23 +36,29 @@ if str(REPO) not in sys.path:
 
 from retarget import retarget_smoke as rs  # noqa: E402
 
-#: The MJCF revision this re-run is accounted against.  W6a-v12 landed in
-#: 353b0b0: the v10/v11 pad swap (finger pads are now r9x11mm CYLINDERS,
-#: friction 1.8), the v10 moment-arm re-measurement (abductor/thumb
-#: forceranges re-pinned -- ffj0 0.03 -> 0.0225 etc., position caps x0.75)
-#: and the v12 lift-chain forcerange raise (ffj1/ffj2/mfj1/mfj2 x1.7 ->
-#: 0.159-0.179 N m, both hands) -- Main's ruling A, aligning the caps with
-#: the Allegro hardware spec (R10-v12 basis).  Verified: blob(353b0b0) ==
-#: sha256 of the working-tree XML (f8925e27...).
-#: The position winding table was RE-DERIVED for these caps.  This is a
-#: HARDWARE-SPEC CALIBRATION, not a criteria loosening: the caps moved
-#: because the actuators' own force limits moved, and the lift gate stays
-#: at 5 mm.  The rate tables are untouched by every step since v2 (hinges
-#: 5.0 rad/s x6; slides x/z 45/280 = 0.1607 m/s, y 45/25 = 1.8 m/s, x2
-#: hands), re-affirmed by per-joint diff on each landing.  The per-joint
-#: spring table below is also unchanged v8 -> v12 (re-diffed, 0 entries).
+#: The MJCF revision this re-run is accounted against.  W6a-v13 landed in
+#: 1fd969f: the finger pads are now FLAT 12x12x3 mm boxes (face-parallel
+#: surface, friction 1.8 kept, tip inertia unchanged) -- GPT re-verify
+#: condition #1, targeting the r5 contact-point migration mechanism.  The
+#: rebuild re-measured the abductor/thumb moment arms, so seven position
+#: winding-table keys moved x2 hands (ffj0 0.0690 -> 0.0460, mfj0 -> 0.0458,
+#: rfj0 -> 0.0457, thj0 -> 0.0797, thj1 -> 0.0425, thj2 -> 0.1024,
+#: thj3 -> 0.1687); the lift chain keeps the v12 hardware-spec caps
+#: (ffj1/ffj2/mfj1/mfj2 x1.7, 0.159-0.179 N m).  Verified: blob(1fd969f) ==
+#: sha256 of the working-tree XML (6ec76dee...).
+#: The pad-touch criterion moved with the geometry: the cylinder-era
+#: "radius subtraction" (geom_size[0] with a 0.008 floor) is meaningless on
+#: a flat face, so the gate-3 touch offset is now the flat pad's own
+#: HALF-THICKNESS (1.5 mm), derived programmatically from the geom
+#: (tests/test_scene_w6.py::_surface_rad), and the sweep-clearance radius
+#: for foul checks is the box's circumscribed radius (_sweep_rad).
+#: The position winding table was RE-DERIVED for the new arms.  Rate tables
+#: are untouched by every step since v2 (hinges 5.0 rad/s x6; slides
+#: x/z 45/280 = 0.1607 m/s, y 45/25 = 1.8 m/s, x2 hands), re-affirmed by
+#: per-joint diff on each landing.  The per-joint spring table below is
+#: unchanged through v13 (re-diffed, 0 entries).
 #:
-#: PASSIVE CONSTANTS, per joint (v8 sizing, unchanged through v12; the v5
+#: PASSIVE CONSTANTS, per joint (v8 sizing, unchanged through v13; the v5
 #: single "0.4 + springref" remark is superseded -- k is no longer a shared
 #: constant).  Left hand mirrors right bit-identically (asserted per mirror
 #: pair in the winding-tolerance tests' spirit; measured off the model):
@@ -77,13 +83,13 @@ from retarget import retarget_smoke as rs  # noqa: E402
 #: the 0.8 static-hold budget but below saturation.  First observed by the
 #: v8 static-hold gate; it is contact-physics evidence for W6c's A2/A3a
 #: accounting, not a smoke-5 gate.
-MJCF_COMMIT = "353b0b0"
+MJCF_COMMIT = "1fd969f"
 #: The MJCF revision the *previous* smoke-5 numbers were taken on. Kept so the
-#: two data sets can never be silently mixed.  eba5d7b is the W6a-v8
-#: generation (blob 8b6a6ddd..., capsule pads and pre-hardware-spec caps) --
-#: the superseded physics the artefacts were stamped against before
-#: v10-v12 landed.
-MJCF_COMMIT_BASELINE = "eba5d7b"
+#: two data sets can never be silently mixed.  353b0b0 is the W6a-v12
+#: generation (blob f8925e27..., cylinder pads and pre-flat-pad arms) --
+#: the superseded physics the artefacts were stamped against before v13
+#: landed.
+MJCF_COMMIT_BASELINE = "353b0b0"
 
 OUT_DIR = REPO / "runs/p0/smoke5_retarget"
 REPORT_PATH = OUT_DIR / "report.json"

@@ -278,43 +278,53 @@ WRIST_ROT_CEILING_RAD = 0.5
 #     the caps move because the actuators' own force limits moved, not
 #     because any gate criterion was loosened (the lift gate stays at 5 mm).
 #     Rate tables are untouched by both steps (hinges 5.0 rad/s x6; slides
-#     x/z 45/280 = 0.1607 m/s, y 45/25 = 1.8 m/s, x2 hands).
+#     x/z 45/280 = 0.1607 m/s, y 45/25 = 1.8 m/s, x2 hands);
+#   * W6a-v13 (1fd969f, blob 6ec76dee...) flattened the pads to 12x12x3 mm
+#     boxes (GPT re-verify condition #1; targets the r5 contact-point
+#     migration mechanism).  The rebuild re-measured the abductor/thumb
+#     moment arms again, so seven position keys moved x2 hands (ffj0
+#     0.0690 -> 0.0460, mfj0 -> 0.0458, rfj0 -> 0.0457, thj0 -> 0.0797,
+#     thj1 -> 0.0425, thj2 -> 0.1024, thj3 -> 0.1687); the lift chain kept
+#     the v12 hardware-spec caps and the rate tables are still untouched.
+#     The gate-3 pad-touch criterion moved from cylinder radius subtraction
+#     to the flat pad's own half-thickness (1.5 mm), derived from the geom
+#     in tests/test_scene_w6.py::_surface_rad.
 SERVO_WINDING_POSITION_CAP_RAD = {
     # right hand (the hand the retargeted clip drives)
-    "ffj0": 0.06899724011039558,
+    "ffj0": 0.04602882551364612,
     "ffj1": 0.24651258770119686,
     "ffj2": 0.6783219761499147,
     "ffj3": 0.9396436525612472,
-    "mfj0": 0.0686699206833435,
+    "mfj0": 0.045790115924344114,
     "mfj1": 0.24294951162470768,
     "mfj2": 0.6806218057921636,
     "mfj3": 0.943207126948775,
-    "rfj0": 0.0684931506849315,
+    "rfj0": 0.045662100456621,
     "rfj1": 0.14569226534544452,
     "rfj2": 0.3995741056218058,
     "rfj3": 0.9396436525612472,
-    "thj0": 0.09040583325338193,
-    "thj1": 0.05538914804812178,
-    "thj2": 0.12164357381748685,
-    "thj3": 0.23264462809917355,
+    "thj0": 0.07973711983114266,
+    "thj1": 0.04249938620181684,
+    "thj2": 0.10236502627806975,
+    "thj3": 0.16869834710743803,
     # left hand (frozen at the reset pose in smoke 5; gated identically if
     # ever driven -- the values are the mirror hand's own derivation)
-    "ffj0_left": 0.06899724011039558,
+    "ffj0_left": 0.04602882551364612,
     "ffj1_left": 0.24651258770119686,
     "ffj2_left": 0.6783219761499147,
     "ffj3_left": 0.9396436525612472,
-    "mfj0_left": 0.0686699206833435,
+    "mfj0_left": 0.045790115924344114,
     "mfj1_left": 0.24294951162470768,
     "mfj2_left": 0.6806218057921636,
     "mfj3_left": 0.943207126948775,
-    "rfj0_left": 0.0684931506849315,
+    "rfj0_left": 0.045662100456621,
     "rfj1_left": 0.14569226534544452,
     "rfj2_left": 0.3995741056218058,
     "rfj3_left": 0.9396436525612472,
-    "thj0_left": 0.09040583325338193,
-    "thj1_left": 0.05538914804812178,
-    "thj2_left": 0.12164357381748685,
-    "thj3_left": 0.23264462809917355,
+    "thj0_left": 0.07973711983114266,
+    "thj1_left": 0.04249938620181684,
+    "thj2_left": 0.10236502627806975,
+    "thj3_left": 0.16869834710743803,
 }
 SERVO_WINDING_RATE_CAP_RAD_S = {
     "wrist_rx": 5.0,

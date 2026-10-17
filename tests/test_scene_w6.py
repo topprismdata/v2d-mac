@@ -296,6 +296,34 @@ def _rect_gap(px, py, pz, side):
     return float(np.hypot(np.hypot(s, dy), dz))
 
 
+def _surface_rad(model, g: int) -> float:
+    """Half-extent of a pad along its contact normal, derived from the geom.
+
+    W6a-v13: the pads are FLAT boxes (12x12x3 mm, face-parallel surface) --
+    the touching surface is the plane, so the surface offset is the pad's
+    half-THICKNESS (the minimum half-extent, 1.5 mm), not a radius.  The
+    cylinder-era `size[0]` radius subtraction is meaningless on a flat face
+    (a box's size[0] is a half-width), and the old 0.008 floor would pretend
+    an 8 mm rounding the flat pad does not have.  Round pads keep the radius
+    reading.
+    """
+    if model.geom_type[g] == mujoco.mjtGeom.mjGEOM_BOX:
+        return float(np.asarray(model.geom_size[g]).min())
+    return float(model.geom_size[g][0])
+
+
+def _sweep_rad(model, g: int) -> float:
+    """Radius that must clear obstacles when this geom sweeps (kinematic proxy).
+
+    A box sweeps its circumscribed sphere (norm of the half-extents); a round
+    geom sweeps its radius, with the historical 0.008 floor kept for thin
+    round geoms.
+    """
+    if model.geom_type[g] == mujoco.mjtGeom.mjGEOM_BOX:
+        return float(np.linalg.norm(model.geom_size[g]))
+    return float(max(model.geom_size[g][0], 0.008))
+
+
 def _hand(model):
     sfx_by = {}
     for side_name, side, sfx in (("right", +1.0, ""), ("left", -1.0, "_left")):
@@ -310,12 +338,11 @@ def _hand(model):
                  for n in names],
             pads=[nid(model, mujoco.mjtObj.mjOBJ_GEOM, f"{f}_tip{sfx}_collision")
                   for f in FINGERS],
-            pad_rad=[float(model.geom_size[
-                nid(model, mujoco.mjtObj.mjOBJ_GEOM, f"{f}_tip{sfx}_collision")][0])
-                for f in FINGERS],
+            pad_rad=[_surface_rad(model, nid(model, mujoco.mjtObj.mjOBJ_GEOM,
+                                            f"{f}_tip{sfx}_collision"))
+                     for f in FINGERS],
             palm=nid(model, mujoco.mjtObj.mjOBJ_GEOM, f"palm{sfx}_collision"),
-            coll_rad={g: float(max(model.geom_size[g][0], 0.008))
-                      for g in range(model.ngeom)},
+            coll_rad={g: _sweep_rad(model, g) for g in range(model.ngeom)},
             collisions=[g for g in range(model.ngeom)
                         if (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, g)
                             or "").endswith("_collision")
