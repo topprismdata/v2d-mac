@@ -393,7 +393,7 @@
                 <body name="ff_tip">
                   <geom class="fingertip_visual" name="ff_tip_visual" rgba="0.45 0.45 0.50 1"/>
                   <body name="ff_pad" pos="0 0 0">
-                    <joint name="ff_padrx" type="hinge" pos="0 0 0" axis="0 1 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0"/>
+                    <joint name="ff_padrx" type="hinge" pos="0 0 0" axis="0 1 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0.047"/>
                     <joint name="ff_padry" type="hinge" pos="0 0 0" axis="1 0 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0"/>
                     <geom class="fingertip_collision" name="ff_tip_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="box" size="0.006 0.006 0.0015" friction="1.8 0.005 0.0001" mass="0.005"/>
                   </body>
@@ -421,7 +421,7 @@
                 <body name="mf_tip">
                   <geom class="fingertip_visual" name="mf_tip_visual" rgba="0.45 0.45 0.50 1"/>
                   <body name="mf_pad" pos="0 0 0">
-                    <joint name="mf_padrx" type="hinge" pos="0 0 0" axis="0 1 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0"/>
+                    <joint name="mf_padrx" type="hinge" pos="0 0 0" axis="0 1 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0.047"/>
                     <joint name="mf_padry" type="hinge" pos="0 0 0" axis="1 0 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0"/>
                     <geom class="fingertip_collision" name="mf_tip_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="box" size="0.006 0.006 0.0015" friction="1.8 0.005 0.0001" mass="0.005"/>
                   </body>
@@ -554,7 +554,7 @@
                 <body name="ff_tip_left">
                   <geom class="fingertip_visual" name="ff_tip_left_visual" rgba="0.45 0.45 0.50 1"/>
                   <body name="ff_pad_left" pos="0 0 0">
-                    <joint name="ff_padrx_left" type="hinge" pos="0 0 0" axis="0 1 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0"/>
+                    <joint name="ff_padrx_left" type="hinge" pos="0 0 0" axis="0 1 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0.047"/>
                     <joint name="ff_padry_left" type="hinge" pos="0 0 0" axis="1 0 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0"/>
                     <geom class="fingertip_collision" name="ff_tip_left_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="box" size="0.006 0.006 0.0015" friction="1.8 0.005 0.0001" mass="0.005"/>
                   </body>
@@ -582,7 +582,7 @@
                 <body name="mf_tip_left">
                   <geom class="fingertip_visual" name="mf_tip_left_visual" rgba="0.45 0.45 0.50 1"/>
                   <body name="mf_pad_left" pos="0 0 0">
-                    <joint name="mf_padrx_left" type="hinge" pos="0 0 0" axis="0 1 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0"/>
+                    <joint name="mf_padrx_left" type="hinge" pos="0 0 0" axis="0 1 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0.047"/>
                     <joint name="mf_padry_left" type="hinge" pos="0 0 0" axis="1 0 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0"/>
                     <geom class="fingertip_collision" name="mf_tip_left_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="box" size="0.006 0.006 0.0015" friction="1.8 0.005 0.0001" mass="0.005"/>
                   </body>

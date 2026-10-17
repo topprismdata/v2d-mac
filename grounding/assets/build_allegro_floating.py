@@ -1351,10 +1351,16 @@ def _add_follower_pads(palm_el: ET.Element) -> None:
         f = bname[: -len("_tip_left")] if sfx else bname[: -len("_tip")]
         pad = ET.SubElement(body, "body", {"name": f"{f}_pad{sfx}", "pos": "0 0 0"})
         for axis, nm in (("0 1 0", "rx"), ("1 0 0", "ry")):
+            # v20.1: rx spring preload +47 mrad cancels the measured -46.6 mrad
+            # gravity sag exactly (rest = mount pose = the proven rigid-pad
+            # geometry), so the settling pads no longer wedge under the box
+            # footprint.  Contact aligning torque (0.0045 N*m) still dominates
+            # the spring: the preload shifts the rest point, not the authority.
+            ref = "0.047" if nm == "rx" else "0"
             ET.SubElement(pad, "joint", {
                 "name": f"{f}_pad{nm}{sfx}", "type": "hinge",
                 "pos": "0 0 0", "axis": axis, "range": "-0.6 0.6",
-                "stiffness": "0.02", "damping": "0.002", "springref": "0"})
+                "stiffness": "0.02", "damping": "0.002", "springref": ref})
         moved = []
         for geom in list(body.findall("geom")):
             cls = geom.get("class") or ""
