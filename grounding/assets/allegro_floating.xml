@@ -203,7 +203,7 @@
            from the hand root's x-y-z; tip tracks the hand root with zero
            residual over the 390-frame replay. Link mass 10 g each (under
            0.5% of box mass — noise-level dynamics ripple). -->
-      <body name="arm_yaw_r" pos="0.235 -0.03 1.000">
+      <body name="arm_yaw_r" pos="0.235 -0.075 1.000">
         <joint name="arm_yaw_r" type="hinge" axis="0 0 1" pos="0 0 0"
                range="-3.2 3.2" damping="0.3" armature="0.001"/>
         <geom name="arm_yaw_disc_r" type="cylinder" size="0.024 0.012"
@@ -230,7 +230,7 @@
           </body>
         </body>
       </body>
-      <body name="arm_yaw_l" pos="-0.235 0.1 1.000">
+      <body name="arm_yaw_l" pos="-0.235 0.055 1.000">
         <joint name="arm_yaw_l" type="hinge" axis="0 0 1" pos="0 0 0"
                range="-3.2 3.2" damping="0.3" armature="0.001"/>
         <geom name="arm_yaw_disc_l" type="cylinder" size="0.024 0.012"
@@ -313,7 +313,7 @@
 
     </body>
 
-    <body name="hand_root" pos="0.235 -0.03 0.755" euler="0 0 3.141592653590">
+    <body name="hand_root" pos="0.235 -0.075 0.755" euler="0 0 3.141592653590">
       <!-- W6a-v6: wrist mounting module (GPT P0-1 rework - the v4 45-deg
            capsule read as a cannon implying a wrist DoF that does not exist).
            Short EE-flange stack on the back of the hand: mounting plate +
@@ -481,7 +481,7 @@
       </body>
     </body>
 
-    <body name="hand_root_left" pos="-0.235 0.1 0.755" euler="0 0 0">
+    <body name="hand_root_left" pos="-0.235 0.055 0.755" euler="0 0 0">
       <body name="wmount_left" pos="0 0 0">
         <geom name="wmount_transition_left" type="box" size="0.010 0.038 0.028"
           pos="-0.004 0 0.010" mass="0" contype="0" conaffinity="0"

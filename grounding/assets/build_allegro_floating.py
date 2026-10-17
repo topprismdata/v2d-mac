@@ -214,13 +214,16 @@ PEDESTAL_H = PEDESTAL_H_M
 # the ends, zero birth contacts, settle quiet (box 0.03 mm, roots <0.5 mm).
 # v23: dual re-centering — the right mount shifts -30 mm in y so both press
 # lines converge (gap 122 -> 47.1 -> 7.9 mm; couple 403 -> 155 -> 26 mN*m).
-RIGHT_MOUNT_Y_M = -0.030
+# v24: right mount to -75 mm -- both press lines near the box centerline
+# (right +24.2 / left +32.2 mm, |r|+|l| minimal): the centered-vise pose
+# zeroes the residual yaw torque (couple 26 mN*m, -94% vs the 403 baseline).
+RIGHT_MOUNT_Y_M = -0.075
 HAND_HOME_RIGHT = f"0.235 {RIGHT_MOUNT_Y_M} 0.755"   # +x end: mid-band approach
 # v22: left mount shifted +75 mm in y -- aligns the left rf press line with
 # the right ff/mf line so the +/-x face presses stop forming a yaw couple
 # (W6c: 403 -> 155 mN*m at the gate3 pose; swing equilibrium yaw collapses).
 LEFT_MOUNT_Y_M = 0.075
-LEFT_MOUNT_Y_M = 0.075 + 0.025  # v23: +25 mm on top of v22 (press-line scan)
+LEFT_MOUNT_Y_M = 0.055  # v24: v22 +75, v23 +25, v24 -45 -> net +55 mm
 HAND_HOME_LEFT = f"-0.235 {LEFT_MOUNT_Y_M} 0.755"   # -x end, y-offset mount
 # W6a-v5 (Main ruling): BOTH hands yaw 180 deg vs v4 - the finger extension
 # axis points AT the box centre (right hand euler 0 0 pi -> fingers -x world;

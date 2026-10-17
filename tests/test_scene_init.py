@@ -288,7 +288,7 @@ def test_placement_report_names_the_pose_it_chose(env_cls):
     assert set(report) == {"requested_xy_m", "placed_xy_m", "resting_z_m",
                            "edge_margin_m", "clearance_m", "moved"}
     # v23: the request corner moved to the -x/-y quadrant (far from both mounts)
-    assert report["requested_xy_m"] == [-0.30, -0.28]
+    assert report["requested_xy_m"] == [0.05, 0.30]
     assert report["placed_xy_m"] != report["requested_xy_m"]
     assert report["edge_margin_m"] > 0.0
     env.close()

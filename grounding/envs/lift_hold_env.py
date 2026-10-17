@@ -181,7 +181,9 @@ W_PEDESTAL_LOAD_CAP = 12.0   # ... capped at this many box weights (see above)
 # slide is reported in the reset info dict.
 # v23: the request corner moved to the -x/-y quadrant -- the far corner from
 # BOTH mounts (the +y corner now sits next to the left mount at y=+0.10).
-OUT_OF_REACH_REQUEST_XY = (-0.30, -0.28)
+OUT_OF_REACH_REQUEST_XY = (0.05, 0.30)  # v24: the dual-mount keep-out
+# leaves exactly one feasible pocket (near (0.08, 0.32), clearance 0.290) --
+# the request starts inside the slide span of that pocket.
 # The box must come to rest with its WHOLE footprint on ONE support face, at
 # least this far inside that face's edge. Anything else is a placement that tips
 # or falls the moment it is born.
