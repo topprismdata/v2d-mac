@@ -2113,6 +2113,26 @@ def cmd_report(args: argparse.Namespace) -> None:
                                "stays face-normal under curl - a follower "
                                "joint or slide-mount (W6a mechanical item)",
         }),
+        "v20_first_pass": (None if not getattr(args, "v20", False) else {
+            "grid": "24+8 combos bilateral-first press (dz -8..-36 mm swept)",
+            "finding": "the settle itself births the box 13 mm HIGH "
+                       "(obj z 0.753 vs the 0.740 resting plane): the soft "
+                       "follower pads (stiffness 0.02 N*m/rad) sag under "
+                       "gravity during the initial settle and wedge under "
+                       "the box corners - every later metric reads against "
+                       "a wedged reference (peak -12.9 mm = the box "
+                       "settling DOWN to the true table), dz-independent "
+                       "(-8..-36 identical to 0.01 mm = the sink is "
+                       "settled-in before the press)",
+            "diagnosis": "v20 settle-protocol item (W6a): the pad follower "
+                         "rest pose must be clear of the box footprint "
+                         "during settle (pads splayed/raised until the "
+                         "press approaches), or the settle needs the pads "
+                         "excluded from the first 400 steps",
+            "positive": "press drift 2.0-2.1 mm (the bilateral press holds "
+                        "the box centered even wedged); adapter 45/51 dofs "
+                        "mapped and box settles/steps on v19->v20 correctly",
+        }),
         "round_l2a_force_obs_ppo": (None if not getattr(args, "l2a", False) else {
             "design": "obs 107->109 (per-side pad normals, N_OBS derived, "
                       "test pin -> constant); episodes start at the r8 "
@@ -2483,6 +2503,7 @@ def main() -> None:
     p.add_argument("--l2d", action="store_true")
     p.add_argument("--v19", action="store_true")
     p.add_argument("--retune", action="store_true")
+    p.add_argument("--v20", action="store_true")
     p.add_argument("--l2e", action="store_true")
     p.add_argument("--vise-guard", action="store_true")
     p.add_argument("--reward", default="band")
@@ -2502,6 +2523,7 @@ def main() -> None:
     p.add_argument("--round7c", action="store_true")
     p.add_argument("--l2a", action="store_true")
     p.add_argument("--l2b", action="store_true")
+    p.add_argument("--v20", action="store_true")
     p.add_argument("--l2d", action="store_true")
     p.add_argument("--v19", action="store_true")
     p.add_argument("--l2e", action="store_true")

@@ -19,9 +19,9 @@
  ],
  "scene": {
   "xml": "/Users/guohongbin/v2d-mac/grounding/assets/allegro_floating.xml",
-  "xml_sha256": "e7b5de06c9081e3054c08199707eb98263ce93b8152cf6632b17a9594690d0b9",
+  "xml_sha256": "4f9a8576a4e7b3826303c09981f88707616330496611e2350f8f6eeac4935a53",
   "seed_file": "/Users/guohongbin/v2d-mac/runs/w6/gate3_qpos.json",
-  "seed_sha256": "376c5c3a3752ab71bca8be0877f45f44c260046d5340c34686204d789dd5e1bb",
+  "seed_sha256": "3215abdcf1a2191afa3f8a0a6365edba7dce6cb938b3aa42d4f25ee595421d34",
   "actuator_table_untouched": true
  },
  "data_curation": {
@@ -919,9 +919,9 @@
    },
    "red_light_penetration": {
     "formula": "active_cap_m = max(static_tol_m, static_tol_m * max(1.0, N_active_window_n / 1.4715)); static_tol_m = build_allegro_floating.penetration_tolerance(MJCF) (R5 derived)",
-    "static_tol_mm": 0.11636970507871945,
+    "static_tol_mm": 0.116369705146213,
     "active_load_n": 49.95832816120139,
-    "active_cap_mm": 3.9508229115493654,
+    "active_cap_mm": 3.9508229138408124,
     "measured_max_penetration_mm": 2.777960603837782,
     "within_frozen_cap": true
    },
@@ -940,16 +940,16 @@
    "static_hold_recheck": {
     "method": "conservative = |k(q-ref)| + |tau_gravity| (hold-gate wording); true_balance = |-(qfrc_bias + qfrc_spring)|; both vs 0.8 x forcerange",
     "worst_joint_conservative": "thj1",
-    "worst_duty_conservative": 1.0860245524881433,
+    "worst_duty_conservative": 1.0860245524881436,
     "worst_joint_true_balance": "thj0_left",
     "worst_duty_true_balance": 0.8729523243404966,
     "over_cap_conservative": [
      "thj1"
     ],
     "recorded_rfj0_0271_vs_0240_recheck": {
-     "rfj0_conservative_nm": 0.00464408659969113,
+     "rfj0_conservative_nm": 0.004644086599691133,
      "rfj0_cap_08_nm": 0.012,
-     "rfj0_duty": 0.38700721664092746,
+     "rfj0_duty": 0.38700721664092774,
      "closest_match_on_tree": "rfj2 conservative demand 0.0270 Nm vs rfj0's 0.8cap 0.0120 Nm - the recorded pair reads as rfj2's demand cross-referenced against rfj0's cap",
      "disposition": "recheck CLEARS: no finger joint exceeds 0.8cap on the current tree under either accounting; the recorded deviation does not reproduce as stated"
     },
@@ -957,122 +957,122 @@
      {
       "joint": "ffj0",
       "spring_demand_nm": 0.004267718368196648,
-      "gravity_nm": 0.002717073712940804,
-      "conservative_demand_nm": 0.006984792081137452,
-      "true_balance_nm": 0.006984792081137452,
+      "gravity_nm": 0.003176545104445828,
+      "conservative_demand_nm": 0.007444263472642476,
+      "true_balance_nm": 0.007444263472642476,
       "cap_08_nm": 0.012008000000000001,
-      "duty_conservative": 0.5816782212806005,
-      "duty_true_balance": 0.5816782212806005
+      "duty_conservative": 0.6199419947237238,
+      "duty_true_balance": 0.6199419947237238
      },
      {
       "joint": "ffj1",
       "spring_demand_nm": 0.019004431257944886,
-      "gravity_nm": 0.03384188833417922,
-      "conservative_demand_nm": 0.0528463195921241,
-      "true_balance_nm": 0.0528463195921241,
+      "gravity_nm": 0.03901186124159799,
+      "conservative_demand_nm": 0.058016292499542876,
+      "true_balance_nm": 0.058016292499542876,
       "cap_08_nm": 0.143352,
-      "duty_conservative": 0.36864724309478836,
-      "duty_true_balance": 0.36864724309478836
+      "duty_conservative": 0.40471212469685025,
+      "duty_true_balance": 0.40471212469685025
      },
      {
       "joint": "ffj2",
       "spring_demand_nm": 0.02372228278354091,
-      "gravity_nm": 0.011554991169947008,
-      "conservative_demand_nm": 0.03527727395348792,
-      "true_balance_nm": 0.03527727395348792,
+      "gravity_nm": 0.014326384398497129,
+      "conservative_demand_nm": 0.03804866718203804,
+      "true_balance_nm": 0.03804866718203804,
       "cap_08_nm": 0.127416,
-      "duty_conservative": 0.276866908029509,
-      "duty_true_balance": 0.276866908029509
+      "duty_conservative": 0.2986176554124917,
+      "duty_true_balance": 0.2986176554124917
      },
      {
       "joint": "ffj3",
       "spring_demand_nm": 0.005102144188433396,
-      "gravity_nm": 0.002209122869624023,
-      "conservative_demand_nm": 0.007311267058057419,
-      "true_balance_nm": 0.002893021318809373,
+      "gravity_nm": 0.0031267490124342427,
+      "conservative_demand_nm": 0.00822889320086764,
+      "true_balance_nm": 0.001975395175999153,
       "cap_08_nm": 0.033752,
-      "duty_conservative": 0.21661729847290292,
-      "duty_true_balance": 0.08571407083459864
+      "duty_conservative": 0.24380461012288576,
+      "duty_true_balance": 0.05852675918461583
      },
      {
       "joint": "mfj0",
       "spring_demand_nm": 0.00023803521707240442,
-      "gravity_nm": -0.003866661437233601,
-      "conservative_demand_nm": 0.004104696654306005,
-      "true_balance_nm": 0.004104696654306005,
+      "gravity_nm": -0.004592238046200415,
+      "conservative_demand_nm": 0.00483027326327282,
+      "true_balance_nm": 0.00483027326327282,
       "cap_08_nm": 0.012008000000000001,
-      "duty_conservative": 0.34183016774700237,
-      "duty_true_balance": 0.34183016774700237
+      "duty_conservative": 0.4022546022045985,
+      "duty_true_balance": 0.4022546022045985
      },
      {
       "joint": "mfj1",
       "spring_demand_nm": 0.01097486988216159,
-      "gravity_nm": 0.03197348209428946,
-      "conservative_demand_nm": 0.042948351976451055,
-      "true_balance_nm": 0.042948351976451055,
+      "gravity_nm": 0.03684399300715048,
+      "conservative_demand_nm": 0.04781886288931207,
+      "true_balance_nm": 0.04781886288931207,
       "cap_08_nm": 0.14128000000000002,
-      "duty_conservative": 0.3039945638197271,
-      "duty_true_balance": 0.3039945638197271
+      "duty_conservative": 0.3384687350602496,
+      "duty_true_balance": 0.3384687350602496
      },
      {
       "joint": "mfj2",
       "spring_demand_nm": 0.001492657678984486,
-      "gravity_nm": 0.011167064053533859,
-      "conservative_demand_nm": 0.012659721732518345,
-      "true_balance_nm": 0.012659721732518345,
+      "gravity_nm": 0.0137983287800243,
+      "conservative_demand_nm": 0.015290986459008787,
+      "true_balance_nm": 0.015290986459008787,
       "cap_08_nm": 0.12784800000000002,
-      "duty_conservative": 0.09902166426161021,
-      "duty_true_balance": 0.09902166426161021
+      "duty_conservative": 0.11960286010738365,
+      "duty_true_balance": 0.11960286010738365
      },
      {
       "joint": "mfj3",
       "spring_demand_nm": 0.0021345727127258813,
-      "gravity_nm": 0.0019515157017117035,
-      "conservative_demand_nm": 0.004086088414437585,
-      "true_balance_nm": 0.004086088414437585,
+      "gravity_nm": 0.0027561994906104108,
+      "conservative_demand_nm": 0.004890772203336292,
+      "true_balance_nm": 0.004890772203336292,
       "cap_08_nm": 0.03388,
-      "duty_conservative": 0.1206047347826914,
-      "duty_true_balance": 0.1206047347826914
+      "duty_conservative": 0.14435573209375124,
+      "duty_true_balance": 0.14435573209375124
      },
      {
       "joint": "rfj0",
       "spring_demand_nm": 0.0017355483934856789,
-      "gravity_nm": -0.0029085382062054507,
-      "conservative_demand_nm": 0.00464408659969113,
-      "true_balance_nm": 0.0011729898127197718,
+      "gravity_nm": -0.002908538206205454,
+      "conservative_demand_nm": 0.004644086599691133,
+      "true_balance_nm": 0.0011729898127197753,
       "cap_08_nm": 0.012,
-      "duty_conservative": 0.38700721664092746,
-      "duty_true_balance": 0.09774915105998098
+      "duty_conservative": 0.38700721664092774,
+      "duty_true_balance": 0.09774915105998128
      },
      {
       "joint": "rfj1",
       "spring_demand_nm": 0.021099881875620695,
-      "gravity_nm": 0.03436866247691086,
-      "conservative_demand_nm": 0.055468544352531554,
-      "true_balance_nm": 0.055468544352531554,
+      "gravity_nm": 0.03436866247691085,
+      "conservative_demand_nm": 0.05546854435253155,
+      "true_balance_nm": 0.05546854435253155,
       "cap_08_nm": 0.084688,
-      "duty_conservative": 0.654975254493335,
-      "duty_true_balance": 0.654975254493335
+      "duty_conservative": 0.6549752544933349,
+      "duty_true_balance": 0.6549752544933349
      },
      {
       "joint": "rfj2",
       "spring_demand_nm": 0.016463533699098774,
-      "gravity_nm": 0.010519752208059962,
-      "conservative_demand_nm": 0.026983285907158736,
-      "true_balance_nm": 0.026983285907158736,
+      "gravity_nm": 0.010519752208059955,
+      "conservative_demand_nm": 0.02698328590715873,
+      "true_balance_nm": 0.02698328590715873,
       "cap_08_nm": 0.07505600000000001,
-      "duty_conservative": 0.35950871225696457,
-      "duty_true_balance": 0.35950871225696457
+      "duty_conservative": 0.35950871225696446,
+      "duty_true_balance": 0.35950871225696446
      },
      {
       "joint": "rfj3",
       "spring_demand_nm": 0.01017398580061725,
-      "gravity_nm": 0.0015827156087932243,
-      "conservative_demand_nm": 0.011756701409410474,
-      "true_balance_nm": 0.011756701409410474,
+      "gravity_nm": 0.001582715608793226,
+      "conservative_demand_nm": 0.011756701409410476,
+      "true_balance_nm": 0.011756701409410476,
       "cap_08_nm": 0.033752,
-      "duty_conservative": 0.3483260668822729,
-      "duty_true_balance": 0.3483260668822729
+      "duty_conservative": 0.34832606688227297,
+      "duty_true_balance": 0.34832606688227297
      },
      {
       "joint": "thj0",
@@ -1087,122 +1087,122 @@
      {
       "joint": "thj1",
       "spring_demand_nm": 0.003690447642992257,
-      "gravity_nm": 0.011348820359863551,
-      "conservative_demand_nm": 0.015039268002855807,
-      "true_balance_nm": 0.007658372716871294,
+      "gravity_nm": 0.011348820359863555,
+      "conservative_demand_nm": 0.01503926800285581,
+      "true_balance_nm": 0.007658372716871298,
       "cap_08_nm": 0.013848,
-      "duty_conservative": 1.0860245524881433,
-      "duty_true_balance": 0.5530309587573148
+      "duty_conservative": 1.0860245524881436,
+      "duty_true_balance": 0.553030958757315
      },
      {
       "joint": "thj2",
       "spring_demand_nm": 0.0038967791074979953,
-      "gravity_nm": -0.006038863730219335,
+      "gravity_nm": -0.006038863730219336,
       "conservative_demand_nm": 0.009935642837717331,
-      "true_balance_nm": 0.0021420846227213396,
+      "true_balance_nm": 0.0021420846227213405,
       "cap_08_nm": 0.03428,
       "duty_conservative": 0.28983788908160246,
-      "duty_true_balance": 0.06248788280984072
+      "duty_true_balance": 0.06248788280984074
      },
      {
       "joint": "thj3",
       "spring_demand_nm": 0.0017376539095575203,
-      "gravity_nm": -0.0013914412253411548,
-      "conservative_demand_nm": 0.003129095134898675,
-      "true_balance_nm": 0.00034621268421636546,
+      "gravity_nm": -0.0013914412253411552,
+      "conservative_demand_nm": 0.0031290951348986757,
+      "true_balance_nm": 0.00034621268421636503,
       "cap_08_nm": 0.013064000000000001,
-      "duty_conservative": 0.23952044817044355,
-      "duty_true_balance": 0.02650127711392877
+      "duty_conservative": 0.23952044817044363,
+      "duty_true_balance": 0.026501277113928735
      },
      {
       "joint": "ffj0_left",
       "spring_demand_nm": 0.0042717841528393625,
-      "gravity_nm": 0.0028247253678528143,
-      "conservative_demand_nm": 0.007096509520692177,
-      "true_balance_nm": 0.007096509520692177,
+      "gravity_nm": 0.0033037585644008598,
+      "conservative_demand_nm": 0.007575542717240222,
+      "true_balance_nm": 0.007575542717240222,
       "cap_08_nm": 0.012008000000000001,
-      "duty_conservative": 0.5909818055206676,
-      "duty_true_balance": 0.5909818055206676
+      "duty_conservative": 0.6308746433411244,
+      "duty_true_balance": 0.6308746433411244
      },
      {
       "joint": "ffj1_left",
       "spring_demand_nm": 0.019721224444701528,
-      "gravity_nm": 0.033923884823764745,
-      "conservative_demand_nm": 0.05364510926846627,
-      "true_balance_nm": 0.05364510926846627,
+      "gravity_nm": 0.0391004723113817,
+      "conservative_demand_nm": 0.05882169675608323,
+      "true_balance_nm": 0.05882169675608323,
       "cap_08_nm": 0.143352,
-      "duty_conservative": 0.3742194686398953,
-      "duty_true_balance": 0.3742194686398953
+      "duty_conservative": 0.410330492466678,
+      "duty_true_balance": 0.410330492466678
      },
      {
       "joint": "ffj2_left",
       "spring_demand_nm": 0.02379640652483566,
-      "gravity_nm": 0.01154765182368176,
-      "conservative_demand_nm": 0.03534405834851742,
-      "true_balance_nm": 0.03534405834851742,
+      "gravity_nm": 0.014316045043575046,
+      "conservative_demand_nm": 0.038112451568410706,
+      "true_balance_nm": 0.038112451568410706,
       "cap_08_nm": 0.127416,
-      "duty_conservative": 0.2773910525249374,
-      "duty_true_balance": 0.2773910525249374
+      "duty_conservative": 0.2991182549162641,
+      "duty_true_balance": 0.2991182549162641
      },
      {
       "joint": "ffj3_left",
       "spring_demand_nm": 0.005204056454169818,
-      "gravity_nm": 0.002203493786201516,
-      "conservative_demand_nm": 0.0074075502403713345,
-      "true_balance_nm": 0.0030005626679683022,
+      "gravity_nm": 0.0031185374554718974,
+      "conservative_demand_nm": 0.008322593909641716,
+      "true_balance_nm": 0.002085518998697921,
       "cap_08_nm": 0.033752,
-      "duty_conservative": 0.21946996445755318,
-      "duty_true_balance": 0.08890029236692056
+      "duty_conservative": 0.24658076290713785,
+      "duty_true_balance": 0.061789493917335896
      },
      {
       "joint": "mfj0_left",
       "spring_demand_nm": 0.00026598698599696605,
-      "gravity_nm": -0.004028762911729111,
-      "conservative_demand_nm": 0.004294749897726076,
-      "true_balance_nm": 0.004294749897726076,
+      "gravity_nm": -0.004777708343180178,
+      "conservative_demand_nm": 0.005043695329177144,
+      "true_balance_nm": 0.005043695329177144,
       "cap_08_nm": 0.012008000000000001,
-      "duty_conservative": 0.35765738655280443,
-      "duty_true_balance": 0.35765738655280443
+      "duty_conservative": 0.42002792548110784,
+      "duty_true_balance": 0.42002792548110784
      },
      {
       "joint": "mfj1_left",
       "spring_demand_nm": 0.009519146507899064,
-      "gravity_nm": 0.032324694065717766,
-      "conservative_demand_nm": 0.04184384057361683,
-      "true_balance_nm": 0.04184384057361683,
+      "gravity_nm": 0.03720963634572341,
+      "conservative_demand_nm": 0.046728782853622475,
+      "true_balance_nm": 0.046728782853622475,
       "cap_08_nm": 0.14128000000000002,
-      "duty_conservative": 0.29617667450181784,
-      "duty_true_balance": 0.29617667450181784
+      "duty_conservative": 0.3307529930182791,
+      "duty_true_balance": 0.3307529930182791
      },
      {
       "joint": "mfj2_left",
       "spring_demand_nm": 0.0010603506102698575,
-      "gravity_nm": 0.011056489984662785,
-      "conservative_demand_nm": 0.012116840594932642,
-      "true_balance_nm": 0.012116840594932642,
+      "gravity_nm": 0.01365248730833863,
+      "conservative_demand_nm": 0.014712837918608487,
+      "true_balance_nm": 0.014712837918608487,
       "cap_08_nm": 0.12784800000000002,
-      "duty_conservative": 0.09477536289134472,
-      "duty_true_balance": 0.09477536289134472
+      "duty_conservative": 0.11508070457581257,
+      "duty_true_balance": 0.11508070457581257
      },
      {
       "joint": "mfj3_left",
       "spring_demand_nm": 0.0018729006004414084,
-      "gravity_nm": 0.001895014114046835,
-      "conservative_demand_nm": 0.0037679147144882436,
-      "true_balance_nm": 0.0037679147144882436,
+      "gravity_nm": 0.0026754585624400064,
+      "conservative_demand_nm": 0.004548359162881415,
+      "true_balance_nm": 0.004548359162881415,
       "cap_08_nm": 0.03388,
-      "duty_conservative": 0.11121353938867307,
-      "duty_true_balance": 0.11121353938867307
+      "duty_conservative": 0.13424908981350103,
+      "duty_true_balance": 0.13424908981350103
      },
      {
       "joint": "rfj0_left",
       "spring_demand_nm": 0.0015284866434342348,
-      "gravity_nm": -0.00309154290820712,
-      "conservative_demand_nm": 0.0046200295516413544,
-      "true_balance_nm": 0.001563056264772885,
+      "gravity_nm": -0.0030915429082071164,
+      "conservative_demand_nm": 0.004620029551641351,
+      "true_balance_nm": 0.0015630562647728815,
       "cap_08_nm": 0.012,
-      "duty_conservative": 0.3850024626367795,
-      "duty_true_balance": 0.13025468873107374
+      "duty_conservative": 0.38500246263677923,
+      "duty_true_balance": 0.13025468873107346
      },
      {
       "joint": "rfj1_left",
@@ -1217,22 +1217,22 @@
      {
       "joint": "rfj2_left",
       "spring_demand_nm": 0.01567739366757934,
-      "gravity_nm": 0.01035070850462004,
-      "conservative_demand_nm": 0.02602810217219938,
-      "true_balance_nm": 0.02602810217219938,
+      "gravity_nm": 0.010350708504620033,
+      "conservative_demand_nm": 0.026028102172199374,
+      "true_balance_nm": 0.026028102172199374,
       "cap_08_nm": 0.07505600000000001,
-      "duty_conservative": 0.34678243141386933,
-      "duty_true_balance": 0.34678243141386933
+      "duty_conservative": 0.3467824314138692,
+      "duty_true_balance": 0.3467824314138692
      },
      {
       "joint": "rfj3_left",
       "spring_demand_nm": 0.010034418373388202,
-      "gravity_nm": 0.0015250253973017151,
-      "conservative_demand_nm": 0.011559443770689917,
-      "true_balance_nm": 0.011559443770689917,
+      "gravity_nm": 0.001525025397301722,
+      "conservative_demand_nm": 0.011559443770689924,
+      "true_balance_nm": 0.011559443770689924,
       "cap_08_nm": 0.033752,
-      "duty_conservative": 0.3424817424357051,
-      "duty_true_balance": 0.3424817424357051
+      "duty_conservative": 0.3424817424357053,
+      "duty_true_balance": 0.3424817424357053
      },
      {
       "joint": "thj0_left",
@@ -1247,32 +1247,32 @@
      {
       "joint": "thj1_left",
       "spring_demand_nm": 0.0012626681158658859,
-      "gravity_nm": 0.011257581936964925,
-      "conservative_demand_nm": 0.012520250052830811,
-      "true_balance_nm": 0.009994913821099039,
+      "gravity_nm": 0.011257581936964932,
+      "conservative_demand_nm": 0.012520250052830818,
+      "true_balance_nm": 0.009994913821099046,
       "cap_08_nm": 0.013848,
-      "duty_conservative": 0.904119732295697,
-      "duty_true_balance": 0.7217586525923627
+      "duty_conservative": 0.9041197322956975,
+      "duty_true_balance": 0.7217586525923633
      },
      {
       "joint": "thj2_left",
       "spring_demand_nm": 0.003960020980118007,
-      "gravity_nm": -0.006099582298409762,
-      "conservative_demand_nm": 0.010059603278527769,
-      "true_balance_nm": 0.0021395613182917557,
+      "gravity_nm": -0.006099582298409764,
+      "conservative_demand_nm": 0.01005960327852777,
+      "true_balance_nm": 0.0021395613182917574,
       "cap_08_nm": 0.03428,
-      "duty_conservative": 0.29345400462449733,
-      "duty_true_balance": 0.062414274162536636
+      "duty_conservative": 0.2934540046244974,
+      "duty_true_balance": 0.062414274162536684
      },
      {
       "joint": "thj3_left",
       "spring_demand_nm": 0.0016649057614217806,
-      "gravity_nm": -0.001402694693960909,
-      "conservative_demand_nm": 0.0030676004553826896,
-      "true_balance_nm": 0.00026221106746087157,
+      "gravity_nm": -0.0014026946939609108,
+      "conservative_demand_nm": 0.0030676004553826914,
+      "true_balance_nm": 0.00026221106746086983,
       "cap_08_nm": 0.013064000000000001,
-      "duty_conservative": 0.23481326204705216,
-      "duty_true_balance": 0.0200712697076601
+      "duty_conservative": 0.2348132620470523,
+      "duty_true_balance": 0.020071269707659968
      }
     ]
    }
@@ -1327,6 +1327,19 @@
    "(b) arm-servo stiffness audit (the v19 arm holds the hand root; if its servos yield under contact reaction the whole hand bounces off)",
    "(c) accept v14 as the training scene of record (the eight-round mechanism chain stands there) and v19 as the panel/visual target with its own schedule derivation pass"
   ]
+ },
+ "l2e_bilateral_first": {
+  "grid": "24 bilateral-first combos (sync/left-lead 1-2 frames x ff_r 0.30/0.45 x mf_r 0.20/0.35 x dz -8/-16 mm)",
+  "press_drift_assert": "PASSED - lateral drift 0.1-0.2 mm (assert <= 2 mm): the v19 'box shoved away' signature is eliminated by the bilateral-first press order",
+  "lift_result": "still zero (peak 0.01 mm) - the vertical drag through the flat pads does not transfer even with the box held centered; per the Main stop clause this opens lever (b): the arm-servo stiffness audit, requested from W6aScene (arm actuator kp/forcerange + hand-root yield measurement under contact reaction)"
+ },
+ "w6a_audit_response": null,
+ "r7e_flat_pad_force_mode": null,
+ "v20_first_pass": {
+  "grid": "24+8 combos bilateral-first press (dz -8..-36 mm swept)",
+  "finding": "the settle itself births the box 13 mm HIGH (obj z 0.753 vs the 0.740 resting plane): the soft follower pads (stiffness 0.02 N*m/rad) sag under gravity during the initial settle and wedge under the box corners - every later metric reads against a wedged reference (peak -12.9 mm = the box settling DOWN to the true table), dz-independent (-8..-36 identical to 0.01 mm = the sink is settled-in before the press)",
+  "diagnosis": "v20 settle-protocol item (W6a): the pad follower rest pose must be clear of the box footprint during settle (pads splayed/raised until the press approaches), or the settle needs the pads excluded from the first 400 steps",
+  "positive": "press drift 2.0-2.1 mm (the bilateral press holds the box centered even wedged); adapter 45/51 dofs mapped and box settles/steps on v19->v20 correctly"
  },
  "round_l2a_force_obs_ppo": {
   "design": "obs 107->109 (per-side pad normals, N_OBS derived, test pin -> constant); episodes start at the r8 trigger transient (+1.26 mm, N 1.59/2.36 N); reward = l2a (saturating centre-z 5 mm + sustain + log(N_r*N_l) both-side shaping); PPO 24 iters x 1536 steps, eval every 4 (3 episodes, pre-registered gate >=5 mm/20 frames/no slip/dual end-face contact)",
