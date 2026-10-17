@@ -41045,8 +41045,8 @@
   "smoothness_comparison": {
     "metric": "mean |second difference| of the realised wrist joints (6 slides+hinges) per control second, over the video grid; frozen before this run",
     "old_39frame_round3": {
-      "mean_abs_jerk_rad_s2": 7.66251921224227,
-      "max_abs_jump_rad_s": 2.3957745600000004,
+      "mean_abs_jerk_rad_s2": 11.075058749226805,
+      "max_abs_jump_rad_s": 3.20392983,
       "n_frames": 390
     },
     "new_fullfps_round4": {

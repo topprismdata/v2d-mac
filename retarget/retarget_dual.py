@@ -2253,6 +2253,21 @@ def main() -> int:
                             "depth source (perception scope)"),
         },
         {
+            "id": "F6_right_registered_residual",
+            "status": "OPEN (round-5)",
+            "finding": "with the measured-translation replacement live, the "
+                       "RIGHT executed pads sit 15-48 mm off the face "
+                       "rectangle (registered-frame wrist residual 50 mm) "
+                       "while the LEFT executes 2 pads sub-millimetre",
+            "evidence": ("three-curve decomposition: commanded-to-executed "
+                         "lateral tracking 7.2 mm (right) / 2.4 mm (left); "
+                         "the residual is in the right registered-frame "
+                         "command construction (base y corridor edge + "
+                         "closest-gap base placement)"),
+            "consequence": ("right executed >=2-pad stays open; the command "
+                            "terminal (gate1) is 2 pads in-rect both hands"),
+        },
+        {
             "id": "F4_left_finger_slump",
             "status": "OPEN",
             "finding": "at the held seed the LEFT palm is exactly on the "
