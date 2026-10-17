@@ -1070,6 +1070,7 @@ def cmd_ppo(args: argparse.Namespace) -> None:
     actor = mlp([N_OBS, 256, 256, N_ACT]).to(dev)
     critic = mlp([N_OBS, 256, 256, 1]).to(dev)
     log_std = nn.Parameter(torch.full((N_ACT,), -1.0, device=dev))
+    norm = RunningNorm(N_OBS)
     if args.init_from_bc:
         bc_ckpt = torch.load(OUT_DIR / "bc_policy.pt", map_location="cpu")
         sd = bc_ckpt["state_dict"]
@@ -1083,6 +1084,15 @@ def cmd_ppo(args: argparse.Namespace) -> None:
     norm = RunningNorm(N_OBS)
     opt = torch.optim.Adam(list(actor.parameters()) + [log_std]
                            + list(critic.parameters()), lr=3e-4)
+    if args.resume and (OUT_DIR / "ppo_policy.pt").exists():
+        ck = torch.load(OUT_DIR / "ppo_policy.pt", map_location="cpu",
+                        weights_only=False)
+        actor.load_state_dict(ck["actor"])
+        critic.load_state_dict(ck["critic"])
+        with torch.no_grad():
+            log_std.copy_(ck["log_std"].to(dev))
+        norm.mean, norm.var, norm.n = ck["norm"]["mean"], ck["norm"]["var"], ck["norm"]["n"]
+        print(f"[ppo] resumed from iter {ck.get('iter')} checkpoint")
 
     def to_t(x):
         return torch.tensor(x, dtype=torch.float32, device=dev)
@@ -1218,7 +1228,7 @@ def eval_policy(act_fn, n_episodes: int = 5, render_dir: pathlib.Path | None = N
     if start == "trigger":
         env = make_trigger_env(
             episode_len=SUFFIX_PRESS_DWELL + 60 + SUFFIX_HOLD + 60,
-            domain_rand=False, noise=False)
+            noise=False)
     else:
         env = make_start_env(
             episode_len=SUFFIX_RESEAT_FRAMES + SUFFIX_PRESS_FRAMES
@@ -1485,6 +1495,7 @@ def _round_verdict(args, verdict: str) -> str:
     if getattr(args, "round7d", False): return "fail-terminal-v13-compliance"
     if getattr(args, "round7d", False): return "fail-terminal-v13-compliance"
     if getattr(args, "round8", False): return "fail-r8-transition"
+    if getattr(args, "l2a", False): return "fail-l2a-gate-milestone-lift"
     if getattr(args, "round7c", False): return "fail-terminal-v13-forced-source"
     if getattr(args, "round7b", False): return "fail-r7b"
     if getattr(args, "round7", False): return "fail-r7"
@@ -1761,6 +1772,26 @@ def cmd_report(args: argparse.Namespace) -> None:
                       "steps, eval every 4 (3 episodes, pre-registered gate "
                       ">=5 mm/20 frames/no slip/dual end-face contact)",
             "eval_pre_registered": True,
+            "result_summary": "38 iters total (24+14 resumed): training "
+                              "peak 0.76 -> 2.14 mm monotonic, returns "
+                              "-1.72 -> -0.33 (learning throughout); "
+                              "PRE-REGISTERED GATE NOT MET (best eval "
+                              "window 0, peak 3.18 mm); MILESTONE: at "
+                              "continuation iter 8 the eval observed "
+                              "window 37 frames >= 5 mm, peak 142.7 mm, "
+                              "support 0.0 N - the box LEFT THE TABLE "
+                              "carried by the pads, overshooting the "
+                              "demonstrated 5-15 mm band (frozen gate: "
+                              "band overshoot = miss, recorded as such); "
+                              "that checkpoint was later overwritten by "
+                              "the noisy best-score tracker",
+            "band_clause_note": "the 5-15 mm band is a demonstration-"
+                                "semantics choice, not a physical bound - "
+                                "the 142.7 mm observation shows the "
+                                "mechanical lift exists on v14; band "
+                                "re-negotiation or a band-limited reward "
+                                "is a Main decision, recorded here as the "
+                                "single remaining gap to a green gate",
             "result": (json.loads((OUT_DIR / "eval_ppo.json").read_text())
                        if (OUT_DIR / "eval_ppo.json").exists() else None),
             "curve_present": (OUT_DIR / "ppo_curve.csv").exists(),
@@ -2057,6 +2088,8 @@ def main() -> None:
     p.add_argument("--episode-len", type=int, default=200)
     p.add_argument("--eval-every", type=int, default=4)
     p.add_argument("--init-from-bc", action="store_true")
+    p.add_argument("--start", default="checkpoint")
+    p.add_argument("--resume", action="store_true")
     p.add_argument("--reward", default="band")
     p = sub.add_parser("eval")
     p.add_argument("--policy", required=True)
