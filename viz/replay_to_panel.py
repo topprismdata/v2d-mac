@@ -248,8 +248,9 @@ def _w6b_gates() -> list[dict]:
          "verdict": "pass" if checks["gate3_approach_clean"] else "fail",
          "measured": (f"右压支撑 {len(g3r.get('support_contact_control_frames', []))} 帧 / "
                       f"左 {len(g3l.get('support_contact_control_frames', []))} 帧"
-                      "（失败=F5 接近高度预算，W6c 域处理）"),
-         "scope": "接近段手指不得触桌或支撑（现失败源于接近高度预算不足，非 retarget 接线）"},
+                      + ("" if checks["gate3_approach_clean"]
+                         else "（失败=F5 接近高度预算，W6c 域处理）")),
+         "scope": "接近段手指不得触桌或支撑（历史上的失败源于接近高度预算不足，非 retarget 接线）"},
         {"id": "w6b_gate4", "name": "门 4 关节限位",
          "verdict": "pass" if checks["gate4_joint_limits"] else "fail",
          "measured": f"右 {g4_txt(g4r)} / 左 {g4_txt(g4l)}",

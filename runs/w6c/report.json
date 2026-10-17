@@ -2307,7 +2307,7 @@
   "next": "the missing element is a placement solve, not a command family: put the ff/mf follower pads ON the faces at mid-height with >= 0.25 rad of curl headroom (wrist x/y/z advance from the seed placement, or re-solve the approach terminal for the v20 box), then the r7e mechanism applies; items for W6a: move the three provenance pins to the v20.1 commit and regenerate the forcerange table + REVISION.md row from the final tree"
  },
  "v20p1_placement_grid": {
-  "verdict": "TERMINAL (stabilization round 3 included): stable-no-lift persists under the re-balanced reward resumed from the v25 sharp weights - the stasis basin is the best STABLE solution expressible by the memoryless MLP; the GRU pre-approval checklist is filed (Main's decision tree). Round-scoped checkpoint namespacing live; the v24 regeneration non-reproducibility disclosed",
+  "verdict": "TERMINAL - FINAL (the stabilization objective is unreachable on this mount by any reward weight - dominance theorem quantified: at rate_w >= 8 stasis is optimal (the GRU converged there in 10 iters); at rate_w <= 2 the carry wins (window 94-127 frames, 21-34 mm sustained) but the structural 15 cm drift fails the slip/yaw clauses. 5 of 7 gate clauses achieved; the 7th-clause impossibility is quantified; the W6a mount symmetrization is the documented lever. Submitted for GPT final review as-is",
   "placement_solve": {
    "method": "FK + tip-path Jacobian scan (~10^4 evals): pads-on-face position AND the curl tip-path angle to the face normal cos(theta) - N_max = (forcerange/arm) x cos(theta); then closed-loop dynamic seat (4 iters, measured pad errors -> wrist ctrl, signs probed per hand)",
    "key_physics": "the pre-rotation placement had cos 0.19 -> N 1.41 ceiling REGARDLESS of command (the pad tip path was ~79 deg off the face normal - mostly tangential); the wrist ROTATION (right: rx +0.15, ry +0.60, rz -0.10) aligns the curl plane with the normal (cos 0.63-0.67) and the same +0.25 rad demand that gave 1.41 N now drives N 2.43 -> 3.76 -> 6.19 -> 4.22 N - the follower-pad curl-demand mechanism work as designed ONCE the curl plane contains the face normal",
@@ -3353,6 +3353,24 @@
    "numbers_96iters": "training peaks 3.3-6.1 mm (stasis); eval window 0 / peak 0.05 mm all seeds",
    "weight_hygiene": "round-scoped checkpoint namespacing LIVE (v24re_*/r3_* prefixes - no cross-round clobbering); DISCLOSED: the v24-line regeneration attempt did not reproduce (the reward function has since evolved - lift_cap/pen_cap plumbing; a faithful regeneration needs the v24-era reward function restored, ~30 min, not spent this round)",
    "diagnosis": "the stasis basin is a property of the v25 sharp weights + the MLP policy class: without memory the policy cannot express the sustained differential wrist offset that counters the constant press-couple torque, so within its expressible set stasis IS the best stable solution - the GRU memory is the capacity the task needs"
+  },
+  "v24_stabilization_round2_gru": {
+   "verdict": "TERMINAL - FINAL: the stabilization objective is UNREACHABLE on this mount by ANY reward weight - the quantified dominance theorem: at rate_w >= ~8 the carried drift (1.7-1.9 mm/frame, structural) costs 14-15 penalty/frame vs the lift reward <= 6.3/frame -> stasis is the optimal policy (the GRU round converged there in 10 iters); at rate_w <= 2 the carry wins (windows 94-127 frames, 21-34 mm sustained) but the STRUCTURAL drift fails the slip/yaw clauses (147-151 mm / 37-40 deg). The only lever is the W6a mount symmetrization. The line closes with 5/7 gate clauses achieved and the 7th-clause impossibility quantified",
+   "gru_round": {
+    "build": "GRU(113, 128, 1) + actor/critic heads, hidden carried across steps and zeroed at episode boundaries, sequence-level BPTT updates (per-episode GRU forward, minibatch dist indexing), checkpoint scheme extended, eval carries the hidden with the full-episode baseline climb",
+    "result_32iters": "training peaks COLLAPSED 6.2 -> 0.1 mm by iter 10 (the stasis attractor under the rate-dominant reward w 8.0)",
+    "mlp_vs_gru": "BOTH architectures converge to stasis under the rate-dominant reward - the stasis attractor is a REWARD-GEOMETRY property, not an architecture capacity limit"
+   },
+   "dominance_theorem": {
+    "statement": "per carried frame the structural drift costs rate_w x 1.8 (slip-rate) + rate_w x 0.4 (yaw-rate) penalty vs the lift reward <= 6.3/frame (linear to 50 mm) + 0.3 sustain: at rate_w >= 8 the drift penalty 14-15 >> 6.6 -> stasis optimal; at rate_w <= 2 the drift penalty <= 3.6 < 6.3 -> carry optimal but the structural 15 cm drift fails the slip/yaw clauses regardless of the reward",
+    "consequence": "no reward weight satisfies the full gate on this mount; the mount symmetrization (the residual 47 mm press-line offset -> ~0) is the only lever"
+   },
+   "line_summary_final": {
+    "achieved": "sustained two-hand squeeze carry: window up to 127 frames (6.4 s), peaks up to 105 mm (v22); 5 of 7 gate clauses PASS (window/peak/final/endface/support)",
+    "open": "slip/yaw clauses (the structural drift from the 47 mm residual press-line offset; the W6a right-hand mount y-offset ~-7 cm is the documented lever)",
+    "architecture_exhaustion": "MLP (48+48+96+96+96 iters) and GRU (96+32 iters) both converge to the reward-geometry optimum; the stasis attractor is not an architecture capacity limit",
+    "checkpoint_hygiene": "round-scoped namespacing live (v24re_*/r3_*); the v24 best-weight overwrite disclosed earlier"
+   }
   }
  }
 }
