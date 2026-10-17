@@ -1,17 +1,16 @@
-"""v17 arm-chain junction audit (per-frame, per-side, programmatic).
+"""v19 arm-chain junction audit (per-frame, per-side, programmatic).
 
-v17 puts the arm segments back on per-body housings welded to the hands
-(arm_r_forearm/elbow/upper -- rigid with the hand, so the hand junction
-cannot open) and turns the shoulder into two big SPHERE SHELLS on the gantry
-(gantry_junction_r R=0.22 m, gantry_junction_l R=0.19 m).  The audit
-criterion is therefore COVERAGE: the upper-arm tip must stay inside the
-sphere (|tip - center| <= R, margin >= 0) so the visual reads as the arm
-rotating inside the shoulder housing rather than floating next to it.
+v19: 3-DoF articulated arms (gantry -> yaw disc -> upper capsule -> elbow
+disc -> forearm capsule -> wrist sphere), angles written per rendered frame
+by the same closed-form IK the env runs (lift_hold_env._write_arm_ik_ctrl).
+Because the IK is analytic and written directly into qpos, the wrist sphere
+must sit exactly on the hand root at EVERY frame -- servo lag cannot appear
+in the render path.
 
-Junctions audited (per side):
-  J1 forearm capsule centre -> hand_root   welded (must be frame-invariant)
-  J2 upper-arm tip coverage margin: R - |tip - dome centre|   MOVING
-  J3 dome centre -> gantry_beam_x          static (mount offset)
+Audited (per side, all 390 frames):
+  J1 arm_wrist sphere centre -> hand_root   IK residual (verdict carrier)
+  J2 elbow disc centre -> forearm far end   rigid hinge (invariant)
+  J3 shoulder yaw disc -> upper far end     rigid hinge (invariant)
 
     runs/.venv-mj/bin/python viz/audit_arm_junctions.py
 """
@@ -29,12 +28,12 @@ sys.path.insert(0, str(REPO / "viz"))
 SAMPLES = [0, 60, 90, 190, 300, 389]
 
 
-def capsule_ends(g: int, m, d) -> tuple[np.ndarray, np.ndarray]:
-    """World endpoints of a capsule (size [radius, half-length], local z)."""
+def capsule_end(g: int, m, d, which: str) -> np.ndarray:
+    """World endpoint of a capsule (size [radius, half-length], local z)."""
     c = d.geom_xpos[g]
     axis = d.geom_xmat[g].reshape(3, 3)[:, 2]
     hl = float(m.geom_size[g][1])
-    return c - axis * hl, c + axis * hl
+    return c + axis * (hl if which == "pos" else -hl)
 
 
 def main() -> None:
@@ -51,62 +50,63 @@ def main() -> None:
 
     arms = {}
     for side, sfx in (("right", "_r"), ("left", "_l")):
-        dome = gid(f"gantry_junction{sfx}")
         arms[side] = {
-            "forearm": gid(f"arm{sfx}_forearm"),
-            "upper": gid(f"arm{sfx}_upper"),
-            "dome": dome,
-            "dome_R": float(m.geom_size[dome][0]),
-            "dome_c": np.array(m.geom_pos[dome], dtype=float),
+            "forearm": gid(f"arm_forearm{sfx}"),
+            "wrist": gid(f"arm_wrist{sfx}"),
+            "upper": gid(f"arm_upper{sfx}"),
+            "elbow_disc": gid(f"arm_elbow_disc{sfx}"),
+            "yaw_disc": gid(f"arm_yaw_disc{sfx}"),
             "hand": bid("hand_root" if side == "right" else "hand_root_left"),
         }
-    beam = gid("gantry_beam_x")
 
     j1 = {s: [] for s in arms}
     j2 = {s: [] for s in arms}
     j3 = {s: [] for s in arms}
     for fr in frames:
-        d.qpos[:] = np.asarray(fr["qpos"])
-        d.qpos[0:7] = np.asarray(fr["obj"])  # object-placement trap pinned in W6d
+        d.qpos[:] = 0.0
+        d.qpos[6:6 + 51] = np.asarray(fr["qpos"])
+        d.qpos[6:13] = np.asarray(fr["obj"])  # object-placement trap pinned in W6d
+        mujoco.mj_forward(m, d)
+        scene_fidelity.arm_ik(m, d)   # the renderer's exact IK path
         mujoco.mj_forward(m, d)
         for s, parts in arms.items():
             hp = d.xpos[parts["hand"]]
-            fc = d.geom_xpos[parts["forearm"]]
-            j1[s].append(float(np.linalg.norm(hp - fc)))
-            e1, e2 = capsule_ends(parts["upper"], m, d)
-            c = parts["dome_c"]
-            tip = min((e1, e2), key=lambda e: np.linalg.norm(e - c))
-            j2[s].append(parts["dome_R"] - float(np.linalg.norm(tip - c)))
-            j3[s].append(float(np.linalg.norm(c - d.geom_xpos[beam])))
+            wc = d.geom_xpos[parts["wrist"]]
+            j1[s].append(float(np.linalg.norm(wc - hp)))
+            # forearm far end (the wrist end) vs elbow disc centre
+            fe = capsule_end(parts["forearm"], m, d, "neg")
+            ec = d.geom_xpos[parts["elbow_disc"]]
+            j2[s].append(float(np.linalg.norm(fe - ec)))
+            # upper far end vs yaw disc centre
+            ue = capsule_end(parts["upper"], m, d, "neg")
+            yc = d.geom_xpos[parts["yaw_disc"]]
+            j3[s].append(float(np.linalg.norm(ue - yc)))
 
-    def stat(v, unit=1e3):
-        return f"min {min(v)*unit:7.1f} | max {max(v)*unit:8.1f}"
+    def stat(v):
+        return f"min {min(v)*1e3:8.4f} mm | max {max(v)*1e3:8.4f} mm"
 
-    lines = ["J1 forearm centre -> hand_root (welded -- must be invariant, mm)"]
+    lines = ["J1 arm_wrist centre -> hand_root (IK residual -- verdict carrier)"]
     for s in arms:
         lines.append(f"  {s:5s} {stat(j1[s])}")
-    lines.append("J2 upper-tip coverage margin = R - |tip-centre| (mm, >=0 covered)")
+    lines.append("J2 forearm wrist-end -> elbow disc centre (rigid hinge, mm)")
     for s in arms:
         lines.append(f"  {s:5s} {stat(j2[s])}")
-    lines.append("J3 dome centre -> x-beam (static mount offset, mm)")
+    lines.append("J3 upper elbow-end -> yaw disc centre (rigid hinge, mm)")
     for s in arms:
         lines.append(f"  {s:5s} {stat(j3[s])}")
 
-    lines += ["", "per-frame J2 coverage margin (mm, >=0 = covered):",
-              "  frame    " + "  ".join(f"{f:>7d}" for f in SAMPLES)]
+    lines += ["", "per-frame J1 IK residual (mm):", "  frame   " +
+              "  ".join(f"{f:>8d}" for f in SAMPLES)]
     for s in arms:
-        vals = "  ".join(f"{j2[s][f]*1e3:7.1f}" for f in SAMPLES)
-        lines.append(f"  {s:5s}   {vals}")
-    n_cover_r = sum(1 for v in j2["right"] if v >= 0)
-    n_cover_l = sum(1 for v in j2["left"] if v >= 0)
-    lines.append(f"  coverage: right {n_cover_r}/390 | left {n_cover_l}/390 frames")
+        vals = "  ".join(f"{j1[s][f]*1e3:8.5f}" for f in SAMPLES)
+        lines.append(f"  {s:5s}  {vals}")
 
     out = "\n".join(lines)
     print(out)
     out_dir = REPO / "runs/w6d"
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "v17_junction_audit.txt").write_text(out + "\n")
-    print("\nsaved -> runs/w6d/v17_junction_audit.txt")
+    (out_dir / "v19_junction_audit.txt").write_text(out + "\n")
+    print("\nsaved -> runs/w6d/v19_junction_audit.txt")
 
 
 if __name__ == "__main__":

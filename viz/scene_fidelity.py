@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import pathlib
 
+import mujoco
 import numpy as np
 from PIL import Image, ImageDraw
 
@@ -124,44 +125,22 @@ def build_fidelity_spec():
     material("mat_floral", tex_floral, repeat=(2, 2))  # denser print
     material("mat_peg", tex_peg, repeat=(2, 2))
 
-    # v17 shoulder domes: the shipped solid dark spheres read as "tube stuck
-    # in a ball"; restyle (in memory) as a machined two-piece housing --
-    # metallic paint + specular, an equator seam ring and a pole cap, so the
-    # arm segment plunging into the sphere reads as a shoulder joint rotating
-    # inside its housing
+    # v19: the v17 shoulder domes are gone (no junction spheres in this XML);
+    # the articulated arm segments get the machined-metal look so the chain
+    # reads as one mechanism (skip silently if W6a renames again)
     metal = spec.add_material(name="mat_metal")
     metal.rgba = [0.60, 0.62, 0.67, 1.0]
     metal.specular = 0.55
     metal.shininess = 0.6
     metal.reflectance = 0.04
-    # dome-specific: translucent polycarbonate -- the arm stays visible
-    # inside the sphere, which is what makes it read as a shoulder joint
-    # rotating in its housing instead of a solid ball occluding the scene.
-    # NB: material alpha is ignored by the renderer, so transparency goes
-    # through geom rgba directly (same path as the box slot film); no
-    # material on the domes, specular stays at the model default
-    for jn, R in (("gantry_junction_r", 0.220), ("gantry_junction_l", 0.190)):
-        jg = spec.geom(jn)
-        jg.rgba = [0.58, 0.63, 0.70, 0.35]
-        pos = jg.pos
-        seam = spec.worldbody.add_geom(
-            name=jn + "_seam", type=mujoco.mjtGeom.mjGEOM_CYLINDER,
-            size=[R + 0.002, 0.0035, 0.0], pos=[pos[0], pos[1], pos[2]],
-            contype=0, conaffinity=0, mass=0)
-        seam.rgba = [0.25, 0.27, 0.31, 0.75]
-        cap = spec.worldbody.add_geom(
-            name=jn + "_cap", type=mujoco.mjtGeom.mjGEOM_CYLINDER,
-            size=[R * 0.45, 0.006, 0.0],
-            pos=[pos[0], pos[1], pos[2] + R + 0.001],
-            contype=0, conaffinity=0, mass=0)
-        cap.rgba = [0.42, 0.44, 0.49, 1.0]
-    # the six arm segments share the machined-metal look so the chain reads
-    # as one mechanism entering the housing
     for an in ("arm_r_forearm", "arm_r_elbow", "arm_r_upper",
-               "arm_l_forearm", "arm_l_elbow", "arm_l_upper"):
-        ag = spec.geom(an)
-        ag.material = "mat_metal"
-        ag.rgba = [1.0, 1.0, 1.0, 1.0]
+               "arm_l_forearm", "arm_l_elbow", "arm_l_upper",
+               "arm_yaw_disc_r", "arm_elbow_disc_r", "arm_wrist_r",
+               "arm_yaw_disc_l", "arm_elbow_disc_l", "arm_wrist_l"):
+        ag = spec.geom(an) if an in [x.name for x in spec.geoms] else None
+        if ag is not None:
+            ag.material = "mat_metal"
+            ag.rgba = [1.0, 1.0, 1.0, 1.0]
 
     # --- re-skin existing geoms (visual only, physics identical) ----------
     spec.geom("table_slab").material = "mat_wood"
@@ -225,6 +204,33 @@ def build_fidelity_spec():
          [0.12, 0.09, 0.008], [-0.62, 0.42, 0.742], rgba=[0.85, 0.85, 0.88, 1])
 
     return spec
+
+
+L_LINK = 0.16  # v19 arm link length (matches arm_upper/forearm capsules)
+
+
+def arm_ik(m, d) -> None:
+    """W6a-v19 analytic 3-DoF arm IK (same closed form as
+    lift_hold_env._write_arm_ik_ctrl): solve yaw/pitch/elbow per side from
+    each shoulder anchor (±0.235, 0, 1.0) to the live hand-root position and
+    write qpos[0:6].  Requires a prior mj_forward so hand positions are
+    current; call mj_forward again afterwards to place the arm chain."""
+    for s, sfx in ((0, ""), (1, "_left")):
+        bid = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, f"hand_root{sfx}")
+        tx, ty, tz = d.xpos[bid]
+        sx = 0.235 if s == 0 else -0.235
+        dx, dy, dz = tx - sx, ty - 0.0, tz - 1.0
+        yaw = float(np.arctan2(dy, dx))
+        r = float(np.hypot(dx, dy))
+        dist = float(np.clip(np.linalg.norm([dx, dy, dz]), 1e-6, 2 * L_LINK - 1e-6))
+        elbow = float(np.pi - np.arccos(
+            np.clip((2 * L_LINK ** 2 - dist ** 2) / (2 * L_LINK ** 2), -1.0, 1.0)))
+        pitch = float(np.arctan2(dz, r) - np.arccos(
+            np.clip(dist ** 2 / (2 * L_LINK * dist), -1.0, 1.0)))
+        base = s * 3
+        d.qpos[base + 0] = yaw
+        d.qpos[base + 1] = pitch
+        d.qpos[base + 2] = elbow
 
 
 def build_fidelity_model():
