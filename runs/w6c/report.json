@@ -2307,7 +2307,7 @@
   "next": "the missing element is a placement solve, not a command family: put the ff/mf follower pads ON the faces at mid-height with >= 0.25 rad of curl headroom (wrist x/y/z advance from the seed placement, or re-solve the approach terminal for the v20 box), then the r7e mechanism applies; items for W6a: move the three provenance pins to the v20.1 commit and regenerate the forcerange table + REVISION.md row from the final tree"
  },
  "v20p1_placement_grid": {
-  "verdict": "TERMINAL FAIL - placement solve executed; the bilateral vise is structurally unable to lift on v20.1 with this hand set (right solved and validated, left geometrically capped)",
+  "verdict": "TERMINAL FAIL - final: right hand solved and validated (n_r_max 4.15-4.98 N), left hand has no in-band normal-aligned contact in ANY finger set (ff/mf, rf, th, mf+rf, rf+th scanned; rf's best is a corner-edge press 0.5 mm outside the endface classifier band), and single-sided lift\u5b9e\u6d4b fails (peak +0.05 mm, lateral escape 2.7 mm, yaw to 10.1 deg). The v20.1 lift gate is unreachable by command families on this hand set + box geometry - submitted for GPT final review as-is",
   "placement_solve": {
    "method": "FK + tip-path Jacobian scan (~10^4 evals): pads-on-face position AND the curl tip-path angle to the face normal cos(theta) - N_max = (forcerange/arm) x cos(theta); then closed-loop dynamic seat (4 iters, measured pad errors -> wrist ctrl, signs probed per hand)",
    "key_physics": "the pre-rotation placement had cos 0.19 -> N 1.41 ceiling REGARDLESS of command (the pad tip path was ~79 deg off the face normal - mostly tangential); the wrist ROTATION (right: rx +0.15, ry +0.60, rz -0.10) aligns the curl plane with the normal (cos 0.63-0.67) and the same +0.25 rad demand that gave 1.41 N now drives N 2.43 -> 3.76 -> 6.19 -> 4.22 N - the follower-pad curl-demand mechanism work as designed ONCE the curl plane contains the face normal",
@@ -3110,6 +3110,19 @@
    "slip/yaw/morphology/support": "no-window defaults; morphology none"
   },
   "suite_status": "unchanged from v20p1_grid_final: scene_w6 13/13, scene_init 8/8; pre-existing W6a-domain pin/table reds and smoke5 env reds stand (not this domain)",
-  "next": "two physically-open options for a future session: (a) the left hand presses via its rf/th finger pair (the rf distal is its natural contact finger - unexplored; needs the press/force machinery parameterized per finger set), or (b) a hardware change in W6a domain (left-hand mounting offset ~3-4 cm in y, or a wider box) - both out of the W6c command-family scope; per the stop clause this closes the v20.1 placement round with the mechanism fully characterized"
+  "next": "two physically-open options for a future session: (a) the left hand presses via its rf/th finger pair (the rf distal is its natural contact finger - unexplored; needs the press/force machinery parameterized per finger set), or (b) a hardware change in W6a domain (left-hand mounting offset ~3-4 cm in y, or a wider box) - both out of the W6c command-family scope; per the stop clause this closes the v20.1 placement round with the mechanism fully characterized",
+  "left_finger_set_scan": {
+   "mandate": "open item (a): the left contact finger set moves to rf/th, one round to a verdict - same criteria (in-band + cos >= 0.5 + >= 0.25 rad curl margin)",
+   "rf": "BEST of all left sets and STILL terminal: tip depth +2.7 mm (proud, closeable), z -13.4 mm, cos 0.50 (at threshold) - but y -124.5 mm, i.e. the press lands ON the end-face/side-face corner, 0.5 mm OUTSIDE the frozen endface classifier band (|y| <= hy + band/2 = 124 mm): the corner contact normal carries a lateral component (yaw tax) and derates the -x normal below the 2.16 N liftable threshold",
+   "th": "no: torque budget tha1/2 = 0.0173/0.0428 N*m -> <= 1.6 N potential at cos 1 (below 2.16 N alone), and geometrically 46 mm proud / z +116 mm at best",
+   "mf+rf": "no: both tips in the x-band (depth -2.9/-2.2 mm) with cos 0.55/0.56 but y -139.7/-128.5 mm - 20-30 mm outside the lateral face band",
+   "rf+th": "dominated by the rf and th singles (th adds nothing but its deficit)",
+   "conclusion": "no left finger set yields an in-band, normal-aligned, liftable contact: the left mount's kinematic reach meets the -x face only at its -y corner region, and corner presses are exactly what the frozen box-local endface band and yaw clause were built to exclude"
+  },
+  "single_sided_test": {
+   "mandate": "terminal follow-up: one-sided lift with the validated right rotated placement (press demand + wrist climb, left untouched)",
+   "result": "NO LIFT: peak box-bottom clearance +0.05 mm vs the 5 mm gate over 100 climb frames; the box slides -x 2.7 mm (lateral escape: pad normal up to 5.0 N vs table-friction hold ~0.74 N at mu_t 0.5) and yaw drifts to +10.1 deg",
+   "context": "the box INHERITS +6.2 deg yaw from the trigger checkpoint quaternion - the frozen yaw clause (<= 10 deg) starts half-spent before any lift attempt"
+  }
  }
 }
