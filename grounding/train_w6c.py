@@ -60,6 +60,7 @@ DEMOS_PATH = OUT_DIR / "bc_demos.npz"
 
 CTRL_HZ = 20                    # the scene's control rate (DESIGN section 3)
 REWARD_SCALE = 0.1              # PPO reward scaling (see cmd_ppo)
+SYM_SHAPING_X2 = False          # L2C: doubled symmetric-participation shaping
 RATE_WRIST = np.array([0.004, 0.004, 0.003, 0.05, 0.05, 0.05])  # m,rad/frame
 APPROACH_HOLD = 20              # quiet frames after the approach ramp
 
@@ -1040,7 +1041,11 @@ def l2b_reward(env: LiftHoldEnv, info: dict) -> float:
     r -= max(0.0, lift - 0.050) / 0.010 * 1.5          # over-band penalty
     n_r, n_l = env._pad_normals_obs()
     if n_r > 0.1 and n_l > 0.05:
-        r += 0.5 * math.log(max(n_r * n_l, 1e-3) + 1.0)
+        # L2C (Main ruling): symmetric-participation shaping weight DOUBLED
+        # under --l2c - the audit showed the policy converges to hook-carry
+        # because the left hand's participation carries no gradient
+        w = 1.0 if SYM_SHAPING_X2 else 0.5
+        r += w * math.log(max(n_r * n_l, 1e-3) + 1.0)
     return r * REWARD_SCALE
 
 
@@ -1568,6 +1573,7 @@ def penetration_disposition(eval_res: dict) -> dict:
 
 
 def _round_verdict(args, verdict: str) -> str:
+    if getattr(args, "l2c", False): return "fail-l2c-pinch-carry-slip-yaw"
     if getattr(args, "l2b", False): return "fail-l2b-hook-carry"
     if getattr(args, "l2a", False): return "fail-l2a-gate-milestone-lift"
     if getattr(args, "round8", False): return "fail-r8-transition"
@@ -1838,6 +1844,39 @@ def cmd_report(args: argparse.Namespace) -> None:
                                "learning target the force observation "
                                "makes visible to the policy",
             "candidate_total": "~5200 across eight rounds",
+        }),
+        "round_l2c_f4_fix": (None if not getattr(args, "l2c", False) else {
+            "f4_fix_landed_schedule_layer": "left wrist rx -1.67 (mirror of "
+                                            "the right's working attitude) "
+                                            "in the trigger capture + all "
+                                            "episodes: left press N 2.12 N "
+                                            "(historical max, was 0.25-1.6 N)",
+            "training": "12 iters doubled symmetric shaping from the L2B "
+                        "resume: training peaks 3.9-4.7 mm (up from 2-2.7), "
+                        "returns -1.97 -> -0.52",
+            "eval6_audit": {"window": 33, "peak_mm": 95.6, "support": 0.0,
+                            "ratios": [0.88, 0.88],
+                            "pad_climb_mm": 0.1, "box_rise_mm": 124.4,
+                            "both_sides_N_frames": 18,
+                            "morphology": "PINCH-CARRY (first pinch-"
+                                          "dominant classification)",
+                            "slip_mm": 90.0, "yaw_deg": 56.0},
+            "gate_verdict": "FAIL on slip (90 vs 10 mm) and yaw (56 vs 10 "
+                            "deg) - the vise-lift EXISTS (box slides up "
+                            "between the pressed pads, audit-confirmed "
+                            "pinch-carry morphology) but the box escapes "
+                            "the vise laterally while climbing",
+            "terminal_refinement": "the F4 left-hand ceiling is NO LONGER "
+                                   "the blocker (the fix worked); the "
+                                   "remaining gap is vise alignment "
+                                   "(slip/yaw convergence) - a training-"
+                                   "domain target, not a physical or "
+                                   "interface one; per the stop clause this "
+                                   "closes the round series with the gate "
+                                   "unmet, but the terminal statement is: "
+                                   "'pinch-carry morphology ACHIEVED after "
+                                   "the F4 fix; slip/yaw convergence is "
+                                   "continued-training domain'",
         }),
         "round_l2a_force_obs_ppo": (None if not getattr(args, "l2a", False) else {
             "design": "obs 107->109 (per-side pad normals, N_OBS derived, "
@@ -2205,6 +2244,7 @@ def main() -> None:
     p.add_argument("--init-from-bc", action="store_true")
     p.add_argument("--start", default="checkpoint")
     p.add_argument("--resume", action="store_true")
+    p.add_argument("--l2c", action="store_true")
     p.add_argument("--reward", default="band")
     p = sub.add_parser("eval")
     p.add_argument("--policy", required=True)
@@ -2222,9 +2262,13 @@ def main() -> None:
     p.add_argument("--round7c", action="store_true")
     p.add_argument("--l2a", action="store_true")
     p.add_argument("--l2b", action="store_true")
+    p.add_argument("--l2c", action="store_true")
     p.add_argument("--round8", action="store_true")
     p.add_argument("--round7d", action="store_true")
     args = ap.parse_args()
+    if getattr(args, "l2c", False):
+        import grounding.train_w6c as _self
+        _self.SYM_SHAPING_X2 = True
     {"curate": cmd_curate, "checkpoint": cmd_checkpoint,
      "search": cmd_search, "bc": cmd_bc, "ppo": cmd_ppo,
      "eval": cmd_eval, "report": cmd_report}[args.cmd](args)

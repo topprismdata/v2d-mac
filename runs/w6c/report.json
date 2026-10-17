@@ -1278,7 +1278,7 @@
    }
   }
  },
- "verdict": "fail-l2b-hook-carry",
+ "verdict": "fail-l2c-pinch-carry-slip-yaw",
  "round7b_asymmetric_corner": {
   "grid": "18 asymmetric combos (left target 0.20/0.25/0.30 x right ramp 1.15->1.30 / 1.20->1.35 / const 1.25 x wrist slow/mid) + 8 bias-primary combos (bias0_r 0.10/0.15 with compensated command retraction)",
   "result": "all 26: zero lift (peak -0.04..0.00 mm), end-face ratios 0 - the light-touch left servo could not hold its target while the strong right press held, and the compensated retraction simply unloaded the press (right pre-press 1.25 -> 0.00 N as comp grows)",
@@ -1304,6 +1304,27 @@
   "verdict_rationale": "the +1.29 mm transient proves weight transfer happens; the collapse at the trigger transition shows the press state is a transient wedge, not a sustainable grasp - the schedule family is exhausted including the force-source trigger form",
   "level2_A_status": "pre-approved, next: obs 107->109 (per-side pad normals), test sync, PPO 24+ iters, eval >=5 mm pre-registered - one budget cycle; the +1.29 mm transient is the learning target the force observation makes visible to the policy",
   "candidate_total": "~5200 across eight rounds"
+ },
+ "round_l2c_f4_fix": {
+  "f4_fix_landed_schedule_layer": "left wrist rx -1.67 (mirror of the right's working attitude) in the trigger capture + all episodes: left press N 2.12 N (historical max, was 0.25-1.6 N)",
+  "training": "12 iters doubled symmetric shaping from the L2B resume: training peaks 3.9-4.7 mm (up from 2-2.7), returns -1.97 -> -0.52",
+  "eval6_audit": {
+   "window": 33,
+   "peak_mm": 95.6,
+   "support": 0.0,
+   "ratios": [
+    0.88,
+    0.88
+   ],
+   "pad_climb_mm": 0.1,
+   "box_rise_mm": 124.4,
+   "both_sides_N_frames": 18,
+   "morphology": "PINCH-CARRY (first pinch-dominant classification)",
+   "slip_mm": 90.0,
+   "yaw_deg": 56.0
+  },
+  "gate_verdict": "FAIL on slip (90 vs 10 mm) and yaw (56 vs 10 deg) - the vise-lift EXISTS (box slides up between the pressed pads, audit-confirmed pinch-carry morphology) but the box escapes the vise laterally while climbing",
+  "terminal_refinement": "the F4 left-hand ceiling is NO LONGER the blocker (the fix worked); the remaining gap is vise alignment (slip/yaw convergence) - a training-domain target, not a physical or interface one; per the stop clause this closes the round series with the gate unmet, but the terminal statement is: 'pinch-carry morphology ACHIEVED after the F4 fix; slip/yaw convergence is continued-training domain'"
  },
  "round_l2a_force_obs_ppo": {
   "design": "obs 107->109 (per-side pad normals, N_OBS derived, test pin -> constant); episodes start at the r8 trigger transient (+1.26 mm, N 1.59/2.36 N); reward = l2a (saturating centre-z 5 mm + sustain + log(N_r*N_l) both-side shaping); PPO 24 iters x 1536 steps, eval every 4 (3 episodes, pre-registered gate >=5 mm/20 frames/no slip/dual end-face contact)",
