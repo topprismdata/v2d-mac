@@ -781,7 +781,11 @@ class LiftHoldEnv(gym.Env):
             # --- W6c checkpoint start ----------------------------------------
             q_start, ctrl_start = self._start_state
             d.qpos[:] = q_start
-            d.ctrl[:] = np.clip(ctrl_start, self.ctrl_low, self.ctrl_high)
+            # v19: the checkpoint ctrl is N_ACT-wide (44); the model is nu 50
+            # (arm chain) - clip against the FULL model ctrlrange; the tail is
+            # owned by _write_arm_ik_ctrl every step
+            d.ctrl[:] = np.clip(ctrl_start, m.actuator_ctrlrange[:, 0],
+                                m.actuator_ctrlrange[:, 1])
             if self._start_noise is not None:
                 f_std, xy_std, yaw_std = self._start_noise
                 for h in range(N_HANDS):

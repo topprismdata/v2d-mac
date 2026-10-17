@@ -19,9 +19,9 @@
  ],
  "scene": {
   "xml": "/Users/guohongbin/v2d-mac/grounding/assets/allegro_floating.xml",
-  "xml_sha256": "a52c4f866307e585709db7a39e0745c0bc9f54316c466fd7ab7315faa8393d5c",
+  "xml_sha256": "e7b5de06c9081e3054c08199707eb98263ce93b8152cf6632b17a9594690d0b9",
   "seed_file": "/Users/guohongbin/v2d-mac/runs/w6/gate3_qpos.json",
-  "seed_sha256": "406bb411d6009012610a8e29d9cf9318a1bf22af9fd1c3f73e96d619a296937a",
+  "seed_sha256": "376c5c3a3752ab71bca8be0877f45f44c260046d5340c34686204d789dd5e1bb",
   "actuator_table_untouched": true
  },
  "data_curation": {
@@ -1311,6 +1311,13 @@
   "l2d_first_pass": "window 41 peak 45.7 mm sup 0.0 ratios 0.95 - BUT slip 218 mm (worse than l2c's 92) and morphology hook/wedge-dominant: the guard cannot distinguish hook-press from face-press (the hook contact also satisfies N >= 0.8 N*)",
   "final_continuation": "hook-signature penalty 16 iters: peak 2.5-3.7 mm, window <=9 - the penalty SUPPRESSED the lift rather than converting it to pinch; no pass",
   "terminal_verdict": "per the l2c stop clause: pinch-carry morphology achieved after the F4 fix (r7d-diagnosed compliance aside), but no controller in eight rounds converted it into a gate-passing pinch-lift; hook-carry 62-142 mm lifts are real and repeatable; the gate's no-slip/no-yaw/pinch clauses require the pad-path control that the curl-compliance forbids (quantified: 12 deg/N at kp 0.235)"
+ },
+ "v19_chain_reeval": {
+  "integration": "CLEAN - N_OBS 109 / N_ACT 44 unchanged on v19 (nq 57/nu 50); arm IK writes ctrl[44:50] (disjoint from finger ctrl 6:28/44 and the qfrc_applied grasp biases on finger DOFs); zero arm-hand coupling confirmed (box settles 0.74 m; F4-fixed left press holds 2-3 N on v19)",
+  "checkpoint_adapter": "v14->v19 qpos SHIFT adapter implemented (v19 inserts the 6 arm joints at qpos head 0-5, object_free moved 0 -> 6): box settles correctly, hand joints verified",
+  "reeval_result": "metrics DRIFT vs v14 baseline (window 33 -> 0, peak 95.6 -> 0.1 mm): the press schedule does NOT transfer plug-and-play across the scene generation - on v19 the right force-source fingers drift OPEN under contact reaction (pad x 90 -> 122 mm, no position anchor in the pure force mode) while the anchored left holds 2-3 N; both q-follow and anchored inversion variants tested",
+  "diagnosis": "NOT a policy/collision/integration issue - the press schedule (reseat depth, curl depths, dwell) needs the same per-scene re-tuning every scene generation required (v9->v10->v12->v13->v14 each re-tuned); the arm-chain dynamics additionally change the hand's impedance boundary condition",
+  "next": "re-tune the press schedule on v19 (the r4c-style grid recipe, ~30 min) or accept v14 as the training scene of record with v19 as the visual/panel target"
  },
  "round_l2a_force_obs_ppo": {
   "design": "obs 107->109 (per-side pad normals, N_OBS derived, test pin -> constant); episodes start at the r8 trigger transient (+1.26 mm, N 1.59/2.36 N); reward = l2a (saturating centre-z 5 mm + sustain + log(N_r*N_l) both-side shaping); PPO 24 iters x 1536 steps, eval every 4 (3 episodes, pre-registered gate >=5 mm/20 frames/no slip/dual end-face contact)",

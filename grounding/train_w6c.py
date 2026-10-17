@@ -544,11 +544,31 @@ def score_window(metrics: dict) -> float:
     return s
 
 
+def _pad_checkpoint(q: np.ndarray, c: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """v19 adapter: v14-era checkpoints are 51 qpos / 44 ctrl; the v19 model
+    is 57/50 with the 6 arm joints INSERTED at qpos head (arm_yaw/pitch/
+    elbow_r+l at 0-5, object_free moved 0 -> 6) and the 6 arm actuators
+    APPENDED at ctrl tail (44-50, owned by _write_arm_ik_ctrl)."""
+    _m = mujoco.MjModel.from_xml_path(str(MJCF))
+    if _m.nq >= len(q) + 6 and _m.jnt_qposadr[
+            mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_JOINT,
+                              "object_free")] == 6:
+        q19 = np.zeros(_m.nq)
+        q19[0:6] = 0.0                      # arm chain (env-driven)
+        q19[6:13] = q[0:7]                  # object free joint
+        q19[13:_m.nq] = q[7:len(q)]         # hand joints
+    else:
+        q19 = np.zeros(_m.nq); q19[:min(len(q), _m.nq)] = q[:_m.nq]
+    c19 = np.zeros(_m.nu); c19[:min(len(c), _m.nu)] = c[:_m.nu]
+    return q19, c19
+
+
 def make_start_env(episode_len: int, domain_rand: bool,
                    noise: bool, grasp_bias_nm: float | None = None) -> LiftHoldEnv:
     """Env at the checkpoint start (W6c start_state protocol)."""
+    q19, c19 = _pad_checkpoint(*load_checkpoint())
     env = LiftHoldEnv(episode_len=episode_len, ctrl_hz=CTRL_HZ,
-                      domain_rand=domain_rand, start_state=load_checkpoint(),
+                      domain_rand=domain_rand, start_state=(q19, c19),
                       start_noise=(0.03, 0.005, 0.05) if noise else None,
                       grasp_bias_nm=(GRASP_BIAS_NM if grasp_bias_nm is None
                                      else grasp_bias_nm))
@@ -566,9 +586,9 @@ TRIGGER_CHECKPOINT_PATH = OUT_DIR / "trigger_checkpoint.npz"
 def make_trigger_env(episode_len: int, noise: bool) -> LiftHoldEnv:
     """L2A: episodes start at the r8 force-press transient (+1.26 mm, N 1.59/
     2.36 N) - the state the policy must learn to hold and raise."""
+    q19, c19 = _pad_checkpoint(*load_checkpoint(TRIGGER_CHECKPOINT_PATH))
     env = LiftHoldEnv(episode_len=episode_len, ctrl_hz=CTRL_HZ,
-                      domain_rand=False,
-                      start_state=load_checkpoint(TRIGGER_CHECKPOINT_PATH),
+                      domain_rand=False, start_state=(q19, c19),
                       start_noise=(0.02, 0.002, 0.02) if noise else None,
                       grasp_bias_nm=0.0)
     return env
@@ -1946,6 +1966,37 @@ def cmd_report(args: argparse.Namespace) -> None:
                                 "curl-compliance forbids (quantified: 12 "
                                 "deg/N at kp 0.235)",
         }),
+        "v19_chain_reeval": (None if not getattr(args, "v19", False) else {
+            "integration": "CLEAN - N_OBS 109 / N_ACT 44 unchanged on v19 "
+                           "(nq 57/nu 50); arm IK writes ctrl[44:50] "
+                           "(disjoint from finger ctrl 6:28/44 and the "
+                           "qfrc_applied grasp biases on finger DOFs); "
+                           "zero arm-hand coupling confirmed (box settles "
+                           "0.74 m; F4-fixed left press holds 2-3 N on v19)",
+            "checkpoint_adapter": "v14->v19 qpos SHIFT adapter implemented "
+                                  "(v19 inserts the 6 arm joints at qpos "
+                                  "head 0-5, object_free moved 0 -> 6): "
+                                  "box settles correctly, hand joints "
+                                  "verified",
+            "reeval_result": "metrics DRIFT vs v14 baseline (window 33 -> 0, "
+                             "peak 95.6 -> 0.1 mm): the press schedule does "
+                             "NOT transfer plug-and-play across the scene "
+                             "generation - on v19 the right force-source "
+                             "fingers drift OPEN under contact reaction "
+                             "(pad x 90 -> 122 mm, no position anchor in "
+                             "the pure force mode) while the anchored left "
+                             "holds 2-3 N; both q-follow and anchored "
+                             "inversion variants tested",
+            "diagnosis": "NOT a policy/collision/integration issue - the "
+                         "press schedule (reseat depth, curl depths, dwell) "
+                         "needs the same per-scene re-tuning every scene "
+                         "generation required (v9->v10->v12->v13->v14 each "
+                         "re-tuned); the arm-chain dynamics additionally "
+                         "change the hand's impedance boundary condition",
+            "next": "re-tune the press schedule on v19 (the r4c-style grid "
+                    "recipe, ~30 min) or accept v14 as the training scene "
+                    "of record with v19 as the visual/panel target",
+        }),
         "round_l2a_force_obs_ppo": (None if not getattr(args, "l2a", False) else {
             "design": "obs 107->109 (per-side pad normals, N_OBS derived, "
                       "test pin -> constant); episodes start at the r8 "
@@ -2314,6 +2365,7 @@ def main() -> None:
     p.add_argument("--resume", action="store_true")
     p.add_argument("--l2c", action="store_true")
     p.add_argument("--l2d", action="store_true")
+    p.add_argument("--v19", action="store_true")
     p.add_argument("--vise-guard", action="store_true")
     p.add_argument("--reward", default="band")
     p = sub.add_parser("eval")
@@ -2333,6 +2385,7 @@ def main() -> None:
     p.add_argument("--l2a", action="store_true")
     p.add_argument("--l2b", action="store_true")
     p.add_argument("--l2d", action="store_true")
+    p.add_argument("--v19", action="store_true")
     p.add_argument("--l2c", action="store_true")
     p.add_argument("--round8", action="store_true")
     p.add_argument("--round7d", action="store_true")
