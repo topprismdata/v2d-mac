@@ -1558,7 +1558,7 @@
   "seed": 0
  },
  "v20p1_grid_final": {
-  "verdict": "FAIL - no gate-passing candidate in the 24+8 v20.1 finale grid",
+  "verdict": "TERMINAL FAIL (superseded by v20p1_placement_grid): placement solve executed - right hand solved and validated (n_r_max 4.15-4.98 N >= the 3.6 N engage threshold; the curl-plane rotation was the missing physics), left hand geometrically capped (n_l_max 1.59-1.81 N < the 2.16 N liftable threshold; in-band and normal-aligned exclusive) - the bilateral vise structurally cannot lift on v20.1 with this hand set",
   "verdict_rationale": "32/32 combos: lift window 0 frames, peak box-bottom clearance -0.01..+0.03 mm (the box never leaves the table). The bilateral contact on the checkpoint chain is a ring-finger distal kiss at N 1.66 +/- 0.03 N per side (rf_distal at box-local x +0.059/-0.057), below the liftable threshold 2.16 N/side (0.736 N half weight / mu_eff 0.34). Every in-family command variant measured the same ceiling, so the FAIL is structural, not a tuning miss.",
   "wrist_phase_fix": {
    "bug": "wrist_phase wrote the right-hand seed wrist goals into the left block (goal[22:28] = target[0:6]); left wrist rx held 0 through all ramp phases then jumped 0.583 rad (seed left rx 0.5828) in one frame at the hold boundary - the abs_to_actions rate assert fired",
@@ -2305,5 +2305,811 @@
    ]
   },
   "next": "the missing element is a placement solve, not a command family: put the ff/mf follower pads ON the faces at mid-height with >= 0.25 rad of curl headroom (wrist x/y/z advance from the seed placement, or re-solve the approach terminal for the v20 box), then the r7e mechanism applies; items for W6a: move the three provenance pins to the v20.1 commit and regenerate the forcerange table + REVISION.md row from the final tree"
+ },
+ "v20p1_placement_grid": {
+  "verdict": "TERMINAL FAIL - placement solve executed; the bilateral vise is structurally unable to lift on v20.1 with this hand set (right solved and validated, left geometrically capped)",
+  "placement_solve": {
+   "method": "FK + tip-path Jacobian scan (~10^4 evals): pads-on-face position AND the curl tip-path angle to the face normal cos(theta) - N_max = (forcerange/arm) x cos(theta); then closed-loop dynamic seat (4 iters, measured pad errors -> wrist ctrl, signs probed per hand)",
+   "key_physics": "the pre-rotation placement had cos 0.19 -> N 1.41 ceiling REGARDLESS of command (the pad tip path was ~79 deg off the face normal - mostly tangential); the wrist ROTATION (right: rx +0.15, ry +0.60, rz -0.10) aligns the curl plane with the normal (cos 0.63-0.67) and the same +0.25 rad demand that gave 1.41 N now drives N 2.43 -> 3.76 -> 6.19 -> 4.22 N - the follower-pad curl-demand mechanism work as designed ONCE the curl plane contains the face normal",
+   "right_hand": "SOLVED + VALIDATED: pads seated x +0.0663 z -0.003 (mid-height); grid-realized n_r_max 4.15-4.98 N across all 32 combos (>= the 3.6 N engage threshold)",
+   "left_hand": "NO SOLUTION (terminal): in-face-band poses have cos <= 0.2 (N ceiling <= 0.85 N by Jacobian; wrist-servo path realizes <= 1.81 N) and every normal-aligned pose (cos 0.5-0.68) puts the pads 4-14 cm outside the lateral face band - in-band and normal-aligned are geometrically exclusive for the left mount's ff/mf curl chain; scanned wrist x/z (+-60 mm), rotations rx/ry/rz (deltas and absolutes incl. abandoning the F4 attitude), per-finger curls, spread/distal offsets",
+   "why_the_vise_still_cannot_lift": "lift needs mu_pad x (N_r + N_l) > W = 1.47 N with the lateral imbalance |N_r - N_l| inside the table-friction hold (~0.74 N at mu_t 0.5); the left cap 1.81 N forces either imbalance 2.3-3.2 N (box escapes the vise laterally - the L2C slip mode) or a balanced press at 1.7 N/side whose friction 1.16 N < W. The window is closed or at best knife-edge zero-margin"
+  },
+  "grid_meta": {
+   "xml_sha256": "bc75a8e4e542346d32091ddb1a47d42956f5749b23bf9332891cb2636aa321ca",
+   "seed": 0,
+   "gate": {
+    "lift_min_m": 0.005,
+    "lift_window_frames": 20,
+    "slip_max_m": 0.01,
+    "yaw_max_deg": 10.0,
+    "support_force_max_n": 0.2
+   },
+   "n_combos": 32,
+   "n_pass": 0
+  },
+  "grid_summary": {
+   "n_combos": 32,
+   "n_pass": 0,
+   "window": "0 frames in all 32 (bilateral engage needs N >= 3.6 N BOTH sides; left caps at 1.81)",
+   "n_r_max_range": [
+    4.15,
+    4.98
+   ],
+   "n_l_max_range": [
+    1.59,
+    1.81
+   ],
+   "peak_mm": "-0.06..-0.04 (the box never leaves the table)"
+  },
+  "combos": [
+   {
+    "leg": "press24",
+    "timing": 0,
+    "ff_r": 0.3,
+    "mf_r": 0.2,
+    "dz_mm": -24.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.06,
+    "final_mm": -0.063,
+    "n_r_max": 4.71,
+    "n_l_max": 1.63,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.129,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "press24",
+    "timing": 0,
+    "ff_r": 0.3,
+    "mf_r": 0.2,
+    "dz_mm": -36.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.06,
+    "final_mm": -0.063,
+    "n_r_max": 4.71,
+    "n_l_max": 1.63,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.129,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "press24",
+    "timing": 0,
+    "ff_r": 0.3,
+    "mf_r": 0.35,
+    "dz_mm": -24.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.056,
+    "final_mm": -0.063,
+    "n_r_max": 4.24,
+    "n_l_max": 1.67,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.397,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "press24",
+    "timing": 0,
+    "ff_r": 0.3,
+    "mf_r": 0.35,
+    "dz_mm": -36.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.056,
+    "final_mm": -0.063,
+    "n_r_max": 4.24,
+    "n_l_max": 1.67,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.397,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "press24",
+    "timing": 0,
+    "ff_r": 0.45,
+    "mf_r": 0.2,
+    "dz_mm": -24.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.06,
+    "final_mm": -0.064,
+    "n_r_max": 4.98,
+    "n_l_max": 1.61,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.104,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "press24",
+    "timing": 0,
+    "ff_r": 0.45,
+    "mf_r": 0.2,
+    "dz_mm": -36.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.06,
+    "final_mm": -0.064,
+    "n_r_max": 4.98,
+    "n_l_max": 1.61,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.104,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "press24",
+    "timing": 0,
+    "ff_r": 0.45,
+    "mf_r": 0.35,
+    "dz_mm": -24.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.047,
+    "final_mm": -0.064,
+    "n_r_max": 4.15,
+    "n_l_max": 1.59,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.39,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "press24",
+    "timing": 0,
+    "ff_r": 0.45,
+    "mf_r": 0.35,
+    "dz_mm": -36.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.047,
+    "final_mm": -0.064,
+    "n_r_max": 4.15,
+    "n_l_max": 1.59,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.39,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "press24",
+    "timing": 1,
+    "ff_r": 0.3,
+    "mf_r": 0.2,
+    "dz_mm": -24.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.06,
+    "final_mm": -0.063,
+    "n_r_max": 4.97,
+    "n_l_max": 1.7,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.121,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "press24",
+    "timing": 1,
+    "ff_r": 0.3,
+    "mf_r": 0.2,
+    "dz_mm": -36.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.06,
+    "final_mm": -0.063,
+    "n_r_max": 4.97,
+    "n_l_max": 1.7,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.121,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "press24",
+    "timing": 1,
+    "ff_r": 0.3,
+    "mf_r": 0.35,
+    "dz_mm": -24.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.042,
+    "final_mm": -0.063,
+    "n_r_max": 4.31,
+    "n_l_max": 1.73,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.362,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "press24",
+    "timing": 1,
+    "ff_r": 0.3,
+    "mf_r": 0.35,
+    "dz_mm": -36.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.042,
+    "final_mm": -0.063,
+    "n_r_max": 4.31,
+    "n_l_max": 1.73,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.362,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "press24",
+    "timing": 1,
+    "ff_r": 0.45,
+    "mf_r": 0.2,
+    "dz_mm": -24.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.06,
+    "final_mm": -0.064,
+    "n_r_max": 4.88,
+    "n_l_max": 1.61,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.096,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "press24",
+    "timing": 1,
+    "ff_r": 0.45,
+    "mf_r": 0.2,
+    "dz_mm": -36.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.06,
+    "final_mm": -0.064,
+    "n_r_max": 4.88,
+    "n_l_max": 1.61,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.096,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "press24",
+    "timing": 1,
+    "ff_r": 0.45,
+    "mf_r": 0.35,
+    "dz_mm": -24.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.048,
+    "final_mm": -0.064,
+    "n_r_max": 4.34,
+    "n_l_max": 1.65,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.386,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "press24",
+    "timing": 1,
+    "ff_r": 0.45,
+    "mf_r": 0.35,
+    "dz_mm": -36.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.048,
+    "final_mm": -0.064,
+    "n_r_max": 4.34,
+    "n_l_max": 1.65,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.386,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "press24",
+    "timing": 2,
+    "ff_r": 0.3,
+    "mf_r": 0.2,
+    "dz_mm": -24.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.061,
+    "final_mm": -0.063,
+    "n_r_max": 4.8,
+    "n_l_max": 1.59,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.11,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "press24",
+    "timing": 2,
+    "ff_r": 0.3,
+    "mf_r": 0.2,
+    "dz_mm": -36.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.061,
+    "final_mm": -0.063,
+    "n_r_max": 4.8,
+    "n_l_max": 1.59,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.11,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "press24",
+    "timing": 2,
+    "ff_r": 0.3,
+    "mf_r": 0.35,
+    "dz_mm": -24.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.059,
+    "final_mm": -0.064,
+    "n_r_max": 4.48,
+    "n_l_max": 1.81,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.361,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "press24",
+    "timing": 2,
+    "ff_r": 0.3,
+    "mf_r": 0.35,
+    "dz_mm": -36.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.059,
+    "final_mm": -0.064,
+    "n_r_max": 4.48,
+    "n_l_max": 1.81,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.361,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "press24",
+    "timing": 2,
+    "ff_r": 0.45,
+    "mf_r": 0.2,
+    "dz_mm": -24.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.062,
+    "final_mm": -0.064,
+    "n_r_max": 4.86,
+    "n_l_max": 1.72,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.092,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "press24",
+    "timing": 2,
+    "ff_r": 0.45,
+    "mf_r": 0.2,
+    "dz_mm": -36.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.062,
+    "final_mm": -0.064,
+    "n_r_max": 4.86,
+    "n_l_max": 1.72,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.092,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "press24",
+    "timing": 2,
+    "ff_r": 0.45,
+    "mf_r": 0.35,
+    "dz_mm": -24.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.047,
+    "final_mm": -0.064,
+    "n_r_max": 4.38,
+    "n_l_max": 1.7,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.367,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "press24",
+    "timing": 2,
+    "ff_r": 0.45,
+    "mf_r": 0.35,
+    "dz_mm": -36.0,
+    "mode_pin": null,
+    "window": 0,
+    "peak_mm": -0.047,
+    "final_mm": -0.064,
+    "n_r_max": 4.38,
+    "n_l_max": 1.7,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.367,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "mode8",
+    "timing": 1,
+    "ff_r": 0.3,
+    "mf_r": 0.35,
+    "dz_mm": -24.0,
+    "mode_pin": [
+     "force",
+     "force"
+    ],
+    "window": 0,
+    "peak_mm": -0.058,
+    "final_mm": -0.064,
+    "n_r_max": 4.31,
+    "n_l_max": 1.73,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.362,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "mode8",
+    "timing": 1,
+    "ff_r": 0.3,
+    "mf_r": 0.35,
+    "dz_mm": -36.0,
+    "mode_pin": [
+     "force",
+     "force"
+    ],
+    "window": 0,
+    "peak_mm": -0.058,
+    "final_mm": -0.064,
+    "n_r_max": 4.31,
+    "n_l_max": 1.73,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.362,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "mode8",
+    "timing": 1,
+    "ff_r": 0.3,
+    "mf_r": 0.35,
+    "dz_mm": -24.0,
+    "mode_pin": [
+     "force",
+     "pos"
+    ],
+    "window": 0,
+    "peak_mm": -0.06,
+    "final_mm": -0.064,
+    "n_r_max": 4.64,
+    "n_l_max": 1.69,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.362,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "mode8",
+    "timing": 1,
+    "ff_r": 0.3,
+    "mf_r": 0.35,
+    "dz_mm": -36.0,
+    "mode_pin": [
+     "force",
+     "pos"
+    ],
+    "window": 0,
+    "peak_mm": -0.06,
+    "final_mm": -0.064,
+    "n_r_max": 4.64,
+    "n_l_max": 1.69,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.362,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "mode8",
+    "timing": 1,
+    "ff_r": 0.3,
+    "mf_r": 0.35,
+    "dz_mm": -24.0,
+    "mode_pin": [
+     "pos",
+     "force"
+    ],
+    "window": 0,
+    "peak_mm": -0.058,
+    "final_mm": -0.064,
+    "n_r_max": 4.26,
+    "n_l_max": 1.74,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.362,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "mode8",
+    "timing": 1,
+    "ff_r": 0.3,
+    "mf_r": 0.35,
+    "dz_mm": -36.0,
+    "mode_pin": [
+     "pos",
+     "force"
+    ],
+    "window": 0,
+    "peak_mm": -0.058,
+    "final_mm": -0.064,
+    "n_r_max": 4.26,
+    "n_l_max": 1.74,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.362,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "mode8",
+    "timing": 1,
+    "ff_r": 0.3,
+    "mf_r": 0.35,
+    "dz_mm": -24.0,
+    "mode_pin": [
+     "pos",
+     "pos"
+    ],
+    "window": 0,
+    "peak_mm": -0.059,
+    "final_mm": -0.064,
+    "n_r_max": 4.65,
+    "n_l_max": 1.74,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.362,
+    "morphology": "none (no lift window)",
+    "pass": false
+   },
+   {
+    "leg": "mode8",
+    "timing": 1,
+    "ff_r": 0.3,
+    "mf_r": 0.35,
+    "dz_mm": -36.0,
+    "mode_pin": [
+     "pos",
+     "pos"
+    ],
+    "window": 0,
+    "peak_mm": -0.059,
+    "final_mm": -0.064,
+    "n_r_max": 4.65,
+    "n_l_max": 1.74,
+    "support_n": "n/a (no window)",
+    "slip_mm": 0.0,
+    "yaw_deg": 0.0,
+    "endface_ratios": [
+     0.0,
+     0.0
+    ],
+    "press_drift_mm": 0.362,
+    "morphology": "none (no lift window)",
+    "pass": false
+   }
+  ],
+  "gate_clause_status": {
+   "lift_window": "FAIL (0 of 20 frames in all 32)",
+   "endface": "right side holds; left side ratio below 0.8 (contact identity still includes the rf distal)",
+   "slip/yaw/morphology/support": "no-window defaults; morphology none"
+  },
+  "suite_status": "unchanged from v20p1_grid_final: scene_w6 13/13, scene_init 8/8; pre-existing W6a-domain pin/table reds and smoke5 env reds stand (not this domain)",
+  "next": "two physically-open options for a future session: (a) the left hand presses via its rf/th finger pair (the rf distal is its natural contact finger - unexplored; needs the press/force machinery parameterized per finger set), or (b) a hardware change in W6a domain (left-hand mounting offset ~3-4 cm in y, or a wider box) - both out of the W6c command-family scope; per the stop clause this closes the v20.1 placement round with the mechanism fully characterized"
  }
 }

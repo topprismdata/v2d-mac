@@ -2171,9 +2171,16 @@ def cmd_report(args: argparse.Namespace) -> None:
                       "and the morphology audit machinery is live",
         }),
         "v20p1_grid_final": (None if not getattr(args, "v20p1", False) else {
-            "verdict": "FAIL - no gate-passing candidate in the 24+8 "
-                       "v20.1 finale grid (32/32: lift window 0, peak "
-                       "-0.01..+0.03 mm)",
+            "verdict": "TERMINAL FAIL (superseded by v20p1_placement_grid): "
+                       "placement solve executed - right hand solved and "
+                       "validated (n_r_max 4.15-4.98 N >= the 3.6 N engage "
+                       "threshold; the curl-plane rotation was the missing "
+                       "physics: N_max = forcerange/arm x cos(theta), cos "
+                       "0.19 -> 0.67), left hand geometrically capped "
+                       "(n_l_max 1.59-1.81 N < the 2.16 N liftable "
+                       "threshold; in-band and normal-aligned exclusive) - "
+                       "the bilateral vise structurally cannot lift on "
+                       "v20.1 with this hand set",
             "grid_artifact": "runs/w6c/v20_grid.json (32 combos, every "
                              "combo with window/peak/final/support/slip/yaw/"
                              "endface/press-drift/morphology; xml sha "

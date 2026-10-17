@@ -19,6 +19,28 @@ import grounding.train_w6c as W  # noqa: E402
 
 FS = 25
 
+# Placement solve v2 (FK + tip-path Jacobian scan + closed-loop seat,
+# 2026-10-17). THE physics criterion is the curl tip-path ANGLE to the
+# face normal, not just pad position: N_max = forcerange/arm x cos(theta)
+# (measured: the pre-rotation placement had cos 0.19 -> N 1.41 regardless
+# of command; the rotated placement drives N 2.4 -> 6.2 N on demand).
+# RIGHT (solved): rotate the wrist (rx +0.15, ry +0.60, rz -0.10) to align
+# the curl plane with the face normal, wx +20 mm, wz +50 mm, curls
+# (0.40, 0.30); pads seat x +0.0663 z -0.003; N 4.2-6.2 N on +0.25 rad
+# demand (>= the 2.16 N/side liftable threshold).
+# LEFT (terminal no-solution): every in-face-band pose has cos <= 0.2
+# (N ceiling <= 0.85 N) and every normal-aligned pose (cos 0.5-0.68)
+# puts the pads 4-14 cm outside the lateral face band - in-band and
+# normal-aligned are geometrically exclusive for the left mount's ff/mf
+# curl chain (~10^4 FK evals over wrist x/z/rotations/curls/spread).
+# The left keeps its best in-band placement; the bilateral gate clauses
+# are therefore expected to fail on the left side - recorded as such.
+PL_RIGHT = {"wx": 0.020, "wz": 0.050, "drx": 0.15, "dry": 0.60,
+            "drz": -0.10, "curl1": 0.40, "curl2": 0.30}
+PL_LEFT = {"wx": -0.010, "wz": -0.075, "ff1": 0.45, "ff2": 0.30,
+           "mf1": 0.30, "mf2": 0.45, "ffj0": -0.20, "ffj3": -0.30,
+           "mfj0": +0.20}
+
 
 def table_support_n(env) -> float:
     """Summed |contact normal| on the box from the static support geoms (N).
@@ -96,18 +118,78 @@ def main() -> None:
         env._z_peak = env._z0
         env._grasp_bias_sides = (0.0, 0.0)
         xy0 = d.xpos[bid][:2].copy()
+        # ---- placement phase: seat the hands' ff/mf pads on the end faces
+        # per the placement solve v2 (right: rotation-aligned curl plane;
+        # left: best in-band pose - see the PL_* block above). The
+        # bilateral press then ramps ADDITIONAL curl on top. Replaces the
+        # legacy blind descend, which pressed the pads over the box TOP
+        # edge where the curl path is tangential.
+        seat = start_ctrl = d.ctrl.copy()
+        clear = seat.copy()
+        for i_ in press_idx[0] + press_idx[1]:
+            clear[i_] = 0.40
+        clear[2] += 0.050
+        clear[24] += 0.045
+        transit = clear.copy()
+        place = transit.copy()
+        place[0] += PL_RIGHT["wx"]; place[2] += PL_RIGHT["wz"]
+        place[3] += PL_RIGHT["drx"]; place[4] += PL_RIGHT["dry"]
+        place[5] += PL_RIGHT["drz"]
+        place[7] = PL_RIGHT["curl1"]; place[8] = PL_RIGHT["curl2"]
+        place[11] = PL_RIGHT["curl1"]; place[12] = PL_RIGHT["curl2"]
+        place[22] += PL_LEFT["wx"]; place[24] += PL_LEFT["wz"]
+        place[29] = PL_LEFT["ff1"]; place[30] = PL_LEFT["ff2"]
+        place[33] = PL_LEFT["mf1"]; place[34] = PL_LEFT["mf2"]
+        place[28] += PL_LEFT["ffj0"]; place[31] += PL_LEFT["ffj3"]
+        place[32] += PL_LEFT["mfj0"]
+        for a, b, n in ((seat, clear, 12), (clear, transit, 10),
+                        (transit, place, 15)):
+            for k in range(n):
+                f = (k + 1) / n
+                d.ctrl[:] = a + (b - a) * f
+                for _ in range(FS):
+                    mujoco.mj_step(m, d)
+        face_x = float(m.geom_size[env.obj_geom][0])
+        pad_r = float(m.geom_size[mujoco.mj_name2id(
+            m, mujoco.mjtObj.mjOBJ_GEOM, "ff_tip_collision")][0])
+
+        def pad_local(gname):
+            g = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, gname)
+            return d.geom_xpos[g] - d.xpos[bid]
+
+        # closed-loop seat: 4 iterations of measured wrist correction
+        # (signs probed: ctrl + seats right, ctrl - seats left; ctrl z
+        # down seats down; corrections clipped to the wrist ctrl ranges)
+        cr_lo, cr_hi = m.actuator_ctrlrange[:, 0], m.actuator_ctrlrange[:, 1]
+        for _ in range(4):
+            z_r = (pad_local("ff_tip_collision")[2]
+                   + pad_local("mf_tip_collision")[2]) / 2.0
+            z_l = (pad_local("ff_tip_left_collision")[2]
+                   + pad_local("mf_tip_left_collision")[2]) / 2.0
+            x_r = (pad_local("ff_tip_collision")[0]
+                   + pad_local("mf_tip_collision")[0]) / 2.0 - (face_x + pad_r)
+            x_l = -(pad_local("ff_tip_left_collision")[0]
+                    + pad_local("mf_tip_left_collision")[0]) / 2.0 \
+                + (face_x + pad_r)
+            d.ctrl[2] = float(np.clip(d.ctrl[2] - z_r, cr_lo[2], cr_hi[2]))
+            d.ctrl[24] = float(np.clip(d.ctrl[24] - z_l, cr_lo[24], cr_hi[24]))
+            d.ctrl[0] = float(np.clip(
+                d.ctrl[0] + float(np.clip(x_r, -0.012, 0.012)),
+                cr_lo[0], cr_hi[0]))
+            d.ctrl[22] = float(np.clip(
+                d.ctrl[22] - float(np.clip(x_l, -0.012, 0.012)),
+                cr_lo[22], cr_hi[22]))
+            for _ in range(10 * FS):
+                mujoco.mj_step(m, d)
+        for _ in range(20 * FS):
+            mujoco.mj_step(m, d)
+        xy_press0 = d.xpos[bid][:2].copy()
         tgt = d.ctrl.copy()
         for h in range(2):
             for j, depth in ((0, ff_r), (1, ff_r), (2, mf_r), (3, mf_r)):
                 idx = press_idx[h][j]
                 tgt[idx] = d.ctrl[idx] + depth
         start = {i_: d.ctrl[i_] for i_ in press_idx[0] + press_idx[1]}
-        for _ in range(20):
-            d.ctrl[2] += dz_mm * 1e-3 / 20
-            d.ctrl[24] += dz_mm * 1e-3 / 20
-            for _ in range(FS):
-                mujoco.mj_step(m, d)
-        xy_press0 = d.xpos[bid][:2].copy()
         for k in range(20 + timing):
             fl = min(1.0, (k + 1) / 20.0)
             fr = min(1.0, max(0.0, (k + 1 - timing) / 20.0))
@@ -260,6 +342,8 @@ def main() -> None:
                "endface_ratios": [mres["endface_ratio_right"],
                                   mres["endface_ratio_left"]],
                "press_drift_mm": mres["press_drift_mm"],
+               "n_r_max": max((f["n_r"] for f in rows), default=0.0),
+               "n_l_max": max((f["n_l"] for f in rows), default=0.0),
                "audit": mres["audit"],
                "pass": bool(mres["pass"]),
                "score": round(score_of(mres), 1)}
