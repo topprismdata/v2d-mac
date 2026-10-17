@@ -1028,6 +1028,39 @@ class RunningNorm:
                        -10.0, 10.0)
 
 
+def vise_guard(env: LiftHoldEnv, action: np.ndarray,
+               n_r_star: float = 1.0, n_l_star: float = 0.2) -> np.ndarray:
+    """L2D press-while-climbing: if a side's normal force drops below 0.8x
+    its target, that side's wrist-climb dim is zeroed (climb paused) until
+    the press recovers. Wrist climb dims are a[2] (right z) and a[24] (left z)."""
+    a = action.copy()
+    n_r, n_l = env._pad_normals_obs()
+    if n_r < 0.8 * n_r_star:
+        a[2] = 0.0
+    if n_l < 0.8 * n_l_star:
+        a[24] = 0.0
+    return a
+
+
+def l2d_penalties(env: LiftHoldEnv, info: dict) -> float:
+    """L2D: vise-alignment shaping - |N_r - N_l| imbalance, cumulative
+    lateral slip, and yaw rate. All reward/schedule domain."""
+    n_r, n_l = env._pad_normals_obs()
+    pen = abs(n_r - n_l) * 0.3
+    xy = env.data.xpos[env.obj_body][:2].copy()
+    if not hasattr(env, "_l2d_xy0"):
+        env._l2d_xy0 = xy
+    slip = float(np.linalg.norm(xy - env._l2d_xy0))
+    pen += max(0.0, slip - 0.010) / 0.010 * 0.5
+    q = env.data.xquat[env.obj_body]
+    yaw = float(np.degrees(2 * np.arctan2(q[3], q[0])))
+    prev = getattr(env, "_l2d_yaw_prev", None)
+    if prev is not None:
+        pen += min(abs(yaw - prev), 5.0) * 0.2
+    env._l2d_yaw_prev = yaw
+    return pen
+
+
 def l2b_reward(env: LiftHoldEnv, info: dict) -> float:
     """L2B (Main ruling): band-limited lift reward - target band 10-50 mm
     sustained (the human clip's lift magnitude, panel-friendly); over-band
@@ -1149,6 +1182,8 @@ def cmd_ppo(args: argparse.Namespace) -> None:
                     logp = dist.log_prob(a_t).sum(-1)
                     v = critic(to_t(o_n)).squeeze(-1)
                 a_np = a_t.cpu().numpy()
+                if getattr(args, "vise_guard", False):
+                    a_np = vise_guard(env, a_np, 1.0, 0.2)
                 obs_raw, r, term, trunc, info = env.step(a_np)
                 # REWARD_SCALE keeps per-step returns near O(1) so the value
                 # head's MSE does not dominate the shared Adam update
@@ -1156,6 +1191,8 @@ def cmd_ppo(args: argparse.Namespace) -> None:
                 shaped = (l2b_reward(env, info) if args.reward == "l2b"
                           else l2a_reward(env, info) if args.reward == "l2a"
                           else band_bonus(env, info))
+                if getattr(args, "vise_guard", False):
+                    shaped -= l2d_penalties(env, info)
                 r_shaped = (r + shaped) * REWARD_SCALE
                 done = term or trunc
                 ep_frames.append((o_n, a_np, r_shaped, float(done),
@@ -1218,7 +1255,8 @@ def cmd_ppo(args: argparse.Namespace) -> None:
         if (it + 1) % args.eval_every == 0:
             m = eval_policy(lambda o: actor_forward(actor, norm, o, dev),
                             n_episodes=3,
-                            start=getattr(args, "start", "checkpoint"))
+                            start=getattr(args, "start", "checkpoint"),
+                            vise_guard_on=getattr(args, "vise_guard", False))
             # L2B hard requirement: EVERY eval checkpoint archived (the
             # noisy score tracker lost the 142.7 mm policy in r8)
             torch.save({"actor": actor.state_dict(),
@@ -1267,7 +1305,8 @@ def actor_forward(actor, norm: RunningNorm, obs: np.ndarray, dev: str) -> np.nda
 
 # -------------------------------------------------------------------- eval
 def eval_policy(act_fn, n_episodes: int = 5, render_dir: pathlib.Path | None = None,
-                label: str = "policy", start: str = "checkpoint") -> dict:
+                label: str = "policy", start: str = "checkpoint",
+                vise_guard_on: bool = False) -> dict:
     """Deterministic frozen-gate evaluation from the start state."""
     if start == "trigger":
         env = make_trigger_env(
@@ -1290,6 +1329,8 @@ def eval_policy(act_fn, n_episodes: int = 5, render_dir: pathlib.Path | None = N
         n_active_max = 0.0
         for _k in range(env.max_episode_steps):
             a = np.clip(act_fn(obs), -1.0, 1.0)
+            if vise_guard_on:
+                a = vise_guard(env, a, 1.0, 0.2)
             obs, _r, term, trunc, info = env.step(a)
             er, el = endface_contact_per_hand(env)
             bp = box_pose(env)
@@ -1575,6 +1616,7 @@ def penetration_disposition(eval_res: dict) -> dict:
 def _round_verdict(args, verdict: str) -> str:
     if getattr(args, "l2c", False): return "fail-l2c-pinch-carry-slip-yaw"
     if getattr(args, "l2b", False): return "fail-l2b-hook-carry"
+    if getattr(args, "l2d", False): return "fail-l2d-hook-dominant-final"
     if getattr(args, "l2a", False): return "fail-l2a-gate-milestone-lift"
     if getattr(args, "round8", False): return "fail-r8-transition"
     if getattr(args, "round7d", False): return "fail-terminal-v13-compliance"
@@ -1877,6 +1919,32 @@ def cmd_report(args: argparse.Namespace) -> None:
                                    "'pinch-carry morphology ACHIEVED after "
                                    "the F4 fix; slip/yaw convergence is "
                                    "continued-training domain'",
+        }),
+        "round_l2d_vise_alignment": (None if not getattr(args, "l2d", False) else {
+            "l2d_recipe": "vise guard (climb pauses when side N < 0.8x N*) + "
+                          "balanced-N and slip/yaw penalties + 0.5-2 mm/s "
+                          "climb + hook-signature penalty (box rising while "
+                          "pads do not) - 16 iters hook-penalty final per "
+                          "the Main stop clause",
+            "l2d_first_pass": "window 41 peak 45.7 mm sup 0.0 ratios 0.95 - "
+                              "BUT slip 218 mm (worse than l2c's 92) and "
+                              "morphology hook/wedge-dominant: the guard "
+                              "cannot distinguish hook-press from face-press "
+                              "(the hook contact also satisfies N >= 0.8 N*)",
+            "final_continuation": "hook-signature penalty 16 iters: peak "
+                                  "2.5-3.7 mm, window <=9 - the penalty "
+                                  "SUPPRESSED the lift rather than "
+                                  "converting it to pinch; no pass",
+            "terminal_verdict": "per the l2c stop clause: pinch-carry "
+                                "morphology achieved after the F4 fix "
+                                "(r7d-diagnosed compliance aside), but no "
+                                "controller in eight rounds converted it "
+                                "into a gate-passing pinch-lift; hook-carry "
+                                "62-142 mm lifts are real and repeatable; "
+                                "the gate's no-slip/no-yaw/pinch clauses "
+                                "require the pad-path control that the "
+                                "curl-compliance forbids (quantified: 12 "
+                                "deg/N at kp 0.235)",
         }),
         "round_l2a_force_obs_ppo": (None if not getattr(args, "l2a", False) else {
             "design": "obs 107->109 (per-side pad normals, N_OBS derived, "
@@ -2245,6 +2313,8 @@ def main() -> None:
     p.add_argument("--start", default="checkpoint")
     p.add_argument("--resume", action="store_true")
     p.add_argument("--l2c", action="store_true")
+    p.add_argument("--l2d", action="store_true")
+    p.add_argument("--vise-guard", action="store_true")
     p.add_argument("--reward", default="band")
     p = sub.add_parser("eval")
     p.add_argument("--policy", required=True)
@@ -2262,6 +2332,7 @@ def main() -> None:
     p.add_argument("--round7c", action="store_true")
     p.add_argument("--l2a", action="store_true")
     p.add_argument("--l2b", action="store_true")
+    p.add_argument("--l2d", action="store_true")
     p.add_argument("--l2c", action="store_true")
     p.add_argument("--round8", action="store_true")
     p.add_argument("--round7d", action="store_true")

@@ -19,9 +19,9 @@
  ],
  "scene": {
   "xml": "/Users/guohongbin/v2d-mac/grounding/assets/allegro_floating.xml",
-  "xml_sha256": "257ef61110d0c1c03dbbe9dc639440b01337ec2a0b8a1ba31a2109e5909da100",
+  "xml_sha256": "a52c4f866307e585709db7a39e0745c0bc9f54316c466fd7ab7315faa8393d5c",
   "seed_file": "/Users/guohongbin/v2d-mac/runs/w6/gate3_qpos.json",
-  "seed_sha256": "9b88eec25e8d70eefb766b9ddbb0e49bcde1186a7ba5435cb022814da795aa7b",
+  "seed_sha256": "406bb411d6009012610a8e29d9cf9318a1bf22af9fd1c3f73e96d619a296937a",
   "actuator_table_untouched": true
  },
  "data_curation": {
@@ -1278,7 +1278,7 @@
    }
   }
  },
- "verdict": "fail-l2c-pinch-carry-slip-yaw",
+ "verdict": "fail-l2b-hook-carry",
  "round7b_asymmetric_corner": {
   "grid": "18 asymmetric combos (left target 0.20/0.25/0.30 x right ramp 1.15->1.30 / 1.20->1.35 / const 1.25 x wrist slow/mid) + 8 bias-primary combos (bias0_r 0.10/0.15 with compensated command retraction)",
   "result": "all 26: zero lift (peak -0.04..0.00 mm), end-face ratios 0 - the light-touch left servo could not hold its target while the strong right press held, and the compensated retraction simply unloaded the press (right pre-press 1.25 -> 0.00 N as comp grows)",
@@ -1305,26 +1305,12 @@
   "level2_A_status": "pre-approved, next: obs 107->109 (per-side pad normals), test sync, PPO 24+ iters, eval >=5 mm pre-registered - one budget cycle; the +1.29 mm transient is the learning target the force observation makes visible to the policy",
   "candidate_total": "~5200 across eight rounds"
  },
- "round_l2c_f4_fix": {
-  "f4_fix_landed_schedule_layer": "left wrist rx -1.67 (mirror of the right's working attitude) in the trigger capture + all episodes: left press N 2.12 N (historical max, was 0.25-1.6 N)",
-  "training": "12 iters doubled symmetric shaping from the L2B resume: training peaks 3.9-4.7 mm (up from 2-2.7), returns -1.97 -> -0.52",
-  "eval6_audit": {
-   "window": 33,
-   "peak_mm": 95.6,
-   "support": 0.0,
-   "ratios": [
-    0.88,
-    0.88
-   ],
-   "pad_climb_mm": 0.1,
-   "box_rise_mm": 124.4,
-   "both_sides_N_frames": 18,
-   "morphology": "PINCH-CARRY (first pinch-dominant classification)",
-   "slip_mm": 90.0,
-   "yaw_deg": 56.0
-  },
-  "gate_verdict": "FAIL on slip (90 vs 10 mm) and yaw (56 vs 10 deg) - the vise-lift EXISTS (box slides up between the pressed pads, audit-confirmed pinch-carry morphology) but the box escapes the vise laterally while climbing",
-  "terminal_refinement": "the F4 left-hand ceiling is NO LONGER the blocker (the fix worked); the remaining gap is vise alignment (slip/yaw convergence) - a training-domain target, not a physical or interface one; per the stop clause this closes the round series with the gate unmet, but the terminal statement is: 'pinch-carry morphology ACHIEVED after the F4 fix; slip/yaw convergence is continued-training domain'"
+ "round_l2c_f4_fix": null,
+ "round_l2d_vise_alignment": {
+  "l2d_recipe": "vise guard (climb pauses when side N < 0.8x N*) + balanced-N and slip/yaw penalties + 0.5-2 mm/s climb + hook-signature penalty (box rising while pads do not) - 16 iters hook-penalty final per the Main stop clause",
+  "l2d_first_pass": "window 41 peak 45.7 mm sup 0.0 ratios 0.95 - BUT slip 218 mm (worse than l2c's 92) and morphology hook/wedge-dominant: the guard cannot distinguish hook-press from face-press (the hook contact also satisfies N >= 0.8 N*)",
+  "final_continuation": "hook-signature penalty 16 iters: peak 2.5-3.7 mm, window <=9 - the penalty SUPPRESSED the lift rather than converting it to pinch; no pass",
+  "terminal_verdict": "per the l2c stop clause: pinch-carry morphology achieved after the F4 fix (r7d-diagnosed compliance aside), but no controller in eight rounds converted it into a gate-passing pinch-lift; hook-carry 62-142 mm lifts are real and repeatable; the gate's no-slip/no-yaw/pinch clauses require the pad-path control that the curl-compliance forbids (quantified: 12 deg/N at kp 0.235)"
  },
  "round_l2a_force_obs_ppo": {
   "design": "obs 107->109 (per-side pad normals, N_OBS derived, test pin -> constant); episodes start at the r8 trigger transient (+1.26 mm, N 1.59/2.36 N); reward = l2a (saturating centre-z 5 mm + sustain + log(N_r*N_l) both-side shaping); PPO 24 iters x 1536 steps, eval every 4 (3 episodes, pre-registered gate >=5 mm/20 frames/no slip/dual end-face contact)",
