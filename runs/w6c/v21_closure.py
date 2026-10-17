@@ -224,7 +224,8 @@ def make_closure_env(episode_len: int = EP_LEN, seed: int = 0):
 
 
 # ---------------------------------------------------------------- reward
-def closure_reward(env, info, prev=None, rate_w=2.0):
+def closure_reward(env, info, prev=None, rate_w=8.0,
+                   abs_slip_w=0.5, abs_yaw_w=0.1):
     """prev: {'yaw': deg, 'slip': m} from the previous frame - the
     stabilization continuation adds yaw-RATE and slip-RATE penalties
     (weight rate_w) that damp swing kinetic energy directly."""
@@ -237,8 +238,12 @@ def closure_reward(env, info, prev=None, rate_w=2.0):
     r = 6.0 * min(clear / 0.005, 1.0)
     if clear >= 0.005:
         r += 0.3
-    r -= 3.0 * max(0.0, slip * 1e3 - 1.0) / 10.0
-    r -= 0.5 * yaw / 10.0
+    # stabilization round 2: the RATE terms are the main objective (damp
+    # the swing - a constant-torque drift shows as constant slip/yaw
+    # rate); the absolute slip/yaw penalties are demoted to gate-level
+    # reminders (GPT: peak must not substitute for stability)
+    r -= abs_slip_w * max(0.0, slip * 1e3 - 1.0) / 10.0
+    r -= abs_yaw_w * yaw / 10.0
     r += 0.3 * min(n_r * n_l / 9.0, 1.0)
     half = float(env.model.geom_size[env.obj_geom][2])
     for g in ("ff_tip_collision", "mf_tip_collision",
@@ -267,8 +272,18 @@ def grip_floor(a: np.ndarray) -> np.ndarray:
 
 
 def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0,
-          resume: str | None = None, rate_w: float = 2.0,
-          act_rate_w: float = 0.5):
+          resume: str | None = None, rate_w: float = 8.0,
+          act_rate_w: float = 0.5, smooth_w: float = 1.0,
+          curriculum: str = "40,80,160"):
+
+    caps = [int(v) for v in curriculum.split(",")]
+    stage_size = max(1, iters // len(caps))
+
+    def climb_cap(it: int) -> int:
+        """Curriculum: the baseline climb stops after `cap` frames - the
+        carry window grows per stage (40 -> 80 -> full), decomposing
+        sustained anti-swing into learnable segments."""
+        return caps[min(it // stage_size, len(caps) - 1)]
     import torch
     import torch.nn as nn
 
@@ -332,6 +347,8 @@ def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0,
         ep_frames, ep_returns, ep_peaks = [], [], []
         prev = None
         prev_a = None
+        ep_k = 0
+        cap = climb_cap(it)
         obs_raw, _ = env.reset(seed=int(rng.integers(1 << 31)))
         norm.update(obs_raw)
         done = False
@@ -348,15 +365,19 @@ def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0,
                 v = critic(to_t(o_n)).squeeze(-1)
             a_np = a_t.cpu().numpy()
             a_np = grip_floor(a_np)
-            a_np[2] = a_np[2] + BASE_Z
-            a_np[24] = a_np[24] + BASE_Z
+            if ep_k < cap:
+                a_np[2] = a_np[2] + BASE_Z
+                a_np[24] = a_np[24] + BASE_Z
             obs_raw, r_env, term, trunc, info = env.step(
                 np.clip(a_np, -1.0, 1.0))
             shaped, prev = closure_reward(env, info, prev, rate_w)
+            if smooth_w > 0.0 and prev_a is not None:
+                shaped -= smooth_w * float(np.mean(np.abs(a_np - prev_a)))
             if act_rate_w > 0.0 and prev_a is not None:
                 da = np.abs(a_np[[0, 1, 22, 23]] - prev_a[[0, 1, 22, 23]])
                 shaped -= act_rate_w * float(da.mean())
             prev_a = a_np.copy()
+            ep_k += 1
             r_shaped = (r_env + shaped) * W.REWARD_SCALE
             done = term or trunc
             ep_frames.append((o_n, a_np, r_shaped, float(done),
@@ -371,6 +392,7 @@ def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0,
                 done = False
                 prev = None
                 prev_a = None
+                ep_k = 0
                 ep_rew = 0.0
         ep_returns.append(ep_rew)
         ep_peaks.append(ep_peak)
@@ -616,15 +638,18 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--ckpt", default="v21_ppo_best.pt")
     ap.add_argument("--resume", default=None)
-    ap.add_argument("--rate-w", type=float, default=2.0)
+    ap.add_argument("--rate-w", type=float, default=8.0)
     ap.add_argument("--act-rate-w", type=float, default=0.5)
+    ap.add_argument("--smooth-w", type=float, default=1.0)
+    ap.add_argument("--curriculum", default="40,80,160")
     args = ap.parse_args()
     if args.cmd == "capture":
         print(json.dumps(capture_engage(), indent=1, default=float))
     elif args.cmd == "train":
         train(args.iters, args.steps, args.eval_every, args.seed,
               resume=args.resume, rate_w=args.rate_w,
-              act_rate_w=args.act_rate_w)
+              act_rate_w=args.act_rate_w, smooth_w=args.smooth_w,
+              curriculum=args.curriculum)
     elif args.cmd == "eval":
         import torch
         dev = "mps" if torch.backends.mps.is_available() else "cpu"
