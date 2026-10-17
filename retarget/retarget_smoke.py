@@ -288,16 +288,24 @@ WRIST_ROT_CEILING_RAD = 0.5
 #     the v12 hardware-spec caps and the rate tables are still untouched.
 #     The gate-3 pad-touch criterion moved from cylinder radius subtraction
 #     to the flat pad's own half-thickness (1.5 mm), derived from the geom
-#     in tests/test_scene_w6.py::_surface_rad.
+#     in tests/test_scene_w6.py::_surface_rad;
+#   * W6a-v14 (83bcedb, blob 257ef611...) raised the curl servos x5
+#     (ffa2/mfa2 kp 0.235 -> 1.174 N m/rad, ffj2/mfj2 both hands -- the r7d
+#     compliance endgame fix), so exactly four position keys moved:
+#     ffj2 0.6783 -> 0.1357 and mfj2 0.6806 -> 0.1361 (the other 30 keys
+#     measured identical).  Rate gates re-measured unchanged (kp does not
+#     enter |forcerange|/dof_damping), the flat-pad contact criterion is
+#     geometry-identical and carries over, and the per-joint spring table
+#     is unchanged.
 SERVO_WINDING_POSITION_CAP_RAD = {
     # right hand (the hand the retargeted clip drives)
     "ffj0": 0.04602882551364612,
     "ffj1": 0.24651258770119686,
-    "ffj2": 0.6783219761499147,
+    "ffj2": 0.13566439522998297,
     "ffj3": 0.9396436525612472,
     "mfj0": 0.045790115924344114,
     "mfj1": 0.24294951162470768,
-    "mfj2": 0.6806218057921636,
+    "mfj2": 0.1361243611584327,
     "mfj3": 0.943207126948775,
     "rfj0": 0.045662100456621,
     "rfj1": 0.14569226534544452,
@@ -311,11 +319,11 @@ SERVO_WINDING_POSITION_CAP_RAD = {
     # ever driven -- the values are the mirror hand's own derivation)
     "ffj0_left": 0.04602882551364612,
     "ffj1_left": 0.24651258770119686,
-    "ffj2_left": 0.6783219761499147,
+    "ffj2_left": 0.13566439522998297,
     "ffj3_left": 0.9396436525612472,
     "mfj0_left": 0.045790115924344114,
     "mfj1_left": 0.24294951162470768,
-    "mfj2_left": 0.6806218057921636,
+    "mfj2_left": 0.1361243611584327,
     "mfj3_left": 0.943207126948775,
     "rfj0_left": 0.045662100456621,
     "rfj1_left": 0.14569226534544452,
