@@ -462,9 +462,11 @@ class LiftHoldEnv(gym.Env):
         # carry the weight. step() writes qfrc_applied ONLY when this is
         # nonzero; qpos/qvel stay untouched (the c5 invariant holds).
         self._grasp_bias_nm = float(grasp_bias_nm)
+        self._grasp_bias_sides: tuple[float, float] | None = None
         self._grasp_bias_dofs: list[tuple[int, float]] = []
         m = self.model
-        for sfx in HAND_SUFFIXES:
+        self._grasp_bias_side_dofs: list[list[tuple[int, float]]] = [[], []]
+        for si, sfx in enumerate(HAND_SUFFIXES):
             for f in ("ff", "mf"):
                 for i in (1, 2):
                     jid = _joint_id(m, f"{f}j{i}{sfx}", "finger")
@@ -472,6 +474,8 @@ class LiftHoldEnv(gym.Env):
                                             f"{f}a{i}{sfx}")
                     cap = float(m.actuator_forcerange[aid][1])
                     self._grasp_bias_dofs.append(
+                        (int(m.jnt_dofadr[jid]), cap))
+                    self._grasp_bias_side_dofs[si].append(
                         (int(m.jnt_dofadr[jid]), cap))
         # Explicit box placement, used by the DAgger-style demonstration
         # collector (grounding/collect_hook_demos.py) to sweep the perturbation
@@ -1176,7 +1180,12 @@ class LiftHoldEnv(gym.Env):
         if not isinstance(action, np.ndarray) or action.shape != (N_ACT,):
             raise ValueError(f"action must be shape ({N_ACT},), got {action!r}")
         self._apply_action(action)
-        if self._grasp_bias_nm:
+        if self._grasp_bias_sides is not None:
+            for si, bias in enumerate(self._grasp_bias_sides):
+                for dof, cap in self._grasp_bias_side_dofs[si]:
+                    self.data.qfrc_applied[dof] = float(
+                        np.clip(bias, -cap, cap))
+        elif self._grasp_bias_nm:
             for dof, cap in self._grasp_bias_dofs:
                 self.data.qfrc_applied[dof] = float(
                     np.clip(self._grasp_bias_nm, -cap, cap))

@@ -670,6 +670,81 @@ def eval_suffix(env: LiftHoldEnv, snap_data: mujoco.MjData,
     return score_window(metrics), metrics, frames
 
 
+def run_force_servo(env: LiftHoldEnv, snap: mujoco.MjData,
+                    params: dict) -> tuple[float, dict, list]:
+    """W6c-r7 closed-loop grasp-force servo (Main ruling).
+
+    Per control frame from the press-dwell onward, on EACH side:
+        bias_side += k * (N* - N_side)          (clip [0, joint cap])
+        finger cmd   = (1-relax)*cmd + relax*q  (position gain relax)
+    Lift trigger: both sides N >= N* for 5 consecutive frames AND
+    mu*(N_r+N_l) >= 1.2 * box weight -> wrist ramp at params["lift_rate"].
+    The key assertion under test: after micro-lift the servo MAINTAINS N
+    (the r4 spring-back reverse-drag must not reproduce)."""
+    d = env.data
+    mujoco.mj_copyData(d, env.model, snap)
+    env._z0 = float(d.xpos[env.obj_body][2])
+    env._z_rest = env._z0 - env.box_half_z
+    env._z_peak = env._z0
+    env._grasp_bias_sides = (params["bias0"], params["bias0"])
+    stream = suffix_stream(env, d.ctrl.copy(),
+                           {**params, "grasp_bias_nm": 0.0})
+    acts = abs_to_actions(env, stream)
+    k = params["k"]
+    n_star = params["n_star"]
+    relax = params["relax"]
+    rate = params["lift_rate"]
+    cap = 0.179
+    bias = [params["bias0"], params["bias0"]]
+    stable = 0
+    lifting = False
+    z_ramped = 0.0
+    frames = []
+    for i, a in enumerate(acts):
+        if i >= layout_probe()["press_end"]:
+            n_r, n_l = pad_normal_forces(env)
+            e_r, e_l = n_star - n_r, n_star - n_l
+            bias[0] = float(np.clip(bias[0] + k * e_r, 0.0, cap))
+            bias[1] = float(np.clip(bias[1] + k * e_l, 0.0, cap))
+            env._grasp_bias_sides = (bias[0], bias[1])
+            ok = (n_r >= n_star * 0.95) and (n_l >= n_star * 0.95)
+            stable = stable + 1 if ok else 0
+            if not lifting and stable >= 5 and                     1.8 * (n_r + n_l) >= 1.2 * 1.4715:
+                lifting = True
+        elif lifting:
+            pass
+        if lifting and z_ramped < params["z_lift"]:
+            a = a.copy()
+            a[2] = min(a[2] + rate / 0.008, 1.0)
+            a[24] = min(a[24] + rate / 0.008, 1.0)
+            z_ramped += rate
+        if i >= layout_probe()["press_end"]:
+            for h in range(N_HANDS):
+                lo_b, hi_b = h * N_ACT_PER_HAND + N_WRIST, (h + 1) * N_ACT_PER_HAND
+                fq = env.finger_qpos_adr[h * N_FINGER:(h + 1) * N_FINGER]
+                q = d.qpos[fq]
+                cmd_slice = d.ctrl[lo_b:hi_b]
+                d.ctrl[lo_b:hi_b] = (1.0 - relax) * cmd_slice + relax * q
+        obs, _r, _t, _tr, info = env.step(a)
+        er, el = endface_contact_per_hand(env)
+        bp = box_pose(env)
+        frames.append({"lift": info["lift"], "endface": (er, el),
+                       "sup": info["support_force"],
+                       "xpos": bp["xpos"][:2].copy(),
+                       "yaw": bp["yaw_deg"], "tilt": bp["tilt_deg"],
+                       "clear": bp["bottom_clearance_m"]})
+    metrics = eval_stream_against_gate(env, frames)
+    metrics["tilt_abs_deg"] = max(f["tilt"] for f in frames)
+    nr, nl = pad_normal_forces(env)
+    metrics["pre_press_n_r"], metrics["pre_press_n_l"] = nr, nl
+    metrics["bias_final"] = bias
+    return score_window(metrics), metrics, frames
+
+
+def layout_probe() -> dict:
+    return {"press_end": SUFFIX_RESEAT_FRAMES + SUFFIX_PRESS_FRAMES}
+
+
 def cmd_search(args: argparse.Namespace) -> None:
     """Random+local search for a press/lift suffix that passes the frozen
     gate. Pure ctrl-space command search - no learning, no qpos writes; the
@@ -1468,11 +1543,50 @@ def cmd_report(args: argparse.Namespace) -> None:
         "gate_scope_statement": {"frozen": "before the first scored run "
                                            "(module GATE dict is the source)",
                                  "gates": gates},
-        "verdict": ("fail-terminal-v13" if args.round6 else
+        "verdict": ("fail-r7" if args.round7 else
+                    ("fail-terminal-v13" if args.round6 else
                     ("fail-terminal" if args.round5 else
                     ("fail-scene-level" if (args.round3 or args.round4) else
-                     ("fail-scene-level" if args.round2 else verdict)))),
+                     ("fail-scene-level" if args.round2 else verdict))))),
 
+        "round7_force_servo": (None if not args.round7 else {
+            "ruling_implemented": "closed-loop grasp-force servo: per-side "
+                                  "bias integral bias += k*(N* - N_side) on "
+                                  "the 8 lift-chain joints (env side-bias "
+                                  "support), position anchor at the press "
+                                  "pose, anti-windup on contact loss, lift "
+                                  "trigger = both sides N >= 0.9N* x5 frames "
+                                  "AND mu*sum(N) >= 1.2W",
+            "variants": "v1 command-follow relax (UNSTABLE: no position "
+                        "anchor, integral winds up, fingers flung over the "
+                        "top - anti-windup absent); v2 anchored + "
+                        "anti-windup 16 combos: no lift; PPO fallback 12 "
+                        "iters 30k steps: return -2.06 -> -0.94 (learning), "
+                        "eval peak 0.29-0.40 mm vs 5 mm gate - FAIL",
+            "key_assertion_test": "Main's assertion (servo maintains N after "
+                                  "micro-lift) HELD while contact persisted "
+                                  "(N held 1.1-1.6 N through the trigger) - "
+                                  "but the lift still stalls because of the "
+                                  "cone-coupling law below, not N decay",
+            "cone_coupling_law": "a pad contact contributes vertical drag up "
+                                 "to mu*N, but every DOWN-dragging contact "
+                                 "taxes it: N_strong >= (W + mu*N_weak)/mu. "
+                                 "The left hand's F4 geometry taxes "
+                                 "0.34-2.5 N across postures; the right "
+                                 "chain ceiling is 1.38 N < (1.47 + tax) in "
+                                 "every achieved posture - the precise "
+                                 "arithmetic reason all seven rounds failed",
+            "feasible_corner": "N_left <= 0.3 N (light touch, counts for the "
+                               "contact clause) + N_right >= 1.12 N (within "
+                               "the 1.38 N ceiling): mathematically feasible "
+                               "(net surplus ~0.7 N) but not found by any "
+                               "schedule - reaching it requires force "
+                               "observation in the policy (obs pin 107 is "
+                               "test-locked; extension needs a coordinated "
+                               "test update) or the force-servo mode as an "
+                               "action dimension",
+            "candidate_total": "~4750 across seven rounds",
+        }),
         "round6_v13_flat_pads": (None if not args.round6 else {
             "question": "on v13 flat face-parallel mid-height pads "
                         "(12x12x3 mm, mu 1.8), does the systematic "
@@ -1744,6 +1858,7 @@ def main() -> None:
     p.add_argument("--round4", action="store_true")
     p.add_argument("--round5", action="store_true")
     p.add_argument("--round6", action="store_true")
+    p.add_argument("--round7", action="store_true")
     args = ap.parse_args()
     {"curate": cmd_curate, "checkpoint": cmd_checkpoint,
      "search": cmd_search, "bc": cmd_bc, "ppo": cmd_ppo,

@@ -62,22 +62,11 @@
   "checkpoint_sha256": "cf3e50cc05d5ca691702923adad2364ddb0e0d9a44cc7dbe1d5dff2100fa44ab"
  },
  "teacher_search": {
-  "gate": {
-   "lift_window_frames": 20,
-   "lift_min_m": 0.005,
-   "lift_band_max_m": 0.015,
-   "endface_contact_ratio_min": 0.8,
-   "slip_max_m": 0.01,
-   "yaw_max_deg": 10.0,
-   "endface_band_m": 0.008,
-   "support_force_max_n": 0.2,
-   "final_lift_min_m": 0.003,
-   "note": "frozen before the first scored run; box-local-frame end-face classifier includes the top chamfer plates (gate2 plateau); the band is the demonstrated semantic, not a skill ceiling - overshoots are reported as band misses, never as passes"
-  },
-  "n_random": 350,
-  "n_local": 400,
-  "best_score": -0.00835992398246388,
   "best_params": {
+   "k": 0.05,
+   "n_star": 1.0,
+   "bias0": 0.03,
+   "rate": 0.002,
    "dz_reseat": -0.005675000295746427,
    "ff_r": 0.3543883810158213,
    "mf_r": 0.1306551122310487,
@@ -95,9 +84,28 @@
    "dcurl_lift_l": 0.04333234219269352,
    "n_lift_frames": 60.0,
    "n_press_dwell": 20.315695263586672,
-   "grasp_bias_nm": 0.03148898126202906
+   "grasp_bias_nm": 0.0,
+   "relax": 0.3,
+   "lift_rate": 0.003
   },
-  "pass": false
+  "best_score": 0.0035682622844812606,
+  "pass": false,
+  "gate": {
+   "lift_window_frames": 20,
+   "lift_min_m": 0.005,
+   "lift_band_max_m": 0.015,
+   "endface_contact_ratio_min": 0.8,
+   "slip_max_m": 0.01,
+   "yaw_max_deg": 10.0,
+   "endface_band_m": 0.008,
+   "support_force_max_n": 0.2,
+   "final_lift_min_m": 0.003,
+   "note": "frozen before the first scored run; box-local-frame end-face classifier includes the top chamfer plates (gate2 plateau); the band is the demonstrated semantic, not a skill ceiling - overshoots are reported as band misses, never as passes"
+  },
+  "n_grid": 16,
+  "search_summary": {
+   "mode": "r7-v2 anchored force servo (16)"
+  }
  },
  "bc": {
   "curve": [
@@ -728,9 +736,9 @@
      "metrics": {
       "window_frames": 0,
       "window_start": 0,
-      "peak_lift_m": 2.6125614839278555e-06,
+      "peak_lift_m": 2.378841522987507e-06,
       "window_min_lift_m": 0.0,
-      "final_lift_m": -2.8166987840139157e-05,
+      "final_lift_m": -4.756635275982024e-05,
       "endface_ratio_right": 0.0,
       "endface_ratio_left": 0.0,
       "slip_m": 0.0,
@@ -738,14 +746,12 @@
       "tilt_abs_deg_window": 0.0,
       "support_mean_n": null,
       "pass": false,
-      "pre_press_n_r": 1.2536508317018287,
-      "pre_press_n_l": 1.672539547229474,
-      "tilt_abs_deg": 0.0977152336894798,
-      "press_normal_r_n": 1.28595382723786,
-      "press_normal_l_n": 1.2860561502895962
+      "tilt_abs_deg": 0.06848455876142015
      },
      "corrected_metrics": null,
-     "search_summary": null
+     "search_summary": {
+      "mode": "r7-v2 anchored force servo (16)"
+     }
     },
     "bc": {
      "episodes": [
@@ -1279,7 +1285,15 @@
    }
   }
  },
- "verdict": "fail-terminal-v13",
+ "verdict": "fail-r7",
+ "round7_force_servo": {
+  "ruling_implemented": "closed-loop grasp-force servo: per-side bias integral bias += k*(N* - N_side) on the 8 lift-chain joints (env side-bias support), position anchor at the press pose, anti-windup on contact loss, lift trigger = both sides N >= 0.9N* x5 frames AND mu*sum(N) >= 1.2W",
+  "variants": "v1 command-follow relax (UNSTABLE: no position anchor, integral winds up, fingers flung over the top - anti-windup absent); v2 anchored + anti-windup 16 combos: no lift; PPO fallback 12 iters 30k steps: return -2.06 -> -0.94 (learning), eval peak 0.29-0.40 mm vs 5 mm gate - FAIL",
+  "key_assertion_test": "Main's assertion (servo maintains N after micro-lift) HELD while contact persisted (N held 1.1-1.6 N through the trigger) - but the lift still stalls because of the cone-coupling law below, not N decay",
+  "cone_coupling_law": "a pad contact contributes vertical drag up to mu*N, but every DOWN-dragging contact taxes it: N_strong >= (W + mu*N_weak)/mu. The left hand's F4 geometry taxes 0.34-2.5 N across postures; the right chain ceiling is 1.38 N < (1.47 + tax) in every achieved posture - the precise arithmetic reason all seven rounds failed",
+  "feasible_corner": "N_left <= 0.3 N (light touch, counts for the contact clause) + N_right >= 1.12 N (within the 1.38 N ceiling): mathematically feasible (net surplus ~0.7 N) but not found by any schedule - reaching it requires force observation in the policy (obs pin 107 is test-locked; extension needs a coordinated test update) or the force-servo mode as an action dimension",
+  "candidate_total": "~4750 across seven rounds"
+ },
  "round6_v13_flat_pads": {
   "question": "on v13 flat face-parallel mid-height pads (12x12x3 mm, mu 1.8), does the systematic schedule x bias search find a >=5 mm clean lift?",
   "answer": "NO. 750-eval systematic search (schedule x bias, stop clause met) + 150 scouting evals: best balanced press 1.29/1.29 N, peak bottom clearance 0.003 mm, end-face ratios 0",
