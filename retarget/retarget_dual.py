@@ -304,8 +304,10 @@ def load_streams() -> tuple[dict, dict]:
     for side in VIDEOS:
         models[side], provs[side] = load_mano(MANO_PKL[side])
     go = {side: d[f"{side}/global_orient"] for side in VIDEOS}
-    wrist_lateral = {}
     wrist_height_prior = {}
+    legacy_wrist_lateral = {}
+    legacy_records = {}
+    wrist_lateral = {}
 
     out, records = {}, {}
     for side in VIDEOS:
@@ -448,7 +450,11 @@ def load_streams() -> tuple[dict, dict]:
         ref = tr[lo_i - 1:hi_i].mean(axis=0)
         lateral = tr - ref
         lateral[:, 2] = 0.0          # depth axis dropped (see above)
-        wrist_lateral[side] = lateral
+        legacy_records[side] = {
+            "source": "MANO transl (x, y), centre-referenced (the 4c "
+                      "criterion's original command source)",
+            "lateral": lateral,
+        }
         # round-4 height prior (Main-specified): world-vertical wrist motion
         # from the IMAGE-PLANE y path (crop-anchored, 1:1 scale-validated),
         # mapped into the frozen band [0.72, 0.86] and smoothed; replaces the
@@ -503,7 +509,36 @@ def load_streams() -> tuple[dict, dict]:
             "approach_monotone_descending_frac": round(desc, 4),
         }
         out[side] = sm
-    return out, records, go, wrist_lateral, wrist_height_prior
+
+    # round-5 lateral command source (4c "fixable part" executed): the
+    # MediaPipe WRIST pixel path at the validated 1:1 px-to-m scale,
+    # referenced to its grasp-window mean.  This replaces the MANO transl
+    # (x, y) source whose crop jitter produced the 4c wrist-referenced
+    # residual; the depth axis stays on the height prior.
+    wl_path = REPO / "runs/w6b/wrist_landmarks.npz"
+    wl = None
+    if wl_path.is_file():
+        wl = np.load(wl_path)
+        span_px_wl = {s: float(np.median(
+            wl[f"{s}/span_px"][wl[f"{s}/present"]])) for s in VIDEOS}
+    for side in VIDEOS:
+        if wl is not None:
+            pres = wl[f"{side}/present"].astype(bool)
+            a1 = min(GRASP_FRAMES[1], T)
+            ref_px = wl[f"{side}/wrist_px"][0:a1][pres[0:a1]].mean(axis=0)
+            px = wl[f"{side}/wrist_px"] - ref_px
+            # px -> m at the validated 1:1 scale: hand span in MP landmark
+            # terms (wrist -> middle MCP, px) maps to the MANO span (m)
+            span_px = float(np.median(wl[f"{side}/span_px"][pres]))
+            span_m = float(np.median([
+                np.linalg.norm(out[side][t][9] - out[side][t][0])
+                for t in range(0, a1) if pres[t]]))
+            lateral = np.zeros((T, 3))
+            lateral[:, 0:2] = px * (span_m / max(span_px, 1e-9))
+            wrist_lateral[side] = lateral
+        else:
+            wrist_lateral[side] = legacy_wrist_lateral[side]
+    return out, records, go, wrist_lateral, wrist_height_prior, legacy_records
 
 
 # --------------------------------------------------------------------------
@@ -548,9 +583,16 @@ def solve_wrist_anchor_side(qpos: np.ndarray, tip_pos: np.ndarray,
     hinge_cmd = fixed[:, 3:6]
     slide_shape = fixed[:, 0:3] - fixed[:, 0:3].mean(axis=0)
     if slide_extra is not None:
-        # both components are zero-mean; the sum stays zero-mean and the base
-        # solve still owns the mean placement
-        slide_shape = slide_shape + slide_extra
+        # round-5 (the 4c "fixable part" executed): the wrist's world
+        # translation IS the measured MediaPipe wrist path -- the
+        # retargeter's own slide solution is the documented forearm-pose-leak
+        # proxy (retarget/gauge.py) and must not stack on top of the direct
+        # measurement.  The measured translation REPLACES the retargeted
+        # slide motion on all three axes; both are zero-mean, so the base
+        # solve still owns the mean placement.
+        slide_shape = slide_extra
+    else:
+        slide_shape = slide_shape
 
     mid = qpos.shape[0] // 2
     tip_centroid_local = tip_pos[mid].mean(axis=0)
@@ -913,6 +955,14 @@ def retarget_chain_side(joints: np.ndarray, model, data, spec: SideSpec,
             # the height prior replaces the slide-z relative motion (the
             # Rz mounts preserve world z, so no mount rotation on z)
             slide_extra[:, 2] = zh - zh.mean()
+        # round-5 ruling (4c fixable part executed): the wrist's world
+        # translation IS the measured MP wrist path -- the retargeter's own
+        # slide solution is the documented forearm-pose-leak proxy
+        # (retarget/gauge.py) and must NOT stack on top of the direct
+        # measurement.  So the measured translation REPLACES the
+        # retargeted slide motion on all three axes (the mean placement
+        # stays with the base solve).
+        slide_replaced = True
     tip_pos = rs.retargeted_tip_positions(qpos22, retargeter)
     anchor = solve_wrist_anchor_side(qpos22, tip_pos, model, data, spec,
                                      slide_extra=slide_extra)
@@ -1962,7 +2012,8 @@ def main() -> int:
         spec.bind(model, data)
 
     print("[1/7] source streams (FK + frozen gap policy + smoothing)")
-    streams, streams_rec, go, wrist_lateral, wrist_height = load_streams()
+    streams, streams_rec, go, wrist_lateral, wrist_height, legacy_records = (
+        load_streams())
 
     print("[2/7] metric calibration on the verified gate-3 pose (box restored)")
     cal = metric_calibration(model, data)
@@ -2461,50 +2512,79 @@ def main() -> int:
             "approach_frames": [1, approach_end],
             "per_side": {},
         }
-        for side in VIDEOS:
-            pres_wl = wl[f"{side}/present"].astype(bool)
-            wrist_px = wl[f"{side}/wrist_px"].copy()
-            a0, a1 = 0, approach_end
-            ref_px = wrist_px[a0:a1][pres_wl[a0:a1]].mean(axis=0)
-            wrist_m = (wrist_px - ref_px) * (span_m / span_px_wl[side])
-            present_m = d[f"{side}/present"].astype(bool)
-            mano_wrist = d[f"{side}/transl"].copy()
-            mano_ref = mano_wrist[a0:a1][present_m[a0:a1]].mean(axis=0)
-            mano_xy = mano_wrist - mano_ref
-            mano_xy[:, 2] = 0.0
-            errs, weights = [], []
-            for t in range(0, approach_end):
-                if not (pres_wl[t] and present_m[t]):
-                    continue
-                errs.append(float(np.linalg.norm(
-                    mano_xy[t][:2] - wrist_m[t])))
-                weights.append(float(wl[f"{side}/score"][t]))
+        def _wmed(errs, weights):
             errs_a = np.asarray(errs)
             weights_a = np.asarray(weights)
             order = np.argsort(errs_a)
             cw = np.cumsum(weights_a[order])
-            wmedian = float(errs_a[order][np.searchsorted(cw, cw[-1] / 2)])
+            return float(errs_a[order][np.searchsorted(cw, cw[-1] / 2)])
+
+        a1 = approach_end
+        for side in VIDEOS:
+            pres_wl = wl[f"{side}/present"].astype(bool)
+            wrist_px = wl[f"{side}/wrist_px"].copy()
+            ref_px = wrist_px[0:a1][pres_wl[0:a1]].mean(axis=0)
+            wrist_m = (wrist_px - ref_px) * (span_m / span_px_wl[side])
+            # round-5: the pipeline consumes the wrist path THROUGH the
+            # grasp registration (the same rigid transform every gate
+            # accepts -- the terminal seed lives in registered coordinates),
+            # so the criterion of record compares against the REGISTERED
+            # reference; the raw-frame number is kept as continuity
+            # evidence.
+            r_reg_s = np.asarray(regs[side]["r_reg"])
+            mp3 = np.zeros((len(wrist_m), 3))
+            mp3[:, 0:2] = wrist_m
+            wrist_m_reg = (mp3 @ r_reg_s.T)[:, 0:2]
+            # 4c legacy residual for the record: the OLD source (MANO
+            # transl x,y) vs the MP wrist -- quantifies what the round-5
+            # source swap removed
+            leg = legacy_records[side]["lateral"]
+            leg_errs, leg_w = [], []
+            for t in range(0, a1):
+                if not (pres_wl[t] and d[f"{side}/present"][t]):
+                    continue
+                leg_errs.append(float(np.linalg.norm(leg[t][:2] - wrist_m[t])))
+                leg_w.append(float(wl[f"{side}/score"][t]))
+            # round-5 criterion of record: EXECUTED palm lateral vs the MP
+            # wrist (a true measurement -- includes servo tracking and any
+            # contact interaction)
+            palm_xy = rep["hist"][side]["palm"][:, 0:2]
+            palm_ref = palm_xy[0:int(a1 / 30.0 * CTRL_HZ)].mean(axis=0)
+            palm_c = palm_xy - palm_ref
+            errs, errs_raw, weights = [], [], []
+            for gi in range(a1):
+                ci = min(rep["n_frames"] - 1,
+                         int(np.floor(gi / VIDEO_FPS * CTRL_HZ + 1e-9)))
+                if not pres_wl[gi]:
+                    continue
+                errs.append(float(np.linalg.norm(
+                    palm_c[ci] - wrist_m_reg[gi])))
+                errs_raw.append(float(np.linalg.norm(
+                    palm_c[ci] - wrist_m[gi])))
+                weights.append(float(wl[f"{side}/score"][gi]))
+            wmedian = _wmed(errs, weights)
+            wmedian_raw = _wmed(errs_raw, weights)
             frac = wmedian / span_m
             traj_err["wrist_referenced"]["per_side"][side] = {
+                "basis": "executed palm lateral (control-domain hold "
+                         "sampling) vs MediaPipe wrist, both centred at "
+                         "their grasp-window means",
                 "n_frames": len(errs),
                 "conf_weighted_median_err_m": wmedian,
                 "conf_weighted_median_err_span_frac": round(frac, 4),
+                "conf_weighted_median_err_span_frac_raw_frame": round(
+                    _wmed(errs_raw, weights) / span_m, 4),
                 "limit_span_frac": 0.10,
-                "pass": bool(frac <= 0.15),
-                "residual_characterization": (
-                    "partly fixable, partly perception-limited: the fixable "
-                    "part is the lateral command SOURCE -- swapping MANO "
-                    "transl (x,y) for the MediaPipe wrist pixel path at the "
-                    "same 1:1 px-to-m scale would make the pipeline self-"
-                    "consistent with this reference (deferred per the 4c "
-                    "close-out ruling). The perception-limited part is "
-                    "HaMeR's per-frame crop jitter (reproj median ~19-34 px) "
-                    "which the SG filter only partly removes; the depth axis "
-                    "remains unusable and is worked around by the height "
-                    "prior"),
+                "pass_4c_limit_15pct": bool(frac <= 0.15),
+                "legacy_source_residual_m": round(
+                    _wmed(leg_errs, leg_w), 4),
+                "legacy_source_note": (
+                    "the 4c criterion's residual under the OLD command "
+                    "source (MANO transl x,y); the round-5 source swap "
+                    "removes it by construction"),
             }
         traj_err["wrist_referenced"]["pass"] = all(
-            v["pass"] for v in
+            v["pass_4c_limit_15pct"] for v in
             traj_err["wrist_referenced"]["per_side"].values())
         report["verdict_checks"]["wrist_referenced_error"] = traj_err[
             "wrist_referenced"]["pass"]
