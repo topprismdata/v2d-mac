@@ -61,14 +61,15 @@ def main() -> None:
         sys.path.insert(0, str(REPO / "viz"))
     m = scene_fidelity.build_fidelity_model()
     d = mujoco.MjData(m)
-    # readability: mild ambient fill; the fidelity textures (oak, floral) are
-    # bright so anything stronger clips; warm tint for the clip's indoor cast.
-    # shadows OFF: the v17 shoulder domes are translucent 20-cm spheres whose
-    # opaque cast shadows read as two giant dark discs burned into the table
-    m.light_ambient[:] = 0.24
-    for i in range(m.nlight):
-        m.light_diffuse[i] = 0.52 * np.array([1.0, 0.97, 0.92])
-        m.light_specular[i] = 0.12
+    # lighting hierarchy: warm key + cool fill (the v17-era global shadow-off
+    # is reverted -- no more dome spheres to burn black discs); mild ambient
+    # higher ambient lifts the big structure shadows (this build has no soft
+    # shadows -- ambient is the only softening knob) while keeping hierarchy
+    m.light_ambient[:] = 0.38
+    m.light_diffuse[0] = 0.46 * np.array([1.00, 0.93, 0.82])  # warm key
+    m.light_diffuse[1] = 0.30 * np.array([0.88, 0.93, 1.05])  # cool fill
+    m.light_specular[0] = 0.22
+    m.light_specular[1] = 0.10
     # the frozen MJCF ships a 640 px offscreen buffer; widen it in memory so
     # the panel's sim panes come out at the source clip's 1280x720
     m.vis.global_.offwidth = WIDTH

@@ -31,7 +31,7 @@ REPO = pathlib.Path(__file__).resolve().parents[1]
 TEX_DIR = REPO / "viz/fidelity_textures"
 
 # original-clip palette (sampled from source frame 90)
-VIOLET = (86, 48, 122)
+VIOLET = (98, 44, 142)
 FLOWERS = [(214, 84, 110), (233, 168, 76), (88, 140, 78), (222, 118, 140)]
 OAK_LIGHT = (200, 155, 106)
 OAK_DARK = (172, 126, 82)
@@ -44,29 +44,31 @@ def _png(name: str) -> pathlib.Path:
     return TEX_DIR / f"{name}.png"
 
 
-def _floral_texture(path: pathlib.Path, size: int = 512) -> None:
-    """Purple base + scattered flowers/leaves, the tissue-box print."""
+def _floral_texture(path: pathlib.Path, size: int = 1024) -> None:
+    """Purple base + dense scattered flowers/leaves, the tissue-box print.
+    1024 px + ~3x element density vs v20 (GPT 满分批: density/saturation
+    aligned toward the original print)."""
     rng = np.random.default_rng(11)
     img = Image.new("RGB", (size, size), VIOLET)
     d = ImageDraw.Draw(img)
-    for _ in range(70):  # leaves
+    for _ in range(260):  # leaves
         x, y = rng.integers(0, size, 2)
-        r = rng.integers(8, 22)
+        r = rng.integers(6, 20)
         a = rng.uniform(0, np.pi)
         dx, dy = r * np.cos(a), r * np.sin(a) * 0.45
-        green = (70 + int(rng.integers(0, 50)), 110 + int(rng.integers(0, 60)), 60)
+        green = (66 + int(rng.integers(0, 55)), 105 + int(rng.integers(0, 70)), 58)
         d.ellipse([x - r, y - dy, x + r, y + dy], fill=green)
-    for _ in range(46):  # flowers: 5 petals around a centre
+    for _ in range(170):  # flowers: 5 petals around a centre
         x, y = rng.integers(0, size, 2)
-        pr = rng.integers(7, 16)
+        pr = rng.integers(6, 15)
         col = FLOWERS[rng.integers(0, len(FLOWERS))]
         for k in range(5):
             a = 2 * np.pi * k / 5 + rng.uniform(0, 1)
             px, py = x + 0.7 * pr * np.cos(a), y + 0.7 * pr * np.sin(a)
             d.ellipse([px - pr * 0.55, py - pr * 0.55,
                        px + pr * 0.55, py + pr * 0.55], fill=col)
-        d.ellipse([x - pr * 0.4, y - pr * 0.4, x + pr * 0.4, y + pr * 0.4],
-                  fill=(245, 225, 150))
+        d.ellipse([x - pr * 0.38, y - pr * 0.38, x + pr * 0.38, y + pr * 0.38],
+                  fill=(246, 224, 148))
     img.save(path)
 
 
@@ -87,12 +89,14 @@ def _pegboard_texture(path: pathlib.Path, size: int = 512) -> None:
     """Cream board with a regular round-hole grid."""
     img = Image.new("RGB", (size, size), PEG_BASE)
     d = ImageDraw.Draw(img)
-    step, r = size // 8, size // 64
+    step, r = size // 8, size // 56  # v20 批残差: holes read too faint far away
     for cy in range(step // 2, size, step):
         for cx in range(step // 2, size, step):
+            d.ellipse([cx - r, cy - r - 1, cx + r, cy + r - 1],
+                      fill=(120, 113, 100))   # cast shadow above
             d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=PEG_HOLE)
             d.arc([cx - r - 1, cy - r - 1, cx + r + 1, cy + r + 1],
-                  180, 360, fill=(245, 242, 230))
+                  180, 360, fill=(246, 243, 232))
     img.save(path)
 
 
@@ -128,19 +132,49 @@ def build_fidelity_spec():
     # v19: the v17 shoulder domes are gone (no junction spheres in this XML);
     # the articulated arm segments get the machined-metal look so the chain
     # reads as one mechanism (skip silently if W6a renames again)
-    metal = spec.add_material(name="mat_metal")
-    metal.rgba = [0.60, 0.62, 0.67, 1.0]
-    metal.specular = 0.55
-    metal.shininess = 0.6
-    metal.reflectance = 0.04
+    def mat_machined(name, rgba, spec_=0.5, shin=0.6, metal_=0.0, rough=0.5):
+        # metallic/roughness ride along for PBR-capable consumers; the
+        # classic renderer honours rgba+specular+shininess
+        m_ = spec.add_material(name=name)
+        m_.rgba = list(rgba)
+        m_.specular = spec_
+        m_.shininess = shin
+        m_.metallic = metal_
+        m_.roughness = rough
+        return m_
+
+    mat_anodalu = mat_machined("mat_anodalu", (0.45, 0.47, 0.53, 1.0),
+                               0.6, 0.65, metal_=0.85, rough=0.35)  # 阳极铝
+    mat_poly = mat_machined("mat_poly", (0.13, 0.13, 0.15, 1.0),
+                            0.25, 0.3, rough=0.85)               # 聚氨酯垫
+    mat_powder = mat_machined("mat_powder", (0.47, 0.49, 0.52, 1.0),
+                              0.3, 0.35, metal_=0.3, rough=0.6)  # 喷塑钢
+    mat_frosted = mat_machined("mat_frosted", (0.86, 0.87, 0.89, 1.0),
+                               0.2, 0.25, rough=0.75)           # 磨砂塑料
     for an in ("arm_r_forearm", "arm_r_elbow", "arm_r_upper",
                "arm_l_forearm", "arm_l_elbow", "arm_l_upper",
                "arm_yaw_disc_r", "arm_elbow_disc_r", "arm_wrist_r",
                "arm_yaw_disc_l", "arm_elbow_disc_l", "arm_wrist_l"):
         ag = spec.geom(an) if an in [x.name for x in spec.geoms] else None
         if ag is not None:
-            ag.material = "mat_metal"
+            ag.material = "mat_anodalu"
             ag.rgba = [1.0, 1.0, 1.0, 1.0]
+
+    # fingertip pads -> dark polyurethane
+    for g in spec.geoms:
+        if g.name and "_tip_collision" in g.name:
+            g.material = "mat_poly"
+            g.rgba = [1.0, 1.0, 1.0, 1.0]
+
+    # gantry structure -> powder-coated steel; monitor -> frosted plastic
+    for g in spec.geoms:
+        if g.name and g.name.startswith("gantry_"):
+            g.material = "mat_powder"
+            g.rgba = [1.0, 1.0, 1.0, 1.0]
+        if g.name and g.name.startswith("mon_") and g.name != "mon_screen":
+            # the screen itself keeps its dark rgba (an off display)
+            g.material = "mat_frosted"
+            g.rgba = [1.0, 1.0, 1.0, 1.0]
 
     # --- re-skin existing geoms (visual only, physics identical) ----------
     spec.geom("table_slab").material = "mat_wood"
@@ -170,10 +204,55 @@ def build_fidelity_spec():
     # translucent window film over the slot
     vis(ob, "slot_film", mujoco.mjtGeom.mjGEOM_BOX,
         [0.046, 0.078, 0.0012], [0, 0, 0.0405],
-        rgba=[0.92, 0.95, 0.97, 0.30])
+        rgba=[0.95, 0.97, 0.99, 0.20])
 
     # --- workbench backdrop: pegboard wall, shelf, monitor ---------------
     wb = spec.worldbody
+
+    # --- engineering details (visual-only, mass 0) ------------------------
+    # cable drag chains: small dark capsules riding the outside of each upper
+    # arm and forearm segment
+    for seg_body, seg_len in (("arm_upper_r", 0.08), ("arm_upper_l", 0.08),
+                              ("arm_elbow_r", 0.08), ("arm_elbow_l", 0.08)):
+        ab = spec.body(seg_body)
+        n_seg = 4
+        for k in range(n_seg):
+            z = -seg_len + (2 * seg_len) * (k + 0.5) / n_seg
+            cg = ab.add_geom(name=f"{seg_body}_cable{k}",
+                             type=mujoco.mjtGeom.mjGEOM_CAPSULE,
+                             size=[0.0028, 0.011, 0.0],
+                             pos=[0.016, 0.0, z],
+                             contype=0, conaffinity=0, mass=0)
+            cg.rgba = [0.16, 0.16, 0.18, 1.0]
+    # bolt rings on the yaw/elbow discs (6 heads each, top face)
+    for disc_body, disc_r, disc_h in (("arm_yaw_r", 0.024, 0.012),
+                                      ("arm_yaw_l", 0.024, 0.012),
+                                      ("arm_elbow_r", 0.020, 0.014),
+                                      ("arm_elbow_l", 0.020, 0.014)):
+        db = spec.body(disc_body)
+        for k in range(6):
+            a = 2 * np.pi * k / 6
+            bg = db.add_geom(name=f"{disc_body}_bolt{k}",
+                             type=mujoco.mjtGeom.mjGEOM_CYLINDER,
+                             size=[0.0028, 0.0015, 0.0],
+                             pos=[disc_r * 0.72 * np.cos(a),
+                                  disc_r * 0.72 * np.sin(a),
+                                  disc_h + 0.0012],
+                             contype=0, conaffinity=0, mass=0)
+            bg.rgba = [0.30, 0.31, 0.34, 1.0]
+    # table support frame: apron box ring + four legs under the 30 mm slab
+    for name_, size_, pos_ in (
+            ("table_apron_xp", [0.45, 0.018, 0.028], [0.0, 0.40, 0.630]),
+            ("table_apron_xn", [0.45, 0.018, 0.028], [0.0, -0.40, 0.630]),
+            ("table_apron_yp", [0.018, 0.40, 0.028], [0.40, 0.0, 0.630]),
+            ("table_apron_yn", [0.018, 0.40, 0.028], [-0.40, 0.0, 0.630]),
+            ("table_leg_pp", [0.028, 0.028, 0.330], [0.36, 0.36, 0.275]),
+            ("table_leg_pn", [0.028, 0.028, 0.330], [0.36, -0.36, 0.275]),
+            ("table_leg_np", [0.028, 0.028, 0.330], [-0.36, 0.36, 0.275]),
+            ("table_leg_nn", [0.028, 0.028, 0.330], [-0.36, -0.36, 0.275])):
+        lg = wb.add_geom(name=name_, type=mujoco.mjtGeom.mjGEOM_BOX,
+                         size=size_, pos=pos_, contype=0, conaffinity=0, mass=0)
+        lg.material = "mat_wood"
 
     def deco(name, gtype, size, pos, material=None, rgba=None, euler=None):
         g = wb.add_geom(name=name, type=gtype, size=size, pos=pos,
