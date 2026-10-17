@@ -333,11 +333,13 @@ def build() -> dict:
             "notes_per_frame": notes,
             "playback": playback,
             "phase_notes": {
-                # v25 terminal ruling (Main, final)
-                "抬离": ("挤压携带已实现：最佳 21.34mm 持续 4.7 秒"
-                         "（window 94，σ0.1×5）；门内稳定化（slip/yaw）"
-                         "= 策略精化训练预算（5 次训练 384 iters 饱和，"
-                         "偏心杠杆穷尽）"),
+                # v25 终局 (Main, lift-line terminal — dominance theorem)
+                "抬离": ("抬离：能力已实现（window 至 127 帧/6.4 秒、peak 至 "
+                         "105mm、3 seed）；稳定化支配定理已量化——"
+                         "rate_w≥8 静止最优（MLP/GRU 双穷尽同一驻定吸引子）、"
+                         "rate_w≤2 携带最优但结构性漂移必败 slip/yaw 门："
+                         "此机座+非对称指集（右双垫/左单垫）下 7/7 对任何"
+                         "奖励权重不可达。5/7 为硬件边界，全证明链在 report。"),
             },
             "video_fps": VIDEO_FPS,
             "total_source_frames": SOURCE_TOTAL_FRAMES,
