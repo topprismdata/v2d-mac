@@ -215,8 +215,14 @@ def _w6b_gates() -> list[dict]:
         peak = g.get("finger_qpos_max_violation_rad", 0.0) * 1e3
         return f"{n} 帧·峰 {peak:.0f} mrad"
 
-    wr = rep["trajectory_error"]["wrist_referenced"]["per_side"]
-    wr_r, wr_l = wr["right"], wr["left"]
+    wr_rep = rep["trajectory_error"]["wrist_referenced"]
+    wr_r, wr_l = wr_rep["per_side"]["right"], wr_rep["per_side"]["left"]
+
+    def wrist_side(w):
+        ok = w.get("pass_4c_limit_15pct")
+        frac = w["conf_weighted_median_err_span_frac"] * 100
+        return (f"{w['conf_weighted_median_err_m'] * 1e3:.1f} mm"
+                f"（{frac:.1f}%，15% 线{'达标' if ok else '超限'}）")
 
     return [
         {"id": "w6b_gate1", "name": "门 1 双手终触",
@@ -253,11 +259,8 @@ def _w6b_gates() -> list[dict]:
          "scope": "执行掌心位姿相对 MANO 目标的最大偏差（超帽即标红，如实入档）"},
         {"id": "w6b_wrist", "name": "腕轨迹误差",
          "verdict": "pass" if checks.get("wrist_referenced_error") else "fail",
-         "measured": (f"右 {wr_r['conf_weighted_median_err_m'] * 1e3:.1f} mm"
-                      f"（{wr_r['conf_weighted_median_err_span_frac'] * 100:.1f}% 跨度）/ "
-                      f"左 {wr_l['conf_weighted_median_err_m'] * 1e3:.1f} mm"
-                      f"（{wr_l['conf_weighted_median_err_span_frac'] * 100:.1f}%）"),
-         "scope": "MediaPipe 腕点 vs 回放腕的置信加权中位误差（占手跨度百分比，r4c 同尺判据）"},
+         "measured": f"左 {wrist_side(wr_l)} / 右 {wrist_side(wr_r)}",
+         "scope": "MediaPipe 腕点 vs 回放腕的置信加权中位误差，占手跨度百分比（r5n 4c 同尺判据，逐手机判定）"},
         {"id": "w6b_align", "name": "1:1 帧对齐",
          "verdict": "pass" if checks.get("frame_alignment") else "fail",
          "measured": (f"{len(json.loads(REPLAY_IN.read_text())['frames'])} 帧 @30 fps ↔ 原片逐帧"
@@ -326,9 +329,12 @@ def build() -> dict:
             "notes_per_frame": notes,
             "playback": playback,
             "phase_notes": {
-                # Main's honest-lift ruling: the sim never raises the box --
-                # that gap is a pad/finger geometry finding, not trainable
-                "抬离": "抬离=垫/指几何再设计范围（W6c 五轮机制闭环负结果，非训练可解）",
+                # current honest state (Main ruling, v18 batch): hook load-
+                # bearing achieved; in-gate pinch lift is a vise-alignment
+                # convergence domain, not a training problem
+                "抬离": ("抬离：钩挂载力已实现（59.6mm/30 帧/0N 支撑，审计确认）；"
+                         "门内捏持抬离=vise 对齐收敛域"
+                         "（pinch 形态已达成，slip/yaw 未收敛）"),
             },
             "video_fps": VIDEO_FPS,
             "total_source_frames": SOURCE_TOTAL_FRAMES,
