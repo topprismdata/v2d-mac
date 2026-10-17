@@ -194,7 +194,7 @@ def build_approach_stream(env: LiftHoldEnv) -> tuple[list[np.ndarray], np.ndarra
       quiet hold.
     Measured result: box lands within 2.2 deg yaw / 2 mm xy of pristine.
     Returns (stream, ctrl0); stream[k] is the ABSOLUTE 44-vector for frame k."""
-    ctrl0 = env.data.ctrl.copy()
+    ctrl0 = env.data.ctrl[:N_ACT].copy()
     rw, rf_, lw, lf = _abs_cmd_from_seed()
     lo, hi = env.ctrl_low, env.ctrl_high
     target = np.clip(np.concatenate([rw, rf_, lw, lf]), lo, hi)
@@ -2133,6 +2133,21 @@ def cmd_report(args: argparse.Namespace) -> None:
                         "the box centered even wedged); adapter 45/51 dofs "
                         "mapped and box settles/steps on v19->v20 correctly",
         }),
+        "v20p1_grid": (None if not getattr(args, "v20", False) else {
+            "status": "BLOCKED at the approach-stream builder: the left "
+                      "wrist rx command holds 0.0 through frames 0-80 then "
+                      "jumps 0.583 rad in one frame at the P3 boundary (the "
+                      "abs_to_actions rate-limit assert fires) - the "
+                      "wrist_phase goals for the LEFT hand receive the "
+                      "RIGHT hand's seed values (goal[22:28] = target[0:6] "
+                      "applies right-wrist values to the left block), so "
+                      "the left wrist never ramps and the P3 boundary "
+                      "discontinuity trips the limit. Fix: per-hand wrist "
+                      "goals (left = seed left values + the F4 -1.67 rx "
+                      "offset). One focused pass from here; the v20.1 "
+                      "settle is correct (13/13 suites green, box 0.7400) "
+                      "and the morphology audit machinery is live",
+        }),
         "round_l2a_force_obs_ppo": (None if not getattr(args, "l2a", False) else {
             "design": "obs 107->109 (per-side pad normals, N_OBS derived, "
                       "test pin -> constant); episodes start at the r8 "
@@ -2505,6 +2520,7 @@ def main() -> None:
     p.add_argument("--retune", action="store_true")
     p.add_argument("--v20", action="store_true")
     p.add_argument("--l2e", action="store_true")
+    p.add_argument("--v20p1", action="store_true")
     p.add_argument("--vise-guard", action="store_true")
     p.add_argument("--reward", default="band")
     p = sub.add_parser("eval")
@@ -2532,6 +2548,7 @@ def main() -> None:
     p.add_argument("--l2c", action="store_true")
     p.add_argument("--round8", action="store_true")
     p.add_argument("--round7d", action="store_true")
+    p.add_argument("--v20p1", action="store_true")
     args = ap.parse_args()
     if getattr(args, "l2c", False):
         import grounding.train_w6c as _self

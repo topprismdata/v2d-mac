@@ -19,7 +19,7 @@
  ],
  "scene": {
   "xml": "/Users/guohongbin/v2d-mac/grounding/assets/allegro_floating.xml",
-  "xml_sha256": "4f9a8576a4e7b3826303c09981f88707616330496611e2350f8f6eeac4935a53",
+  "xml_sha256": "bc75a8e4e542346d32091ddb1a47d42956f5749b23bf9332891cb2636aa321ca",
   "seed_file": "/Users/guohongbin/v2d-mac/runs/w6/gate3_qpos.json",
   "seed_sha256": "3215abdcf1a2191afa3f8a0a6365edba7dce6cb938b3aa42d4f25ee595421d34",
   "actuator_table_untouched": true
@@ -1340,6 +1340,9 @@
   "finding": "the settle itself births the box 13 mm HIGH (obj z 0.753 vs the 0.740 resting plane): the soft follower pads (stiffness 0.02 N*m/rad) sag under gravity during the initial settle and wedge under the box corners - every later metric reads against a wedged reference (peak -12.9 mm = the box settling DOWN to the true table), dz-independent (-8..-36 identical to 0.01 mm = the sink is settled-in before the press)",
   "diagnosis": "v20 settle-protocol item (W6a): the pad follower rest pose must be clear of the box footprint during settle (pads splayed/raised until the press approaches), or the settle needs the pads excluded from the first 400 steps",
   "positive": "press drift 2.0-2.1 mm (the bilateral press holds the box centered even wedged); adapter 45/51 dofs mapped and box settles/steps on v19->v20 correctly"
+ },
+ "v20p1_grid": {
+  "status": "BLOCKED at the approach-stream builder: the left wrist rx command holds 0.0 through frames 0-80 then jumps 0.583 rad in one frame at the P3 boundary (the abs_to_actions rate-limit assert fires) - the wrist_phase goals for the LEFT hand receive the RIGHT hand's seed values (goal[22:28] = target[0:6] applies right-wrist values to the left block), so the left wrist never ramps and the P3 boundary discontinuity trips the limit. Fix: per-hand wrist goals (left = seed left values + the F4 -1.67 rx offset). One focused pass from here; the v20.1 settle is correct (13/13 suites green, box 0.7400) and the morphology audit machinery is live"
  },
  "round_l2a_force_obs_ppo": {
   "design": "obs 107->109 (per-side pad normals, N_OBS derived, test pin -> constant); episodes start at the r8 trigger transient (+1.26 mm, N 1.59/2.36 N); reward = l2a (saturating centre-z 5 mm + sustain + log(N_r*N_l) both-side shaping); PPO 24 iters x 1536 steps, eval every 4 (3 episodes, pre-registered gate >=5 mm/20 frames/no slip/dual end-face contact)",
