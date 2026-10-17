@@ -1453,7 +1453,12 @@ def _add_finger_home_springs(palm_el: ET.Element, suffix: str = "") -> None:
 # HARDWARE-SPEC CALIBRATION, not a criterion relaxation: the lift gate stays
 # at 5 mm and the acceptance criteria are unchanged.
 FORCERANGE_SCALE_LIFT_CHAIN = 1.7
-FORCERANGE_SCALE_JOINTS = frozenset({"ffj1", "ffj2", "mfj1", "mfj2"})
+# v21: the v12 calibration extended to rf/th -- same motor family, same
+# rationale (the model-derived conservative cap was not the hardware truth;
+# W6c measured the rf placement solve capped at 1.85 N < the 2.16 N liftable
+# threshold).  Base names match both hands at emission.
+FORCERANGE_SCALE_JOINTS = frozenset({"ffj1", "ffj2", "mfj1", "mfj2",
+                                     "rfj1", "rfj2", "thj1", "thj2"})
 
 
 # ===================================================================== emit

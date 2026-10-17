@@ -708,12 +708,12 @@
     <position name="mfa2" joint="mfj2" class="medial" kp="1.4555" forcerange="-0.15981 0.15981"/>
     <position name="mfa3" joint="mfj3" class="distal" kp="0.0635" forcerange="-0.04235 0.04235"/>
     <position name="rfa0" joint="rfj0" class="base" kp="0.3285" forcerange="-0.01500 0.01500"/>
-    <position name="rfa1" joint="rfj1" class="proximal" kp="0.7266" forcerange="-0.10586 0.10586"/>
-    <position name="rfa2" joint="rfj2" class="medial" kp="0.2348" forcerange="-0.09382 0.09382"/>
+    <position name="rfa1" joint="rfj1" class="proximal" kp="0.7266" forcerange="-0.17997 0.17997"/>
+    <position name="rfa2" joint="rfj2" class="medial" kp="0.2348" forcerange="-0.15949 0.15949"/>
     <position name="rfa3" joint="rfj3" class="distal" kp="0.0449" forcerange="-0.04219 0.04219"/>
     <position name="tha0" joint="thj0" class="thumb_base" kp="1.0423" forcerange="-0.08311 0.08311"/>
-    <position name="tha1" joint="thj1" class="thumb_proximal" kp="0.4073" forcerange="-0.01731 0.01731"/>
-    <position name="tha2" joint="thj2" class="thumb_medial" kp="0.4186" forcerange="-0.04285 0.04285"/>
+    <position name="tha1" joint="thj1" class="thumb_proximal" kp="0.4073" forcerange="-0.02942 0.02942"/>
+    <position name="tha2" joint="thj2" class="thumb_medial" kp="0.4186" forcerange="-0.07284 0.07284"/>
     <position name="tha3" joint="thj3" class="thumb_distal" kp="0.0968" forcerange="-0.01633 0.01633"/>
     <position name="wrist_ax_left" joint="wrist_x_left" kp="15000" ctrlrange="-0.18 0.18"
       forcerange="-45 45"/>
@@ -736,12 +736,12 @@
     <position name="mfa2_left" joint="mfj2_left" class="medial" kp="1.4555" forcerange="-0.15981 0.15981"/>
     <position name="mfa3_left" joint="mfj3_left" class="distal" kp="0.0635" forcerange="-0.04235 0.04235"/>
     <position name="rfa0_left" joint="rfj0_left" class="base" kp="0.3285" forcerange="-0.01500 0.01500"/>
-    <position name="rfa1_left" joint="rfj1_left" class="proximal" kp="0.7266" forcerange="-0.10586 0.10586"/>
-    <position name="rfa2_left" joint="rfj2_left" class="medial" kp="0.2348" forcerange="-0.09382 0.09382"/>
+    <position name="rfa1_left" joint="rfj1_left" class="proximal" kp="0.7266" forcerange="-0.17997 0.17997"/>
+    <position name="rfa2_left" joint="rfj2_left" class="medial" kp="0.2348" forcerange="-0.15949 0.15949"/>
     <position name="rfa3_left" joint="rfj3_left" class="distal" kp="0.0449" forcerange="-0.04219 0.04219"/>
     <position name="tha0_left" joint="thj0_left" class="thumb_base" kp="1.0423" forcerange="-0.08311 0.08311"/>
-    <position name="tha1_left" joint="thj1_left" class="thumb_proximal" kp="0.4073" forcerange="-0.01731 0.01731"/>
-    <position name="tha2_left" joint="thj2_left" class="thumb_medial" kp="0.4186" forcerange="-0.04285 0.04285"/>
+    <position name="tha1_left" joint="thj1_left" class="thumb_proximal" kp="0.4073" forcerange="-0.02942 0.02942"/>
+    <position name="tha2_left" joint="thj2_left" class="thumb_medial" kp="0.4186" forcerange="-0.07284 0.07284"/>
     <position name="tha3_left" joint="thj3_left" class="thumb_distal" kp="0.0968" forcerange="-0.01633 0.01633"/>
     <position name="arm_yaw_r" joint="arm_yaw_r" kp="60" forcerange="-8 8" dampratio="1.0" ctrlrange="-3.2 3.2"/>
     <position name="arm_pitch_r" joint="arm_pitch_r" kp="60" forcerange="-8 8" dampratio="1.0" ctrlrange="-3.2 3.2"/>

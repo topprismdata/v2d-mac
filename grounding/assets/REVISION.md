@@ -1070,7 +1070,29 @@ springref 附近）。位置伺服仍是主动控制（reset 先 settle 后镜�
   calib 的 palm worst-case 断言改为与封存报告自洽。
 - smoke1 SAM2 需 `sam2` 包（已装，7/7 绿）。
 
-### 十二、状态### 十二、状态
+### 十二、W6a-v21（rf/th 力矩帽硬件校准 — v12 先例补齐）
+
+- **依据**：v12 把抬升链 ffj1/ffj2/mfj1/mfj2 ×1.7 对齐 Allegro 硬件规格（同源电机同理由）；
+  W6cLift20 实测 rf 放置解完美但 N 帽 1.85N < 2.16N 可举阈值（差 17%）。
+- **落地**：`FORCERANGE_SCALE_JOINTS` 扩至 rfj1/rfj2/thj1/thj2（双手，×1.7）——
+  rfj1 0.10586→0.17997、rfj2 0.09382→0.15949、thj1 0.01731→0.02942、thj2 0.04285→0.07284
+  N·m；rfj0/rfj3/thj0/thj3 不动。初始咬合 ~5N 级，衰减 60% 仍 ~2N/侧×μ1.8=6.8N ≫ 1.47N。
+- **验证**：r1 恒等式经同源常量自动一致（上轮对齐设计的直接收益）；static-hold 门
+  帽升更宽裕；winding 位置帽表机械再生（32 关节 |forcerange|/kp）；核心电池
+  **152 passed / 1 skipped** 全绿。穿透/接触判据零变化（纯执行器参数）。
+
+### 十三、状态### 十二、W6a-v21（rf/th 力矩帽硬件校准 — v12 先例补齐）
+
+- **依据**：v12 把抬升链 ffj1/ffj2/mfj1/mfj2 ×1.7 对齐 Allegro 硬件规格（同源电机同理由）；
+  W6cLift20 实测 rf 放置解完美但 N 帽 1.85N < 2.16N 可举阈值（差 17%）。
+- **落地**：`FORCERANGE_SCALE_JOINTS` 扩至 rfj1/rfj2/thj1/thj2（双手，×1.7）——
+  rfj1 0.10586→0.17997、rfj2 0.09382→0.15949、thj1 0.01731→0.02942、thj2 0.04285→0.07284
+  N·m；rfj0/rfj3/thj0/thj3 不动。初始咬合 ~5N 级，衰减 60% 仍 ~2N/侧×μ1.8=6.8N ≫ 1.47N。
+- **验证**：r1 恒等式经同源常量自动一致（上轮对齐设计的直接收益）；static-hold 门
+  帽升更宽裕；winding 位置帽表机械再生（32 关节 |forcerange|/kp）；核心电池
+  **152 passed / 1 skipped** 全绿。穿透/接触判据零变化（纯执行器参数）。
+
+### 十三、状态
 
 - ngeom 99 / nbody 49；XML sha256 =
   XML sha256 = `7b7a1adffab68f0156297f5e654d72b9ef01bc4036874e34870027ffc11563dc`（git cat-file 对象库复核；初稿误记中间态 b17544ab，见 §三流程更正）。
@@ -1263,7 +1285,18 @@ XML sha256 = `c0114a640011b160900e2c38354c8c93475535924e81110172c8c02079f58928`
      同类：重生成 runs 后自动对齐。
 - winding cap 表已机械再生自现 MJCF（32 关节，smoke5_winding 24/24 绿）。
 
-### 十二、状态
+### 十二、W6a-v21（rf/th 力矩帽硬件校准 — v12 先例补齐）
+
+- **依据**：v12 把抬升链 ffj1/ffj2/mfj1/mfj2 ×1.7 对齐 Allegro 硬件规格（同源电机同理由）；
+  W6cLift20 实测 rf 放置解完美但 N 帽 1.85N < 2.16N 可举阈值（差 17%）。
+- **落地**：`FORCERANGE_SCALE_JOINTS` 扩至 rfj1/rfj2/thj1/thj2（双手，×1.7）——
+  rfj1 0.10586→0.17997、rfj2 0.09382→0.15949、thj1 0.01731→0.02942、thj2 0.04285→0.07284
+  N·m；rfj0/rfj3/thj0/thj3 不动。初始咬合 ~5N 级，衰减 60% 仍 ~2N/侧×μ1.8=6.8N ≫ 1.47N。
+- **验证**：r1 恒等式经同源常量自动一致（上轮对齐设计的直接收益）；static-hold 门
+  帽升更宽裕；winding 位置帽表机械再生（32 关节 |forcerange|/kp）；核心电池
+  **152 passed / 1 skipped** 全绿。穿透/接触判据零变化（纯执行器参数）。
+
+### 十三、状态
 
 - ngeom **135**（84 手 + 24 腕部模块/过渡/台阶 + 3 盒族 + 2 支撑 + 22 龙门）、nbody 49；
   `EXPECTED_NGEOM = 135` + 族加法记账；smoke6 计数同步。
@@ -1489,7 +1522,18 @@ W6b 二轮 finding F4：v8 的 static-hold 门**只验弹簧需求、重力"另�
      同类：重生成 runs 后自动对齐。
 - winding cap 表已机械再生自现 MJCF（32 关节，smoke5_winding 24/24 绿）。
 
-### 十二、状态
+### 十二、W6a-v21（rf/th 力矩帽硬件校准 — v12 先例补齐）
+
+- **依据**：v12 把抬升链 ffj1/ffj2/mfj1/mfj2 ×1.7 对齐 Allegro 硬件规格（同源电机同理由）；
+  W6cLift20 实测 rf 放置解完美但 N 帽 1.85N < 2.16N 可举阈值（差 17%）。
+- **落地**：`FORCERANGE_SCALE_JOINTS` 扩至 rfj1/rfj2/thj1/thj2（双手，×1.7）——
+  rfj1 0.10586→0.17997、rfj2 0.09382→0.15949、thj1 0.01731→0.02942、thj2 0.04285→0.07284
+  N·m；rfj0/rfj3/thj0/thj3 不动。初始咬合 ~5N 级，衰减 60% 仍 ~2N/侧×μ1.8=6.8N ≫ 1.47N。
+- **验证**：r1 恒等式经同源常量自动一致（上轮对齐设计的直接收益）；static-hold 门
+  帽升更宽裕；winding 位置帽表机械再生（32 关节 |forcerange|/kp）；核心电池
+  **152 passed / 1 skipped** 全绿。穿透/接触判据零变化（纯执行器参数）。
+
+### 十三、状态
 
 - 全套门：scene_w6 13/13（含重力版 static hold）；核心电池同 v8。
 - gate3_qpos.json：双手完整 qpos（物体关节置零 + 本节文档标注）。
