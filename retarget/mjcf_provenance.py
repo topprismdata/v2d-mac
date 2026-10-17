@@ -36,28 +36,33 @@ if str(REPO) not in sys.path:
 
 from retarget import retarget_smoke as rs  # noqa: E402
 
-#: The MJCF revision this re-run is accounted against.  W6a-v19 landed in
-#: 0498dc3: six env-IK-driven arm servos added BEHIND the hand actuator block
-#: (arm_yaw/pitch/elbow per hand, kp = 60 N m/rad, forcerange +-8 N m,
-#: ctrl [44:50]; nq/nu 51/44 -> 57/50, ngeom 145).  W6a measured zero
-#: hand-arm mechanical coupling (neq = 0, independent kinematic trees, zero
-#: arm collision geoms), and the per-joint actuator diff v14 -> v19 is ZERO
-#: across the existing 44 -- the 32+6 winding-table keys are BIT-IDENTICAL
-#: and carry over; the six arm rows are recorded separately in
-#: retarget_smoke.SERVO_WINDING_ARM_SERVOS with their env-IK provenance
-#: (not acceptance joints, not policy-controlled).  Verified:
-#: blob(0498dc3) == sha256 of the working-tree XML (e7b5de06...).
+#: The MJCF revision this re-run is accounted against.  W6a-v21 landed in
+#: 98c498a: the v12 hardware-alignment precedent extended to the same-motor
+#: rf/th joints -- rfj1 0.10586 -> 0.17997, rfj2 0.09382 -> 0.15949,
+#: thj1 0.01731 -> 0.02942, thj2 0.04285 -> 0.07284 N m (x2 hands; W6c
+#: measured the rf placement solve capped at 1.85 N, 17% short of the 2.16 N
+#: liftable threshold).  Exactly eight position winding-table keys moved
+#: x2 hands (rfj1 0.1457 -> 0.2477, rfj2 0.3996 -> 0.6793, thj1 0.0425 ->
+#: 0.0722, thj2 0.1024 -> 0.1740); the other 24 measured identical.  The
+#: rate gates, flat-pad contact criterion and per-joint spring table are
+#: unchanged.  Verified: blob(98c498a) == sha256 of the working-tree XML
+#: (29896fe5...).
+#: History (compressed): v19 added the six env-IK arm servos behind the hand
+#: block (ctrl [44:50], zero hand-arm mechanical coupling -- neq = 0,
+#: independent trees, zero arm collision geoms; recorded in
+#: retarget_smoke.SERVO_WINDING_ARM_SERVOS, not acceptance joints);
+#: v20.1 (e170b6d) preloaded the follower pads' rest pose.
 #: The pad-touch criterion (flat pads): gate-3 touch offset = the flat pad's
 #: own half-thickness (1.5 mm), derived programmatically from the geom
 #: (tests/test_scene_w6.py::_surface_rad); the sweep-clearance radius for
 #: foul checks is the box's circumscribed radius (_sweep_rad).
-#: The position winding table was RE-DERIVED for the new arms.  Rate tables
-#: are untouched by every step since v2 (hinges 5.0 rad/s x6; slides
-#: x/z 45/280 = 0.1607 m/s, y 45/25 = 1.8 m/s, x2 hands), re-affirmed by
-#: per-joint diff on each landing.  The per-joint spring table below is
-#: unchanged through v19 (re-diffed, 0 entries).
+#: The position winding table is re-derived from the model on every
+#: generation.  Rate tables are untouched by every step since v2 (hinges
+#: 5.0 rad/s x6; slides x/z 45/280 = 0.1607 m/s, y 45/25 = 1.8 m/s, x2
+#: hands), re-affirmed by per-joint diff on each landing.  The per-joint
+#: spring table below is unchanged through v21 (re-diffed, 0 entries).
 #:
-#: PASSIVE CONSTANTS, per joint (v8 sizing, unchanged through v19; the v5
+#: PASSIVE CONSTANTS, per joint (v8 sizing, unchanged through v21; the v5
 #: single "0.4 + springref" remark is superseded -- k is no longer a shared
 #: constant).  Left hand mirrors right bit-identically (asserted per mirror
 #: pair in the winding-tolerance tests' spirit; measured off the model):
@@ -82,12 +87,12 @@ from retarget import retarget_smoke as rs  # noqa: E402
 #: the 0.8 static-hold budget but below saturation.  First observed by the
 #: v8 static-hold gate; it is contact-physics evidence for W6c's A2/A3a
 #: accounting, not a smoke-5 gate.
-MJCF_COMMIT = "e170b6d"
+MJCF_COMMIT = "98c498a"
 #: The MJCF revision the *previous* smoke-5 numbers were taken on. Kept so the
-#: two data sets can never be silently mixed.  83bcedb is the W6a-v14
-#: generation (blob 257ef611..., pre-arm scene) -- the superseded physics
-#: the artefacts were stamped against before v19 landed.
-MJCF_COMMIT_BASELINE = "83bcedb"
+#: two data sets can never be silently mixed.  e170b6d is the W6a-v20.1
+#: generation (blob bc75a8e4..., pre-rf/th-hardware-alignment caps) -- the
+#: superseded physics the artefacts were stamped against before v21 landed.
+MJCF_COMMIT_BASELINE = "e170b6d"
 
 OUT_DIR = REPO / "runs/p0/smoke5_retarget"
 REPORT_PATH = OUT_DIR / "report.json"

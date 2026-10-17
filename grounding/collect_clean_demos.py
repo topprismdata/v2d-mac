@@ -96,16 +96,17 @@ VERDICT_JSON = OUT_DIR / "clean_lift_verdict.json"
 # Scene provenance stamp written into every demo npz this module produces, and
 # checked by grounding/bc_pretrain.py against the demo set it is asked to load -
 # a BC warm start must never be fitted on frames recorded against a different
-# scene. Bumped 83bcedb -> 0498dc3 with W6a-v19 (six env-IK-driven arm
-# servos added behind the hand block, ctrl [44:50]; zero hand-arm mechanical
-# coupling measured; existing 44 actuators bit-identical; sha256
-# e7b5de06...).  All winding-table keys unchanged.
+# scene. Bumped e170b6d -> 98c498a with W6a-v21 (v12 hardware-alignment
+# precedent extended to the rf/th joints: rfj1 0.180 / rfj2 0.159 /
+# thj1 0.029 / thj2 0.073 N m, x2 hands; eight position winding-table keys
+# refreshed; sha256 29896fe5...).  Rate gates, springs and the flat-pad
+# criterion are unchanged.
 # HONESTY NOTE: the committed demo npz artefacts under smoke4_mujoco_ppo/ were
 # recorded on the superseded single-hand XML (1b0f13f, blob 1ea0fdf5...) --
 # this pin describes the XML the generator now runs on, and the artefacts must
 # not be mixed with a run made after this bump without a re-record.
-MJCF_COMMIT = "e170b6d"
-MJCF_SHA256 = "bc75a8e4e542346d32091ddb1a47d42956f5749b23bf9332891cb2636aa321ca"
+MJCF_COMMIT = "98c498a"
+MJCF_SHA256 = "29896fe50740a63ac5055e1dc575d0693969dbc2bd5e3ff01f54609983fecd46"
 N_WRIST = 6
 N_FINGER = 16
 

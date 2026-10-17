@@ -83,7 +83,7 @@ URDF_TO_MJCF_ACTUATOR_ORDER = [
     MJCF_FINGER_JOINTS.index(mjcf) for _urdf, mjcf in URDF_MJCF_JOINT_PAIRS
 ]
 WRIST_JOINTS = ["wrist_x", "wrist_y", "wrist_z", "wrist_rx", "wrist_ry", "wrist_rz"]
-# The W6a-v19 scene (MJCF_COMMIT 0498dc3, sha256 e7b5de06...) carries a second,
+# The W6a-v21 scene (MJCF_COMMIT 98c498a, sha256 29896fe5...) carries a second,
 # mirrored hand: identical upstream naming with a "_left" suffix.  nu 22 -> 44,
 # nq/nv 29/28 -> 51/50; v19 added six env-IK-driven arm servos behind the hand
 # block (nu 44 -> 50, ctrl [44:50], see SERVO_WINDING_ARM_SERVOS -- zero
@@ -299,7 +299,15 @@ WRIST_ROT_CEILING_RAD = 0.5
 #     measured identical).  Rate gates re-measured unchanged (kp does not
 #     enter |forcerange|/dof_damping), the flat-pad contact criterion is
 #     geometry-identical and carries over, and the per-joint spring table
-#     is unchanged.
+#     is unchanged;
+#   * W6a-v19/v20.1/v21 (0498dc3 / e170b6d / 98c498a): v19 added the six
+#     env-IK arm servos (existing 44 actuators bit-identical, zero
+#     hand-arm coupling); v21 extended the v12 hardware-alignment precedent
+#     to the rf/th joints (rfj1 0.180 / rfj2 0.159 / thj1 0.029 /
+#     thj2 0.073 N m, x2 hands) -- eight position keys refreshed (rfj1
+#     0.1457 -> 0.2477, rfj2 0.3996 -> 0.6793, thj1 0.0425 -> 0.0722,
+#     thj2 0.1024 -> 0.1740), the other 24 measured identical.  Rate gates,
+#     springs and the flat-pad criterion re-measured unchanged.
 SERVO_WINDING_POSITION_CAP_RAD = {
     "ffj0": 0.039994670929922725,
     "ffj1": 0.21431646932185144,
