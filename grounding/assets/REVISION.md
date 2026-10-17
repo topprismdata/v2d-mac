@@ -1056,7 +1056,15 @@ XML sha256 = `c0114a640011b160900e2c38354c8c93475535924e81110172c8c02079f58928`
 - **入库**：`.gitignore` 白名单 `!runs/w6/gate3_qpos.json`（先例 mano_params.npz）。
 - **消费者**：W6b 三轮终态 blend 直接锚此文件；重渲面板亦读它。
 
-### 四、状态
+### 四、W6a-v16 追加（臂段重分布 + 世界体 Z 台/肩/前臂）
+
+- **旧 v15 臂体（arm_right/arm_left，5 段焊在手 root）全部移除**——手动臂整体动、
+  导轨不动 → 滑车离轨 0.3–0.5 m（W6d 程序化审计）。
+- **替换**：龙门 body 上加每手 3 段静态 Z 台+肩+前臂（从 x-beam 下垂到腕部上方），
+  与手侧 wmount 在回放位形重叠——接触链：手 → wmount → 静态前臂 → 肩 → Z 台 → 横梁。
+- ngeom 141 / nbody 49 / gantry 族 28 geom。
+
+### 五、状态
 
 - ngeom **135**（84 手 + 24 腕部模块/过渡/台阶 + 3 盒族 + 2 支撑 + 22 龙门）、nbody 49；
   `EXPECTED_NGEOM = 135` + 族加法记账；smoke6 计数同步。
@@ -1175,7 +1183,15 @@ W6b 二轮 finding F4：v8 的 static-hold 门**只验弹簧需求、重力"另�
 - **入库**：`.gitignore` 白名单 `!runs/w6/gate3_qpos.json`（先例 mano_params.npz）。
 - **消费者**：W6b 三轮终态 blend 直接锚此文件；重渲面板亦读它。
 
-### 四、状态
+### 四、W6a-v16 追加（臂段重分布 + 世界体 Z 台/肩/前臂）
+
+- **旧 v15 臂体（arm_right/arm_left，5 段焊在手 root）全部移除**——手动臂整体动、
+  导轨不动 → 滑车离轨 0.3–0.5 m（W6d 程序化审计）。
+- **替换**：龙门 body 上加每手 3 段静态 Z 台+肩+前臂（从 x-beam 下垂到腕部上方），
+  与手侧 wmount 在回放位形重叠——接触链：手 → wmount → 静态前臂 → 肩 → Z 台 → 横梁。
+- ngeom 141 / nbody 49 / gantry 族 28 geom。
+
+### 五、状态
 
 - 全套门：scene_w6 13/13（含重力版 static hold）；核心电池同 v8。
 - gate3_qpos.json：双手完整 qpos（物体关节置零 + 本节文档标注）。

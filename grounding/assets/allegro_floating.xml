@@ -198,6 +198,30 @@
       <geom name="gantry_limit_posy" type="box" size="0.05 0.02 0.05"
         pos="0 -0.52 1.015" mass="0" contype="0" conaffinity="0"
         rgba="0.55 0.3 0.15 1"/>
+      <!-- W6a-v16: per-hand Z-stage + shoulder + forearm (industrial arm
+           chain: beam → carriage → Z stage → shoulder → forearm → hand).
+           Static pieces at each hand's nominal position (±0.235, 0). The
+           hand-mounted wmount reaches UP to meet the static forearm's lower
+           tip — the overlap is maintained within the nominal ±0.05 replay
+           band (verified in R10-v16). -->
+      <geom name="gantry_zstage_r" type="box" size="0.028 0.028 0.048"
+        pos="0.235 0 1.002" mass="0" contype="0" conaffinity="0"
+        rgba="0.42 0.42 0.46 1"/>
+      <geom name="gantry_shoulder_r" type="box" size="0.024 0.024 0.020"
+        pos="0.235 0 0.930" mass="0" contype="0" conaffinity="0"
+        rgba="0.30 0.30 0.34 1"/>
+      <geom name="gantry_forearm_r" type="capsule"
+        fromto="0.235 0 0.910 0.235 0 0.840" size="0.014" mass="0"
+        contype="0" conaffinity="0" rgba="0.38 0.38 0.42 1"/>
+      <geom name="gantry_zstage_l" type="box" size="0.028 0.028 0.048"
+        pos="-0.235 0 1.002" mass="0" contype="0" conaffinity="0"
+        rgba="0.42 0.42 0.46 1"/>
+      <geom name="gantry_shoulder_l" type="box" size="0.024 0.024 0.020"
+        pos="-0.235 0 0.930" mass="0" contype="0" conaffinity="0"
+        rgba="0.30 0.30 0.34 1"/>
+      <geom name="gantry_forearm_l" type="capsule"
+        fromto="-0.235 0 0.910 -0.235 0 0.840" size="0.014" mass="0"
+        contype="0" conaffinity="0" rgba="0.38 0.38 0.42 1"/>
       <!-- W6a-v7: shared-beam dual-carriage answer + left end module. The
            physics fact is ONE y-rail with TWO carriages (one per hand); each
            carriage carries a Z stage and a short bridge arm down to its
@@ -255,25 +279,6 @@
     </body>
 
     <body name="hand_root" pos="0.235 0 0.755" euler="0 0 3.141592653590">
-      <!-- W6a-v15: arm system (visual only). Forearm → elbow → upper arm →
-           shoulder → carriage riding the x-beam. All mass=0/no-collision. -->
-      <body name="arm_right" pos="0 0 0">
-        <geom name="arm_r_forearm" type="capsule"
-          fromto="0 0 0 -0.04 0 0.10" size="0.015" mass="0"
-          contype="0" conaffinity="0" rgba="0.38 0.38 0.42 1"/>
-        <geom name="arm_r_elbow" type="sphere"
-          pos="-0.04 0 0.10" size="0.018" mass="0"
-          contype="0" conaffinity="0" rgba="0.30 0.30 0.34 1"/>
-        <geom name="arm_r_upper" type="capsule"
-          fromto="-0.04 0 0.10 -0.04 0 0.25" size="0.014" mass="0"
-          contype="0" conaffinity="0" rgba="0.35 0.35 0.39 1"/>
-        <geom name="arm_r_shoulder" type="box" size="0.020 0.022 0.020"
-          pos="-0.04 0 0.25" mass="0" contype="0" conaffinity="0"
-          rgba="0.28 0.28 0.31 1"/>
-        <geom name="arm_r_carriage" type="box" size="0.025 0.020 0.025"
-          pos="-0.04 0 0.28" mass="0" contype="0" conaffinity="0"
-          rgba="0.5 0.35 0.2 1"/>
-      </body>
       <!-- W6a-v6: wrist mounting module (GPT P0-1 rework - the v4 45-deg
            capsule read as a cannon implying a wrist DoF that does not exist).
            Short EE-flange stack on the back of the hand: mounting plate +
@@ -434,23 +439,6 @@
     </body>
 
     <body name="hand_root_left" pos="-0.235 0 0.755" euler="0 0 0">
-      <body name="arm_left" pos="0 0 0">
-        <geom name="arm_l_forearm" type="capsule"
-          fromto="0 0 0 0.04 0 0.10" size="0.015" mass="0"
-          contype="0" conaffinity="0" rgba="0.38 0.38 0.42 1"/>
-        <geom name="arm_l_elbow" type="sphere"
-          pos="0.04 0 0.10" size="0.018" mass="0"
-          contype="0" conaffinity="0" rgba="0.30 0.30 0.34 1"/>
-        <geom name="arm_l_upper" type="capsule"
-          fromto="0.04 0 0.10 0.04 0 0.25" size="0.014" mass="0"
-          contype="0" conaffinity="0" rgba="0.35 0.35 0.39 1"/>
-        <geom name="arm_l_shoulder" type="box" size="0.020 0.022 0.020"
-          pos="0.04 0 0.25" mass="0" contype="0" conaffinity="0"
-          rgba="0.28 0.28 0.31 1"/>
-        <geom name="arm_l_carriage" type="box" size="0.025 0.020 0.025"
-          pos="0.04 0 0.28" mass="0" contype="0" conaffinity="0"
-          rgba="0.5 0.35 0.2 1"/>
-      </body>
       <body name="wmount_left" pos="0 0 0">
         <geom name="wmount_transition_left" type="box" size="0.010 0.038 0.028"
           pos="-0.004 0 0.010" mass="0" contype="0" conaffinity="0"

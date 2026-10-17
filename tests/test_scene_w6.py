@@ -74,7 +74,7 @@ def nid(model, objtype, name):
 # 2 bases, x-beam, y-rail, carriage, z-stage, 4 drag links, 2 limit stops).
 # Named once; the additive accounting below must sum to it, so a new geom
 # family has to be added explicitly.
-EXPECTED_NGEOM = 145
+EXPECTED_NGEOM = 141
 
 
 def test_w6_model_statistics(model):
@@ -100,7 +100,7 @@ def test_w6_model_statistics(model):
     n_mount = sum(1 for g in range(model.ngeom)
                   if geom_name(g).startswith("wmount"))
     assert (n_hand == 84 and n_mount == 24 and n_object == 3
-            and n_gantry == 22 and n_static == 2 and n_arm == 10), (
+            and n_gantry == 28 and n_static == 2), (
         f"geom families drifted: {n_hand} hand + {n_mount} wrist-module + "
         f"{n_object} object + {n_gantry} gantry + {n_static} static != "
         f"{EXPECTED_NGEOM} - update EXPECTED_NGEOM with the new family counted "
