@@ -47,27 +47,34 @@ PRESETS = [
 
 def main() -> None:
     import mujoco
-    import grounding.envs.lift_hold_env as lhe
+    import scene_fidelity
 
     payload = json.loads(DATA.read_text())
     frames = payload["replay"]["frames"]
     OUT.mkdir(parents=True, exist_ok=True)
 
-    env = lhe.LiftHoldEnv(episode_len=50, domain_rand=False)
-    env.reset(seed=0)
-    m, d = env.model, env.data
-    # readability: the shipped materials are near-black under the two scene
-    # lights (ambient 0), so hand/forearm/gantry silhouettes merge into one
-    # dark blob -- brighten in memory (never the frozen XML) so the pinch is
-    # discernible, which is the panel's whole point
-    m.light_ambient[:] = 0.45
-    m.light_diffuse[:] = np.maximum(m.light_diffuse, 1.0)
-    m.light_specular[:] = np.maximum(m.light_specular, 0.4)
+    # rendering model = frozen XML + scene-fidelity visual layer (MjSpec,
+    # physics-invariant: same nq/nv/nbody/njnt/qpos addresses -- see
+    # scene_fidelity.py).  The env/physics stack is NOT involved here.
+    import sys
+    if str(REPO / "viz") not in sys.path:
+        sys.path.insert(0, str(REPO / "viz"))
+    m = scene_fidelity.build_fidelity_model()
+    d = mujoco.MjData(m)
+    # readability: mild ambient fill only -- the fidelity textures (oak,
+    # floral) are already bright, so anything stronger clips to white; warm
+    # tint on the key light for the original clip's indoor color cast
+    m.light_ambient[:] = 0.18
+    for i in range(m.nlight):
+        m.light_diffuse[i] = 0.55 * np.array([1.0, 0.97, 0.92])
+        m.light_specular[i] = 0.15
     # the frozen MJCF ships a 640 px offscreen buffer; widen it in memory so
     # the panel's sim panes come out at the source clip's 1280x720
     m.vis.global_.offwidth = WIDTH
     m.vis.global_.offheight = HEIGHT
-    obj_adr = env.obj_qpos_adr
+    obj_adr = int(m.jnt_qposadr[mujoco.mj_name2id(
+        m, mujoco.mjtObj.mjOBJ_JOINT, "object_free")])
+    obj_body = int(m.body("object").id)
 
     cam = mujoco.MjvCamera()
     cam.type = mujoco.mjtCamera.mjCAMERA_FREE
@@ -82,7 +89,7 @@ def main() -> None:
             d.qpos[obj_adr:obj_adr + 7] = np.asarray(fr["obj"])
             mujoco.mj_forward(m, d)
 
-            cam.lookat[:] = d.xpos[m.body("object").id]
+            cam.lookat[:] = d.xpos[obj_body]
             cam.azimuth, cam.elevation, cam.distance = az, el, dist
             renderer.update_scene(d, camera=cam)
             img = renderer.render()
