@@ -1095,7 +1095,9 @@ def ur5e_ik_placement(model, data, spec: SideSpec,
     palm_ach = np.empty((T, 3))
     resmax = 0.0
     palm_normals = np.empty((T, 3))  # r12.1 probe: palm -x hat world
-    terminal_start = max(0, T - 62)  # the blend/hold window
+    # r12.6 fix 2: the terminal window moved earlier (T-100) so the pads
+    # settle into the face band and register contact
+    terminal_start = max(0, T - 100)  # the blend/hold window
     q = np.zeros(6)
     joints = np.empty((T, 6))
     palm_ach = np.empty((T, 3))
@@ -1144,11 +1146,30 @@ def ur5e_ik_placement(model, data, spec: SideSpec,
             dq_ori = Jr.T @ np.linalg.solve(Jr @ Jr.T + 1e-4 * np.eye(3),
                                             e_r)
             q = np.clip(q + N @ dq_ori, lo, hi)
+            # r12.6 fix 1: position re-projection after the orientation
+            # secondary (the null-space leak: the discrete orientation step
+            # drifts the palm off the mm-level task target)
+            for _rp in range(3):
+                data.qpos[qadr] = q
+                mujoco.mj_kinematics(model, data)
+                mujoco.mj_comPos(model, data)
+                p = data.xpos[palm_bid]
+                e_p = tgt - p
+                if np.linalg.norm(e_p) < 5e-4:
+                    break
+                jacp = np.zeros((3, model.nv))
+                mujoco.mj_jacBody(model, data, jacp, None, palm_bid)
+                Jp = jacp[:, vjad]
+                q += Jp.T @ np.linalg.solve(Jp @ Jp.T + 1e-4 * np.eye(3),
+                                            e_p)
         else:
             # swing: no orientation target (e_r = 0); the elbow-up comfort
-            # drift keeps the forearm clear of the table
-            q = np.clip(q + N @ ((np.array([0.0, -0.9, 0.9, 0.0, 0.0, 0.0])
-                                  - q) * 0.01), lo, hi)
+            # drift keeps the forearm clear of the table -- the comfort
+            # sign is per-side (the mirrored mount mirrors the bend)
+            _cs = 1.0 if spec.side == "right" else -1.0
+            q = np.clip(q + N @ ((np.array([0.0, -0.9 * _cs, 0.9 * _cs,
+                                            0.0, 0.0, 0.0]) - q) * 0.01),
+                        lo, hi)  # the per-side comfort bend (r12.6 fix 3)
         data.qpos[qadr] = q
         mujoco.mj_kinematics(model, data)
         p = data.xpos[palm_bid]
