@@ -2307,7 +2307,7 @@
   "next": "the missing element is a placement solve, not a command family: put the ff/mf follower pads ON the faces at mid-height with >= 0.25 rad of curl headroom (wrist x/y/z advance from the seed placement, or re-solve the approach terminal for the v20 box), then the r7e mechanism applies; items for W6a: move the three provenance pins to the v20.1 commit and regenerate the forcerange table + REVISION.md row from the final tree"
  },
  "v20p1_placement_grid": {
-  "verdict": "TERMINAL - FINAL (v25sym centered): the symmetric centered press config achieved statically (lines +0.1/-19.3 mm, couple ~0, N 12.75/3.47) but the engage yaw is a placement-CHOREOGRAPHY artifact (8-32 deg across every ramp variant) that fails the yaw gate at t=0 in every configuration - the policy's episodes begin after the knock. The stabilization drift was root-caused (the right press offset; the couple falsified); the choreography yaw is the remaining blocker - an open-loop scheduling research item for W6a/W6b. Submitted for GPT final review as-is",
+  "verdict": "TERMINAL - FINAL (r11): the cos-priority placement (cos 0.95) + the pure-normal decoupled choreography STILL engages at yaw 21 deg - the yaw-clean engage is unachievable by open-loop hand motion on a low-friction table (every approach disturbs the box yaw before the vise closes). The falsification chain is complete: the press couple, the eccentricity, and the choreography hypotheses all tested; the yaw disturbance is intrinsic to open-loop hand-box interaction. 5 of 7 gate clauses achieved (the lift triplet to 127 frames / 105 mm / 100 mm); slip and yaw remain open with the three documented paths (the W6a yaw-locking fixture, closed-loop visual servoing, or the gate yaw re-anchoring - Main/GPT's call). Submitted for GPT final review as-is",
   "placement_solve": {
    "method": "FK + tip-path Jacobian scan (~10^4 evals): pads-on-face position AND the curl tip-path angle to the face normal cos(theta) - N_max = (forcerange/arm) x cos(theta); then closed-loop dynamic seat (4 iters, measured pad errors -> wrist ctrl, signs probed per hand)",
    "key_physics": "the pre-rotation placement had cos 0.19 -> N 1.41 ceiling REGARDLESS of command (the pad tip path was ~79 deg off the face normal - mostly tangential); the wrist ROTATION (right: rx +0.15, ry +0.60, rz -0.10) aligns the curl plane with the normal (cos 0.63-0.67) and the same +0.25 rad demand that gave 1.41 N now drives N 2.43 -> 3.76 -> 6.19 -> 4.22 N - the follower-pad curl-demand mechanism work as designed ONCE the curl plane contains the face normal",
@@ -3404,6 +3404,29 @@
     "achieved_across_the_chain": "window up to 127 frames (6.4 s); peak up to 105 mm; final up to 100 mm; endface held; support clean - 5 of 7 gate clauses at the best round (v22)",
     "slip": "best 25-40 mm (v24, gate 10) - trend-confirmed with the centering",
     "yaw": "best 18.5-28.4 deg (v24, gate 10) - the choreography artifact bounds it"
+   }
+  },
+  "r11_cos_priority_final": {
+   "verdict": "TERMINAL - FINAL (r11): the cos-priority placement (cos 0.95, the curl-plane aligned to the face normal) + the pure-normal decoupled choreography STILL engages at yaw 21.14 deg (N 12.75/3.47, endface both True, no wedge) - the yaw-clean engage (t=0 < 10 deg) is UNACHIEVABLE by open-loop hand motion in this scene: the box rests on a low-friction table and EVERY hand approach disturbs its yaw before the vise closes",
+   "cos_priority_result": {
+    "placement": "wrist (x +0.05, y 0, z +0.05), rot (rx 0, ry +1.30, rz -0.40), mf curls (0.35, 0.40) - the curl-plane ALIGNED to the face normal (cos 0.95; the earlier best 0.76)",
+    "tangential_collapse": "at N 5 N: the tangential force 5 x tan(18 deg) = 1.6 N vs the old config 3.7 N - 2.6x collapse (the measured engage N 12.75 with the pure-normal wrist-x press)",
+    "outcome": "yaw 21.14 deg - the approach itself knocks the box (the pad traverses the box corner region; the table friction cannot resist the yaw torque of any touch)"
+   },
+   "falsification_chain_complete": {
+    "v21/v22": "the press-couple hypothesis (the opposite-side press lines) - FALSIFIED at the -62%/-94% couple elimination (the drift/yaw did not close)",
+    "v24": "the eccentricity hypothesis (the press-line offset) - CONFIRMED for the slip/yaw MAGNITUDE (the centering improved slip 4-5x, yaw 2x) but the residual persisted",
+    "v25/r11": "the choreography hypothesis (walk-and-curl couples the tangential) - FALSIFIED by the cos-0.95 pure-normal choreography (the yaw 21 deg persists)",
+    "conclusion": "the yaw disturbance is INTRINSIC to open-loop hand-box interaction on a low-friction table: any approach disturbs, the vise closes on the already-yawed box"
+   },
+   "the_three_remaining_paths": [
+    "W6a: a yaw-locking fixture (the box yaw held during the approach - hardware)",
+    "closed-loop visual servoing during the approach (the perception + control research - outside the W6c training scope)",
+    "the gate yaw clause re-anchoring to the POST-ENGAGE state (the yaw drift measured from the engage yaw, not from 0) - Main/GPT's call; the physics: the carried box's yaw DRIFT during the window was 16-30 deg in the best rounds vs the 10 deg gate - still failing, but the t=0 offset is the artifact component"
+   ],
+   "scorecard_final": {
+    "achieved": "window to 127 frames (6.4 s); peak to 105 mm; final to 100 mm; endface held; support clean - 5 of 7 clauses (v22 best)",
+    "open": "slip (best 25-40 mm, gate 10); yaw (best 18.5-28.4 deg, gate 10, plus the t=0 choreography offset 8-21 deg)"
    }
   }
  }
