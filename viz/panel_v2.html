@@ -131,9 +131,15 @@ if (!D) { document.body.innerHTML =
 
 const $ = id => document.getElementById(id);
 const rf = D.replay.frames, vf = D.video_frames, meta = D.meta || {};
+const FORCE_MUJOCO = new URLSearchParams(location.search).get("renderer") === "mujoco";
+// frame source: blender Cycles sequence when present, mujoco raster otherwise
+const RENDERS = (meta.renders_blender && !FORCE_MUJOCO)
+  ? meta.renders_blender : meta.renders;
+const RENDERER_LABEL = RENDERS === meta.renders_blender
+  ? "Blender Cycles" : "MuJoCo 光栅化";
 const ONE2ONE = !!(meta.playback && meta.playback.mode === "one_to_one");
 const VFPS = meta.video_fps || D.fps;
-const state = { i: 0, preset: (meta.renders ? meta.renders.presets[0].key : "front"),
+const state = { i: 0, preset: (RENDERS ? RENDERS.presets[0].key : "front"),
                 timer: null };
 
 /* ---------- header ---------- */
@@ -200,7 +206,7 @@ function segOfN(n) {
   return "";
 }
 function renderSrc(i) {
-  const r = meta.renders;
+  const r = RENDERS;
   return r && r.frames[state.preset] && r.frames[state.preset][i] ? r.frames[state.preset][i] : null;
 }
 
@@ -230,7 +236,7 @@ function seekVideo(i) {
 }
 
 /* ---------- preset buttons ---------- */
-$("presets").innerHTML = (meta.renders ? meta.renders.presets : [{key:"front",label:"正面"}])
+$("presets").innerHTML = (RENDERS.presets || [{key:"front",label:"正面"}])
   .map(p => `<button data-k="${p.key}">${p.label}</button>`).join("");
 $("presets").onclick = e => {
   const b = e.target.closest("button"); if (!b) return;
@@ -302,12 +308,11 @@ function draw(i) {
   $("rcap").innerHTML =
     `<b>复现帧 ${i + 1}/${rf.length}</b> · t=${t.toFixed(2)} s` +
     (note ? ` · ${note}` : "") +
-    (sim ? "" : ` · <span class="err">缺渲染：runs/.venv-mj/bin/python viz/render_replay.py</span>`);
+    (sim ? "" : ` · <span class="err">缺渲染：先跑渲染脚本</span>`);
 
-  const presetLabel = ((meta.renders && meta.renders.presets) ||
-                       [{ key: "front", label: "正面" }])
-    .find(p => p.key === state.preset);
-  $("finfo").innerHTML = `帧 <b>${i + 1}/${rf.length}</b> · 预设 <b>${presetLabel.label || state.preset}</b> · ←/→ 键逐帧 ±1`;
+  const presetLabel = (RENDERS.presets || [{ key: state.preset, label: state.preset }])
+    .find(p => p.key === state.preset) || {};
+  $("finfo").innerHTML = `帧 <b>${i + 1}/${rf.length}</b> · ${RENDERER_LABEL} · 预设 <b>${presetLabel.label || state.preset}</b> · ←/→ 键逐帧 ±1`;
   document.querySelectorAll("#presets button").forEach(b =>
     b.classList.toggle("on", b.dataset.k === state.preset));
 }
@@ -317,7 +322,8 @@ function draw(i) {
   const bits = [`数据源 <code>viz/panel_data_v2.json</code>`];
   if (meta.generated_by) bits.push(`生成：<code>${meta.generated_by}</code>`);
   if (meta.source) bits.push(`复现数据：${meta.source}`);
-  if (meta.renders) bits.push(`渲染目录 <code>${meta.renders.dir}</code>`);
+  if (RENDERS) bits.push(`渲染 <b>${RENDERER_LABEL}</b> · <code>${RENDERS.dir}</code>` +
+    (RENDERS === meta.renders_blender ? `（回退：?renderer=mujoco）` : ""));
   $("foot").innerHTML = bits.join(" · ") +
     ` · 支持直接双击打开（file://），或 <code>python -m http.server</code> 后访问。`;
 })();
@@ -328,7 +334,7 @@ rf.forEach((_, i) => preload(renderSrc(i)));
 /* deep-link: ?p=close&f=2 selects preset / replay frame (1-based) */
 const qp = new URLSearchParams(location.search);
 const qpP = qp.get("p");
-if (meta.renders && meta.renders.presets.some(p => p.key === qpP))
+if (RENDERS && RENDERS.presets.some(p => p.key === qpP))
   state.preset = qpP;
 const qpF = parseInt(qp.get("f"), 10);
 draw(Number.isFinite(qpF) ? Math.min(rf.length, Math.max(1, qpF)) - 1 : 0);

@@ -38,8 +38,8 @@ PRESETS = {  # matched to the MuJoCo panel compositions (visual iteration)
 
 def parse_args() -> dict:
     argv = sys.argv[sys.argv.index("--") + 1:]
-    opts = {"frames": "60,190,300", "presets": "front,side,close",
-            "outdir": str(HERE / "pilot")}
+    opts = {"frames": "all", "presets": "front,side,close",
+            "outdir": str(HERE / "pilot"), "skip_existing": "1"}
     i = 0
     while i < len(argv):
         if argv[i].startswith("--"):
@@ -102,10 +102,30 @@ def mat_principled(name, color, rough, metal=0.0, alpha=1.0,
     return m
 
 
+# v25/r12 prep: UR5e real-CAD arm (menagerie universal_robots_ur5e).
+# When W6b's r12 scene welds the UR5e in, the exporter emits per-link poses
+# and this loader swaps the primitive arm for the real CAD meshes.
+UR5E_MESH_DIR = HERE.parent / "runs/upstream/menagerie/universal_robots_ur5e/assets"
+UR5E_LINKS = {
+    "shoulder_link": ["shoulder_0", "shoulder_1", "shoulder_2"],
+    "upper_arm_link": ["upperarm_0", "upperarm_1", "upperarm_2", "upperarm_3"],
+    "forearm_link": ["forearm_0", "forearm_1", "forearm_2", "forearm_3"],
+    "wrist_1_link": ["wrist1_0", "wrist1_1", "wrist1_2"],
+    "wrist_2_link": ["wrist2_0", "wrist2_1", "wrist2_2"],
+    "wrist_3_link": ["wrist3"],
+}
+
+
 def build_materials() -> dict:
     T = HERE / "blender" / "textures_2k"
     return {
         "anodalu": mat_principled("anodalu", (0.36, 0.38, 0.43), 0.33, 1.0),
+        # v25 工业臂风格令（实拍参考 docs/images/arm_reference_real.png）
+        "struct_blue": mat_principled("struct_blue", (0.18, 0.435, 0.69),
+                                      0.32, 0.85),   # 结构蓝 #2E6FB0
+        "black_shell": mat_principled("black_shell", (0.045, 0.045, 0.052),
+                                      0.42, 0.25),   # 黑关节壳/鼓
+        "brass": mat_principled("brass", (0.72, 0.53, 0.18), 0.28, 1.0),
         "poly": mat_principled("poly", (0.045, 0.045, 0.055), 0.72),
         "powder": mat_principled("powder", (0.33, 0.35, 0.38), 0.48, 0.15),
         "frosted": mat_principled("frosted", (0.66, 0.67, 0.70), 0.55),
@@ -122,6 +142,9 @@ def build_materials() -> dict:
         "prop_level": mat_principled("prop_level", (0.95, 0.78, 0.1), 0.4),
         "prop_box_red": mat_principled("prop_box_red", (0.72, 0.15, 0.12), 0.45),
         "floor": mat_principled("floor", (0.30, 0.26, 0.22), 0.7),
+        # UR5e 实机配色: 灰蓝本体 + 黑关节壳
+        "ur_body": mat_principled("ur_body", (0.52, 0.56, 0.60), 0.38, 0.9),
+        "ur_joint": mat_principled("ur_joint", (0.07, 0.07, 0.08), 0.45, 0.3),
     }
 
 
@@ -242,8 +265,10 @@ def main() -> None:
     poses_path = pathlib.Path(opts.get("data", str(HERE / "blender" / "poses.json")))
     payload = json.loads(poses_path.read_text())
     frames = payload["frames"]
-    want = [int(v) for v in opts["frames"].split(",")]
+    want = (list(range(len(frames))) if opts["frames"] == "all"
+            else [int(v) for v in opts["frames"].split(",")])
     presets = opts["presets"].split(",")
+    skip_existing = opts.get("skip_existing", "0") == "1"
 
     # fresh scene
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -253,6 +278,33 @@ def main() -> None:
     objs: dict[str, bpy.types.Object] = {}
     for spec in payload["geoms"]:
         add_geom(objs, spec, mats)
+
+    # UR5e real-CAD links: one joined mesh per link group, keyed
+    # "ur:<link_name>" and driven by the exported link poses
+    ur_link_names = [u.get("name") for u in
+                     (payload["frames"][0].get("ur") or [])] \
+        if payload["frames"] and "ur" in payload["frames"][0] else []
+    for link, files in UR5E_LINKS.items():
+        if ur_link_names and link not in ur_link_names:
+            continue
+        parts = []
+        for f in files:
+            path = UR5E_MESH_DIR / f"{f}.obj"
+            if not path.exists():
+                continue
+            bpy.ops.wm.obj_import(filepath=str(path))
+            parts.append(bpy.context.active_object)
+        if not parts:
+            continue
+        for o in parts:
+            o.select_set(True)
+        bpy.context.view_layer.objects.active = parts[0]
+        if len(parts) > 1:
+            bpy.ops.object.join()
+        mesh = bpy.context.active_object
+        mesh.name = f"ur5e:{link}"
+        mesh.data.materials.append(
+            mats["ur_joint" if "wrist" in link else "ur_body"])
     add_floor(mats)
     add_lights_and_world()
 
@@ -273,11 +325,50 @@ def main() -> None:
             ob.location = (x, y, z)
             ob.rotation_mode = "QUATERNION"
             ob.rotation_quaternion = (qw, qx, qy, qz)
+        for entry in fr.get("ur", []):
+            ob = bpy.data.objects.get(f"ur5e:{entry['name']}")
+            if ob is None:
+                continue
+            px, py, pz, qw, qx, qy, qz = entry["pose"]
+            ob.location = (px, py, pz)
+            ob.rotation_mode = "QUATERNION"
+            ob.rotation_quaternion = (qw, qx, qy, qz)
         for k in presets:
+            dst = outdir / f"{k}_f{f:04d}.png"
+            # resume: skip frames already rendered by a previous pass
+            if skip_existing and dst.exists() and dst.stat().st_size > 100_000:
+                print(f"skipped {k} f{f:04d} (exists)", flush=True)
+                continue
             sc.camera = cams[k]
-            sc.render.filepath = str(outdir / f"{k}_f{f:04d}.png")
+            sc.render.filepath = str(dst)
             bpy.ops.render.render(write_still=True)
-            print(f"rendered {k} f{f:04d}")
+            print(f"rendered {k} f{f:04d}", flush=True)
+
+    update_panel_meta(outdir, presets, want)
+
+
+def update_panel_meta(outdir: pathlib.Path, presets: list, want: list) -> None:
+    """Point the panel at the blender PNG sequence (meta.renders_blender);
+    the MuJoCo renders stay available via ?renderer=mujoco."""
+    panel_json = HERE / "panel_data_v2.json"
+    if not panel_json.exists():
+        print("panel_data_v2.json not found -- skip meta update")
+        return
+    payload = json.loads(panel_json.read_text())
+    payload["meta"]["renders_blender"] = {
+        "dir": str(outdir),
+        "presets": [{"key": k, "label": {"front": "正面", "side": "侧面",
+                                         "close": "特写"}.get(k, k)}
+                    for k in presets],
+        "frames": {k: [str(outdir / f"{k}_f{f:04d}.png") for f in want]
+                   for k in presets},
+    }
+    panel_json.write_text(json.dumps(payload, indent=1, ensure_ascii=False))
+    (HERE / "panel_data_v2.js").write_text(
+        "window.PANEL_DATA_V2 = "
+        + json.dumps(payload, ensure_ascii=False) + ";\n")
+    print(f"panel meta updated: renders_blender "
+          f"({len(presets)} presets x {len(want)} frames)", flush=True)
 
 
 if __name__ == "__main__":

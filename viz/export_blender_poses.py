@@ -33,6 +33,14 @@ OUT_DIR = REPO / "viz/blender"
 OUT = OUT_DIR / "poses.json"
 
 FAMILIES = [
+    # v25/r10 工业臂风格令（docs/images/arm_reference_real.png）:
+    # 结构蓝双板 / 黑关节鼓 / 黄铜支柱 / 蓝安装盘 / 黑六角底板
+    ("struct_blue", lambda n: any(k in n for k in
+                                  ("plate", "mount_disc", "mounting"))),
+    ("black_shell", lambda n: any(k in n for k in
+                                  ("drum", "shell", "housing", "rotary",
+                                   "hex_base", "base_plate"))),
+    ("brass", lambda n: any(k in n for k in ("pillar", "brass", "standoff"))),
     ("poly", lambda n: "_tip_collision" in n),          # 指垫 聚氨酯
     ("floral", lambda n: n in ("skin_floral",)),        # 盒身花卉
     ("tissue", lambda n: n == "tissue"),
@@ -59,8 +67,10 @@ def family_of(name: str) -> str:
         return "wood"
     if name.startswith("prop_"):
         return "prop"
-    if name.startswith(("ff_", "mf_", "rf_", "th_", "palm", "hand_", "arm_")):
-        return "anodalu"   # 双手与臂 = 阳极铝
+    if name.startswith(("ff_", "mf_", "rf_", "th_", "palm", "hand_")):
+        return "anodalu"   # Allegro 手保持现状（阳极铝）
+    if name.startswith("arm_"):
+        return "arm_segment"  # v19 旧段名（r10 前兼容）
     return "powder"        # 其余结构件默认喷塑钢
 
 
@@ -109,6 +119,16 @@ def main() -> None:
             if family_of(mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_GEOM, g)
                          or "") != "skip"]
 
+    # v25/r12 prep: when the UR5e lands (menagerie universal_robots_ur5e,
+    # welded into the scene by W6b), its LINK poses drive real-CAD STL meshes
+    # in Blender -- far better than primitives for a photoreal arm
+    UR_LINKS = ("shoulder_link", "upper_arm_link", "forearm_link",
+                "wrist_1_link", "wrist_2_link", "wrist_3_link")
+    ur_bodies = [(b, mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, b))
+                 for b in range(m.nbody)
+                 if (mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, b) or "")
+                 in UR_LINKS]
+
     out_frames = []
     for fr in frames:
         d.qpos[:] = np.asarray(fr["qpos"])
@@ -120,7 +140,23 @@ def main() -> None:
             qw, qx, qy, qz = mat_to_quat_wxyz(d.geom_xmat[g].reshape(3, 3))
             poses.append([round(float(v), 6) for v in
                           (*p, qw, qx, qy, qz)])
-        out_frames.append({"t": float(fr["t"]), "q": fr["qpos"], "poses": poses})
+        ur = [{"name": n,
+               "pose": [round(float(v), 6) for v in
+                        (*d.xpos[b],
+                         *mat_to_quat_wxyz(d.xquat[b].reshape(3, 3)))]}
+              for b, n in ur_bodies]
+        out_frames.append({"t": float(fr["t"]), "q": fr["qpos"],
+                           "poses": poses, "ur": ur})
+
+    fam_counts: dict[str, int] = {}
+    for g in geoms:
+        fam_counts[g["family"]] = fam_counts.get(g["family"], 0) + 1
+    print("family coverage:", fam_counts)
+
+    if ur_bodies:
+        print(f"UR5e links exported: {[n for _, n in ur_bodies]}")
+    else:
+        print("UR5e links: none in model yet (r12 pending) -- ur lists empty")
 
     payload = {
         "meta": {
