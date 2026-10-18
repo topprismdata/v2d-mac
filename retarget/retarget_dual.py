@@ -2868,6 +2868,8 @@ def main() -> int:
     ctrl_hi = model.actuator_ctrlrange[:, 1]
     n_blend = int(round(BLEND_SECONDS * CTRL_HZ))
     n_hold = int(round(HOLD_SECONDS * CTRL_HZ))
+    verified_grasp = (measure_verified_grasp()
+                      if SCENE_KIND.startswith("ur5e") else None)
     ramp = 0.5 * (1.0 - np.cos(np.linspace(0.0, np.pi, n_blend)))
     blend_record = {}
     for side in VIDEOS:
@@ -2898,6 +2900,62 @@ def main() -> int:
             [cmds_global[side]["wrist"], w_blend, w_hold], axis=0)
         cmds_global[side]["finger"] = np.concatenate(
             [cmds_global[side]["finger"], f_blend, f_hold], axis=0)
+
+    # r12.9: TERMINAL IK — solve the UR5e arm joints for the VERIFIED
+    # grasp palm position over the blend+hold window (the gate1 μm
+    # mechanism ported from the floating era: the terminal directly
+    # commands the verified seed pose)
+    from scipy.spatial.transform import Rotation as _Rot
+    if verified_grasp is not None:
+        vg = measure_verified_grasp()
+        n_term = n_blend + n_hold
+        for s2 in VIDEOS:
+            spec2 = specs[s2]
+            pb2 = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY,
+                                    spec2.palm)
+            jids2 = [mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, n)
+                     for n in spec2.wrist_joints]
+            qadr2 = [model.jnt_qposadr[j] for j in jids2]
+            vjad2 = [model.jnt_dofadr[j] for j in jids2]
+            lo2 = model.jnt_range[jids2][:, 0]
+            hi2 = model.jnt_range[jids2][:, 1]
+            tgt_pos = np.asarray(vg[s2]["pos"], float)
+            tgt_R = np.asarray(vg[s2]["R"], float)
+            # the site→palm offset (constant, rigid hand attachment)
+            data.qpos[qadr2] = cmds_global[s2]["wrist"][n_ctrl - 1]
+            mujoco.mj_kinematics(model, data)
+            _st = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE,
+                                    "attachment_site")
+            off_world = data.xpos[pb2] - data.site_xpos[_st]
+            # DLS from the last approach pose toward the verified palm
+            q = cmds_global[s2]["wrist"][n_ctrl - 1].copy()
+            for _it in range(200):
+                data.qpos[qadr2] = q
+                mujoco.mj_kinematics(model, data)
+                mujoco.mj_comPos(model, data)
+                # the site tracks (verified palm - off_world)
+                site_tgt = tgt_pos - off_world
+                e_p = site_tgt - data.site_xpos[_st]
+                e_r = _Rot.from_matrix(
+                    tgt_R @ data.site_xmat[_st].reshape(3, 3).T
+                ).as_rotvec()
+                err = np.concatenate([e_p, e_r])
+                if np.linalg.norm(err) < 5e-4:
+                    break
+                jacp = np.zeros((3, model.nv))
+                jacr = np.zeros((3, model.nv))
+                mujoco.mj_jacSite(model, data, jacp, jacr, _st)
+                J = np.vstack([jacp[:, vjad2], jacr[:, vjad2]])
+                dq = np.linalg.solve(J @ J.T + 1e-4 * np.eye(6), err)
+                q = np.clip(q + J.T @ dq, lo2, hi2)
+            # hold the terminal IK solution for the blend+hold window
+            for k in range(n_term):
+                idx = n_ctrl + k
+                if idx < cmds_global[s2]["wrist"].shape[0]:
+                    cmds_global[s2]["wrist"][idx] = q
+            print(f"    r12.9 terminal IK {s2}: "
+                  f"final |e_p|={np.linalg.norm(e_p):.4f} m, "
+                  f"|e_r|={np.linalg.norm(e_r):.4f}")
         blend_record[side] = {
             "blend_frames": n_blend, "hold_frames": n_hold,
             "seed_wrist": seed_w.tolist(), "seed_finger": seed_f.tolist(),

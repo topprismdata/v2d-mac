@@ -29,37 +29,6 @@
     "rule": "TARGET vs TRAJECTORY, recorded separately: the terminal touch state is ANCHORED to the v3 gate3 seed (a physics-verified pose: registration anchor + terminal alignment both aim at it), so the acceptance criteria are decided by that seed, NOT by HaMeR. The HaMeR streams shape the trajectory only; their occlusion-phase accuracy (left conf 0.52-0.68 on the grasp window, smoke 6's documented P1 limitation) therefore degrades trajectory fidelity without touching the terminal criterion.",
     "gate3_seed_sha": null,
     "blend": {
-      "right": {
-        "blend_frames": 32,
-        "hold_frames": 30,
-        "seed_wrist": [
-          -0.0011319677097844489,
-          0.39787153554313065,
-          2.1011367255358473,
-          -1.655662514723794,
-          -2.135867425735268,
-          4.90417152363677
-        ],
-        "seed_finger": [
-          -0.2835,
-          0.4121,
-          0.3074,
-          0.1866,
-          0.1852,
-          0.3199,
-          0.6195,
-          0.3911,
-          -0.0657,
-          0.59,
-          0.5436,
-          0.464,
-          0.3337,
-          0.6029,
-          0.5455,
-          0.229
-        ],
-        "seed_source": "runs/w6/gate3_qpos.json (v5, P4-verified)"
-      },
       "left": {
         "blend_frames": 32,
         "hold_frames": 30,
@@ -29013,8 +28982,8 @@
   "smoothness_comparison": {
     "metric": "mean |second difference| of the realised wrist joints (6 slides+hinges) per control second, over the video grid; frozen before this run",
     "old_39frame_round3": {
-      "mean_abs_jerk_rad_s2": 10.089571092139174,
-      "max_abs_jump_rad_s": 7.925552999999999,
+      "mean_abs_jerk_rad_s2": 7.116912248969074,
+      "max_abs_jump_rad_s": 5.975810609999992,
       "n_frames": 390
     },
     "new_fullfps_round4": {
