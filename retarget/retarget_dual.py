@@ -1458,6 +1458,7 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
     hist = {s: {k: [] for k in (
         "contact", "pen_seq", "ctrl_sat", "force_sat", "qpos", "qvel",
         "force", "qfrc_con", "qfrc_other", "tips", "palm", "ctrl")} for s in VIDEOS}
+    hist["__yaw_stop__"] = []
     obj_body, _, _, _ = obj_ids(model)
     obj_world, contact_cls, qpos_full, ctrl_full = [], [], [], []
 
@@ -1477,6 +1478,21 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
 
         cls = classify_contacts(model, data, specs)
         contact_cls.append(cls)
+        # r10.1 yaw-stop red line: hand-vs-stop contact must be ZERO over the
+        # whole replay (the stops are fixture, not grasp surface).  Counted
+        # directly off the contact list by geom-name prefix.
+        stop_contacts = 0
+        for i in range(data.ncon):
+            c = data.contact[i]
+            n1 = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, int(c.geom1)) or ""
+            n2 = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, int(c.geom2)) or ""
+            pair = (n1.startswith("yaw_stop"), n2.startswith("yaw_stop"))
+            if any(pair) and not all(pair):
+                other_name = n2 if pair[0] else n1
+                other = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, other_name)
+                if other in specs["right"].hand_geoms or other in specs["left"].hand_geoms:
+                    stop_contacts += 1
+        hist.setdefault("__yaw_stop__", []).append(stop_contacts)
         qpos_full.append(data.qpos.copy())
         ctrl_full.append(data.ctrl.copy())
         obj_world.append(np.concatenate([
@@ -2025,6 +2041,9 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
                     and float(exec_dev.max()) <= rs.PALM_WORLD_POSE_DEVIATION_CAP_M),
             },
             "replay_block": {
+                "yaw_stop_contact_frames": int(sum(
+                    1 for v in rep["hist"]["__yaw_stop__"] if v)),
+                "yaw_stop_contact_pairs_total": int(sum(rep["hist"]["__yaw_stop__"])),
                 "contact_duty": float(np.mean(h["contact"])),
                 "contact_frames": int(np.sum(h["contact"])),
                 "max_box_penetration_m": float(np.max(h["pen_seq"])),

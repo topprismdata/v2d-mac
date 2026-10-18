@@ -290,6 +290,30 @@
     <geom name="table_slab" type="box" size="0.45 0.45 0.02" pos="0 0 0.6800"
       material="table" friction="0.9 0.02 0.002"/>
 
+    <!-- r10.1 yaw registration stops (Main Front D): two painted-steel
+         locating bars light-touching the box's long sides, constraining the
+         free-settle yaw to ~+-2.1 deg (2 mm gap; the box corner meets the
+         bar end at yaw = atan(2.1mm / 60mm)).  Height 60 mm < box height
+         80 mm -- the box clears them on lift.  Red lines: zero hand-vs-stop
+         contact over the W6b replay (checked per-run in the replay record);
+         pad-end-face contact semantics unchanged. -->
+    <body name="yaw_stop_posy" pos="0 0.126 0.73">
+      <geom name="yaw_stop_posy_bar" type="box" size="0.07 0.004 0.03"
+        rgba="0.30 0.32 0.35 1" friction="0.9 0.02 0.002"/>
+      <geom name="yaw_stop_bolt_0" type="cylinder" size="0.006 0.006"
+        pos="-0.075 0 -0.024" rgba="0.18 0.18 0.20 1"/>
+      <geom name="yaw_stop_bolt_1" type="cylinder" size="0.006 0.006"
+        pos="0.075 0 -0.024" rgba="0.18 0.18 0.20 1"/>
+    </body>
+    <body name="yaw_stop_negy" pos="0 -0.126 0.73">
+      <geom name="yaw_stop_negy_bar" type="box" size="0.07 0.004 0.03"
+        rgba="0.30 0.32 0.35 1" friction="0.9 0.02 0.002"/>
+      <geom name="yaw_stop_bolt_2" type="cylinder" size="0.006 0.006"
+        pos="-0.075 0 -0.024" rgba="0.18 0.18 0.20 1"/>
+      <geom name="yaw_stop_bolt_3" type="cylinder" size="0.006 0.006"
+        pos="0.075 0 -0.024" rgba="0.18 0.18 0.20 1"/>
+    </body>
+
     <camera name="cam_overhead" mode="fixed" pos="0 0 1.55" xyaxes="1 0 0 0 1 0"
       fovy="45"/>
     <camera name="cam_wrist" mode="fixed" pos="0 0.16 0.10" xyaxes="1 0 0 0 0 -1"
