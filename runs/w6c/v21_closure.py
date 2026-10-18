@@ -104,10 +104,9 @@ def capture_engage() -> dict:
     clear[2] += 0.050
     transit = clear.copy()
     place_r = transit.copy()
-    place_r[0] += 0.020; place_r[1] += -0.040; place_r[2] += 0.050
-    place_r[3] += 0.15; place_r[4] += 0.60; place_r[5] += -0.10
-    place_r[7] = 0.40; place_r[8] = 0.30
-    place_r[11] = 0.40; place_r[12] = 0.30
+    place_r[0] += 0.040; place_r[1] += 0.060; place_r[2] += 0.050
+    place_r[3] += 0.15; place_r[4] += 0.75; place_r[5] += -0.10
+    place_r[11] = 0.45; place_r[12] = 0.35
     for a, b, n in ((start_ctrl, clear, 12), (clear, transit, 10),
                     (transit, place_r, 15)):
         for k in range(n):
