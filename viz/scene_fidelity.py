@@ -33,8 +33,8 @@ TEX_DIR = REPO / "viz/fidelity_textures"
 # original-clip palette (sampled from source frame 90)
 VIOLET = (98, 44, 142)
 FLOWERS = [(214, 84, 110), (233, 168, 76), (88, 140, 78), (222, 118, 140)]
-OAK_LIGHT = (200, 155, 106)
-OAK_DARK = (172, 126, 82)
+OAK_LIGHT = (170, 141, 106)
+OAK_DARK = (142, 116, 88)
 PEG_BASE = (232, 228, 214)
 PEG_HOLE = (168, 162, 148)
 
@@ -51,16 +51,16 @@ def _floral_texture(path: pathlib.Path, size: int = 1024) -> None:
     rng = np.random.default_rng(11)
     img = Image.new("RGB", (size, size), VIOLET)
     d = ImageDraw.Draw(img)
-    for _ in range(260):  # leaves
+    for _ in range(700):  # leaves
         x, y = rng.integers(0, size, 2)
         r = rng.integers(6, 20)
         a = rng.uniform(0, np.pi)
         dx, dy = r * np.cos(a), r * np.sin(a) * 0.45
         green = (66 + int(rng.integers(0, 55)), 105 + int(rng.integers(0, 70)), 58)
         d.ellipse([x - r, y - dy, x + r, y + dy], fill=green)
-    for _ in range(170):  # flowers: 5 petals around a centre
+    for _ in range(400):  # flowers: 5 petals around a centre
         x, y = rng.integers(0, size, 2)
-        pr = rng.integers(6, 15)
+        pr = rng.integers(9, 20)
         col = FLOWERS[rng.integers(0, len(FLOWERS))]
         for k in range(5):
             a = 2 * np.pi * k / 5 + rng.uniform(0, 1)
@@ -75,11 +75,13 @@ def _floral_texture(path: pathlib.Path, size: int = 1024) -> None:
 def _wood_texture(path: pathlib.Path, size: int = 512) -> None:
     """Light-oak grain: horizontal sinusoid streaks + fine noise."""
     rng = np.random.default_rng(5)
-    yy, xx = np.mgrid[0:size, 0:size].astype(np.float64)
-    grain = (np.sin(yy * 0.35 + np.sin(xx * 0.012) * 6) * 0.5 + 0.5)
-    grain = grain * 0.7 + np.sin(yy * 0.05 + 1.3) * 0.3
-    speck = rng.normal(0, 0.05, (size, size))
-    g = np.clip(grain * 0.9 + speck, 0, 1)
+    # streaks vary along x so the slab-top UV maps them across the view
+    xx, yy = np.mgrid[0:size, 0:size].astype(np.float64)
+    grain = (np.sin(xx * 1.6 + np.sin(yy * 0.035) * 9) * 0.5 + 0.5)
+    grain = grain * 0.55 + np.sin(xx * 0.25 + 1.1) * 0.2
+    grain = grain * 0.8 + (np.sin(yy * 0.9 + xx * 0.05) * 0.5 + 0.5) * 0.2
+    speck = rng.normal(0, 0.09, (size, size))
+    g = np.clip(grain * 0.85 + speck, 0, 1)
     lo, hi = np.array(OAK_DARK, float), np.array(OAK_LIGHT, float)
     img = (lo[None, None, :] + g[:, :, None] * (hi - lo)[None, None, :])
     Image.fromarray(img.astype(np.uint8)).save(path)
@@ -89,14 +91,14 @@ def _pegboard_texture(path: pathlib.Path, size: int = 512) -> None:
     """Cream board with a regular round-hole grid."""
     img = Image.new("RGB", (size, size), PEG_BASE)
     d = ImageDraw.Draw(img)
-    step, r = size // 8, size // 56  # v20 批残差: holes read too faint far away
+    step, r = size // 16, size // 110  # v25: dense holes, strong contrast
     for cy in range(step // 2, size, step):
         for cx in range(step // 2, size, step):
-            d.ellipse([cx - r, cy - r - 1, cx + r, cy + r - 1],
-                      fill=(120, 113, 100))   # cast shadow above
-            d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=PEG_HOLE)
+            d.ellipse([cx - r, cy - r - 2, cx + r, cy + r - 2],
+                      fill=(96, 90, 78))     # cast shadow above
+            d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(52, 50, 46))
             d.arc([cx - r - 1, cy - r - 1, cx + r + 1, cy + r + 1],
-                  180, 360, fill=(246, 243, 232))
+                  180, 360, fill=(250, 247, 238))
     img.save(path)
 
 
