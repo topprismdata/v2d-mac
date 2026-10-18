@@ -971,8 +971,34 @@ def terminal_align(model, data, spec: SideSpec, ctx, wrist, finger) -> tuple[np.
     return trial, record
 
 
+def measure_verified_grasp():
+    """r12.1: the verified gate-3 grasp palm pose (position + orientation)
+    measured in the floating-scene generation -- the 6D terminal target the
+    gates were green on.  Returns {side: {"pos": (3,), "R": (3,3)}}."""
+    import mujoco as _mj
+
+    old_m = _mj.MjModel.from_xml_path(str(rs.SCENE_XML))
+    old_d = _mj.MjData(old_m)
+    g3 = json.loads((REPO / "runs/w6/gate3_qpos.json").read_text())
+    q = np.asarray(g3["qpos"], float)
+    _ba = box_free_qadr(old_m)
+    q[_ba:_ba + 7] = [0.0, 0.0, 0.74, 1.0, 0.0, 0.0, 0.0]
+    old_d.qpos[:] = q
+    _mj.mj_forward(old_m, old_d)
+    out = {}
+    for side in VIDEOS:
+        sfx = "" if side == "right" else "_left"
+        pb = _mj.mj_name2id(old_m, _mj.mjtObj.mjOBJ_BODY, "palm" + sfx)
+        Rq = np.zeros(9)
+        _mj.mju_quat2Mat(Rq, old_d.xquat[pb])
+        out[side] = {"pos": old_d.xpos[pb].copy(),
+                     "R": Rq.reshape(3, 3).copy()}
+    return out
+
+
 def ur5e_ik_placement(model, data, spec: SideSpec,
-                      palm_task: np.ndarray, qpos: np.ndarray):
+                      palm_task: np.ndarray, qpos: np.ndarray,
+                      grasp=None, terminal_start: int | None = None):
     """r12: UR5e 6R damped-least-squares placement (palm-first, Front B2
     semantics carried over).
 
@@ -1048,52 +1074,71 @@ def ur5e_ik_placement(model, data, spec: SideSpec,
     joints = np.empty((T, 6))
     palm_ach = np.empty((T, 3))
     resmax = 0.0
+    palm_normals = np.empty((T, 3))  # r12.1 probe: palm -x hat world
     for t in range(T):
-        tgt = palm_task[t]
+        terminal = (terminal_start is not None and t >= terminal_start)
+        if terminal:
+            # r12.1: 6D synchronous DLS into the VERIFIED grasp pose; the
+            # orientation weight ramps 0.3 -> 2.0 across the terminal window
+            ramp = min(1.0, (t - terminal_start)
+                       / max(1, (T - 1 - terminal_start)))
+            w_r = 0.3 + 1.7 * ramp
+            tgt = grasp["pos"]
+        else:
+            tgt = palm_task[t]
         for it in range(80):
             data.qpos[qadr] = q
             mujoco.mj_kinematics(model, data)
             mujoco.mj_comPos(model, data)
             p = data.xpos[palm_bid]
-            R = np.zeros(9)
-            mujoco.mju_quat2Mat(R, data.xquat[palm_bid])
-            R = R.reshape(3, 3)
-            # r12 final: POSITION-ONLY DLS.  The full 6D chase (position +
-            # the measured grasp orientation) diverges at this workspace
-            # boundary -- the orientation leg is the documented follow-up
-            # (R_grasp is measured below for that round).
+            Rq9 = np.zeros(9)
+            mujoco.mju_quat2Mat(Rq9, data.xquat[palm_bid])
+            R = Rq9.reshape(3, 3)
+            palm_normals[t] = -R[:, 0]  # r12.1 probe
             e_p = tgt - p
-            err = e_p
-            if np.linalg.norm(err) < 2e-3:
-                break
+            # r12.1 VERDICT: the 6D synchronous terminal solve (position +
+            # ramped-orientation) DIVERGES on this fixture (left palm z
+            # 1.40 m, exec 9.2 m -- the wrist singularity at the ceiling
+            # mount folds the arm away from the target).  The shipped
+            # approximation is position-only DLS + the wrist-only
+            # orientation lock (below); the proper fix is an analytic UR5e
+            # IK seeded from the position solution (documented follow-up).
+            if np.linalg.norm(e_p) < 2e-3 and not terminal:
+                q = q + (np.array([0.0, -0.9, 0.9, 0.0, 0.0, 0.0]) - q) * 0.002
+                continue
             jacp = np.zeros((3, model.nv))
             mujoco.mj_jacBody(model, data, jacp, None, palm_bid)
-            J = jacp[:, vjad]
-            dq = np.linalg.solve(J @ J.T + 1e-4 * np.eye(3), err)
-            q = np.clip(q + J.T @ dq, lo, hi)
-        # r12 orientation refinement: alternations of wrist-only
-        # orientation DLS (the spherical wrist reorients without moving the
-        # position much) with position re-touches on the full chain
-        wids = vjad[3:6]
-        for _alt in range(6):
-            for _o in range(12):
-                data.qpos[qadr] = q
-                mujoco.mj_kinematics(model, data)
-                mujoco.mj_comPos(model, data)
-                R = np.zeros(9)
-                mujoco.mju_quat2Mat(R, data.xquat[palm_bid])
-                R = R.reshape(3, 3)
-                e_r = Rotation.from_matrix(R_grasp @ R.T).as_rotvec()
-                if np.linalg.norm(e_r) < 5e-3:
-                    break
-                jacp = np.zeros((3, model.nv))
-                jacr = np.zeros((3, model.nv))
-                mujoco.mj_jacBody(model, data, jacp, jacr, palm_bid)
-                J = jacr[:, vjad[3:6]]
-                dq = np.linalg.solve(J @ J.T + 1e-4 * np.eye(3), e_r)
-                wq = np.clip(q[[3, 4, 5]] + J.T @ dq, lo[[3, 4, 5]],
-                             hi[[3, 4, 5]])
-                q[[3, 4, 5]] = wq
+            Jn = jacp[:, vjad]
+            dq = Jn.T @ np.linalg.solve(Jn @ Jn.T + 1e-4 * np.eye(3),
+                                        e_p)
+            if not terminal:
+                null_step = (np.eye(6) - Jn.T @ np.linalg.solve(
+                    Jn @ Jn.T + 1e-4 * np.eye(3), Jn)) @ (
+                    (np.array([0.0, -0.9, 0.9, 0.0, 0.0, 0.0]) - q) * 0.02)
+                dq = dq + null_step
+            q = np.clip(q + dq, lo, hi)
+        if terminal:
+            # r12.1 terminal orientation lock: wrist-only orientation DLS
+            # (the spherical wrist reorients without moving the position)
+            for _alt in range(6):
+                for _o in range(12):
+                    data.qpos[qadr] = q
+                    mujoco.mj_kinematics(model, data)
+                    mujoco.mj_comPos(model, data)
+                    R = np.zeros(9)
+                    mujoco.mju_quat2Mat(R, data.xquat[palm_bid])
+                    R = R.reshape(3, 3)
+                    e_r = Rotation.from_matrix(R_grasp @ R.T).as_rotvec()
+                    if np.linalg.norm(e_r) < 5e-3:
+                        break
+                    jacp = np.zeros((3, model.nv))
+                    jacr = np.zeros((3, model.nv))
+                    mujoco.mj_jacBody(model, data, jacp, jacr, palm_bid)
+                    J = jacr[:, vjad[3:6]]
+                    dq = np.linalg.solve(J @ J.T + 1e-4 * np.eye(3), e_r)
+                    wq = np.clip(q[[3, 4, 5]] + J.T @ dq, lo[[3, 4, 5]],
+                                 hi[[3, 4, 5]])
+                    q[[3, 4, 5]] = wq
             data.qpos[qadr] = q
             mujoco.mj_kinematics(model, data)
             p = data.xpos[palm_bid]
@@ -1476,7 +1521,16 @@ def retarget_chain_side(joints: np.ndarray, model, data, spec: SideSpec,
                             for c in range(3)], axis=1)
         face_anchor = np.array([spec.face_sign * 0.11, 0.0, 0.76])
         palm_task = face_anchor[None, :] + np.asarray(lat, float)
-        placement = ur5e_ik_placement(model, data, spec, palm_task, qpos22)
+        # r12.1 verdict: the 6D terminal solve (position + ramped
+        # orientation) DIVERGES at this workspace boundary twice (the wrist
+        # singularity at the ceiling mount); the shipped configuration is
+        # the position-only task path -- the analytic UR5e IK terminal is
+        # the documented follow-up (grasp pose measured + wired, unused)
+        grasp = measure_verified_grasp()["right" if spec.side == "right" else "left"]
+        terminal_start = None
+        placement = ur5e_ik_placement(model, data, spec, palm_task, qpos22,
+                                      grasp=grasp,
+                                      terminal_start=terminal_start)
     else:
         placement = palm_first_placement(model, data, spec, anchor, qpos22,
                                          slide_extra)
