@@ -1062,6 +1062,16 @@ def ur5e_ik_placement(model, data, spec: SideSpec,
                 if int(old_m.geom_bodyid[g]) in _sub
                 and old_m.geom_contype[g] != 0)
     hang = max(0.0, float(palm_grasp_pos[2] - min_z))
+    # r12.7 Focus A: the APPROACH posture hang (the fingers extended +
+    # hanging at the clip start) exceeds the grasp-posture hang -- measure
+    # both and use the max
+    mujoco.mj_resetData(model, data)
+    mujoco.mj_forward(model, data)
+    _p0 = data.xpos[_pb].copy()
+    _min0 = min(float(data.geom_xpos[g][2]) for g in range(old_m.ngeom)
+                if int(old_m.geom_bodyid[g]) in _sub
+                and old_m.geom_contype[g] != 0)
+    hang = max(hang, float(_p0[2] - _min0))
     mujoco.mj_resetData(model, data)
     mujoco.mj_forward(model, data)
     palm_task = palm_task.copy()
@@ -1070,7 +1080,15 @@ def ur5e_ik_placement(model, data, spec: SideSpec,
     need = 0.70 + 0.06 + max(hang, 0.0)
     if z_min < need:
         lift = need - z_min
-        palm_task[:, 2] += lift
+    # r12.7: the lift DECAYS across the approach -- full at the clip start
+    # (the fingers hang), zero at the terminal (the pads seat on the face).
+    # Without the decay the terminal sits at the lifted height and the pads
+    # land 0.5 m off the face (the Focus A regression).
+    if lift > 0.0:
+        _ts = max(1, palm_task.shape[0] - 62)
+        decay = np.ones(palm_task.shape[0])
+        decay[:_ts] = np.linspace(1.0, 0.0, _ts)
+        palm_task[:, 2] += lift * decay
 
     q = np.zeros(6)
     joints = np.empty((T, 6))
