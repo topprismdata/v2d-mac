@@ -2433,10 +2433,38 @@ def _finger_polish(model, data, spec: SideSpec, arm_q: np.ndarray,
                         improved = True
         if n_rect >= 2 and gap <= tol:
             break
-    # r19: gate1 needs >= 2 pads IN-RECT — a second descent phase whose
-    # objective drops the best-pad term (already ~0) and drives the
-    # 2nd-smallest in-band gap to the plane
+    # r20 cut 11: pad2-constrained descent — pad1 <= R5 is a HARD
+    # constraint (states losing pad1's in-rect touch are rejected
+    # outright), the objective minimises the 2nd-smallest in-band gap.
+    # pad2 still > 5 mm after this = the branch's second-pad joint
+    # reachability boundary (the 1/2-pad evidence)
     if n_rect < 2:
+        def sc2_of(arm_q, curl16):
+            data.qpos[arm_qadr] = arm_q
+            data.qpos[f_qadr] = np.clip(curl16, band_lo, band_hi)
+            mujoco.mj_forward(model, data)
+            gaps2 = []
+            buried2 = False
+            for g in tips:
+                px, py, pz = (float(v) for v in data.geom_xpos[g])
+                sv = px - spec.face_sign * float(half[0])
+                dy = max(abs(py) - float(half[1]), 0.0)
+                dz = max(bot - pz, pz - top, 0.0)
+                g2 = abs(sv) if (dy == 0.0 and dz == 0.0) else float(
+                    np.hypot(np.hypot(sv, dy), dz))
+                in_b = (bot + 0.4 * 2 * half[2]) <= pz <= (top - 0.01)
+                if in_b and abs(sv) > tol:
+                    buried2 = True
+                if in_b:
+                    gaps2.append(abs(sv))
+            gaps2.sort()
+            best2 = gaps2[0] if gaps2 else 5000.0
+            sec2 = gaps2[1] if len(gaps2) >= 2 else best2 + 500.0
+            sc = (1e6 * int(buried2) + 1e9 * int(best2 > tol)
+                  + sec2 * 1000.0 + best2)
+            return sc, best2, sec2
+        sc_cur, best_cur, sec_cur = sc2_of(arm_x, x)
+        evals += 1
         for step in (0.05, 0.02, 0.008, 0.003):
             improved = True
             while improved:
@@ -2452,38 +2480,15 @@ def _finger_polish(model, data, spec: SideSpec, arm_q: np.ndarray,
                         else:
                             cand_f[j - 6] = np.clip(
                                 cand_f[j - 6] + sgn * step, lo_j, hi_j)
-                        data.qpos[arm_qadr] = cand_a
-                        data.qpos[f_qadr] = np.clip(
-                            cand_f, band_lo, band_hi)
-                        mujoco.mj_forward(model, data)
-                        gaps2 = []
-                        buried2 = False
-                        for g in tips:
-                            px, py, pz = (float(v) for v in
-                                          data.geom_xpos[g])
-                            sv = px - spec.face_sign * float(half[0])
-                            dy = max(abs(py) - float(half[1]), 0.0)
-                            dz = max(bot - pz, pz - top, 0.0)
-                            g2 = abs(sv) if (dy == 0.0 and dz == 0.0) \
-                                else float(np.hypot(np.hypot(sv, dy), dz))
-                            in_b = (bot + 0.4 * 2 * half[2]) <= pz \
-                                <= (top - 0.01)
-                            if in_b and abs(sv) > tol:
-                                buried2 = True
-                            if in_b:
-                                gaps2.append(abs(sv))
-                        gaps2.sort()
-                        sec2 = gaps2[1] if len(gaps2) >= 2 else (
-                            gaps2[0] + 500.0 if gaps2 else 5000.0)
+                        s2, b2, sec2 = sc2_of(cand_a, cand_f)
                         evals += 1
-                        sc2 = (1e6 * int(buried2) + 1e3 * sec2
-                               + 1e1 * (gaps2[0] if gaps2 else 5000.0))
-                        if sc2 < sc:
+                        if s2 < sc_cur:
                             arm_x, x = cand_a, cand_f
-                            gap = sec2
-                            n_rect = sum(1 for v in gaps2 if v <= tol)
-                            sc = sc2
+                            sc_cur, best_cur, sec_cur = s2, b2, sec2
                             improved = True
+        gap = best_cur
+        n_rect = (2 if (best_cur <= tol and sec_cur <= tol)
+                  else (1 if best_cur <= tol else n_rect))
     return arm_x, x, sc, gap, n_rect, evals
     return arm_x, x, sc, gap, n_rect, evals
 
@@ -3513,6 +3518,25 @@ def main() -> int:
         n_term = n_blend + n_hold
         r18_solve_rec = {}
         native_done = False
+        # r19/r20: the native pairs (arm + fingers FULL pairs — arm-only
+        # seeds broke r13.7) and the cut-10b mirror transfer
+        pairs_path = REPO / "runs/w6b/native_seed_pairs.json"
+        native_pairs = (json.loads(pairs_path.read_text())["pairs"]
+                        if pairs_path.is_file() else [])
+        side_pair = {s: min((p for p in native_pairs if p["side"] == s),
+                            key=lambda p: p["second_mm"], default=None)
+                     for s in VIDEOS}
+        # cut 10b: x-mirror-conjugate the right fwd-compliant pair's arm
+        # onto the left tree (flip the z-axis joints: shoulder_pan,
+        # wrist_2; the y-axis joints keep — the conjugation math for the
+        # x-mirror).  The left hand's curl values track the right's
+        # closely (the v5 seeds differ by <0.01 rad), so the finger
+        # values transfer 1:1.
+        mirror_left = None
+        if side_pair["left"] is None and side_pair["right"] is not None:
+            mirror_left = np.asarray(side_pair["right"]["arm"], float).copy()
+            mirror_left[0] *= -1.0   # shoulder_pan (z axis)
+            mirror_left[4] *= -1.0   # wrist_2 (z axis)
         for s2 in VIDEOS:
             spec2 = specs[s2]
             pb2 = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY,
@@ -3529,11 +3553,17 @@ def main() -> int:
                 # r18 cut 6: the floating verified-grasp pose extrapolated
                 # to the UR5e flange frame is unreachable (measured r17:
                 # |e_r| = 177/163 deg after 200 iterations).  Target the
-                # r13.6/r13.7 NATIVE seed pose instead — FK of the
-                # curl-free-search joints, measured in the production
-                # scene, self-consistent by construction.
+                # r19 NATIVE PAIR pose instead (FK of the fwd-aware
+                # search's arm joints, measured in the production scene);
+                # the r20 mirror transfer seeds the left arm from the
+                # right pair's x-mirror conjugate when no left pair exists
                 side_key6 = "r" if s2 == "right" else "l"
-                tgt_q6 = np.asarray(UR5E_NATIVE_SEED[side_key6], float)
+                if side_pair.get(s2) is not None:
+                    tgt_q6 = np.asarray(side_pair[s2]["arm"], float)
+                elif s2 == "left" and mirror_left is not None:
+                    tgt_q6 = mirror_left
+                else:
+                    tgt_q6 = np.asarray(UR5E_NATIVE_SEED[side_key6], float)
                 data.qpos[qadr2] = tgt_q6
                 mujoco.mj_kinematics(model, data)
                 mujoco.mj_comPos(model, data)
@@ -3563,10 +3593,15 @@ def main() -> int:
                 from scipy.spatial.transform import Rotation as _Rot6
                 rng6 = np.random.default_rng(1818)
                 q_app = cmds_global[s2]["wrist"][n_ctrl - 1].copy()
+                # r20 cut 10b: the left mirror transfer warm-starts from
+                # the x-mirror conjugate of the right pair's arm
+                warm6 = (mirror_left if (s2 == "left"
+                                         and mirror_left is not None)
+                         else q_app)
                 best6 = None
                 n_conv6 = 0
                 for attempt in range(R18_RESTARTS + 1):
-                    q = q_app.copy() if attempt == 0 else \
+                    q = warm6.copy() if attempt == 0 else \
                         rng6.uniform(lo2, hi2)
                     sol6 = None
                     for _it in range(200):
@@ -3610,47 +3645,59 @@ def main() -> int:
                 native_done = best6 is not None
                 if native_done:
                     q = best6[1]
-                    # r18 completion: the native seed is a (arm, fingers)
-                    # PAIR — the curl-free search's pad-in-band solutions
-                    # depend on BOTH (arm-only seeds broke r13.7's right).
-                    pairs_path = REPO / "runs/w6b/native_seed_pairs.json"
-                    native_pairs = (json.loads(pairs_path.read_text())
-                                    ["pairs"] if pairs_path.is_file()
-                                    else [])
-                    pair = min((p for p in native_pairs
-                                if p["side"] == s2),
-                               key=lambda p: p["second_mm"], default=None)
+                    # r18/r20 completion: the native seed is a (arm,
+                    # fingers) PAIR — the pad state depends on BOTH
+                    # (arm-only seeds broke r13.7's right at 519.7 mm).
+                    # Polish the FULL configuration (arm + fingers) from
+                    # the pair's exact joints; the r20 mirror transfer
+                    # seeds the left from the right pair's x-mirror
+                    # conjugate (flip the z-axis joints: pan, wrist_2;
+                    # the left hand's curls track the right's within
+                    # 0.01 rad per the v5 seeds).
                     suffix16 = "" if s2 == "right" else "_left"
                     fj16 = [mujoco.mj_name2id(
                         model, mujoco.mjtObj.mjOBJ_JOINT,
-                        f"{f}a{k}{suffix16}") for f in
+                        f"{f}j{k}{suffix16}") for f in
                         ("ff", "mf", "rf", "th") for k in range(4)]
                     lo16_f = model.jnt_range[fj16][:, 0]
                     hi16_f = model.jnt_range[fj16][:, 1]
-                    f_start = (np.clip(np.asarray(pair["fingers"], float),
-                                       lo16_f, hi16_f)
-                               if pair is not None else None)
-                    # blend the pair's fingers as the terminal curl, then
-                    # continuously polish the FULL configuration (arm +
-                    # fingers, starting from the PAIR's exact joints) to
-                    # pull the pads from the r13.6 band toward R5.
+                    if side_pair.get(s2) is not None:
+                        f_start = np.clip(
+                            np.asarray(side_pair[s2]["fingers"], float),
+                            lo16_f, hi16_f)
+                        arm_start = np.asarray(side_pair[s2]["arm"], float)
+                    elif s2 == "left" and mirror_left is not None:
+                        # r20 cut 10b: the mirrored right pair's fingers
+                        # transfer 1:1; the arm starts at the mirror
+                        # conjugate (the solve's q is within 2 mm/5 deg
+                        # of it)
+                        f_start = np.clip(
+                            np.asarray(side_pair["right"]["fingers"], float),
+                            lo16_f, hi16_f)
+                        arm_start = mirror_left
+                    else:
+                        f_start = np.zeros(16)
+                        arm_start = q
                     (arm_pol, pol_curl, pol_score, pol_gap, pol_rect,
                      pol_evals) = _finger_polish(
-                        model, data, spec2,
-                        np.asarray(pair["arm"], float)
-                        if pair is not None else q,
-                        f_start if f_start is not None
-                        else np.zeros(16))
-                    r18_solve_rec[s2]["pair"] = (None if pair is None else {
-                        "first_mm": pair["first_mm"],
-                        "second_mm": pair["second_mm"]})
+                        model, data, spec2, arm_start, f_start)
+                    r18_solve_rec[s2]["pair"] = (
+                        None if side_pair.get(s2) is None else {
+                            "first_mm": side_pair[s2]["first_mm"],
+                            "second_mm": side_pair[s2]["second_mm"],
+                            "fwd_deg": side_pair[s2].get("fwd_deg")})
                     r18_solve_rec[s2]["finger_polish"] = {
                         "gap_mm": round(pol_gap, 3),
                         "n_in_rect": pol_rect,
                         "score": round(float(pol_score), 2),
                         "evals": int(pol_evals),
                     }
-                    if pair is not None:
+                    r18_solve_rec[s2]["pad_note"] = (
+                        "pad state at the polished configuration is "
+                        "measured by the gate1 record (per_pad_burial "
+                        "v2 semantics)")
+                    if side_pair.get(s2) is not None or \
+                            (s2 == "left" and mirror_left is not None):
                         q = arm_pol
                         cmds_global[s2]["finger_target_override"] = pol_curl
 

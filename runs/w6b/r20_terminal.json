@@ -1,0 +1,120 @@
+{
+ "campaign": "r20 terminal close-out: left dual-path + right pad2-constrained",
+ "cut10_left_dual_path": {
+  "a_1m_search": {
+   "N": 1000000,
+   "seed": 77,
+   "left_fwd_compliant_pairs": 2,
+   "adopted_pair": {
+    "first_mm": 0.133,
+    "second_mm": 6.694,
+    "fwd_deg": 22.59
+   },
+   "chain_result": "left solve converged 34/51 to 0.567 mm / 0.04 deg; polish pulled pad1 to 0.002 mm (R5 class)"
+  },
+  "b_mirror_transfer": {
+   "verdict": "REFUTED with data",
+   "experiment": "the right fwd-compliant pair's arm, x-mirror conjugated (flip the z-axis joints pan/wrist_2), seeded into the left tree",
+   "result": "the left solve reached the mirrored pose (1.24 mm / 0.72 deg) but the pads landed 795 mm off and the attitude stayed inverted (fwd 105.8 deg)",
+   "attribution": "the scene's two arms are TRANSLATED identical trees, not mirrored \u2014 a joint-space mirror has no geometric meaning for them; the correct left tool is independent search (cut 10a), which delivered"
+  }
+ },
+ "cut11_right_pad2_constrained": {
+  "verdict": "boundary report \u2014 the right branch's second pad stops at 14.05 mm",
+  "constraint": "pad1 <= R5 hard (states losing pad1's in-rect touch rejected); objective minimises the 2nd-smallest in-band gap; 4-step schedule x full-config descent",
+  "per_pad_rect_mm": {
+   "ff_tip_collision": 44.8765,
+   "mf_tip_collision": 14.0461,
+   "rf_tip_collision": 0.0035,
+   "th_tip_collision": 186.0096
+  },
+  "boundary_attribution": "rf solved to 0.0035 mm; mf plateaus at 14.05 mm across 442 descent evals \u2014 the ff-mf Allegro spread at this palm pose puts mf 14 mm off-rect in the y axis while rf is on-plane; pulling mf in moves rf out (the coordinate descent exhausted the branch's local reachability)"
+ },
+ "final_frozen_table": {
+  "gate1_pad1_mm": [
+   0.0035,
+   0.0015
+  ],
+  "gate1_dist_within_r5": [
+   true,
+   true
+  ],
+  "gate1_pads_in_rect": [
+   1,
+   1
+  ],
+  "gate1_fwd_deg": [
+   15.5,
+   19.7
+  ],
+  "gate1_per_pad_rect_mm": {
+   "right": {
+    "ff_tip_collision": 44.8765,
+    "mf_tip_collision": 14.0461,
+    "rf_tip_collision": 0.0035,
+    "th_tip_collision": 186.0096
+   },
+   "left": {
+    "ff_tip_left_collision": 70.9709,
+    "mf_tip_left_collision": 4.8355,
+    "rf_tip_left_collision": 0.0015,
+    "th_tip_left_collision": 196.5689
+   }
+  },
+  "gate1_burial_v2": {
+   "right": true,
+   "left": true
+  },
+  "gate1_pass_legacy": {
+   "right": false,
+   "left": false
+  },
+  "gate1_pass_v2": {
+   "right": false,
+   "left": false
+  },
+  "gate2_frames": [
+   1,
+   14
+  ],
+  "gate3_support": [
+   250,
+   268
+  ],
+  "gate4_viol_rad": [
+   1.537,
+   2.536
+  ],
+  "gate5_registered_mm": [
+   1.06,
+   0.98
+  ],
+  "baseline_r12_6": {
+   "gate1_mm": [
+    15.891,
+    1.607
+   ],
+   "gate2_frames": [
+    5,
+    14
+   ],
+   "gate3_support": [
+    246,
+    272
+   ],
+   "gate4_viol_rad": [
+    1.377,
+    2.536
+   ],
+   "gate5_registered_mm": [
+    1.06,
+    0.98
+   ]
+  },
+  "floors": "g5reg 1.06/0.98 mm and frame_alignment True \u2014 held throughout"
+ },
+ "reading": {
+  "gate1": "BOTH hands now land pad1 at R5 class (0.0035/0.0015 mm, the frozen gate1 distance leg is 137x/1000x better than the r12.6 baseline) with fwd compliant (15.5/19.7 deg) and unburied on the touching pad.  The 2-pad leg: left second pad 4.84 mm (under the 5 mm report line), right second pad 14.05 mm (over \u2014 the right branch's second-pad boundary is reported above).  gate1's frozen v5.1 pass remains red on the 2-pad-at-R5 leg \u2014 that is the honest terminal state of this method domain",
+  "handoff": "the remaining gap (2nd pad to R5 on the right; the left's 4.84 mm to R5) is the next method domain (finger gait/spread control or pad-geometry scope) \u2014 per Main, no more cuts in this campaign"
+ }
+}
