@@ -177,6 +177,11 @@ SCENE_FILES = {"floating": rs.SCENE_XML,
                "ur5e": REPO / "grounding/assets/allegro_floating_ur5e.xml",
                "ur5e_side": REPO / "grounding/assets/allegro_floating_ur5e_side.xml"}
 SCENE_XML = SCENE_FILES.get(SCENE_KIND, rs.SCENE_XML)
+if SCENE_KIND.endswith(".xml"):
+    # r24: an explicit scene path (e.g. the r24 vise variant) — the
+    # fixture file is a committed scene variant, the shipped scenes stay
+    # untouched
+    SCENE_XML = Path(SCENE_KIND)
 UR5E_XML = REPO / "runs/upstream/mujoco_menagerie/universal_robots_ur5e/ur5e.xml"
 UR5E_TERMINAL_FINGERS = {  # the v5-verified grasp curl (finger DoFs are
     # scene-identical; source tests/test_scene_w6.py GATE3_SEEDS fingers-16)

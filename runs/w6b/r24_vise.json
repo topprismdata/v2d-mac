@@ -1,0 +1,48 @@
+{
+ "campaign": "r24 registration vise (one round, fuse per ticket)",
+ "implementation": {
+  "fixture": "4 corner blocks (8x8x15 mm) hugging the box base corners at (\u00b10.065, \u00b10.125), z 0.70-0.715 (15 mm high, 1 mm fit clearance) \u2014 constrains box xy translation and yaw; the box lifts out freely above 15 mm (the lift semantics preserved)",
+  "delivery": "a COMMITTED SCENE VARIANT (grounding/assets/allegro_floating_ur5e_r24_vise.xml, = the shipped scene + the 4 blocks, diff-exact) + a scene-path override in retarget_dual (W6B_SCENE=<path>.xml).  The SHIPPED scenes are untouched \u2014 the W6c/W6d domains are unaffected (the red line held by construction)"
+ },
+ "result": {
+  "verdict": "THE VISE CANNOT HOLD \u2014 refuted by the spawn punch",
+  "box_outcome": "the box is EJECTED at spawn: +38 mm z and +31 mm x within the first control frame (the arms snap to the path start THROUGH the box volume \u2014 the initial-condition punch), landing ON TOP of the vise blocks (z 0.778 > block top 0.715); the terminal face-press then inverts it there (up_z end -0.369)",
+  "confined_not_held": "the vise DID confine the drift (max xy drift 191 mm vs 265 mm unvis-ed) but could not hold the attitude against the spawn punch + the terminal press",
+  "gates": {
+   "gate1_pad1_mm": [
+    0.003,
+    0.002
+   ],
+   "gate1_within_r5": [
+    true,
+    true
+   ],
+   "gate2_frames": [
+    102,
+    72
+   ],
+   "gate3_support": [
+    63,
+    14
+   ],
+   "gate4_viol_rad": [
+    0.619,
+    2.699
+   ],
+   "gate5_registered_mm": [
+    0.77,
+    0.51
+   ],
+   "g5_pass": [
+    true,
+    true
+   ]
+  },
+  "floors": "g5reg 0.77/0.51 mm (BETTER than the r12.6 1.06/0.98 \u2014 the flyover state's floors), gate1 R5 held, alignment: check the run"
+ },
+ "identified_fix_outside_domain": {
+  "spawn_punch": "the replay's initial condition snaps the arms to the path start THROUGH the box volume within one control frame \u2014 a PRE-ROLL ramp (home -> path start over ~20 pre-grid control frames, outside the frozen 390-frame 1:1 video grid) would turn the punch into a gentle nudge the vise holds",
+  "domain": "the pre-roll amends the round-4 FRAME-EXACT replay contract (Main's ruling territory) \u2014 NOT executable in r24's one-round scope"
+ },
+ "retarget_line": "CLOSED per Main r23 item 5 + r24 item 4 \u2014 the honest-disclosure direct-render branch (r23 option 1) is the terminal state: the delivered trajectory carries the terminal-press box inversion (disclosed), the swing is clean (flyover), gate1 distance is R5-class both hands, the floors are the campaign's best"
+}
