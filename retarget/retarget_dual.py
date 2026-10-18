@@ -383,6 +383,70 @@ def write_arm_ik_ctrl(model, data) -> None:
 # --------------------------------------------------------------------------
 # source streams
 # --------------------------------------------------------------------------
+def repair_mp_lateral(lat: np.ndarray, jump_rate_m_s: float = 1.2,
+                      dev_m: float = 0.15) -> tuple[np.ndarray, dict]:
+    """r13 perception fix: bridge wrong-track segments in the MediaPipe
+    wrist path with pchip interpolation over the flanking good frames.
+
+    The raw track parks at a wrong detection in two spans (right: video
+    frames ~20-27 inside the task window at (-0.692, -0.287) -- 0.80 m
+    jumps in/out, i.e. 25 m/s, no hand moves like that) and a third
+    post-grasp span (~368-370).  Detection: a frame is bad when it deviates
+    from the k=25 running median by > dev_m OR the frame-to-frame jump
+    exceeds jump_rate_m_s (the human-wrist bound).  Bad spans are replaced
+    by PCHIP through the flanking good frames -- documented interpolation,
+    no manual data edits.  The npz deliverable is untouched.
+    """
+    from scipy.interpolate import PchipInterpolator
+    from scipy.signal import medfilt
+
+    lat = np.array(lat, float)
+    rec = {"method": ("pchip bridge over wrong-track spans; bad = >15 cm "
+                      "from the k=25 running median or a >1.2 m/s frame jump; "
+                      "iterated until clean (a jump-flanked plateau's interior "
+                      "carries no internal jump, so one pass cannot see it); "
+                      "npz deliverable untouched"),
+           "jump_rate_m_s": jump_rate_m_s, "dev_m": dev_m,
+           "bad_frames": 0, "n_frames": int(len(lat)),
+           "segments": []}
+    all_spans = []
+    total_bad = 0
+    for sweep in range(4):
+        base = np.stack([medfilt(lat[:, c], 25) for c in range(lat.shape[1])],
+                        axis=1)
+        bad = np.abs(lat - base).max(axis=1) > dev_m
+        spd = np.linalg.norm(np.diff(lat, axis=0), axis=1) / (1.0 / 30.0)
+        bad[:-1] |= spd > jump_rate_m_s
+        bad[1:] |= spd > jump_rate_m_s
+        good = np.flatnonzero(~bad)
+        if not bad.any() or len(good) < 2:
+            break
+        total_bad += int(bad.sum())
+        i = 0
+        while i < len(bad):
+            if bad[i]:
+                j = i
+                while j < len(bad) and bad[j]:
+                    j += 1
+                all_spans.append({"frames": [int(i), int(j - 1)],
+                                  "sweep": sweep + 1,
+                                  "max_jump_m": round(float(np.max(
+                                      np.linalg.norm(np.diff(lat[i:j + 1],
+                                                                 axis=0),
+                                                     axis=1))) if j > i else 0.0, 4)})
+                interp = [PchipInterpolator(good, lat[good, c])
+                          for c in range(lat.shape[1])]
+                xs = np.arange(i, j)
+                for c in range(lat.shape[1]):
+                    lat[i:j, c] = interp[c](np.clip(xs, good[0], good[-1]))
+                i = j
+            else:
+                i += 1
+    rec["bad_frames"] = int(total_bad)
+    rec["segments"] = all_spans
+    return lat, rec
+
+
 def load_streams() -> tuple[dict, dict]:
     """MANO npz -> per-side joints21 (T,21,3) with the frozen gap policy.
 
@@ -630,6 +694,8 @@ def load_streams() -> tuple[dict, dict]:
                 for t in range(0, a1) if pres[t]]))
             lateral = np.zeros((T, 3))
             lateral[:, 0:2] = px * (span_m / max(span_px, 1e-9))
+            lateral, repair_rec = repair_mp_lateral(lateral)
+            records[side]["mp_lateral_repair"] = repair_rec
             wrist_lateral[side] = lateral
         else:
             wrist_lateral[side] = legacy_wrist_lateral[side]
@@ -1807,6 +1873,8 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
             "gate3_seed_sha": None,  # filled at resume with the v3 file hash
         },
         "source": {
+        "mp_lateral_repair": {s: streams_rec[s].get("mp_lateral_repair")
+                              for s in VIDEOS},
             "npz": "runs/w6b/mano_params.npz",
             "video_fps_effective": VIDEO_FPS,
             "frame_stride_in_source": 10,
