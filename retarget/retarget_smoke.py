@@ -25,6 +25,14 @@ Pipeline (no stage may be faked; every number lands in retarget_qa.json):
 
 Public API: ``run_smoke()`` -> report dict, plus the stage helpers the tests
 call directly.
+
+DEPRECATED as of r10 (2026-10-18): the smoke-5 chain (closest-gap base
+solve + GN hand-pose solve) does not transfer to the r10 fixture -- on the
+symmetric mounts its input infeasibility explodes (5.1 mm finger-box
+penetration, 205 mrad wind-up; its own verdict: fail -- disclosed,
+accepted).  The production W6b chain is the r9 palm-first retarget
+(retarget_dual.palm_first_placement); this module's artefact/tests are
+retained for provenance and re-baseline on UR5e real kinematics with r12.
 """
 
 from __future__ import annotations
