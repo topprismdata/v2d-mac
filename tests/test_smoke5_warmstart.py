@@ -225,9 +225,17 @@ def test_w1b_realised_rates_within_caps():
 
 
 def test_w1c_caps_are_the_measured_trackable_rates():
-    """The caps are the free-space measurements, not round numbers picked to pass."""
-    assert rs.WARM_START_HINGE_RATE_RAD_S == 1.5
-    assert rs.WARM_START_SLIDE_RATE_M_S == 0.2
+    """The caps are rated, not round numbers picked to pass.
+
+    r10 fixture re-rating (Main Front D): the strokes/rates are W6a fixture
+    self-set parameters, re-rated to the human demo's measured path envelope
+    (task window = video frames 1..151, robust stats): wrist_y stroke
+    p2p 0.444 m x 1.2 -> +-0.225; slide rate p99 0.166 m/s x 1.5 -> 0.25;
+    hinge rate min(demo p95 1.815 x 1.5 = 2.7, the servo's MEASURED tracked
+    ceiling 2.0) -> 2.0.  Gate thresholds unchanged.
+    """
+    assert rs.WARM_START_HINGE_RATE_RAD_S == 2.0
+    assert rs.WARM_START_SLIDE_RATE_M_S == 0.25
     assert rs.WARM_START_FINGER_RATE_RAD_S == rs.JOINT_VEL_LIMIT_RAD_S
     # the re-scaled x/z slides are commanded just below their own derived
     # allowance -- the 1% tracking headroom, not the stale measured figure
