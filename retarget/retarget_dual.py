@@ -1095,27 +1095,60 @@ def ur5e_ik_placement(model, data, spec: SideSpec,
     palm_ach = np.empty((T, 3))
     resmax = 0.0
     palm_normals = np.empty((T, 3))  # r12.1 probe: palm -x hat world
+    terminal_start = max(0, T - 62)  # the blend/hold window
+    q = np.zeros(6)
+    joints = np.empty((T, 6))
+    palm_ach = np.empty((T, 3))
+    resmax = 0.0
+    palm_normals = np.empty((T, 3))
+    nsat_frames = 0
     for t in range(T):
         tgt = palm_task[t]
-        # r12.4 SHIPPED: position-only DLS.  The 6D pose-following attempt
-        # (adaptive damping, full-weight orientation) diverged: the constant
-        # registered orientation enters wrist singularities mid-path and
-        # pulls the position off (g5 registered 0.64/1.48 m).  A stable
-        # orientation controller (task-priority or sampling) is the
-        # documented follow-up.
-        for it in range(80):
+        terminal = t >= terminal_start
+        # ---- primary task: POSITION (hard, iterate to mm) --------------
+        for it in range(60):
             data.qpos[qadr] = q
             mujoco.mj_kinematics(model, data)
             mujoco.mj_comPos(model, data)
             p = data.xpos[palm_bid]
             e_p = tgt - p
-            if np.linalg.norm(e_p) < 2e-3:
-                continue
+            if np.linalg.norm(e_p) < 1e-3:
+                break
             jacp = np.zeros((3, model.nv))
             mujoco.mj_jacBody(model, data, jacp, None, palm_bid)
-            Jn = jacp[:, vjad]
-            dq = Jn.T @ np.linalg.solve(Jn @ Jn.T + 1e-4 * np.eye(3), e_p)
+            Jp = jacp[:, vjad]
+            dq = Jp.T @ np.linalg.solve(Jp @ Jp.T + 1e-4 * np.eye(3), e_p)
             q = np.clip(q + dq, lo, hi)
+        # ---- secondary task: ORIENTATION in the position null space ----
+        # r12.5: the orientation error only flows through DoFs that do not
+        # move the palm -- the r12.4 divergence mechanism (orientation
+        # pulling the position) is constructed out.
+        data.qpos[qadr] = q
+        mujoco.mj_kinematics(model, data)
+        mujoco.mj_comPos(model, data)
+        jacp = np.zeros((3, model.nv))
+        jacr = np.zeros((3, model.nv))
+        mujoco.mj_jacBody(model, data, jacp, jacr, palm_bid)
+        Jp = jacp[:, vjad]
+        Jr = jacr[:, vjad]
+        Rq9 = np.zeros(9)
+        mujoco.mju_quat2Mat(Rq9, data.xquat[palm_bid])
+        R = Rq9.reshape(3, 3)
+        palm_normals[t] = -R[:, 0]
+        Jp_pinv = Jp.T @ np.linalg.solve(Jp @ Jp.T + 1e-4 * np.eye(3),
+                                         np.eye(3))
+        N = np.eye(6) - Jp_pinv @ Jp
+        if terminal:
+            # terminal window: the measured verified grasp orientation
+            e_r = Rotation.from_matrix(R_grasp @ R.T).as_rotvec()
+            dq_ori = Jr.T @ np.linalg.solve(Jr @ Jr.T + 1e-4 * np.eye(3),
+                                            e_r)
+            q = np.clip(q + N @ dq_ori, lo, hi)
+        else:
+            # swing: no orientation target (e_r = 0); the elbow-up comfort
+            # drift keeps the forearm clear of the table
+            q = np.clip(q + N @ ((np.array([0.0, -0.9, 0.9, 0.0, 0.0, 0.0])
+                                  - q) * 0.01), lo, hi)
         data.qpos[qadr] = q
         mujoco.mj_kinematics(model, data)
         p = data.xpos[palm_bid]
