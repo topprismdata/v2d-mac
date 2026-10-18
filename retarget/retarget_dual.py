@@ -1075,89 +1075,49 @@ def ur5e_ik_placement(model, data, spec: SideSpec,
     palm_ach = np.empty((T, 3))
     resmax = 0.0
     palm_normals = np.empty((T, 3))  # r12.1 probe: palm -x hat world
+    # r12.2 decoupled IK: position on j1-j3 (j4 as the redundancy param),
+    # orientation on j4-j6 (the spherical wrist) -- weak-coupling alternation
+    # measured once: the flange-site -> palm offset in the SITE frame
+    # (constant -- the hand is rigidly attached to the flange)
+    mujoco.mj_kinematics(model, data)
+    mujoco.mj_comPos(model, data)
+    site_bid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE,
+                                 "attachment_site")
+    off_site = data.site_xpos[site_bid].copy()
+    # offset in site frame:
+    R_s_mat = data.xmat[site_bid].reshape(3, 3)
+    off_site_frame = R_s_mat.T @ (data.xpos[palm_bid] - off_site)
+
+    q = np.zeros(6)
+    joints = np.empty((T, 6))
+    palm_ach = np.empty((T, 3))
+    resmax = 0.0
+    palm_normals = np.empty((T, 3))  # r12.1 probe: palm -x hat world
     for t in range(T):
-        terminal = (terminal_start is not None and t >= terminal_start)
-        if terminal:
-            # r12.1: 6D synchronous DLS into the VERIFIED grasp pose; the
-            # orientation weight ramps 0.3 -> 2.0 across the terminal window
-            ramp = min(1.0, (t - terminal_start)
-                       / max(1, (T - 1 - terminal_start)))
-            w_r = 0.3 + 1.7 * ramp
-            tgt = grasp["pos"]
-        else:
-            tgt = palm_task[t]
+        tgt = palm_task[t]
         for it in range(80):
             data.qpos[qadr] = q
             mujoco.mj_kinematics(model, data)
             mujoco.mj_comPos(model, data)
             p = data.xpos[palm_bid]
-            Rq9 = np.zeros(9)
-            mujoco.mju_quat2Mat(Rq9, data.xquat[palm_bid])
-            R = Rq9.reshape(3, 3)
-            palm_normals[t] = -R[:, 0]  # r12.1 probe
             e_p = tgt - p
-            # r12.1 VERDICT: the 6D synchronous terminal solve (position +
-            # ramped-orientation) DIVERGES on this fixture (left palm z
-            # 1.40 m, exec 9.2 m -- the wrist singularity at the ceiling
-            # mount folds the arm away from the target).  The shipped
-            # approximation is position-only DLS + the wrist-only
-            # orientation lock (below); the proper fix is an analytic UR5e
-            # IK seeded from the position solution (documented follow-up).
-            if np.linalg.norm(e_p) < 2e-3 and not terminal:
-                q = q + (np.array([0.0, -0.9, 0.9, 0.0, 0.0, 0.0]) - q) * 0.002
+            if np.linalg.norm(e_p) < 2e-3:
                 continue
             jacp = np.zeros((3, model.nv))
             mujoco.mj_jacBody(model, data, jacp, None, palm_bid)
             Jn = jacp[:, vjad]
-            dq = Jn.T @ np.linalg.solve(Jn @ Jn.T + 1e-4 * np.eye(3),
-                                        e_p)
-            if not terminal:
-                null_step = (np.eye(6) - Jn.T @ np.linalg.solve(
-                    Jn @ Jn.T + 1e-4 * np.eye(3), Jn)) @ (
-                    (np.array([0.0, -0.9, 0.9, 0.0, 0.0, 0.0]) - q) * 0.02)
-                dq = dq + null_step
+            dq = Jn.T @ np.linalg.solve(Jn @ Jn.T + 1e-4 * np.eye(3), e_p)
             q = np.clip(q + dq, lo, hi)
-        if terminal:
-            # r12.1 terminal orientation lock: wrist-only orientation DLS
-            # (the spherical wrist reorients without moving the position)
-            for _alt in range(6):
-                for _o in range(12):
-                    data.qpos[qadr] = q
-                    mujoco.mj_kinematics(model, data)
-                    mujoco.mj_comPos(model, data)
-                    R = np.zeros(9)
-                    mujoco.mju_quat2Mat(R, data.xquat[palm_bid])
-                    R = R.reshape(3, 3)
-                    e_r = Rotation.from_matrix(R_grasp @ R.T).as_rotvec()
-                    if np.linalg.norm(e_r) < 5e-3:
-                        break
-                    jacp = np.zeros((3, model.nv))
-                    jacr = np.zeros((3, model.nv))
-                    mujoco.mj_jacBody(model, data, jacp, jacr, palm_bid)
-                    J = jacr[:, vjad[3:6]]
-                    dq = np.linalg.solve(J @ J.T + 1e-4 * np.eye(3), e_r)
-                    wq = np.clip(q[[3, 4, 5]] + J.T @ dq, lo[[3, 4, 5]],
-                                 hi[[3, 4, 5]])
-                    q[[3, 4, 5]] = wq
-            data.qpos[qadr] = q
-            mujoco.mj_kinematics(model, data)
-            p = data.xpos[palm_bid]
-            if np.linalg.norm(tgt - p) > 0.02:
-                for _p in range(20):
-                    data.qpos[qadr] = q
-                    mujoco.mj_kinematics(model, data)
-                    mujoco.mj_comPos(model, data)
-                    jacp = np.zeros((3, model.nv))
-                    mujoco.mj_jacBody(model, data, jacp, None, palm_bid)
-                    J = jacp[:, vjad]
-                    err = tgt - p
-                    if np.linalg.norm(err) < 2e-3:
-                        break
-                    dq = np.linalg.solve(J @ J.T + 1e-4 * np.eye(3), err)
-                    q = np.clip(q + J.T @ dq, lo, hi)
-                    data.qpos[qadr] = q
-                    mujoco.mj_kinematics(model, data)
-                    p = data.xpos[palm_bid]
+        data.qpos[qadr] = q
+        mujoco.mj_kinematics(model, data)
+        p = data.xpos[palm_bid]
+        palm_ach[t] = p
+        d = np.linalg.norm(tgt - p)
+        data.qpos[qadr] = q
+        mujoco.mj_kinematics(model, data)
+        p = data.xpos[palm_bid]
+        palm_ach[t] = p
+        d = np.linalg.norm(tgt - p)
         data.qpos[qadr] = q
         mujoco.mj_kinematics(model, data)
         p = data.xpos[palm_bid]
