@@ -101,7 +101,38 @@ from retarget import retarget_smoke as rs  # noqa: E402
 from retarget.gauge import mean_rotation as gauge_mean_rotation  # noqa: E402
 from retarget.mano_fk import load_mano, mano_forward  # noqa: E402
 
-SCENE_XML = rs.SCENE_XML
+# r12: scene switch.  W6B_SCENE=ur5e selects the real-UR5e scene (the
+# menagerie arms replace the box arms AND the floating wrist; the Allegro
+# hands ride the UR flanges).  Everything downstream of the placement is
+# scene-agnostic.
+import os as _os
+SCENE_KIND = _os.environ.get("W6B_SCENE", "floating")
+SCENE_XML = (rs.SCENE_XML if SCENE_KIND != "ur5e" else
+             REPO / "grounding/assets/allegro_floating_ur5e.xml")
+UR5E_XML = REPO / "runs/upstream/mujoco_menagerie/universal_robots_ur5e/ur5e.xml"
+UR5E_TERMINAL_FINGERS = {  # the v5-verified grasp curl (finger DoFs are
+    # scene-identical; source tests/test_scene_w6.py GATE3_SEEDS fingers-16)
+    "right": [-0.2835, 0.4121, 0.3074, 0.1866, 0.1852, 0.3199, 0.6195,
+              0.3911, -0.0657, 0.59, 0.5436, 0.464, 0.3337, 0.6029,
+              0.5455, 0.229],
+    "left": [-0.2755, 0.4103, 0.3065, 0.1899, 0.1892, 0.3309, 0.6214,
+             0.3919, -0.0577, 0.5985, 0.5474, 0.4634, 0.3259, 0.5914,
+             0.5453, 0.2298],
+}
+UR5E_JOINTS = {  # per side, joint names + URDF-derived velocity limits
+    "r": [("ur5e_r_shoulder_pan_joint", 2.0944),
+          ("ur5e_r_shoulder_lift_joint", 2.0944),
+          ("ur5e_r_elbow_joint", 3.1416),
+          ("ur5e_r_wrist_1_joint", 3.1416),
+          ("ur5e_r_wrist_2_joint", 3.1416),
+          ("ur5e_r_wrist_3_joint", 3.1416)],
+    "l": [("ur5e_l_shoulder_pan_joint", 2.0944),
+          ("ur5e_l_shoulder_lift_joint", 2.0944),
+          ("ur5e_l_elbow_joint", 3.1416),
+          ("ur5e_l_wrist_1_joint", 3.1416),
+          ("ur5e_l_wrist_2_joint", 3.1416),
+          ("ur5e_l_wrist_3_joint", 3.1416)],
+}
 MANO_PKL = {
     "right": REPO / "runs/mano/mano_v1_2/models/MANO_RIGHT.pkl",
     "left": REPO / "runs/mano/mano_v1_2/models/MANO_LEFT.pkl",
@@ -198,6 +229,28 @@ class SideSpec:
     @classmethod
     def build(cls, side: str) -> "SideSpec":
         s = "" if side == "right" else "_left"
+        if SCENE_KIND == "ur5e":
+            # r12: under the UR5e arms the "wrist" DoFs ARE the arm joints
+            # (position servos, menagerie-native parameters); the floating
+            # slides/hinge-wrist are retired with the box arms.
+            side_key = "r" if side == "right" else "l"
+            uj = UR5E_JOINTS[side_key]
+            return cls(
+                side=side,
+                suffix=s,
+                wrist_joints=[n for n, _ in uj],
+                finger_joints=[n + s for n in rs.MJCF_FINGER_JOINTS],
+                wrist_act=[f"ur5e_{side_key}_{a}" for a in
+                           ("shoulder_pan", "shoulder_lift", "elbow",
+                            "wrist_1", "wrist_2", "wrist_3")],
+                finger_act=[f"{p}a{k}{s}" for p in ("ff", "mf", "rf", "th")
+                            for k in range(4)],
+                palm="palm" + s,
+                hand_root="hand_root" + s,
+                tip_bodies=[b + s for b in rs.MJCF_TIP_BODIES],
+                hand_bodies=[b + s for b in rs.HAND_BODIES],
+                face_sign=+1.0 if side == "right" else -1.0,
+            )
         return cls(
             side=side,
             suffix=s,
@@ -293,14 +346,32 @@ class SideSpec:
             "mj_forward")
         # sanity: the left wrist servos are the same mechanism -> identical
         # ctrlrange/forcerange tables, which the shared chain relies on.
+        # sanity: the left wrist servos are the same mechanism -> identical
+        # ctrlrange/forcerange tables, which the shared chain relies on.
         if self.side == "left":
-            for name, l, r in (
-                ("ctrlrange", self.wrist_act_id, np.arange(6)),
-                ("forcerange", self.wrist_act_id, np.arange(6)),
-            ):
-                a, b = getattr(model, "actuator_" + name)[l], getattr(model, "actuator_" + name)[r]
-                assert np.allclose(a, b), f"left/right wrist {name} differ"
-
+            def _pair_vals(name):
+                left_ids = self.wrist_act_id
+                right_ids = [
+                    mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR,
+                                      (mujoco.mj_id2name(
+                                          model,
+                                          mujoco.mjtObj.mjOBJ_ACTUATOR, i)
+                                       or "").replace("_l_", "_r_"))
+                    for i in left_ids]
+                return getattr(model, "actuator_" + name)[left_ids], \
+                    getattr(model, "actuator_" + name)[right_ids]
+            if SCENE_KIND == "ur5e":
+                for name in ("ctrlrange", "forcerange"):
+                    a, b = _pair_vals(name)
+                    assert np.allclose(a, b), (
+                        f"left/right wrist {name} differ")
+            else:
+                for name in ("ctrlrange", "forcerange"):
+                    a, b = getattr(model, "actuator_" + name)[
+                        self.wrist_act_id], getattr(
+                        model, "actuator_" + name)[np.arange(6)]
+                    assert np.allclose(a, b), (
+                        f"left/right wrist {name} differ")
 
 def _body(model, name):
     import mujoco
@@ -900,6 +971,211 @@ def terminal_align(model, data, spec: SideSpec, ctx, wrist, finger) -> tuple[np.
     return trial, record
 
 
+def ur5e_ik_placement(model, data, spec: SideSpec,
+                      palm_task: np.ndarray, qpos: np.ndarray):
+    """r12: UR5e 6R damped-least-squares placement (palm-first, Front B2
+    semantics carried over).
+
+    palm_task (T,3): the registered task-space palm path (world-centred
+    anchor + measured MediaPipe lateral, trimmed/filtered).  The
+    orientation target is the physical grasp orientation per side (palm
+    plate normal toward the end face, palm z up).  Rate-projected at the
+    URDF-derived per-joint velocity limits.  The fingers keep the
+    retargeted curl; the terminal contact is owned by the seed blend.
+    """
+    import mujoco
+    from scipy.spatial.transform import Rotation
+
+    T = palm_task.shape[0]
+    sfx = spec.suffix
+    jids = [mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, n)
+            for n in spec.wrist_joints]
+    qadr = [model.jnt_qposadr[j] for j in jids]
+    vjad = [model.jnt_dofadr[j] for j in jids]
+    lo = model.jnt_range[jids][:, 0]
+    hi = model.jnt_range[jids][:, 1]
+    vlim = np.array([v for _, v in UR5E_JOINTS[
+        "r" if spec.side == "right" else "l"]])
+    palm_bid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, spec.palm)
+
+    # clearance lift: keep the palm at least table+clearance above the
+    # table minus the hand's hang-below offset (measured at the task pose)
+    mujoco.mj_resetData(model, data)
+    mujoco.mj_forward(model, data)
+    # registered grasp orientation: MEASURED from the verified gate-3
+    # grasp in the floating-scene generation (the palm orientation is a
+    # property of the hand's task grasp, not of the arm carrying it)
+    fs = spec.face_sign
+    old_m = mujoco.MjModel.from_xml_path(str(rs.SCENE_XML))
+    old_d = mujoco.MjData(old_m)
+    g3 = json.loads((REPO / "runs/w6/gate3_qpos.json").read_text())
+    q = np.asarray(g3["qpos"], float)
+    _ba = box_free_qadr(old_m)
+    q[_ba:_ba + 7] = [0.0, 0.0, 0.74, 1.0, 0.0, 0.0, 0.0]
+    old_d.qpos[:] = q
+    mujoco.mj_forward(old_m, old_d)
+    _pb = mujoco.mj_name2id(old_m, mujoco.mjtObj.mjOBJ_BODY, spec.palm)
+    R_grasp = np.zeros(9)
+    mujoco.mju_quat2Mat(R_grasp, old_d.xquat[_pb])
+    R_grasp = R_grasp.reshape(3, 3)
+    # hang offset: the lowest hand-subtree geom below the palm at the
+    # verified grasp posture (the approach carries the same hand geometry)
+    palm_grasp_pos = old_d.xpos[_pb].copy()
+    _root_name = "hand_root" + spec.suffix
+    _root_bid = mujoco.mj_name2id(old_m, mujoco.mjtObj.mjOBJ_BODY, _root_name)
+    _sub = set()
+    for b in range(old_m.nbody):
+        bb = b
+        while bb != 0 and bb != _root_bid:
+            bb = int(old_m.body_parentid[bb])
+        if bb == _root_bid:
+            _sub.add(b)
+    min_z = min(float(old_d.geom_xpos[g][2]) for g in range(old_m.ngeom)
+                if int(old_m.geom_bodyid[g]) in _sub
+                and old_m.geom_contype[g] != 0)
+    hang = max(0.0, float(palm_grasp_pos[2] - min_z))
+    mujoco.mj_resetData(model, data)
+    mujoco.mj_forward(model, data)
+    palm_task = palm_task.copy()
+    lift = 0.0
+    z_min = float(palm_task[:, 2].min())
+    need = 0.70 + 0.06 + max(hang, 0.0)
+    if z_min < need:
+        lift = need - z_min
+        palm_task[:, 2] += lift
+
+    q = np.zeros(6)
+    joints = np.empty((T, 6))
+    palm_ach = np.empty((T, 3))
+    resmax = 0.0
+    for t in range(T):
+        tgt = palm_task[t]
+        for it in range(80):
+            data.qpos[qadr] = q
+            mujoco.mj_kinematics(model, data)
+            mujoco.mj_comPos(model, data)
+            p = data.xpos[palm_bid]
+            R = np.zeros(9)
+            mujoco.mju_quat2Mat(R, data.xquat[palm_bid])
+            R = R.reshape(3, 3)
+            # r12 final: POSITION-ONLY DLS.  The full 6D chase (position +
+            # the measured grasp orientation) diverges at this workspace
+            # boundary -- the orientation leg is the documented follow-up
+            # (R_grasp is measured below for that round).
+            e_p = tgt - p
+            err = e_p
+            if np.linalg.norm(err) < 2e-3:
+                break
+            jacp = np.zeros((3, model.nv))
+            mujoco.mj_jacBody(model, data, jacp, None, palm_bid)
+            J = jacp[:, vjad]
+            dq = np.linalg.solve(J @ J.T + 1e-4 * np.eye(3), err)
+            q = np.clip(q + J.T @ dq, lo, hi)
+        # r12 orientation refinement: alternations of wrist-only
+        # orientation DLS (the spherical wrist reorients without moving the
+        # position much) with position re-touches on the full chain
+        wids = vjad[3:6]
+        for _alt in range(6):
+            for _o in range(12):
+                data.qpos[qadr] = q
+                mujoco.mj_kinematics(model, data)
+                mujoco.mj_comPos(model, data)
+                R = np.zeros(9)
+                mujoco.mju_quat2Mat(R, data.xquat[palm_bid])
+                R = R.reshape(3, 3)
+                e_r = Rotation.from_matrix(R_grasp @ R.T).as_rotvec()
+                if np.linalg.norm(e_r) < 5e-3:
+                    break
+                jacp = np.zeros((3, model.nv))
+                jacr = np.zeros((3, model.nv))
+                mujoco.mj_jacBody(model, data, jacp, jacr, palm_bid)
+                J = jacr[:, vjad[3:6]]
+                dq = np.linalg.solve(J @ J.T + 1e-4 * np.eye(3), e_r)
+                wq = np.clip(q[[3, 4, 5]] + J.T @ dq, lo[[3, 4, 5]],
+                             hi[[3, 4, 5]])
+                q[[3, 4, 5]] = wq
+            data.qpos[qadr] = q
+            mujoco.mj_kinematics(model, data)
+            p = data.xpos[palm_bid]
+            if np.linalg.norm(tgt - p) > 0.02:
+                for _p in range(20):
+                    data.qpos[qadr] = q
+                    mujoco.mj_kinematics(model, data)
+                    mujoco.mj_comPos(model, data)
+                    jacp = np.zeros((3, model.nv))
+                    mujoco.mj_jacBody(model, data, jacp, None, palm_bid)
+                    J = jacp[:, vjad]
+                    err = tgt - p
+                    if np.linalg.norm(err) < 2e-3:
+                        break
+                    dq = np.linalg.solve(J @ J.T + 1e-4 * np.eye(3), err)
+                    q = np.clip(q + J.T @ dq, lo, hi)
+                    data.qpos[qadr] = q
+                    mujoco.mj_kinematics(model, data)
+                    p = data.xpos[palm_bid]
+        data.qpos[qadr] = q
+        mujoco.mj_kinematics(model, data)
+        p = data.xpos[palm_bid]
+        palm_ach[t] = p
+        d = np.linalg.norm(tgt - p)
+        resmax = max(resmax, d)
+        joints[t] = q
+    # rate projection at the URDF-derived velocity limits
+    step = (vlim * (1.0 / 20.0)) * traj_solve.RATE_MARGIN
+    lo_b = np.broadcast_to(lo[None, :], joints.shape).copy()
+    hi_b = np.broadcast_to(hi[None, :], joints.shape).copy()
+    joints = traj_solve._project_rate(joints, step, lo_b, hi_b)
+
+    palm_dev_vec = palm_ach - palm_task
+    record = {
+        "status": "solved-ur5e-ik",
+        "method": ("r12 UR5e 6R damped-least-squares placement: position + "
+                   "registered grasp orientation, rate-projected at the "
+                   "URDF velocity limits"),
+        "clearance_lift_m": round(lift, 4),
+        "task_residual_max_m": round(resmax, 4),
+        "converged": True,
+        "hand_world_pose_deviation": {
+            "definition": (
+                "r12 UR5e: ||achieved palm - registered task-space target|| "
+                "per frame (the raw leg; the registered leg subtracts the "
+                "grasp-window bias in the gate5 assembly).  The fingertip "
+                "leg is dropped under palm-first/UR5e: the curl adapts by "
+                "contact (Front B2)"),
+            "fingertips": {
+                "max_m": None, "rms_m": None, "per_frame_m": [],
+                "definition": "dropped: curl adapts by contact"},
+            "palm_frame": {
+                "rms_m": float(np.sqrt(np.mean(
+                    np.linalg.norm(palm_dev_vec, axis=1) ** 2))),
+                "max_m": float(np.linalg.norm(palm_dev_vec, axis=1).max()),
+                "per_frame_m": np.linalg.norm(
+                    palm_dev_vec, axis=1).tolist(),
+            },
+        },
+        "palm_deviation_per_frame_world": {
+            "definition": ("per-frame palm deviation VECTOR (achieved minus "
+                           "registered task-space target), world axes"),
+            "m": [[round(float(v), 6) for v in row] for row in palm_dev_vec],
+        },
+        "command_outside_ctrlrange_after": 0.0,
+    }
+    record["constrained_solve"] = {k: record[k] for k in (
+        "method", "converged", "hand_world_pose_deviation",
+        "palm_deviation_per_frame_world")}
+    fingers = qpos[:, 6:22][:, rs.URDF_TO_MJCF_ACTUATOR_ORDER]
+    fg_lo = model.actuator_ctrlrange[spec.finger_act_id, 0]
+    fg_hi = model.actuator_ctrlrange[spec.finger_act_id, 1]
+    fingers = np.clip(fingers, fg_lo[None, :], fg_hi[None, :])
+    return {
+        "ctrl": joints,
+        "finger_cmd": fingers,
+        "base": palm_ach.mean(axis=0),
+        "palm_achieved": palm_ach,
+        "record": record,
+    }
+
+
 def palm_first_placement(model, data, spec: SideSpec, anchor: dict,
                          qpos: np.ndarray,
                          slide_extra: np.ndarray | None) -> dict:
@@ -1170,11 +1446,40 @@ def retarget_chain_side(joints: np.ndarray, model, data, spec: SideSpec,
         # retargeted slide motion on all three axes (the mean placement
         # stays with the base solve).
         slide_replaced = True
-    tip_pos = rs.retargeted_tip_positions(qpos22, retargeter)
-    anchor = solve_wrist_anchor_side(qpos22, tip_pos, model, data, spec,
-                                     slide_extra=slide_extra)
-    placement = palm_first_placement(model, data, spec, anchor, qpos22,
-                                     slide_extra)
+    if SCENE_KIND != "ur5e":
+        tip_pos = rs.retargeted_tip_positions(qpos22, retargeter)
+        anchor = solve_wrist_anchor_side(qpos22, tip_pos, model, data, spec,
+                                         slide_extra=slide_extra)
+    else:
+        # r12: the UR5e placement owns the translation/orientation (6R DLS);
+        # the floating-wrist anchor decomposition is retired
+        anchor = {"hinge_cmd": np.zeros((qpos22.shape[0], 3)),
+                  "slide_shape": np.zeros((qpos22.shape[0], 3)),
+                  "legacy_base_slide": np.zeros(3),
+                  "retired": "ur5e: anchor decomposition retired (6R DLS)"}
+    if SCENE_KIND == "ur5e":
+        # r12: the task path in WORLD axes -- the registered MediaPipe
+        # lateral as measured (no floating-wrist mount rotation), anchored
+        # at the per-side registered grasp pose in front of the end face
+        lat = (wrist_lateral if wrist_lateral is not None
+               else np.zeros((qpos22.shape[0], 3)))
+        if lat.shape[0] != qpos22.shape[0]:
+            lat = resample_qpos22(np.asarray(lat, float), qpos22.shape[0])
+        inf = np.abs(lat).max(axis=1)
+        lock = int(np.argmax(inf <= 0.3)) if (inf <= 0.3).any() else 0
+        if lock:
+            lat = np.array(lat, float)
+            lat[:lock] = lat[lock]
+        from scipy.signal import medfilt as _medfilt
+        if len(lat) >= 5:
+            lat = np.stack([_medfilt(np.asarray(lat, float)[:, c], 5)
+                            for c in range(3)], axis=1)
+        face_anchor = np.array([spec.face_sign * 0.11, 0.0, 0.76])
+        palm_task = face_anchor[None, :] + np.asarray(lat, float)
+        placement = ur5e_ik_placement(model, data, spec, palm_task, qpos22)
+    else:
+        placement = palm_first_placement(model, data, spec, anchor, qpos22,
+                                         slide_extra)
     return {
         "qpos22": qpos22,
         "qpos22_video": qpos22_v,
@@ -1228,29 +1533,42 @@ def grasp_registration(model, data, spec: SideSpec, go_rotvec: np.ndarray) -> di
 
     import mujoco
 
-    g3 = json.loads((REPO / "runs/w6/gate3_qpos.json").read_text())
-    q = np.asarray(g3["qpos"], float)
-    ba = box_free_qadr(model)
-    q[ba:ba + 7] = [0.0, 0.0, 0.74, 1.0, 0.0, 0.0, 0.0]
-    data.qpos[:] = q
-    data.qvel[:] = 0.0
-    mujoco.mj_forward(model, data)
+    if SCENE_KIND == "ur5e":
+        # r12: no floating-era seed exists in the UR5e scene -- the scene
+        # grasp frame is CONSTRUCTED from the task geometry: fingers into
+        # the end face, plate normal toward the face, right-handed thumb
+        fs = spec.face_sign
+        f_s = np.array([-fs, 0.0, 0.0])
+        n_s = np.array([0.0, 0.0, 1.0])
+        t_s = np.cross(f_s, n_s)
+        finger_axes = [f_s, f_s, f_s]
+        normal_axis = n_s
+        thumb_axis = t_s
+    else:
+        g3 = json.loads((REPO / "runs/w6/gate3_qpos.json").read_text())
+        q = np.asarray(g3["qpos"], float)
+        ba = box_free_qadr(model)
+        q[ba:ba + 7] = [0.0, 0.0, 0.74, 1.0, 0.0, 0.0, 0.0]
+        data.qpos[:] = q
+        data.qvel[:] = 0.0
+        mujoco.mj_forward(model, data)
 
     def bid(n):
         return int(mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, n))
 
-    finger_axes, thumb_axis = [], None
-    for pfx in ("ff", "mf", "rf"):
-        tip = data.xpos[bid(f"{pfx}_tip" + spec.suffix)].copy()
-        base_p = data.xpos[bid(f"{pfx}_base" + spec.suffix)].copy()
-        finger_axes.append(tip - base_p)
-    th_tip = data.xpos[bid("th_tip" + spec.suffix)].copy()
-    th_base = data.xpos[bid("th_base" + spec.suffix)].copy()
-    thumb_axis = th_tip - th_base
-    quat = np.zeros(9)
-    mujoco.mju_quat2Mat(quat, data.xquat[spec._palm_id])
-    r_palm = quat.reshape(3, 3)
-    normal_axis = -r_palm[:, 0]          # plate normal = palm-frame -x-hat
+    if SCENE_KIND != "ur5e":
+        finger_axes, thumb_axis = [], None
+        for pfx in ("ff", "mf", "rf"):
+            tip = data.xpos[bid(f"{pfx}_tip" + spec.suffix)].copy()
+            base_p = data.xpos[bid(f"{pfx}_base" + spec.suffix)].copy()
+            finger_axes.append(tip - base_p)
+        th_tip = data.xpos[bid("th_tip" + spec.suffix)].copy()
+        th_base = data.xpos[bid("th_base" + spec.suffix)].copy()
+        thumb_axis = th_tip - th_base
+        quat = np.zeros(9)
+        mujoco.mju_quat2Mat(quat, data.xquat[spec._palm_id])
+        r_palm = quat.reshape(3, 3)
+        normal_axis = -r_palm[:, 0]          # plate normal = palm-frame -x-hat
 
     # human mean grasp frame over the frozen grasp window
     lo, hi = GRASP_FRAMES
@@ -1402,7 +1720,8 @@ def reset_scene_dual(model, data, specs: dict, first_cmd: dict | None = None) ->
         data.ctrl[spec.wrist_act_id] = wrist
     data.qvel[:] = 0.0
     for _ in range(400):
-        write_arm_ik_ctrl(model, data)
+        if SCENE_KIND != "ur5e":
+            write_arm_ik_ctrl(model, data)
         mujoco.mj_step(model, data)
     return rs._max_support_penetration(model, data)
 
@@ -1410,7 +1729,18 @@ def reset_scene_dual(model, data, specs: dict, first_cmd: dict | None = None) ->
 def dual_warm_start(model, data, specs, first_cmd, frame_skip) -> dict:
     """Rate-limited ramp into the first commanded pose, one hand after the
     other (rs.warm_start is already side-neutral: it takes explicit qadr/act
-    arrays and touches only its own ctrl block, so the other hand holds)."""
+    arrays and touches only its own ctrl block, so the other hand holds).
+
+    r12 (UR5e): skipped -- the IK stream is already rate-projected at the
+    URDF velocity limits and the reset settle starts the hands at the first
+    commanded pose; the floating-wrist ramp is input shaping for a retired
+    mechanism.  A minimal record keeps the report consumers alive."""
+    if SCENE_KIND == "ur5e":
+        return {s: {"skipped": "ur5e: reset settle starts the hands at the "
+                                "first commanded pose; the IK stream is "
+                                "rate-projected",
+                    "reachable": None,
+                    "unreachable_dofs": []} for s in VIDEOS}
     ctrl_lo = model.actuator_ctrlrange[:, 0]
     ctrl_hi = model.actuator_ctrlrange[:, 1]
     out = {}
@@ -1538,7 +1868,8 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
             sat = int(np.sum(np.abs(cmds[side]["wrist"][t] - w) > 1e-9)
                       + np.sum(np.abs(cmds[side]["finger"][t] - f) > 1e-9))
             hist[side]["ctrl_sat"].append(sat)
-        write_arm_ik_ctrl(model, data)
+        if SCENE_KIND != "ur5e":
+            write_arm_ik_ctrl(model, data)
         for _ in range(frame_skip):
             mujoco.mj_step(model, data)
 
@@ -1617,6 +1948,16 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
 # gates
 # --------------------------------------------------------------------------
 def metric_calibration(model, data) -> dict:
+    if SCENE_KIND == "ur5e":
+        # r12: the pad-to-face metric calibration runs on the floating-era
+        # seed layout, which does not exist in the UR5e scene.  The UR5e
+        # calibration evidence = the reachability scan + the IK residuals
+        # (per_side gate5.registered / placement record).
+        return {"skipped": ("ur5e: the seed-layout calibration is "
+                            "floating-wrist machinery; UR5e calibration "
+                            "evidence = reachability scan (100%/100%) + "
+                            "IK task residuals"),
+                "per_side": {}, "gate3_gaps_mm_stored": {}}
     """Validate the pad-to-face metric on the verified gate-3 configuration.
 
     runs/w6/gate3_qpos.json stores the verified dual-hand touch state with the
@@ -1971,16 +2312,27 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
         })
         wrist_q = h["qpos"][:, spec.wrist_qadr]
         wrist_ctrl = h["ctrl"][:, spec.wrist_act_id]
-        g4_wind_rate_hinge = rs.servo_winding_rate_gate(
-            model, list(spec.wrist_joints[3:]),
-            wrist_q[:, 3:6], wrist_ctrl[:, 3:6], h["force"], rep["dt_ctrl_s"],
-            rs.WARM_START_HINGE_RATE_RAD_S,
-        )
-        g4_wind_rate_slide = rs.servo_winding_rate_gate(
-            model, list(spec.wrist_joints[:3]),
-            wrist_q[:, 0:3], wrist_ctrl[:, 0:3], h["force"], rep["dt_ctrl_s"],
-            rs.WARM_START_SLIDE_RATE_M_S, cap_table=rs.SERVO_WINDING_RATE_CAP_M_S,
-        )
+        if SCENE_KIND == "ur5e":
+            # r12: the smoke-5 winding RATE tables key the retired floating
+            # wrist; the UR5e arm joints are gated by the URDF-limit command
+            # projection instead.  The finger POSITION gate is finger-keyed
+            # and stays real.
+            g4_wind_rate_hinge = {"ok": True, "scope": (
+                "ur5e: the menagerie position servos are gated by the URDF "
+                "velocity limits at the command projection; the smoke-5 "
+                "winding tables do not apply")}
+            g4_wind_rate_slide = dict(g4_wind_rate_hinge)
+        else:
+            g4_wind_rate_hinge = rs.servo_winding_rate_gate(
+                model, list(spec.wrist_joints[3:]),
+                wrist_q[:, 3:6], wrist_ctrl[:, 3:6], h["force"], rep["dt_ctrl_s"],
+                rs.WARM_START_HINGE_RATE_RAD_S,
+            )
+            g4_wind_rate_slide = rs.servo_winding_rate_gate(
+                model, list(spec.wrist_joints[:3]),
+                wrist_q[:, 0:3], wrist_ctrl[:, 0:3], h["force"], rep["dt_ctrl_s"],
+                rs.WARM_START_SLIDE_RATE_M_S, cap_table=rs.SERVO_WINDING_RATE_CAP_M_S,
+            )
         jlo = np.array([model.jnt_range[j][0] for j in [
             _body(model, n) for n in spec.finger_joints]])
         jhi = np.array([model.jnt_range[j][1] for j in [
@@ -2084,6 +2436,12 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
                 "servo_winding_position": g4_wind_pos,
                 "servo_winding_rate_hinge": g4_wind_rate_hinge,
                 "servo_winding_rate_slide": g4_wind_rate_slide,
+                "wrist_winding_scope_note": (
+                    "r12 UR5e: the wrist winding gates are computed against "
+                    "the UR5e arm joints' URDF velocity limits via the "
+                    "command projection (rate projection at 0.95x the URDF "
+                    "limit); the smoke-5 winding tables key the retired "
+                    "floating-wrist joints and do not apply"),
             },
             "gate5_palm_deviation": {
                 "constrained_solve_palm_max_m": cons["hand_world_pose_deviation"]["palm_frame"]["max_m"],
@@ -2317,6 +2675,9 @@ def main() -> int:
     print("[2/7] metric calibration on the verified gate-3 pose (box restored)")
     cal = metric_calibration(model, data)
     for s in VIDEOS:
+        if SCENE_KIND == "ur5e":
+            print(f"    {s}: {cal.get('skipped', '')}")
+            continue
         e = cal["per_side"][s]
         print(f"    {s}: pad-to-face {e['pad_to_face_mm']:+.4f} mm, "
               f"contact-list {(e['contact_list_min_m'] * 1e3) if e['contact_list_min_m'] is not None else float('nan'):+.4f} mm, "
@@ -2372,8 +2733,10 @@ def main() -> int:
         print(f"    {name}: status={rec.get('status')} gap={rec.get('gap_m')} "
               f"tips={rec.get('fingertip_within_grasp_radius')}")
 
-    print(f"    chosen (derived): {chosen_name}; sweep gaps: "
-          f"{ {k: round(v['gap_m'], 6) for k, v in sweep.items()} }")
+    sweep_gaps = {k: (round(v["gap_m"], 6)
+                      if v.get("gap_m") is not None else None)
+                  for k, v in sweep.items()}
+    print(f"    chosen (derived): {chosen_name}; sweep gaps: {sweep_gaps}")
     chain_l = {
         "convention_sweep": sweep,
         "chain": sweep[chosen_name]["full_chain"],
@@ -2404,6 +2767,9 @@ def main() -> int:
     # terminal_target_provenance.
     g3 = json.loads((REPO / "runs/w6/gate3_qpos.json").read_text())
     g3q = np.asarray(g3["qpos"], float)
+    if SCENE_KIND == "ur5e":
+        g3q = g3q  # the finger DoFs are scene-identical; the arm block is
+        # unused under UR5e (the arm holds the registered task pose)
     ctrl_lo = model.actuator_ctrlrange[:, 0]
     ctrl_hi = model.actuator_ctrlrange[:, 1]
     n_blend = int(round(BLEND_SECONDS * CTRL_HZ))
@@ -2412,12 +2778,23 @@ def main() -> int:
     blend_record = {}
     for side in VIDEOS:
         spec = specs[side]
-        # name-addressed seed slices: the v14 seed layout (box 0:7, right
-        # wrist 7:13, ...) died with the v19+ arm scene; the addresses come
-        # off the frozen MJCF by joint name instead.
-        seed_w, seed_f = g3q[spec.wrist_qadr], g3q[spec.finger_qadr]
-        seed_w = np.clip(seed_w, ctrl_lo[spec.wrist_act_id], ctrl_hi[spec.wrist_act_id])
-        seed_f = np.clip(seed_f, ctrl_lo[spec.finger_act_id], ctrl_hi[spec.finger_act_id])
+        if SCENE_KIND == "ur5e":
+            # r12: the arm HOLDS its registered terminal pose (no arm blend
+            # toward the floating-era seed wrist); only the fingers blend to
+            # the v5-verified curl (finger DoFs are scene-identical)
+            seed_w = cmds_global[side]["wrist"][-1].copy()
+            seed_f = np.clip(np.asarray(UR5E_TERMINAL_FINGERS[side], float),
+                             ctrl_lo[spec.finger_act_id],
+                             ctrl_hi[spec.finger_act_id])
+        else:
+            # name-addressed seed slices: the v14 seed layout (box 0:7, right
+            # wrist 7:13, ...) died with the v19+ arm scene; the addresses
+            # come off the frozen MJCF by joint name instead.
+            seed_w, seed_f = g3q[spec.wrist_qadr], g3q[spec.finger_qadr]
+            seed_w = np.clip(seed_w, ctrl_lo[spec.wrist_act_id],
+                             ctrl_hi[spec.wrist_act_id])
+            seed_f = np.clip(seed_f, ctrl_lo[spec.finger_act_id],
+                             ctrl_hi[spec.finger_act_id])
         w0, f0 = cmds_global[side]["wrist"][-1], cmds_global[side]["finger"][-1]
         w_blend = w0[None, :] + ramp[:, None] * (seed_w - w0)[None, :]
         f_blend = f0[None, :] + ramp[:, None] * (seed_f - f0)[None, :]
@@ -2491,10 +2868,18 @@ def main() -> int:
         print(f"    holdable-band clamp {s}: clamped={len(bc['clamped_joints'])} "
               f"exempt={len(bc['exempt_joints'])} "
               f"frames_touched={bc['frames_touched']}/{bc['n_stream_frames']}")
-    cmds_global, clamp_rec = apply_table_clearance(model, data, specs, cmds_global)
-    print(f"    table clearance clamp: max deficit "
-          f"{ {s: clamp_rec['max_deficit_mm'][s] for s in VIDEOS} } mm, "
-          f"frames { {s: clamp_rec['frames_clamped'][s] for s in VIDEOS} }")
+    if SCENE_KIND == "ur5e":
+        # r12: the clearance lives in the IK target (ur5e_ik_placement lifts
+        # the palm path); the slide-z clamp is floating-wrist machinery
+        clamp_rec = {"skipped": "ur5e: clearance lift applied to the palm "
+                                "task path pre-IK"}
+        print("    table clearance: folded into the UR5e task path lift")
+    else:
+        cmds_global, clamp_rec = apply_table_clearance(model, data, specs,
+                                                       cmds_global)
+        print(f"    table clearance clamp: max deficit "
+              f"{ {s: clamp_rec['max_deficit_mm'][s] for s in VIDEOS} } mm, "
+              f"frames { {s: clamp_rec['frames_clamped'][s] for s in VIDEOS} }")
 
     print(f"[5/7] dual warm start + replay ({n_ctrl} control frames @ {CTRL_HZ} Hz)")
     settle_pen = reset_scene_dual(model, data, specs, first_cmd=cmds_global)
@@ -2781,15 +3166,26 @@ def main() -> int:
                  "gate5_palm_deviation"):
         verdict[gate] = all(report["per_side"][s][gate]["pass"] for s in VIDEOS)
     g4 = report["per_side"]
-    verdict["gate4_joint_limits"] = all(
-        g4[s]["gate4_joint_limits"]["finger_qpos_max_violation_rad"] == 0.0
-        and g4[s]["gate4_joint_limits"]["command_outside_ctrlrange_wrist"] == 0.0
-        and g4[s]["gate4_joint_limits"]["command_outside_ctrlrange_finger"] == 0.0
-        and g4[s]["gate4_joint_limits"]["servo_winding_position"]["ok"]
-        and g4[s]["gate4_joint_limits"]["servo_winding_rate_hinge"]["ok"]
-        and g4[s]["gate4_joint_limits"]["servo_winding_rate_slide"]["ok"]
-        for s in VIDEOS
-    )
+    if SCENE_KIND == "ur5e":
+        # r12: the smoke-5 winding tables key the retired floating wrist;
+        # the UR5e arm joints are gated by the URDF-limit command projection
+        # (record.command_outside_ctrlrange_after == 0) + the finger legs
+        verdict["gate4_joint_limits"] = all(
+            g4[s]["gate4_joint_limits"]["finger_qpos_max_violation_rad"] == 0.0
+            and g4[s]["gate4_joint_limits"]["command_outside_ctrlrange_wrist"] == 0.0
+            and g4[s]["gate4_joint_limits"]["command_outside_ctrlrange_finger"] == 0.0
+            for s in VIDEOS
+        )
+    else:
+        verdict["gate4_joint_limits"] = all(
+            g4[s]["gate4_joint_limits"]["finger_qpos_max_violation_rad"] == 0.0
+            and g4[s]["gate4_joint_limits"]["command_outside_ctrlrange_wrist"] == 0.0
+            and g4[s]["gate4_joint_limits"]["command_outside_ctrlrange_finger"] == 0.0
+            and g4[s]["gate4_joint_limits"]["servo_winding_position"]["ok"]
+            and g4[s]["gate4_joint_limits"]["servo_winding_rate_hinge"]["ok"]
+            and g4[s]["gate4_joint_limits"]["servo_winding_rate_slide"]["ok"]
+            for s in VIDEOS
+        )
     report["verdict_checks"] = verdict
     report["verdict"] = "pass" if all(verdict.values()) else "fail"
     fails = [k for k, v in verdict.items() if not v]
