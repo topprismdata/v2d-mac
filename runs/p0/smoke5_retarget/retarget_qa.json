@@ -3,10 +3,10 @@
   "checks": {
     "frame_counts_consistent": true,
     "all_finite": true,
-    "joint_limits_ok": true,
+    "joint_limits_ok": false,
     "joint_velocity_ok": true,
     "joint_acceleration_ok": true,
-    "penetration_ok": true,
+    "penetration_ok": false,
     "wrist_continuous": true,
     "actuator_ctrl_not_saturated": true,
     "urdf_mjcf_frames_agree": true,
@@ -2216,80 +2216,1045 @@
     "superseded_note": "C6 (contact_occurred) is superseded per the W6 acceptance (PLAN 2026-10-16): the dual-hand sweep covers the whole table and the structural premise of a single replay's contact proof is gone; A2/A3a carry the contact-nature gate in W6c",
     "sequence": [
       1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
       0,
       0,
       1,
-      0,
       1,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
     ],
-    "duty": 0.1111111111111111,
-    "frames_with_contact": 3
+    "duty": 0.7777777777777778,
+    "frames_with_contact": 21
   },
   "penetration": {
-    "max_m": 0.0003000097826576127,
+    "max_m": 0.005088190318325934,
     "tolerance_m": 0.001,
     "tolerance_rationale": "MuJoCo's default solref/solimp lets a resting body sink a small fraction of a millimetre; the measured box-on-pedestal resting sink in this very scene is 2.909e-05 m, so 1e-3 m is ~9x the solver's own resting tolerance and still 3 orders of magnitude below the 40 mm box half-height",
     "support_contact_penetration_m": 2.909242637492905e-05,
     "sequence_m": [
-      0.0003000097826576127,
-      0.0,
-      0.0,
-      5.386026948396138e-05,
-      0.0,
-      6.136926111154767e-05,
-      0.0,
-      0.0,
-      0.0,
-      0.0,
-      0.0,
-      0.0,
-      0.0,
+      0.0006121582577161577,
+      0.0005212788141011984,
+      0.002084768196698525,
+      0.0031124556579261164,
+      0.002986767760559743,
+      0.0026774683352788846,
+      0.0016994825550435116,
+      0.001020137185970679,
+      0.0007863025816143955,
+      0.0006098223917648336,
       0.0,
       0.0,
       0.0,
       0.0,
       0.0,
       0.0,
-      0.0,
-      0.0,
-      0.0,
-      0.0,
-      0.0,
-      0.0,
-      0.0,
-      0.0
+      0.0007113553022502547,
+      0.0006612952348461895,
+      0.002742168044683478,
+      0.0028955502499581212,
+      0.0035769490640539326,
+      0.0035933007325431787,
+      0.0048821929408034296,
+      0.004468595614288255,
+      0.005088190318325934,
+      0.003747647628637774,
+      0.002254700721065458
     ]
   },
   "joint_limits": {
-    "mjcf_range_violation_frames": [],
+    "mjcf_range_violation_frames": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26
+    ],
     "servo_winding_tolerance": {
-      "ok": true,
+      "ok": false,
       "rule": "three-part servo winding tolerance, per finger joint: (1) excess beyond jnt_range <= |forcerange|/kp, (2) at most 3 consecutive control frames (150 ms at 20 Hz), (3) the transient is elastic wind-up: there is a contact torque on that DoF, the actuator is not on its force limit while it happens, and kp*(ctrl-qpos) accounts for the whole non-actuator load on the DoF to 5%. An excursion during saturation is never exempted, and neither is one on a freely drifting joint.",
       "explanation_tol": 0.05,
       "max_frames": 3,
       "control_period_ms": 50.0,
-      "joints_with_excursion": {}
+      "joints_with_excursion": {
+        "ffj0": {
+          "cap_rad": 0.039994670929922725,
+          "cap_formula": "|forcerange| / kp",
+          "cap_from_model_rad": 0.039994670929922725,
+          "max_excess_rad": 0.20560368636021198,
+          "margin_x": 0.19452312182697526,
+          "frames": [
+            0,
+            23,
+            24,
+            25,
+            26
+          ],
+          "max_consecutive_frames": 4,
+          "frame_limit": 3,
+          "amplitude_ok": false,
+          "duration_ok": false,
+          "events": [
+            {
+              "frame": 0,
+              "qpos_rad": 0.48225021711185195,
+              "ctrl_rad": -0.47,
+              "excess_rad": 0.01225021711185198,
+              "servo_winding_rad": -0.9522502171118519,
+              "tau_servo_Nm": -0.357379506482078,
+              "tau_contact_Nm": 0.05916461499224564,
+              "tau_other_Nm": 0.01500379687119003,
+              "winding_vs_load_residual": 22.819271185169836,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 23,
+              "qpos_rad": 0.4984437022628606,
+              "ctrl_rad": 0.19223728691093975,
+              "excess_rad": 0.028443702262860637,
+              "servo_winding_rad": -0.30620641535192084,
+              "tau_servo_Nm": -0.1149192676815759,
+              "tau_contact_Nm": 0.6480179954184493,
+              "tau_other_Nm": 0.015936399087720043,
+              "winding_vs_load_residual": 6.211118838642045,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 24,
+              "qpos_rad": 0.5613502972611926,
+              "ctrl_rad": 0.2505656003441521,
+              "excess_rad": 0.09135029726119259,
+              "servo_winding_rad": -0.31078469691704047,
+              "tau_servo_Nm": -0.1166374967529653,
+              "tau_contact_Nm": 0.6610721574412003,
+              "tau_other_Nm": 0.01352897538046094,
+              "winding_vs_load_residual": 7.621310444648868,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 25,
+              "qpos_rad": 0.6234481264706251,
+              "ctrl_rad": 0.2984168141554202,
+              "excess_rad": 0.1534481264706251,
+              "servo_winding_rad": -0.3250313123152049,
+              "tau_servo_Nm": -0.1219842515118964,
+              "tau_contact_Nm": 0.6154385722692082,
+              "tau_other_Nm": 0.009488911798593014,
+              "winding_vs_load_residual": 11.855452142571696,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 26,
+              "qpos_rad": 0.675603686360212,
+              "ctrl_rad": 0.2566702874537342,
+              "excess_rad": 0.20560368636021198,
+              "servo_winding_rad": -0.41893339890647774,
+              "tau_servo_Nm": -0.1572257046096011,
+              "tau_contact_Nm": 0.5084982580364361,
+              "tau_other_Nm": 0.009273424010865339,
+              "winding_vs_load_residual": 15.954439312317154,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            }
+          ],
+          "explanation_ok": false,
+          "ok": false
+        },
+        "mfj0": {
+          "cap_rad": 0.03981432360742706,
+          "cap_formula": "|forcerange| / kp",
+          "cap_from_model_rad": 0.03981432360742706,
+          "max_excess_rad": 0.13519921134271273,
+          "margin_x": 0.29448635988343774,
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26
+          ],
+          "max_consecutive_frames": 27,
+          "frame_limit": 3,
+          "amplitude_ok": false,
+          "duration_ok": false,
+          "events": [
+            {
+              "frame": 0,
+              "qpos_rad": 0.6051992113427127,
+              "ctrl_rad": 0.007053700108893862,
+              "excess_rad": 0.13519921134271273,
+              "servo_winding_rad": -0.5981455112338189,
+              "tau_servo_Nm": -0.22550085773514972,
+              "tau_contact_Nm": 0.051073044288979005,
+              "tau_other_Nm": 0.015007400785917974,
+              "winding_vs_load_residual": 14.025976913120486,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 1,
+              "qpos_rad": 0.5989329595372914,
+              "ctrl_rad": 0.1640536999518939,
+              "excess_rad": 0.12893295953729145,
+              "servo_winding_rad": -0.4348792595853975,
+              "tau_servo_Nm": -0.16394948086369487,
+              "tau_contact_Nm": -0.06618208247876592,
+              "tau_other_Nm": 0.01403577335234868,
+              "winding_vs_load_residual": 10.680829887172576,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 2,
+              "qpos_rad": 0.5932491842882591,
+              "ctrl_rad": 0.27373049926626036,
+              "excess_rad": 0.12324918428825915,
+              "servo_winding_rad": -0.31951868502199876,
+              "tau_servo_Nm": -0.12045854425329354,
+              "tau_contact_Nm": -0.03536158779082296,
+              "tau_other_Nm": 0.01916144259051282,
+              "winding_vs_load_residual": 5.286507066693129,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 3,
+              "qpos_rad": 0.5872743812091297,
+              "ctrl_rad": 0.20438547349508532,
+              "excess_rad": 0.1172743812091297,
+              "servo_winding_rad": -0.3828889077140444,
+              "tau_servo_Nm": -0.14434911820819474,
+              "tau_contact_Nm": -0.03381929318426695,
+              "tau_other_Nm": 0.016273774861733543,
+              "winding_vs_load_residual": 7.870045176034722,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 4,
+              "qpos_rad": 0.5818653154486954,
+              "ctrl_rad": 0.36138547333808535,
+              "excess_rad": 0.11186531544869538,
+              "servo_winding_rad": -0.22047984211061,
+              "tau_servo_Nm": -0.08312090047569998,
+              "tau_contact_Nm": -0.032383504032174874,
+              "tau_other_Nm": 0.01499178727764608,
+              "winding_vs_load_residual": 4.544429022124647,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 5,
+              "qpos_rad": 0.5766004027398572,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.10660040273985727,
+              "servo_winding_rad": -0.10660040273985727,
+              "tau_servo_Nm": -0.04018835183292619,
+              "tau_contact_Nm": -0.031167981288189615,
+              "tau_other_Nm": 0.011256012440835482,
+              "winding_vs_load_residual": 2.5703897844966486,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 6,
+              "qpos_rad": 0.5718463536992243,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.10184635369922435,
+              "servo_winding_rad": -0.10184635369922435,
+              "tau_servo_Nm": -0.03839607534460758,
+              "tau_contact_Nm": -0.0297841932137918,
+              "tau_other_Nm": 0.014305856162769453,
+              "winding_vs_load_residual": 1.6839411013045256,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 7,
+              "qpos_rad": 0.5669232362794572,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.0969232362794572,
+              "servo_winding_rad": -0.0969232362794572,
+              "tau_servo_Nm": -0.036540060077355364,
+              "tau_contact_Nm": -0.028147579149772454,
+              "tau_other_Nm": 0.014544990021491056,
+              "winding_vs_load_residual": 1.5122093602928108,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 8,
+              "qpos_rad": 0.5620462227983247,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.09204622279832475,
+              "servo_winding_rad": -0.09204622279832475,
+              "tau_servo_Nm": -0.03470142599496843,
+              "tau_contact_Nm": -0.02666884270306866,
+              "tau_other_Nm": 0.016262274210998764,
+              "winding_vs_load_residual": 1.133860587069587,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 9,
+              "qpos_rad": 0.5572498178952288,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.08724981789522879,
+              "servo_winding_rad": -0.08724981789522879,
+              "tau_servo_Nm": -0.03289318134650125,
+              "tau_contact_Nm": -0.02455171183901654,
+              "tau_other_Nm": 0.019106007428927096,
+              "winding_vs_load_residual": 0.7216146004790064,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 10,
+              "qpos_rad": 0.5524142634953255,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.08241426349532555,
+              "servo_winding_rad": -0.08241426349532555,
+              "tau_servo_Nm": -0.03107017733773773,
+              "tau_contact_Nm": -0.02398079219287493,
+              "tau_other_Nm": 0.014708553391578744,
+              "winding_vs_load_residual": 1.1123883845386653,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 11,
+              "qpos_rad": 0.5479156506586242,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.07791565065862427,
+              "servo_winding_rad": -0.07791565065862427,
+              "tau_servo_Nm": -0.02937420029830135,
+              "tau_contact_Nm": -0.02179332224933119,
+              "tau_other_Nm": 0.015351228101630636,
+              "winding_vs_load_residual": 0.9134755932120614,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 12,
+              "qpos_rad": 0.5434581503966033,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.0734581503966033,
+              "servo_winding_rad": -0.0734581503966033,
+              "tau_servo_Nm": -0.027693722699519446,
+              "tau_contact_Nm": -0.020300407403937685,
+              "tau_other_Nm": 0.01595400412953051,
+              "winding_vs_load_residual": 0.7358477830815512,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 13,
+              "qpos_rad": 0.5391762115427197,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.06917621154271969,
+              "servo_winding_rad": -0.06917621154271969,
+              "tau_servo_Nm": -0.026079431751605323,
+              "tau_contact_Nm": -0.01805993177607937,
+              "tau_other_Nm": 0.022449496288599387,
+              "winding_vs_load_residual": 0.1616934035553101,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 14,
+              "qpos_rad": 0.5344387114808264,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.06443871148082647,
+              "servo_winding_rad": -0.06443871148082647,
+              "tau_servo_Nm": -0.02429339422827158,
+              "tau_contact_Nm": -0.01860893254102565,
+              "tau_other_Nm": 0.009657117812129988,
+              "winding_vs_load_residual": 1.5155946837220364,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 15,
+              "qpos_rad": 0.5305993056755506,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.06059930567555061,
+              "servo_winding_rad": -0.06059930567555061,
+              "tau_servo_Nm": -0.02284593823968258,
+              "tau_contact_Nm": -0.016869528753926163,
+              "tau_other_Nm": 0.01427474067713367,
+              "winding_vs_load_residual": 0.6004450628149683,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 16,
+              "qpos_rad": 0.526505851433848,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.05650585143384801,
+              "servo_winding_rad": -0.05650585143384801,
+              "tau_servo_Nm": -0.0213027059905607,
+              "tau_contact_Nm": -0.015441941969868683,
+              "tau_other_Nm": 0.012299338686322197,
+              "winding_vs_load_residual": 0.7320204389729454,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 17,
+              "qpos_rad": 0.5227917713548125,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.0527917713548125,
+              "servo_winding_rad": -0.0527917713548125,
+              "tau_servo_Nm": -0.019902497800764314,
+              "tau_contact_Nm": -0.014774011603917375,
+              "tau_other_Nm": 0.0164745632964399,
+              "winding_vs_load_residual": 0.20807437761128258,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 18,
+              "qpos_rad": 0.5190780009706562,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.04907800097065618,
+              "servo_winding_rad": -0.04907800097065618,
+              "tau_servo_Nm": -0.01850240636593738,
+              "tau_contact_Nm": -0.013825955194760304,
+              "tau_other_Nm": 0.014290247429139648,
+              "winding_vs_load_residual": 0.2947575930846795,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 19,
+              "qpos_rad": 0.5156833453256161,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.04568334532561613,
+              "servo_winding_rad": -0.04568334532561613,
+              "tau_servo_Nm": -0.017222621187757282,
+              "tau_contact_Nm": -0.01273131614037548,
+              "tau_other_Nm": 0.01416221291262514,
+              "winding_vs_load_residual": 0.21609675648950946,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 20,
+              "qpos_rad": 0.5123373653993868,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.04233736539938682,
+              "servo_winding_rad": -0.04233736539938682,
+              "tau_servo_Nm": -0.01596118675556883,
+              "tau_contact_Nm": -0.010092390936285014,
+              "tau_other_Nm": 0.014696933986655909,
+              "winding_vs_load_residual": 0.08602153143375339,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 21,
+              "qpos_rad": 0.5089150856096638,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.038915085609663835,
+              "servo_winding_rad": -0.038915085609663835,
+              "tau_servo_Nm": -0.014670987274843266,
+              "tau_contact_Nm": -0.010623096662620523,
+              "tau_other_Nm": 0.01568635211798267,
+              "winding_vs_load_residual": 0.06472918850109195,
+              "actuator_saturated": false,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 22,
+              "qpos_rad": 0.5055111752468741,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.03551117524687408,
+              "servo_winding_rad": -0.03551117524687408,
+              "tau_servo_Nm": -0.01338771306807153,
+              "tau_contact_Nm": -0.010283864101526983,
+              "tau_other_Nm": 0.014325939678869517,
+              "winding_vs_load_residual": 0.06549145339358459,
+              "actuator_saturated": false,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 23,
+              "qpos_rad": 0.5022386316703714,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.03223863167037144,
+              "servo_winding_rad": -0.03223863167037144,
+              "tau_servo_Nm": -0.012153964139730035,
+              "tau_contact_Nm": -0.010024923502268098,
+              "tau_other_Nm": 0.012908381787356699,
+              "winding_vs_load_residual": 0.05844401413394742,
+              "actuator_saturated": false,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 24,
+              "qpos_rad": 0.4992753252292519,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.029275325229251914,
+              "servo_winding_rad": -0.029275325229251914,
+              "tau_servo_Nm": -0.011036797611427972,
+              "tau_contact_Nm": -0.00783871972086638,
+              "tau_other_Nm": 0.009955688892249298,
+              "winding_vs_load_residual": 0.10859205534439095,
+              "actuator_saturated": false,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 25,
+              "qpos_rad": 0.4966089851736313,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.026608985173631305,
+              "servo_winding_rad": -0.026608985173631305,
+              "tau_servo_Nm": -0.010031587410459002,
+              "tau_contact_Nm": -0.006910222118493931,
+              "tau_other_Nm": 0.007134671437286712,
+              "winding_vs_load_residual": 0.40603355019722903,
+              "actuator_saturated": false,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 26,
+              "qpos_rad": 0.4939932067174326,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.023993206717432602,
+              "servo_winding_rad": -0.023993206717432602,
+              "tau_servo_Nm": -0.009045438932472092,
+              "tau_contact_Nm": -0.00533743905942788,
+              "tau_other_Nm": 0.014014258684014529,
+              "winding_vs_load_residual": 0.35455459069056283,
+              "actuator_saturated": false,
+              "torque_match": false,
+              "explained": false
+            }
+          ],
+          "explanation_ok": false,
+          "ok": false
+        },
+        "rfj0": {
+          "cap_rad": 0.045662100456621,
+          "cap_formula": "|forcerange| / kp",
+          "cap_from_model_rad": 0.045662100456621,
+          "max_excess_rad": 0.11817990531698419,
+          "margin_x": 0.3863778730753365,
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26
+          ],
+          "max_consecutive_frames": 27,
+          "frame_limit": 3,
+          "amplitude_ok": false,
+          "duration_ok": false,
+          "events": [
+            {
+              "frame": 0,
+              "qpos_rad": 0.5881799053169842,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.11817990531698419,
+              "servo_winding_rad": -0.11817990531698419,
+              "tau_servo_Nm": -0.038822098896629305,
+              "tau_contact_Nm": 0.04770668511614427,
+              "tau_other_Nm": 0.014997268992123648,
+              "winding_vs_load_residual": 1.5886112276187163,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 1,
+              "qpos_rad": 0.5848188765842126,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.11481887658421264,
+              "servo_winding_rad": -0.11481887658421264,
+              "tau_servo_Nm": -0.037718000957913854,
+              "tau_contact_Nm": -0.03321015138722977,
+              "tau_other_Nm": 0.013785828341828364,
+              "winding_vs_load_residual": 1.7359981585924384,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 2,
+              "qpos_rad": 0.5796821930753974,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.1096821930753974,
+              "servo_winding_rad": -0.1096821930753974,
+              "tau_servo_Nm": -0.036030600425268046,
+              "tau_contact_Nm": -0.030804583155649448,
+              "tau_other_Nm": 0.018622528283198173,
+              "winding_vs_load_residual": 0.9347856465749594,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 3,
+              "qpos_rad": 0.5740774829271442,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.10407748292714425,
+              "servo_winding_rad": -0.10407748292714425,
+              "tau_servo_Nm": -0.034189453141566885,
+              "tau_contact_Nm": -0.029345906092752182,
+              "tau_other_Nm": 0.01682599068236564,
+              "winding_vs_load_residual": 1.031942949867368,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 4,
+              "qpos_rad": 0.5690623546335669,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.09906235463356694,
+              "servo_winding_rad": -0.09906235463356694,
+              "tau_servo_Nm": -0.03254198349712674,
+              "tau_contact_Nm": -0.02804108095234874,
+              "tau_other_Nm": 0.015394511570655797,
+              "winding_vs_load_residual": 1.1138691765418882,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 5,
+              "qpos_rad": 0.5642360414761758,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.09423604147617581,
+              "servo_winding_rad": -0.09423604147617581,
+              "tau_servo_Nm": -0.030956539624923757,
+              "tau_contact_Nm": -0.026817043022606186,
+              "tau_other_Nm": 0.012206186746635407,
+              "winding_vs_load_residual": 1.5361351802565875,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 6,
+              "qpos_rad": 0.5598470529203551,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.08984705292035511,
+              "servo_winding_rad": -0.08984705292035511,
+              "tau_servo_Nm": -0.029514756884336656,
+              "tau_contact_Nm": -0.0254290570416814,
+              "tau_other_Nm": 0.015574351347037663,
+              "winding_vs_load_residual": 0.8950873925128537,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 7,
+              "qpos_rad": 0.5551650445995745,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.08516504459957452,
+              "servo_winding_rad": -0.08516504459957452,
+              "tau_servo_Nm": -0.027976717150960232,
+              "tau_contact_Nm": -0.024087075074151816,
+              "tau_other_Nm": 0.015720825476223207,
+              "winding_vs_load_residual": 0.7795959374571848,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 8,
+              "qpos_rad": 0.5505826913645061,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.08058269136450613,
+              "servo_winding_rad": -0.08058269136450613,
+              "tau_servo_Nm": -0.026471414113240267,
+              "tau_contact_Nm": -0.022722075860575106,
+              "tau_other_Nm": 0.017024333234866976,
+              "winding_vs_load_residual": 0.5549163510865163,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 9,
+              "qpos_rad": 0.5461169311650532,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.07611693116505325,
+              "servo_winding_rad": -0.07611693116505325,
+              "tau_servo_Nm": -0.025004411887719992,
+              "tau_contact_Nm": -0.020858559940731655,
+              "tau_other_Nm": 0.019363781226516188,
+              "winding_vs_load_residual": 0.29129799573854365,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 10,
+              "qpos_rad": 0.5416341410101787,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.07163414101017873,
+              "servo_winding_rad": -0.07163414101017873,
+              "tau_servo_Nm": -0.023531815321843716,
+              "tau_contact_Nm": -0.020159671563193513,
+              "tau_other_Nm": 0.015534391868687925,
+              "winding_vs_load_residual": 0.5148205041277405,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 11,
+              "qpos_rad": 0.5374646133476026,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.06746461334760268,
+              "servo_winding_rad": -0.06746461334760268,
+              "tau_servo_Nm": -0.02216212548468748,
+              "tau_contact_Nm": -0.01815991003745558,
+              "tau_other_Nm": 0.016197918317064748,
+              "winding_vs_load_residual": 0.36820825064535295,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 12,
+              "qpos_rad": 0.5332844284021561,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.06328442840215609,
+              "servo_winding_rad": -0.06328442840215609,
+              "tau_servo_Nm": -0.020788934730108278,
+              "tau_contact_Nm": -0.017076311639130305,
+              "tau_other_Nm": 0.016376146041578502,
+              "winding_vs_load_residual": 0.26946441960921996,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 13,
+              "qpos_rad": 0.5292546784057662,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.05925467840576626,
+              "servo_winding_rad": -0.05925467840576626,
+              "tau_servo_Nm": -0.019465161856294218,
+              "tau_contact_Nm": -0.015046283829375565,
+              "tau_other_Nm": 0.02295725555116405,
+              "winding_vs_load_residual": 0.15211285543636188,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 14,
+              "qpos_rad": 0.5247749012528983,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.0547749012528983,
+              "servo_winding_rad": -0.0547749012528983,
+              "tau_servo_Nm": -0.017993555061577092,
+              "tau_contact_Nm": -0.015394185630782391,
+              "tau_other_Nm": 0.009873060313305352,
+              "winding_vs_load_residual": 0.8224901388810741,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 15,
+              "qpos_rad": 0.5212035187249027,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.0512035187249027,
+              "servo_winding_rad": -0.0512035187249027,
+              "tau_servo_Nm": -0.016820355901130537,
+              "tau_contact_Nm": -0.013919041491646621,
+              "tau_other_Nm": 0.014373199351465518,
+              "winding_vs_load_residual": 0.17025830434999864,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 16,
+              "qpos_rad": 0.5173860665368604,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.047386066536860394,
+              "servo_winding_rad": -0.047386066536860394,
+              "tau_servo_Nm": -0.01556632285735864,
+              "tau_contact_Nm": -0.01239076277341611,
+              "tau_other_Nm": 0.012625309285288584,
+              "winding_vs_load_residual": 0.23294586339338388,
+              "actuator_saturated": true,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 17,
+              "qpos_rad": 0.5139644990646185,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.04396449906461852,
+              "servo_winding_rad": -0.04396449906461852,
+              "tau_servo_Nm": -0.014442337942727186,
+              "tau_contact_Nm": -0.01208182398169805,
+              "tau_other_Nm": 0.01594473474263243,
+              "winding_vs_load_residual": 0.09422526145186927,
+              "actuator_saturated": false,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 18,
+              "qpos_rad": 0.5106633285285727,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.040663328528572684,
+              "servo_winding_rad": -0.040663328528572684,
+              "tau_servo_Nm": -0.013357903421636128,
+              "tau_contact_Nm": -0.01118354352224646,
+              "tau_other_Nm": 0.012738053596452583,
+              "winding_vs_load_residual": 0.048661266848191546,
+              "actuator_saturated": false,
+              "torque_match": true,
+              "explained": true
+            },
+            {
+              "frame": 19,
+              "qpos_rad": 0.5077042105105699,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.037704210510569935,
+              "servo_winding_rad": -0.037704210510569935,
+              "tau_servo_Nm": -0.012385833152722224,
+              "tau_contact_Nm": -0.010283281591691344,
+              "tau_other_Nm": 0.011698571040782382,
+              "winding_vs_load_residual": 0.058747526475154785,
+              "actuator_saturated": false,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 20,
+              "qpos_rad": 0.5048782791917863,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.03487827919178632,
+              "servo_winding_rad": -0.03487827919178632,
+              "tau_servo_Nm": -0.011457514714501807,
+              "tau_contact_Nm": -0.008612035230809334,
+              "tau_other_Nm": 0.010095700941741587,
+              "winding_vs_load_residual": 0.13489046284341472,
+              "actuator_saturated": false,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 21,
+              "qpos_rad": 0.5019826757566238,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.031982675756623835,
+              "servo_winding_rad": -0.031982675756623835,
+              "tau_servo_Nm": -0.01050630898605093,
+              "tau_contact_Nm": -0.00911768577551129,
+              "tau_other_Nm": 0.0106093662910636,
+              "winding_vs_load_residual": 0.009713804028000825,
+              "actuator_saturated": false,
+              "torque_match": true,
+              "explained": true
+            },
+            {
+              "frame": 22,
+              "qpos_rad": 0.499158482348992,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.029158482348992043,
+              "servo_winding_rad": -0.029158482348992043,
+              "tau_servo_Nm": -0.009578561451643887,
+              "tau_contact_Nm": -0.008266123838455795,
+              "tau_other_Nm": 0.010223684537586233,
+              "winding_vs_load_residual": 0.06310084036441298,
+              "actuator_saturated": false,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 23,
+              "qpos_rad": 0.4963929480611516,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.02639294806115161,
+              "servo_winding_rad": -0.02639294806115161,
+              "tau_servo_Nm": -0.008670083438088304,
+              "tau_contact_Nm": -0.008014909336872668,
+              "tau_other_Nm": 0.009208075668250456,
+              "winding_vs_load_residual": 0.05842613044733717,
+              "actuator_saturated": false,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 24,
+              "qpos_rad": 0.4939144739450759,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.023914473945075954,
+              "servo_winding_rad": -0.023914473945075954,
+              "tau_servo_Nm": -0.007855904690957451,
+              "tau_contact_Nm": -0.006250377807785104,
+              "tau_other_Nm": 0.006480249476460739,
+              "winding_vs_load_residual": 0.21228429854340136,
+              "actuator_saturated": false,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 25,
+              "qpos_rad": 0.49167155945260327,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.021671559452603295,
+              "servo_winding_rad": -0.021671559452603295,
+              "tau_servo_Nm": -0.007119107280180182,
+              "tau_contact_Nm": -0.005556284692729973,
+              "tau_other_Nm": 0.004115983627000399,
+              "winding_vs_load_residual": 0.7296247811773652,
+              "actuator_saturated": false,
+              "torque_match": false,
+              "explained": false
+            },
+            {
+              "frame": 26,
+              "qpos_rad": 0.48944490794644896,
+              "ctrl_rad": 0.47,
+              "excess_rad": 0.019444907946448986,
+              "servo_winding_rad": -0.019444907946448986,
+              "tau_servo_Nm": -0.006387652260408492,
+              "tau_contact_Nm": -0.004391654000696593,
+              "tau_other_Nm": 0.010662965398812698,
+              "winding_vs_load_residual": 0.4009497338217241,
+              "actuator_saturated": false,
+              "torque_match": false,
+              "explained": false
+            }
+          ],
+          "explanation_ok": false,
+          "ok": false
+        }
+      }
     },
     "note": "the retargeted command is clipped to each actuator's ctrlrange before it is applied; the realised qpos is then checked against the MJCF joint range. mjcf_range_violation_frames is the zero-tolerance evidence (frames where qpos left jnt_range at all); the gate that judges them is servo_winding_tolerance, the user-approved three-part servo winding table. This MJCF gives every finger joint limited=true with stiffness=0, so jnt_range is an assertion the gate checks, not a mechanical stop the solver enforces -- which is exactly why an elastic wind-up can carry qpos past it."
   },
@@ -2355,10 +3320,10 @@
     },
     "velocity_limit_rad_s": 3.14,
     "velocity_within_limit": true,
-    "velocity_max_rad_s": 2.126883473583674,
+    "velocity_max_rad_s": 2.474987607907335,
     "velocity_max_rad_s_note": "realised qpos rate over all velocity DoFs (both hands plus the box's free joint; only the right hand is commanded), evidence only; it is not the gate",
     "acceleration_limit_rad_s2": 200.0,
-    "acceleration_max_rad_s2": 28.89386519641768,
+    "acceleration_max_rad_s2": 29.828231650909434,
     "acceleration_within_limit": true
   },
   "actuators": {
@@ -2366,7 +3331,7 @@
     "n_actuators_note": "the W6a dual-hand scene carries 44 position servos (two hands); smoke 5 commands the right hand's 22 and leaves the left hand's servos at ctrl 0, which holds it frozen at its initial pose",
     "n_actuators_commanded": 22,
     "ctrl_saturation_frames": 0,
-    "force_saturation_events": 302,
+    "force_saturation_events": 312,
     "ctrl_saturation_rule": "any |command - clipped ctrl| > 1e-9 in a frame",
     "force_saturation_rule": "actuator_force on its forcerange bound (1e-6 rel tol)",
     "wrist_reachability": {
@@ -2420,172 +3385,172 @@
     "ceiling_m": 0.05,
     "ceiling_rad": 0.5,
     "ceiling_rationale": "physically anchored, same rule as smoke 2: a jump must exceed BOTH 3x the median inter-frame step AND an absolute per-frame ceiling. The ceiling comes from the wrist actuator authority -- force-limited position servos (slides +-45 N, hinges +-6 N m) on a ~0.15 kg hand over a 50 ms control period reach ~0.11 m of single-step travel, so the ceiling is set at 0.05 m (and 0.5 rad on the rotation axes) to keep margin",
-    "step_median_m": 0.007581702414845674,
-    "step_max_m": 0.013619806595376635,
+    "step_median_m": 0.006939823717404392,
+    "step_max_m": 0.011623061285525912,
     "threshold_m": 0.05,
-    "rot_step_median_rad": 0.1315183708243884,
-    "rot_step_max_rad": 0.17631902429019994,
+    "rot_step_median_rad": 0.12313535303197298,
+    "rot_step_max_rad": 0.16932059800394364,
     "rot_threshold_rad": 0.5,
     "position_trajectory_m": [
       [
-        0.05056284557843326,
-        0.1048182941061572,
-        -0.008570715513197838
+        0.05032607141644632,
+        0.09591751475206631,
+        -0.008570802211569124
       ],
       [
-        0.05145542602672291,
-        0.10304135063811105,
-        -0.009779282320464638
+        0.05063594955925447,
+        0.09546678233740433,
+        -0.009642498367338027
       ],
       [
-        0.05863095855124842,
-        0.1093281829503109,
-        -0.0028684101640566537
+        0.05673188460959718,
+        0.10288062048143465,
+        -0.003129682728163304
       ],
       [
-        0.06656769181448567,
-        0.11696626309193303,
-        0.003963550005069725
+        0.0601896775008757,
+        0.10884656155653821,
+        0.0025850209032617726
       ],
       [
-        0.07460908766592154,
-        0.12554036295512183,
-        0.010842495853965515
+        0.06263590226799334,
+        0.11395023856803968,
+        0.008383427895457238
       ],
       [
-        0.08253440202103263,
-        0.1331190168490551,
-        0.011195438275452156
+        0.06542843445470756,
+        0.11982006973430546,
+        0.010913086641322239
       ],
       [
-        0.088279920933471,
-        0.14079361220733597,
-        0.015106643279764204
+        0.06911153431009119,
+        0.13009790263872487,
+        0.014900125629242743
       ],
       [
-        0.0884482230786112,
-        0.14734494729782546,
-        0.01630510896000741
+        0.07423199491533872,
+        0.14032447897564462,
+        0.016302811313610163
       ],
       [
-        0.09091491246336779,
-        0.15382290355258116,
-        0.018838400423699622
+        0.08043520062102265,
+        0.14964936582101399,
+        0.01886461972095667
       ],
       [
-        0.0910129787257142,
-        0.160430104793809,
-        0.019826900945170513
+        0.08715404796375616,
+        0.15846809562106287,
+        0.019952328564189742
       ],
       [
-        0.08838824102797516,
-        0.16679128042308725,
-        0.024309760117107303
+        0.08823520826344385,
+        0.16585430336458554,
+        0.024339894958375862
       ],
       [
-        0.09287074895052855,
-        0.17421237411196872,
-        0.029130305064417036
+        0.09285380499930825,
+        0.1737600225750148,
+        0.02913683189482923
       ],
       [
-        0.09489763842445388,
-        0.18165319484436357,
-        0.027360217454697945
+        0.09489497090153515,
+        0.1814839115987737,
+        0.027361459068555503
       ],
       [
-        0.09929912501388369,
-        0.188377933928353,
-        0.02689595323523925
+        0.099303240488822,
+        0.18824522418080522,
+        0.026878753891369907
       ],
       [
-        0.10056213753313684,
-        0.1914720596692187,
-        0.028838572703609528
+        0.10054243117152865,
+        0.18854341771432237,
+        0.028732229320013677
       ],
       [
-        0.10143056097513921,
-        0.19159099835647136,
-        0.027921893434218616
+        0.10142847012402034,
+        0.1881866915014314,
+        0.027918333852436177
       ],
       [
-        0.10594919478480944,
-        0.18973058413413482,
-        0.03279590115222692
+        0.10583288357327257,
+        0.18592129354641543,
+        0.03272890402315153
       ],
       [
-        0.10562058193529542,
-        0.18815437112001485,
-        0.030088762806239
+        0.10538204454000943,
+        0.185824915694016,
+        0.030166935575368342
       ],
       [
-        0.11326038338718826,
-        0.18572238962487017,
-        0.03661857110070998
+        0.11054345414767264,
+        0.18502521263628802,
+        0.036536740288570776
       ],
       [
-        0.11858574219230004,
-        0.1826675710473303,
-        0.03589773984496146
+        0.11426862637445831,
+        0.185253170961421,
+        0.03634373739805933
       ],
       [
-        0.12083337498254217,
-        0.17880991157475615,
-        0.029379203144568915
+        0.11708806187221324,
+        0.1862426445560788,
+        0.030695332193609523
       ],
       [
-        0.11940767967051268,
-        0.1747640147809908,
-        0.02310190876488132
+        0.11750556659693326,
+        0.18783938248763182,
+        0.02501622298988199
       ],
       [
-        0.12182747603187197,
-        0.17226224663977988,
-        0.0149984674397482
+        0.1184446776375394,
+        0.18724262883280002,
+        0.019526689477033232
       ],
       [
-        0.11922552520476451,
-        0.17040313251731065,
-        0.008147732589328069
+        0.11652695258718672,
+        0.18607583102166422,
+        0.013564547204174198
       ],
       [
-        0.1195372836658631,
-        0.16913106895981272,
-        0.002094849319494294
+        0.11609089615149495,
+        0.18315908100482614,
+        0.007911091468763386
       ],
       [
-        0.11989036177100725,
-        0.16906367660129495,
-        -0.00413056839003749
+        0.11420088503631073,
+        0.18128450986875158,
+        0.0031013833421231155
       ],
       [
-        0.12620544453224705,
-        0.1696382919226442,
-        -0.002864676556592871
+        0.11203244185305848,
+        0.1795174468202354,
+        -0.0006789204311852276
       ]
     ]
   },
   "fingertip_tracking": {
     "per_tip_final_error_m": [
-      0.09431670967137003,
-      0.06384092229713409,
-      0.08489401206322063,
-      0.12059483917495699
+      0.17078549475055183,
+      0.0815318728775903,
+      0.10988447447614973,
+      0.11300737514279338
     ],
-    "final_mean_error_m": 0.09091162080167044,
-    "final_max_error_m": 0.12059483917495699,
+    "final_mean_error_m": 0.1188023043117713,
+    "final_max_error_m": 0.17078549475055183,
     "hand_span_m": 0.030539083373840755,
     "interpretation": "evidence only, not a gate: smoke 6 measured HaMeR's own fingertip error at mean 45.6 px / p90 111.6 px under occluded grasping, so this term inherits that uncertainty and is recorded rather than thresholded"
   },
   "physics_provenance": {
-    "mjcf_commit": "438647a",
-    "mjcf_commit_message": "p0(w6a-r10): fixture re-rating \u2014 gate4 right fully GREEN; gate3/gate1/gate2/alignment hold; gate5/wrist-ref right red on MP wrong-track segment (perception-domain)",
+    "mjcf_commit": "c6ee35d",
+    "mjcf_commit_message": "p0(w6a-r10.1): yaw registration stops \u2014 box yaw bounded 1.49 deg (spec +-2), zero hand-vs-stop contact over the replay",
     "scene": "grounding/assets/allegro_floating.xml",
-    "scene_sha256": "180cd84ee19510b5ee953e00bb4ea9c364e11d900320382206b12adc10e3e4de",
-    "scene_sha256_at_mjcf_commit": "180cd84ee19510b5ee953e00bb4ea9c364e11d900320382206b12adc10e3e4de",
+    "scene_sha256": "899183df2dd0addec38161bb0b9bce53b3cd51b47bc89e966ac297c32c0b612f",
+    "scene_sha256_at_mjcf_commit": "899183df2dd0addec38161bb0b9bce53b3cd51b47bc89e966ac297c32c0b612f",
     "scene_sha256_at_baseline_commit": "bc75a8e4e542346d32091ddb1a47d42956f5749b23bf9332891cb2636aa321ca",
     "scene_matches_mjcf_commit": true,
     "scene_differs_from_baseline": true,
-    "accounting_rule": "every number in this report was produced on scene_sha256 == 180cd84ee195, i.e. commit 438647a. Numbers produced on commit e170b6d (scene_sha256 bc75a8e4e542) belong to the superseded physics and must not be mixed with these."
+    "accounting_rule": "every number in this report was produced on scene_sha256 == 899183df2dd0, i.e. commit c6ee35d. Numbers produced on commit e170b6d (scene_sha256 bc75a8e4e542) belong to the superseded physics and must not be mixed with these."
   },
   "velocity_gate_evidence": {
     "gate_definition": {
@@ -2630,85 +3595,85 @@
     },
     "per_dof_control_period_rate": {
       "wrist_rx": {
-        "max_control_period_rate": 2.038763218616304,
-        "at_interval": 23
+        "max_control_period_rate": 2.1088884916348594,
+        "at_interval": 5
       },
       "wrist_ry": {
-        "max_control_period_rate": 2.126883473583674,
-        "at_interval": 24
+        "max_control_period_rate": 1.690775653447183,
+        "at_interval": 10
       },
       "wrist_rz": {
-        "max_control_period_rate": 2.0496067716286603,
-        "at_interval": 21
+        "max_control_period_rate": 2.474987607907335,
+        "at_interval": 25
       },
       "ffj0": {
-        "max_control_period_rate": 0.5555463809218253,
-        "at_interval": 0
+        "max_control_period_rate": 1.258131899966639,
+        "at_interval": 23
       },
       "ffj1": {
-        "max_control_period_rate": 1.0027696248240847,
-        "at_interval": 21
+        "max_control_period_rate": 2.3578085201876453,
+        "at_interval": 3
       },
       "ffj2": {
-        "max_control_period_rate": 0.8608869430912436,
-        "at_interval": 21
+        "max_control_period_rate": 1.8172736118383837,
+        "at_interval": 23
       },
       "ffj3": {
-        "max_control_period_rate": 0.16907855306150577,
-        "at_interval": 21
+        "max_control_period_rate": 0.8155066066375394,
+        "at_interval": 24
       },
       "mfj0": {
-        "max_control_period_rate": 0.3805412758318161,
+        "max_control_period_rate": 0.1253250361084257,
         "at_interval": 0
       },
       "mfj1": {
-        "max_control_period_rate": 0.3371091556417083,
+        "max_control_period_rate": 0.26738530915654923,
         "at_interval": 1
       },
       "mfj2": {
-        "max_control_period_rate": 0.45292615036364836,
+        "max_control_period_rate": 0.4538734163490732,
         "at_interval": 23
       },
       "mfj3": {
-        "max_control_period_rate": 0.0772886850012422,
-        "at_interval": 17
+        "max_control_period_rate": 0.07685784534643858,
+        "at_interval": 6
       },
       "rfj0": {
-        "max_control_period_rate": 0.2919250618999436,
-        "at_interval": 0
+        "max_control_period_rate": 0.1120942029650629,
+        "at_interval": 2
       },
       "rfj1": {
-        "max_control_period_rate": 0.44962068292415225,
+        "max_control_period_rate": 0.44862131360061674,
         "at_interval": 2
       },
       "rfj2": {
-        "max_control_period_rate": 0.25074210921314677,
+        "max_control_period_rate": 0.25049341336351283,
         "at_interval": 11
       },
       "rfj3": {
-        "max_control_period_rate": 0.018977105565094465,
+        "max_control_period_rate": 0.018788332014736397,
         "at_interval": 12
       },
       "thj0": {
-        "max_control_period_rate": 0.12664976421478236,
+        "max_control_period_rate": 0.13047897307307377,
         "at_interval": 13
       },
       "thj1": {
-        "max_control_period_rate": 0.0829534187775216,
+        "max_control_period_rate": 0.08318441788427222,
         "at_interval": 0
       },
       "thj2": {
-        "max_control_period_rate": 0.1683711503955143,
-        "at_interval": 17
+        "max_control_period_rate": 0.1688693162864663,
+        "at_interval": 13
       },
       "thj3": {
-        "max_control_period_rate": 0.03276227274962906,
-        "at_interval": 1
+        "max_control_period_rate": 0.033089129619185975,
+        "at_interval": 13
       }
     },
     "split": {
-      "finger_joints_max_rad_s": 1.0027696248240847,
-      "wrist_hinges_max_rad_s": 2.126883473583674,
+      "finger_joints_max_rad_s": 2.3578085201876453,
+      "wrist_hinges_max_rad_s": 2.474987607907335,
       "finger_joints_within_3_14": true,
       "wrist_hinges_within_3_14": true
     },
@@ -2892,24 +3857,24 @@
       "tha0": 27,
       "rfa0": 27,
       "mfa0": 27,
+      "ffa0": 25,
       "mfa2": 24,
       "mfa3": 23,
       "ffa3": 23,
-      "ffa2": 22,
       "tha1_left": 19,
       "mfa1": 17,
-      "ffa0": 11,
-      "wrist_ax": 11,
+      "ffa2": 17,
+      "wrist_ax": 15,
+      "ffa1": 6,
       "wrist_az": 5,
       "wrist_rx": 4,
       "wrist_rz": 3,
       "rfa1": 3,
-      "wrist_ry": 2,
-      "ffa1": 2
+      "wrist_ry": 2
     },
-    "force_saturation_total": 331,
+    "force_saturation_total": 348,
     "box_motion": {
-      "max_displacement_m": 0.006922337979024328,
+      "max_displacement_m": 2.772377766159242e-11,
       "at_frame": 26,
       "start_xyz": [
         -9.589665259900767e-12,
@@ -2917,17 +3882,17 @@
         0.7399709075740626
       ],
       "end_xyz": [
-        -0.0063716805413810305,
-        0.0027056330669915063,
-        0.739970907576834
+        -3.731344287135647e-11,
+        -6.36575084938188e-13,
+        0.7399709075740626
       ],
       "box_ejected": false
     },
     "deepest_executed_penetration": {
-      "depth_m": 0.0005317368376077094,
-      "frame": 8,
-      "geom": "ff_medial_collision",
-      "normal_force_N": 2.407680108382094
+      "depth_m": 0.0,
+      "frame": -1,
+      "geom": null,
+      "normal_force_N": 0.0
     },
     "commanded_pose_probe": {
       "method": "kinematic only (mj_forward, no dynamics, fingers at the reset pre-curl): box overlap of the commanded configuration",
@@ -2945,17 +3910,13 @@
       "note": "a ~53 mm burial would mean the gauge-fixed retarget output asks for fingers through the box. It does not: the commanded pose overlaps the box by well under a millimetre, so the deep-travel known boundary does not fire on this sequence."
     },
     "box_contact_force_split": {
-      "peak_total_box_normal_force_N": 6.046684766041924,
-      "at_frame": 20,
+      "peak_total_box_normal_force_N": 0.0,
+      "at_frame": -1,
       "fingertip_pad_share_N": 0.0,
-      "palm_and_other_share_N": 6.046684766041924,
+      "palm_and_other_share_N": 0.0,
       "n_tip_pad_geoms": 6,
-      "per_geom_peak_force_N": {
-        "ff_medial_collision": 6.046684766041924
-      },
-      "geoms_ever_touching_box": [
-        "ff_medial_collision"
-      ],
+      "per_geom_peak_force_N": {},
+      "geoms_ever_touching_box": [],
       "fingertip_pad_geoms_touching_box": [],
       "allegro_v5_spec_N_per_fingertip": 10.0,
       "spec_total_N": 40.0,
@@ -2973,12 +3934,12 @@
       {
         "path": "blocker.what",
         "stale": "the fingers interpenetrate the box proxy",
-        "corrected": "only ['ff_medial_collision'] ever touches the box -- no fingertip pad does. The deepest overlap is 0.300 mm of palm_collision, which the R3 stiffening deliberately left at the default solref (it was scoped to the box + the four fingertip pads)."
+        "corrected": "only [] ever touches the box -- no fingertip pad does. The deepest overlap is 5.088 mm of palm_collision, which the R3 stiffening deliberately left at the default solref (it was scoped to the box + the four fingertip pads)."
       },
       {
         "path": "blocker.penetration.why",
         "stale": "Position servos kp=3 with forcerange +-2 N m cannot hold the box out",
-        "corrected": "superseded by R1: the finger forceranges are now (10 N/4)*moment_arm per joint, not a flat +-2 N m, and kp was re-pinned. The remaining 0.300 mm is palm_collision against the box top at 2.4 N, not finger servo authority."
+        "corrected": "superseded by R1: the finger forceranges are now (10 N/4)*moment_arm per joint, not a flat +-2 N m, and kp was re-pinned. The remaining 5.088 mm is palm_collision against the box top at 0.0 N, not finger servo authority."
       },
       {
         "path": "blocker.not_a_threshold_problem",
@@ -2993,12 +3954,12 @@
       {
         "path": "blocker.fixes_for_p1[1]",
         "stale": "the 2.7 mm finger-box penetration",
-        "corrected": "the max overlap is now 0.300 mm, down from 2.724 mm, and it is palm_collision, not a finger."
+        "corrected": "the max overlap is now 5.088 mm, down from 2.724 mm, and it is palm_collision, not a finger."
       },
       {
         "path": "blocker.what / velocity criterion",
         "stale": "(not mentioned) the G3 velocity criterion fails",
-        "corrected": "the velocity exceedance is wrist-only and confined to control intervals []; all 16 finger joints peak at 1.003 rad/s. See rerun_evidence.velocity_gate."
+        "corrected": "the velocity exceedance is wrist-only and confined to control intervals []; all 16 finger joints peak at 2.358 rad/s. See rerun_evidence.velocity_gate."
       }
     ]
   }
