@@ -3542,15 +3542,15 @@
     "interpretation": "evidence only, not a gate: smoke 6 measured HaMeR's own fingertip error at mean 45.6 px / p90 111.6 px under occluded grasping, so this term inherits that uncertainty and is recorded rather than thresholded"
   },
   "physics_provenance": {
-    "mjcf_commit": "c6ee35d",
-    "mjcf_commit_message": "p0(w6a-r10.1): yaw registration stops \u2014 box yaw bounded 1.49 deg (spec +-2), zero hand-vs-stop contact over the replay",
+    "mjcf_commit": "77d5ed5",
+    "mjcf_commit_message": "p0(w6a): XML comment hygiene \u2014 illegal double-hyphen in the yaw-stop comment",
     "scene": "grounding/assets/allegro_floating.xml",
-    "scene_sha256": "899183df2dd0addec38161bb0b9bce53b3cd51b47bc89e966ac297c32c0b612f",
-    "scene_sha256_at_mjcf_commit": "899183df2dd0addec38161bb0b9bce53b3cd51b47bc89e966ac297c32c0b612f",
+    "scene_sha256": "604ae7e09e4f7f7aa7211204c10bfd6d481cfc763b9c4fd277dc85920baa1587",
+    "scene_sha256_at_mjcf_commit": "604ae7e09e4f7f7aa7211204c10bfd6d481cfc763b9c4fd277dc85920baa1587",
     "scene_sha256_at_baseline_commit": "bc75a8e4e542346d32091ddb1a47d42956f5749b23bf9332891cb2636aa321ca",
     "scene_matches_mjcf_commit": true,
     "scene_differs_from_baseline": true,
-    "accounting_rule": "every number in this report was produced on scene_sha256 == 899183df2dd0, i.e. commit c6ee35d. Numbers produced on commit e170b6d (scene_sha256 bc75a8e4e542) belong to the superseded physics and must not be mixed with these."
+    "accounting_rule": "every number in this report was produced on scene_sha256 == 604ae7e09e4f, i.e. commit 77d5ed5. Numbers produced on commit e170b6d (scene_sha256 bc75a8e4e542) belong to the superseded physics and must not be mixed with these."
   },
   "velocity_gate_evidence": {
     "gate_definition": {

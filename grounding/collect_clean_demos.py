@@ -105,8 +105,8 @@ VERDICT_JSON = OUT_DIR / "clean_lift_verdict.json"
 # recorded on the superseded single-hand XML (1b0f13f, blob 1ea0fdf5...) --
 # this pin describes the XML the generator now runs on, and the artefacts must
 # not be mixed with a run made after this bump without a re-record.
-MJCF_COMMIT = "c6ee35d"
-MJCF_SHA256 = "899183df2dd0addec38161bb0b9bce53b3cd51b47bc89e966ac297c32c0b612f"
+MJCF_COMMIT = "77d5ed5"
+MJCF_SHA256 = "604ae7e09e4f7f7aa7211204c10bfd6d481cfc763b9c4fd277dc85920baa1587"
 N_WRIST = 6
 N_FINGER = 16
 

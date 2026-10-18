@@ -2679,7 +2679,7 @@
     "urdf": "/Users/guohongbin/v2d-mac/runs/upstream/dex-retargeting/assets/robots/hands/allegro_hand/allegro_hand_right.urdf",
     "urdf_sha256": "c0b80e9f740514eb98407a8b6aaa887a964392c8b8003912f7bf9ab88d8c55c3",
     "scene": "/Users/guohongbin/v2d-mac/grounding/assets/allegro_floating.xml",
-    "scene_sha256": "899183df2dd0addec38161bb0b9bce53b3cd51b47bc89e966ac297c32c0b612f",
+    "scene_sha256": "604ae7e09e4f7f7aa7211204c10bfd6d481cfc763b9c4fd277dc85920baa1587",
     "ctrl_hz": 20
   },
   "versions": {
@@ -2693,15 +2693,15 @@
   },
   "qa_report": "/Users/guohongbin/v2d-mac/runs/p0/smoke5_retarget/retarget_qa.json",
   "mjcf_commit": {
-    "mjcf_commit": "c6ee35d",
-    "mjcf_commit_message": "p0(w6a-r10.1): yaw registration stops \u2014 box yaw bounded 1.49 deg (spec +-2), zero hand-vs-stop contact over the replay",
+    "mjcf_commit": "77d5ed5",
+    "mjcf_commit_message": "p0(w6a): XML comment hygiene \u2014 illegal double-hyphen in the yaw-stop comment",
     "scene": "grounding/assets/allegro_floating.xml",
-    "scene_sha256": "899183df2dd0addec38161bb0b9bce53b3cd51b47bc89e966ac297c32c0b612f",
-    "scene_sha256_at_mjcf_commit": "899183df2dd0addec38161bb0b9bce53b3cd51b47bc89e966ac297c32c0b612f",
+    "scene_sha256": "604ae7e09e4f7f7aa7211204c10bfd6d481cfc763b9c4fd277dc85920baa1587",
+    "scene_sha256_at_mjcf_commit": "604ae7e09e4f7f7aa7211204c10bfd6d481cfc763b9c4fd277dc85920baa1587",
     "scene_sha256_at_baseline_commit": "bc75a8e4e542346d32091ddb1a47d42956f5749b23bf9332891cb2636aa321ca",
     "scene_matches_mjcf_commit": true,
     "scene_differs_from_baseline": true,
-    "accounting_rule": "every number in this report was produced on scene_sha256 == 899183df2dd0, i.e. commit c6ee35d. Numbers produced on commit e170b6d (scene_sha256 bc75a8e4e542) belong to the superseded physics and must not be mixed with these."
+    "accounting_rule": "every number in this report was produced on scene_sha256 == 604ae7e09e4f, i.e. commit 77d5ed5. Numbers produced on commit e170b6d (scene_sha256 bc75a8e4e542) belong to the superseded physics and must not be mixed with these."
   },
   "superseded_blocker_claims": {
     "why_this_exists": "retarget_smoke._blocker() emits fixed prose describing the pre-revision scene. Those sentences are now false; each is listed with its corrected value. retarget_smoke.py was not edited.",
