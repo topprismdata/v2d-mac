@@ -1,0 +1,91 @@
+{
+ "campaign": "r25 pre-roll ramp (one round, fuse per ticket)",
+ "verdict": "FUSE FIRED \u2014 the pre-roll REJECTED: its approach-branch shift degraded gate1 R5 (right 0.003 -> 3.246 mm, left 0.002 -> 0.597 mm).  Per ticket item 4: the r23 option-1 disclosure branch is terminal, the retarget line closes.  The final master = the r24-equivalent state (flyover 250 mm + vise + safe hand + margin 8, no pre-roll) \u2014 the campaign's best floors, re-run and re-frozen",
+ "fuse_evidence": {
+  "pre_roll_on": {
+   "gate1_mm": [
+    3.246,
+    0.597
+   ],
+   "left_fwd_deg": 70.0
+  },
+  "pre_roll_off_final": {
+   "gate1_mm": [
+    0.003,
+    0.002
+   ],
+   "left_fwd_deg": 19.7
+  },
+  "mechanism": "the 20 additive frames changed the arms' approach swing -> a different approach-end branch -> the r18 solve's warm start landed on a different terminal branch -> gate1 R5 lost"
+ },
+ "final_master_table": {
+  "gate1_pad1_mm": [
+   0.0035,
+   0.0015
+  ],
+  "gate1_within_r5": [
+   true,
+   true
+  ],
+  "gate1_fwd_deg": [
+   15.5,
+   19.7
+  ],
+  "gate1_pads_in_rect": [
+   1,
+   1
+  ],
+  "gate1_burial_v2": {
+   "right": true,
+   "left": true
+  },
+  "gate2_frames": [
+   113,
+   66
+  ],
+  "gate3_support": [
+   75,
+   14
+  ],
+  "gate4_viol_rad": [
+   0.597,
+   2.703
+  ],
+  "gate5_registered_mm": [
+   0.77,
+   0.51
+  ],
+  "g5_pass": [
+   true,
+   true
+  ],
+  "box_up_z_min": -0.085,
+  "box_tilt_disclosure": "the box tilts past sideways (~95 deg) mid-trajectory and settles at 0.531 \u2014 the FULL inversion (-0.37) is gone vs the pre-roll run; the render carries the tilt disclosure",
+  "baseline_r12_6": {
+   "gate1_mm": [
+    15.891,
+    1.607
+   ],
+   "gate2_frames": [
+    5,
+    14
+   ],
+   "gate3_support": [
+    246,
+    272
+   ],
+   "gate4_viol_rad": [
+    1.377,
+    2.536
+   ],
+   "gate5_registered_mm": [
+    1.06,
+    0.98
+   ]
+  },
+  "floors": "g5reg 0.77/0.51 mm \u2014 IMPROVED vs the r12.6 1.06/0.98; frame_alignment True; gate1 R5 held both hands"
+ },
+ "render_verdict": "the disclosure branch (r23 option 1): the box tilts past sideways mid-trajectory \u2014 disclosed in the render; the full inversion is GONE in this final state",
+ "retarget_line": "CLOSED (per r25 item 4)",
+ "pre_roll_disposition": "code kept behind W6B_R25_PREROLL, default 0 (the fuse rejection); the contract note in the fps_scope covers the enabled form"
+}

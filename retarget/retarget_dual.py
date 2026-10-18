@@ -165,6 +165,16 @@ R21_UNREACH_DEG = float(_os.environ.get("W6B_R21_UNREACH_DEG", "25.0"))
 # normal (away from the box), decaying to zero at the terminal window
 R22_SAFE_HAND = _os.environ.get("W6B_R22_SAFE_HAND", "0") == "1"
 R22_MARGIN_MM = float(_os.environ.get("W6B_R22_MARGIN_MM", "0"))
+# r25: the additive pre-roll — ~20 control frames before the video grid
+# ramp the arms home -> path start (ease-in-out) with the fingers at the
+# safe half-grip, so the first video control frame no longer punches
+# through the box volume.  f1-f390 frame-exact semantics unchanged;
+# f(-pre..0) is the additive pre-roll segment (Main-approved contract
+# note).
+# r25 FUSE: the pre-roll's branch shift degraded gate1 R5 (0.003 ->
+# 3.246 mm right) — REJECTED by the r25 fuse; default 0, the code stays
+# for the record (W6B_R25_PREROLL re-enables)
+R25_PREROLL = max(0, int(_os.environ.get("W6B_R25_PREROLL", "0")))
 # r23: the flyover path — the swing palm path lifts in a raised-cosine
 # bell (peak = R23_FLYOVER_MM above the registered path; the default
 # 140 puts the palm 12 cm above the box top) and lands EXACTLY back on
@@ -3561,6 +3571,34 @@ def main() -> int:
     else:
         safe_rec = {}
 
+    if R25_PREROLL > 0:
+        # r25: the additive pre-roll — the arms ramp home -> path start
+        # (ease-in-out) and the fingers hold the safe half-grip, so the
+        # first video control frame no longer punches through the box
+        # volume (the r24 spawn-punch fix).  f1-f390 frame-exact
+        # semantics unchanged; f(-pre..0) is the additive pre-roll
+        # segment (the contract note in the report).
+        pre_rec = {}
+        for side in VIDEOS:
+            spec_p = specs[side]
+            home_arm = model.qpos0[spec_p.wrist_qadr]
+            stream = cmds_global[side]["wrist"]
+            start = stream[0:1]
+            rr = 0.5 * (1.0 - np.cos(np.linspace(0.0, np.pi, R25_PREROLL)))
+            pr = home_arm[None, :] + rr[:, None] * (start - home_arm[None, :])
+            cmds_global[side]["wrist"] = np.concatenate([pr, stream], axis=0)
+            fstream = cmds_global[side]["finger"]
+            f_home = np.full((1, fstream.shape[1]), 0.5)
+            f_pre = f_home + rr[:, None] * (fstream[0:1] - f_home)
+            cmds_global[side]["finger"] = np.concatenate([f_pre, fstream],
+                                                         axis=0)
+            pre_rec[side] = {"frames": int(R25_PREROLL),
+                             "arm_home": home_arm.round(3).tolist(),
+                             "finger_hold": 0.5}
+        print(f"    r25 pre-roll: {R25_PREROLL} additive control frames")
+    else:
+        pre_rec = {}
+
     # --- terminal blend: approach = video-driven; TERMINAL STATE = the v5
     # gate3 seed (the ticket's own definition: "已验证的门 3 抓握就绪构型作为
     # 终态").  The seed is an MJCF joint-space configuration, directly
@@ -4441,7 +4479,8 @@ def main() -> int:
     grid = []
     for i in range(n_grid):
         t_i = i / VIDEO_FPS
-        ci = min(rep["n_frames"] - 1, int(np.floor(t_i * CTRL_HZ + 1e-9)))
+        ci = min(rep["n_frames"] - 1,
+                 R25_PREROLL + int(np.floor(t_i * CTRL_HZ + 1e-9)))
         grid.append({
             "t": round(t_i, 9),
             "qpos": [round(float(v), 9) for v in rep["qpos_full"][ci]],
@@ -4452,6 +4491,11 @@ def main() -> int:
     replay = {
         "fps": float(VIDEO_FPS),
         "fps_scope": (
+            "r25 PRE-ROLL CONTRACT NOTE: control frames f(-"
+            f"{R25_PREROLL}..-1) before the video grid are the ADDITIVE "
+            "pre-roll segment (home -> path-start ease ramp, safe "
+            "half-grip) — f1-f390 frame-exact semantics UNCHANGED (Main "
+            "r25 approved).  "
             "FRAME-EXACT source-clip grid: fps = 30.0 = the source clip's "
             "rate; sim frame i corresponds to source frame i with "
             f"t_i = (i-1)/30 (390 frames, {T_video * 0 + n_grid} total). "
@@ -4606,7 +4650,8 @@ def main() -> int:
             errs, errs_raw, weights = [], [], []
             for gi in range(a1):
                 ci = min(rep["n_frames"] - 1,
-                         int(np.floor(gi / VIDEO_FPS * CTRL_HZ + 1e-9)))
+                         R25_PREROLL + int(np.floor(gi / VIDEO_FPS * CTRL_HZ
+                                                    + 1e-9)))
                 if not pres_wl[gi]:
                     continue
                 errs.append(float(np.linalg.norm(
