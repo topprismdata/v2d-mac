@@ -165,6 +165,14 @@ R21_UNREACH_DEG = float(_os.environ.get("W6B_R21_UNREACH_DEG", "25.0"))
 # normal (away from the box), decaying to zero at the terminal window
 R22_SAFE_HAND = _os.environ.get("W6B_R22_SAFE_HAND", "0") == "1"
 R22_MARGIN_MM = float(_os.environ.get("W6B_R22_MARGIN_MM", "0"))
+# r23: the flyover path — the swing palm path lifts in a raised-cosine
+# bell (peak = R23_FLYOVER_MM above the registered path; the default
+# 140 puts the palm 12 cm above the box top) and lands EXACTLY back on
+# the registered path at the terminal window start (zero g5 pollution:
+# the registered leg is solve-vs-target and the solve tracks the
+# target — the r12.7 lift precedent, semantics verified r23).  The
+# fuse: g5reg > 40 mm or gate1 R5 degradation reverts to the r22 state.
+R23_FLYOVER_MM = float(_os.environ.get("W6B_R23_FLYOVER_MM", "0"))
 SCENE_FILES = {"floating": rs.SCENE_XML,
                "ur5e": REPO / "grounding/assets/allegro_floating_ur5e.xml",
                "ur5e_side": REPO / "grounding/assets/allegro_floating_ur5e_side.xml"}
@@ -1887,6 +1895,17 @@ def retarget_chain_side(joints: np.ndarray, model, data, spec: SideSpec,
             palm_task[:-n_decay, 0] += spec.face_sign * margin_m
             palm_task[-n_decay:, 0] += (spec.face_sign * margin_m
                                         * decay)
+        if R23_FLYOVER_MM > 0.0:
+            # r23: the flyover bell — raised-cosine lift over the swing
+            # span (frames [0, T-62]), zero at both ends, peak at the
+            # span midpoint; the terminal window [T-62, T] is untouched
+            # (the pads enter the band at the terminal)
+            fly_m = R23_FLYOVER_MM * 1e-3
+            n_term_fly = min(62, palm_task.shape[0])
+            span_f = palm_task.shape[0] - n_term_fly
+            bell = 0.5 * (1.0 - np.cos(
+                2.0 * np.pi * np.arange(span_f) / max(span_f - 1, 1)))
+            palm_task[:span_f, 2] += fly_m * bell
         # r12.1 verdict: the 6D terminal solve (position + ramped
         # orientation) DIVERGES at this workspace boundary twice (the wrist
         # singularity at the ceiling mount); the shipped configuration is

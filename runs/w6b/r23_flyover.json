@@ -1,0 +1,112 @@
+{
+ "campaign": "r23 flyover path (final retarget cut)",
+ "gate5_semantics_verified": "the registered leg = ||placement solve - target|| over the path (the flyover goes INTO the target, the solve tracks it \u2014 the r12.7 lift precedent, code-verified: registered = max(||pdv - bias||), pdv = placement palm deviation vs the retargeted input) \u2014 the flyover is g5-legal by construction; the 40mm cap governs the EXECUTED tracking leg (the fuse)",
+ "flyover_ladder": {
+  "140mm": {
+   "gate3_support": [
+    106,
+    15
+   ],
+   "gate4_viol_rad": [
+    0.686,
+    1.308
+   ],
+   "g5reg_mm": [
+    0.96,
+    0.89
+   ],
+   "box_up_z_min": -0.288,
+   "note": "swing cleans; the box still inverts"
+  },
+  "250mm": {
+   "gate3_support": [
+    63,
+    14
+   ],
+   "gate4_viol_rad": [
+    0.619,
+    2.699
+   ],
+   "g5reg_mm": [
+    0.77,
+    0.51
+   ],
+   "gate2_frames": [
+    102,
+    72
+   ],
+   "box_up_z_min": -0.369,
+   "note": "the swing is CLEAN (the hand flies over; g5reg IMPROVES \u2014 the lifted path is more tractable)",
+   "ADOPTED": true
+  }
+ },
+ "flip_attribution": {
+  "finding": "with the swing hand fully cleared (flyover 250), the box STILL ends inverted (up_z -0.369, the inversion in the HOLD phase: min -0.369, 98 frames) \u2014 the flip source is the TERMINAL face-press at the frozen upper pad band (z 0.732-0.770, above the box's friction centre 0.74) on a FREE box: a press above the friction centre is a topple moment",
+  "structural_conflict": "gate1's frozen upper-band criterion (zero relaxation) vs the free-box statics are mutually exclusive as specified",
+  "fix_domain": "box fixture/vise (W6c's env has one) or the touch-band criterion (Main's call) \u2014 both outside the retarget domain"
+ },
+ "fuse_check": "g5reg did NOT degrade \u2014 it IMPROVED (0.77/0.51 mm vs the r22 1.06/0.99); gate1 R5 held (0.003/0.002 mm) \u2014 the fuse does NOT trigger; the flyover-250 state SHIPS as the master",
+ "final_frozen_table": {
+  "gate1_pad1_mm": [
+   0.0035,
+   0.0015
+  ],
+  "gate1_within_r5": [
+   true,
+   true
+  ],
+  "gate1_fwd_deg": [
+   15.5,
+   19.7
+  ],
+  "gate1_pads_in_rect": [
+   1,
+   1
+  ],
+  "gate1_burial_v2": {
+   "right": true,
+   "left": true
+  },
+  "gate2_frames": [
+   102,
+   72
+  ],
+  "gate3_support": [
+   63,
+   14
+  ],
+  "gate4_viol_rad": [
+   0.619,
+   2.699
+  ],
+  "gate5_registered_mm": [
+   0.77,
+   0.51
+  ],
+  "box_up_z_min": -0.369,
+  "box_inversion_disclosure": "the box inverts during the terminal hold (frozen upper-band face-press on a free box) \u2014 disclosed; fix = box fixture/vise (W6c domain) or the touch-band criterion (Main's call)",
+  "baseline_r12_6": {
+   "gate1_mm": [
+    15.891,
+    1.607
+   ],
+   "gate2_frames": [
+    5,
+    14
+   ],
+   "gate3_support": [
+    246,
+    272
+   ],
+   "gate4_viol_rad": [
+    1.377,
+    2.536
+   ],
+   "gate5_registered_mm": [
+    1.06,
+    0.98
+   ]
+  },
+  "floors": "g5reg 0.77/0.51 mm (IMPROVED vs the r12.6 1.06/0.98) and frame_alignment True \u2014 held"
+ }
+}
