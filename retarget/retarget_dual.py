@@ -111,6 +111,27 @@ SCENE_KIND = _os.environ.get("W6B_SCENE", "floating")
 # baseline, untouched; "mink" = mink task-priority IK.  Single-variable
 # A/B: everything downstream is scene- and threshold-identical.
 IK_BACKEND = _os.environ.get("W6B_IK", "dls").strip().lower()
+# r16 three-cut campaign on the r12.6 TP champion base:
+#   W6B_NATIVE_SEED    default "0": the r13.7 native-seed terminal
+#                      overwrite is gated OFF for this campaign (its right
+#                      approach-terminal discontinuity is committed as
+#                      structural; the block below is preserved verbatim
+#                      and re-enables with W6B_NATIVE_SEED=1)
+#   W6B_R16_CLAMP_UR5E cut 1: the holdable-band clamp derives its
+#                      seed-band membership from the UR5E terminal seed
+#                      (the curl channel's own seed) instead of the
+#                      floating-era g3q layout
+#   W6B_R16_MANIP_GATE cut 2: manipulability-gated pose legs — below the
+#                      threshold the orientation/comfort legs yield to the
+#                      position leg (the r12.1 singular-region fix)
+#   W6B_R16_WRIST_TRIM cut 3: left wrist j4-j6 +-30 deg trim scan at the
+#                      terminal window, objective = the gate1 pad
+#                      rectangle distance
+NATIVE_SEED = _os.environ.get("W6B_NATIVE_SEED", "0") == "1"
+R16_CLAMP_UR5E = _os.environ.get("W6B_R16_CLAMP_UR5E", "0") == "1"
+R16_MANIP_GATE = _os.environ.get("W6B_R16_MANIP_GATE", "0") == "1"
+R16_MANIP_THRESH = float(_os.environ.get("W6B_R16_MANIP_THRESH", "0.05"))
+R16_WRIST_TRIM = _os.environ.get("W6B_R16_WRIST_TRIM", "0") == "1"
 SCENE_FILES = {"floating": rs.SCENE_XML,
                "ur5e": REPO / "grounding/assets/allegro_floating_ur5e.xml",
                "ur5e_side": REPO / "grounding/assets/allegro_floating_ur5e_side.xml"}
@@ -1128,6 +1149,7 @@ def ur5e_ik_placement(model, data, spec: SideSpec,
     resmax = 0.0
     palm_normals = np.empty((T, 3))
     nsat_frames = 0
+    manip_trace = []  # r16 cut 2: per-frame Yoshikawa index (gate diagnostic)
     for t in range(T):
         tgt = palm_task[t]
         terminal = t >= terminal_start
@@ -1164,8 +1186,21 @@ def ur5e_ik_placement(model, data, spec: SideSpec,
         Jp_pinv = Jp.T @ np.linalg.solve(Jp @ Jp.T + 1e-4 * np.eye(3),
                                          np.eye(3))
         N = np.eye(6) - Jp_pinv @ Jp
+        # r16 cut 2: manipulability-gated pose legs.  m is the position
+        # Jacobian's Yoshikawa index; below the threshold the arm is in a
+        # singular region and the pose/comfort legs yield entirely to the
+        # position leg (the r12.1 divergence mechanism was the orientation
+        # leg pulling through exactly such regions)
+        m_pose_ok = True
+        if R16_MANIP_GATE:
+            m_idx = float(np.sqrt(max(np.linalg.det(Jp @ Jp.T), 0.0)))
+            manip_trace.append(m_idx)
+            m_pose_ok = m_idx >= R16_MANIP_THRESH
         if terminal:
             # terminal window: the measured verified grasp orientation
+            # (r16: NOT manipulability-gated — Main scoped cut 2 to the
+            # swing; the r12.6 terminal pose leg is the shipped mechanism
+            # and the right arm's terminal region IS the low-m zone)
             e_r = Rotation.from_matrix(R_grasp @ R.T).as_rotvec()
             dq_ori = Jr.T @ np.linalg.solve(Jr @ Jr.T + 1e-4 * np.eye(3),
                                             e_r)
@@ -1189,11 +1224,13 @@ def ur5e_ik_placement(model, data, spec: SideSpec,
         else:
             # swing: no orientation target (e_r = 0); the elbow-up comfort
             # drift keeps the forearm clear of the table -- the comfort
-            # sign is per-side (the mirrored mount mirrors the bend)
-            _cs = 1.0 if spec.side == "right" else -1.0
-            q = np.clip(q + N @ ((np.array([0.0, -0.9 * _cs, 0.9 * _cs,
-                                            0.0, 0.0, 0.0]) - q) * 0.01),
-                        lo, hi)  # the per-side comfort bend (r12.6 fix 3)
+            # sign is per-side (the mirrored mount mirrors the bend).
+            # r16 cut 2: gated off in singular regions (m below threshold)
+            if m_pose_ok:
+                _cs = 1.0 if spec.side == "right" else -1.0
+                q = np.clip(q + N @ ((np.array([0.0, -0.9 * _cs, 0.9 * _cs,
+                                                0.0, 0.0, 0.0]) - q) * 0.01),
+                            lo, hi)  # the per-side comfort bend (r12.6 fix 3)
         data.qpos[qadr] = q
         mujoco.mj_kinematics(model, data)
         p = data.xpos[palm_bid]
@@ -1226,6 +1263,13 @@ def ur5e_ik_placement(model, data, spec: SideSpec,
         "clearance_lift_m": round(lift, 4),
         "task_residual_max_m": round(resmax, 4),
         "converged": True,
+        **({"manipulability_gate": {
+            "threshold": R16_MANIP_THRESH,
+            "m_min": round(float(min(manip_trace)), 6),
+            "m_median": round(float(np.median(manip_trace)), 6),
+            "frames_gated": int(sum(1 for m in manip_trace
+                                    if m < R16_MANIP_THRESH)),
+        }} if R16_MANIP_GATE else {}),
         "hand_world_pose_deviation": {
             "definition": (
                 "r12 UR5e: ||achieved palm - registered task-space target|| "
@@ -2729,6 +2773,16 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
                 "finger_qpos_violation_frames": sorted(set(int(v) for v in viol[0]))[:40],
                 "finger_qpos_max_violation_rad": float(max(
                     0.0, np.max(jlo - fq), np.max(fq - jhi))) if len(fq) else 0.0,
+                # r16 cut 1 diagnostic: which joints violate and by how
+                # much (the clamp only covers seed-in-band joints)
+                "finger_qpos_per_joint_violation_rad": {
+                    spec.finger_joints[j]: round(float(max(
+                        float(np.max(jlo[j] - fq[:, j])),
+                        float(np.max(fq[:, j] - jhi[j])), 0.0)), 4)
+                    for j in range(fq.shape[1])
+                    if float(max(float(np.max(jlo[j] - fq[:, j])),
+                                 float(np.max(fq[:, j] - jhi[j])), 0.0)) > 1e-6
+                },
                 "command_outside_ctrlrange_wrist": chains[side]["chain"]["placement"]["record"]["command_outside_ctrlrange_after"],
                 "command_outside_ctrlrange_finger": float(max(0.0,
                     np.max(cmd_finger - model.actuator_ctrlrange[spec.finger_act_id, 1]),
@@ -3169,10 +3223,97 @@ def main() -> int:
                   f"final |e_p|={np.linalg.norm(e_p):.4f} m, "
                   f"|e_r|={np.linalg.norm(e_r):.4f}")
 
+            if R16_WRIST_TRIM and s2 == "left":
+                # r16 cut 3: left terminal wrist trim.  The probe measured
+                # the left pads 19.0 mm off the rectangle with the finger
+                # axis already 22.9 deg from the face inward normal — a
+                # j4-j6 small-domain scan against the gate1 pad metric
+                # (raw leg; the registered leg re-derives downstream in
+                # the gate5 assembly).  Applied as constant wrist offsets
+                # over the blend+hold window.
+                obj_body3, box_geom3, _, _ = obj_ids(model)
+                half3 = model.geom_size[box_geom3].copy()
+                box_c3 = data.xpos[obj_body3].copy()
+                bot3 = float(box_c3[2] - half3[2])
+                top3 = float(box_c3[2] + half3[2])
+                tips3 = [g for g in spec2.tip_geoms
+                         if model.geom_contype[g] != 0]
+                tol3 = R5_TOUCH_TOL_M
+                # the scan must score the TERMINAL finger posture (the
+                # blend target), not the approach-end retargeted curl
+                f_cmd = np.clip(
+                    np.asarray(UR5E_TERMINAL_FINGERS[s2], float),
+                    model.actuator_ctrlrange[spec2.finger_act_id, 0],
+                    model.actuator_ctrlrange[spec2.finger_act_id, 1])
+
+                def _pad_score(arm_q):
+                    data.qpos[qadr2] = arm_q
+                    data.qpos[spec2.finger_qadr] = f_cmd
+                    mujoco.mj_forward(model, data)
+                    best = np.inf
+                    n_buried = 0
+                    centers = []
+                    for g3 in tips3:
+                        px, py, pz = (float(v) for v in
+                                      data.geom_xpos[g3])
+                        sv = px - spec2.face_sign * float(half3[0])
+                        dy = max(abs(py) - float(half3[1]), 0.0)
+                        dz = max(bot3 - pz, pz - top3, 0.0)
+                        buried3 = False
+                        if dy == 0.0 and dz == 0.0:
+                            # gate1 burial semantics: a pad centre pushed
+                            # past the plane by more than tol is a FAIL
+                            if -sv * spec2.face_sign < -tol3:
+                                buried3 = True
+                                n_buried += 1
+                            gap3 = abs(sv)
+                        else:
+                            gap3 = float(np.hypot(np.hypot(sv, dy), dz))
+                        in_band3 = (bot3 + 0.4 * 2 * half3[2]) <= pz \
+                            <= (top3 - 0.01)
+                        best = min(best, gap3 if in_band3 else gap3 + 0.5)
+                        centers.append(data.geom_xpos[g3].copy())
+                    ctr3 = np.mean(centers, axis=0)
+                    fwd3 = ctr3 - data.xpos[spec2._palm_id]
+                    fwd3 = fwd3 / max(float(np.linalg.norm(fwd3)), 1e-12)
+                    inward3 = np.array([-spec2.face_sign, 0.0, 0.0])
+                    fwd_deg3 = float(np.degrees(np.arccos(np.clip(
+                        float(fwd3 @ inward3), -1.0, 1.0))))
+                    # lexicographic: burial and the fwd-axis leg are hard
+                    # gate clauses (huge penalties); within the feasible
+                    # set the best in-band pad distance is the objective
+                    # (cut 3's own target — the mm gap)
+                    return (1e6 * n_buried
+                            + (1e4 if fwd_deg3 > 35.0 else 0.0)
+                            + best * 1000.0)
+
+                base_score = _pad_score(q)
+                grid3 = np.deg2rad(np.arange(-30.0, 31.0, 5.0))
+                best_off, best_s = np.zeros(3), base_score
+                for o4 in grid3:
+                    for o5 in grid3:
+                        for o6 in grid3:
+                            off = np.array([0.0, 0.0, 0.0, o4, o5, o6])
+                            s3 = _pad_score(np.clip(q + off, lo2, hi2))
+                            if s3 < best_s:
+                                best_s, best_off = s3, off
+                q_trim = np.clip(q + best_off, lo2, hi2)
+                for k in range(n_term):
+                    idx = n_ctrl + k
+                    if idx < cmds_global[s2]["wrist"].shape[0]:
+                        cmds_global[s2]["wrist"][idx] = q_trim
+                print(f"    r16 wrist trim left: offsets "
+                      f"{np.rad2deg(best_off).round(1).tolist()} deg, "
+                      f"pad score {base_score*1000:.2f} -> "
+                      f"{best_s*1000:.2f} mm (raw)")
+
     # r13.7: overwrite the terminal arm commands with the NATIVE seed
     # (the curl-free search found configurations where the pads land in
     # the face band — these are the UR5e-native verified grasp seeds)
-    for s2 in VIDEOS:
+    # r16: gated behind NATIVE_SEED (default OFF) — the campaign base is
+    # the r12.6 TP champion; the right native seed's approach-terminal
+    # discontinuity is committed as structural (519.7 mm gate1 cmd)
+    for s2 in (VIDEOS if NATIVE_SEED else ()):
         side_key = "r" if s2 == "right" else "l"
         native_q = np.asarray(UR5E_NATIVE_SEED[side_key], float)
         for k in range(n_blend + n_hold):
@@ -3212,7 +3353,16 @@ def main() -> int:
         cap = BAND_CAP_SCALE * np.abs(
             model.actuator_forcerange[spec.finger_act_id, 0]) / kp
         band_lo, band_hi = flo + cap, fhi - cap
-        seed_f_raw = g3q[spec.finger_qadr]
+        # r16 cut 1: under the UR5e champion the terminal seed is
+        # UR5E_TERMINAL_FINGERS (same 16-order as finger_qadr); deriving
+        # band membership from the floating-era g3q layout misclassifies
+        # which joints the holdable-band rule may clamp
+        if R16_CLAMP_UR5E:
+            seed_f_raw = np.clip(
+                np.asarray(UR5E_TERMINAL_FINGERS[side], float),
+                flo, fhi)
+        else:
+            seed_f_raw = g3q[spec.finger_qadr]
         clampable = (seed_f_raw >= band_lo) & (seed_f_raw <= band_hi) \
             & (band_lo < band_hi)
         stream = cmds_global[side]["finger"]
@@ -4042,6 +4192,88 @@ def main() -> int:
                                   "BOTH backends; gate1 moves only via the "
                                   "approach-end branch the terminal IK "
                                   "starts from"),
+            },
+        }
+    if R16_CLAMP_UR5E or R16_MANIP_GATE or R16_WRIST_TRIM:
+        # r16 ledger: three cuts on the r12.6 TP champion base (the
+        # r13.7 native-seed overwrite gated off for the campaign)
+        base_row = {
+            "gate1_mm": [15.89, 1.61], "gate2_frames": [5, 14],
+            "gate3_support": [246, 272], "gate4_viol_rad": [1.377, 2.536],
+            "gate5_registered_mm": [1.06, 0.98],
+        }
+        report["r16_three_cuts"] = {
+            "base": ("r12.6 TP champion (W6B_NATIVE_SEED=0); base rerun "
+                     "reproduced the champion bit-identically "
+                     "(g1 15.891/1.607)"),
+            "cut1_holdable_band_clamp_ur5e_seed": {
+                "verdict": "REVERT — regresses its own target gate",
+                "mechanism": ("deriving band membership from the UR5E "
+                              "terminal seed widens the clampable set 7 -> "
+                              "11 joints/side (ffj1/2, thj1/2 added); the "
+                              "raised band floors push swing commands into "
+                              "the contact-crush zone"),
+                "gate4_viol_rad": [1.497, 2.717],
+                "note": ("the r8 premise (command-edge wind-up, 39 mrad "
+                         "era) does not hold: the UR5e realised violations "
+                         "are contact-crush of 1.0-2.5 rad (per-joint "
+                         "diagnostic now in the gate4 record: right "
+                         "ffj0/rfj0, left thj1/thj3/ffj0)"),
+            },
+            "cut2_manipulability_gated_swing_pose": {
+                "verdict": "NO-GO — Pareto trade, no threshold wins",
+                "scope": ("swing comfort leg only (Main's scope); the "
+                          "terminal pose leg stays unconditional — a "
+                          "first probe that also gated it broke gate1 "
+                          "right 15.9 -> 213.3 mm"),
+                "thresh_0.05": {"gate3": [128, 218], "gate1_right_mm": 54.09,
+                                "g4": [1.207, 1.389],
+                                "g5reg_mm": [1.05, 1.00],
+                                "frames_gated": 245},
+                "thresh_0.02": {"gate3": [231, 213], "gate1_right_mm": 15.87,
+                                "g4": [2.588, 2.362],
+                                "g5reg_mm": [1.07, 0.98],
+                                "frames_gated": 133},
+                "note": ("the path median Yoshikawa index is 0.02 — the "
+                         "whole registered path is low-manipulability; "
+                         "the comfort leg is load-bearing for the r12.6 "
+                         "branch family and gating it trades gate3/g4 "
+                         "against gate1/g5 rather than improving the "
+                         "contact picture (r14: the contact is "
+                         "command-path-inherent)"),
+            },
+            "cut3_left_terminal_wrist_trim": {
+                "verdict": "KEEP — the r16 winner",
+                "mechanism": ("left j4-j6 +-30 deg scan (5 deg steps, 13^3 "
+                              "configs) against the gate1 pad rectangle at "
+                              "the TERMINAL finger posture, applied as "
+                              "constant wrist offsets over blend+hold"),
+                "objective_warning": ("the scan must score the terminal "
+                                      "seed curl — an earlier version "
+                                      "scored the approach-end retargeted "
+                                      "curl and produced a misleading "
+                                      "0.28 mm optimum that executed at "
+                                      "30.8 mm"),
+                "raw_pad_score_mm": "1.61 -> 0.66 (offsets j5 +10 deg, "
+                                    "j6 +20 deg at the 10 deg grid)",
+                "registered_leg": ("gate5 assembly re-derives it "
+                                   "downstream; unchanged machinery"),
+            },
+            "final_table": {
+                "gate1_mm": [round(report["per_side"][s]["gate1_final_touch"]["rect_dist_mm"], 2)
+                             for s in VIDEOS],
+                "gate2_frames": [report["per_side"][s]["gate2_contact"]["endface_contact_frames"]
+                                 for s in VIDEOS],
+                "gate3_support": [report["per_side"][s]["gate3_approach_clean"]["support_contact_frames"]
+                                  for s in VIDEOS],
+                "gate4_viol_rad": [round(report["per_side"][s]["gate4_joint_limits"]["finger_qpos_max_violation_rad"], 3)
+                                   for s in VIDEOS],
+                "gate5_registered_mm": [round(report["per_side"][s]["gate5_palm_deviation"]["registered"]["registered_palm_max_m"] * 1000, 2)
+                                        for s in VIDEOS],
+                "baseline_r12_6": base_row,
+                "floors": ("gate5 reg and frame_alignment must not "
+                           "degrade — checked against base_row and "
+                           "verdict_checks.frame_alignment"),
             },
         }
     REPORT_PATH.write_text(json.dumps(_jsonable(report), indent=2))

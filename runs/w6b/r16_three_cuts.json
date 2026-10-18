@@ -1,0 +1,97 @@
+{
+ "campaign": "r16 three cuts on the r12.6 TP champion base",
+ "base_gate": "W6B_NATIVE_SEED=0 \u2014 the r13.7 native-seed terminal overwrite is gated OFF for the campaign (preserved verbatim in code; right discontinuity 519.7 mm is committed structural)",
+ "base_run": "reproduced the r12.6 champion bit-identically: g1 15.891/1.607 mm, g2 5/14, g3 246/272, g4 1.377/2.536 rad, g5reg 1.06/0.98 mm, frame_alignment True",
+ "cut1_holdable_band_clamp_ur5e_seed": {
+  "spec": "r8 holdable-band clamp ported to the UR5E curl channel (seed-band membership from the UR5E terminal seed)",
+  "verdict": "REVERT \u2014 regresses its own target gate",
+  "result": {
+   "gate4_viol_rad": [
+    1.497,
+    2.717
+   ],
+   "delta": [
+    0.12,
+    0.18
+   ]
+  },
+  "mechanism": "the UR5E-seed clampable set is wider (11 vs 7 joints/side: adds ffj1/2, thj1/2); the raised band floors push swing commands into the contact-crush zone",
+  "finding": "the r8 premise (command-edge wind-up) does not hold in the UR5e regime \u2014 realised violations are contact-crush of 1.0-2.5 rad (per-joint diagnostic added to the gate4 record: right ffj0 1.19 / rfj0 1.38; left thj1 2.54 / thj3 1.07 / ffj0 1.01)",
+  "disposition": "code kept behind W6B_R16_CLAMP_UR5E=1, default off"
+ },
+ "cut2_manipulability_gated_swing_pose": {
+  "spec": "swing pose leg gated by manipulability (singular regions yield to the position leg) + elbow-up comfort",
+  "verdict": "NO-GO \u2014 Pareto trade at every threshold",
+  "scope_correction": "Main scoped cut 2 to the swing; a first probe that also gated the terminal pose leg broke gate1 right 15.9 -> 213.3 mm (the right terminal region IS the low-m zone)",
+  "results": {
+   "thresh_0.05": {
+    "frames_gated": 245,
+    "gate3": [
+     128,
+     218
+    ],
+    "gate1_right_mm": 54.09,
+    "g4": [
+     1.207,
+     1.389
+    ],
+    "g5reg_mm": [
+     1.05,
+     1.0
+    ]
+   },
+   "thresh_0.02": {
+    "frames_gated": 133,
+    "gate3": [
+     231,
+     213
+    ],
+    "gate1_right_mm": 15.87,
+    "g4": [
+     2.588,
+     2.362
+    ],
+    "g5reg_mm": [
+     1.07,
+     0.98
+    ]
+   }
+  },
+  "finding": "the registered path's median Yoshikawa index is 0.02 \u2014 the whole swing is low-manipulability, so the comfort leg is load-bearing for the r12.6 branch family; gating it trades gate3/g4 against gate1/g5. Consistent with r14: the support contact is command-path-inherent",
+  "disposition": "code kept behind W6B_R16_MANIP_GATE=1, default off"
+ },
+ "cut3_left_terminal_wrist_trim": {
+  "spec": "left wrist j4-j6 +-30 deg scan at the terminal window against the pad-landing band; solved offsets become the left terminal orientation target (raw/registered dual report)",
+  "verdict": "INFEASIBLE AS SPECIFIED \u2014 the burial is positional, not wrist-rotational",
+  "results": {
+   "distance_objective_unburial_ignored": "j5 +10/j6 +20 deg: best pad 0.66 mm (and 0.041 mm at the 5 deg grid) but a DIFFERENT pad is buried \u2014 gate1 requires NO buried pad",
+   "gate1_faithful_objective": "with burial counted, the best feasible config in the whole j4-j6 +-30 deg domain lands 48.2 mm off the rectangle (unburied, fwd 33.8 deg passes) \u2014 3 of 4 pads sit THROUGH the face plane at the verified grasp pose; un-burying them by wrist rotation necessarily leaves the rectangle"
+  },
+  "identified_fix": "the burial depth is ~1.6 mm along the face normal \u2014 a small LEFT TERMINAL TARGET RETRACTION (~2-5 mm along the face inward normal before the r12.9 6D solve) is the positional fix; outside the j4-j6 wrist-rotation spec, needs Main's ruling",
+  "disposition": "code kept behind W6B_R16_WRIST_TRIM=1, default off"
+ },
+ "shipped_state": "the r12.6 TP champion, unchanged (all three cuts default-off); floors held: g5reg 1.06/0.98 mm, frame_alignment True",
+ "final_table": {
+  "gate1_mm": [
+   15.891,
+   1.607
+  ],
+  "gate2_frames": [
+   5,
+   14
+  ],
+  "gate3_support": [
+   246,
+   272
+  ],
+  "gate4_viol_rad": [
+   1.377,
+   2.536
+  ],
+  "gate5_registered_mm": [
+   1.06,
+   0.98
+  ],
+  "gate1_left_caveat": "the left 1.607 mm is burial-infeasible (pad centre 1.6 mm through the plane; pad_center_buried=True) \u2014 it was never a gate1 pass; the honest left terminal gap is the burial, which cut 3 proved wrist-rotation-infeasible"
+ }
+}
