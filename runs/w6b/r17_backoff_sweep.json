@@ -1,0 +1,91 @@
+{
+ "campaign": "r17 terminal normal backoff (cuts 4/5) on the r12.6 base",
+ "mechanism": "W6B_R17_BACKOFF_MM retracts the r12.9 terminal position target along the face normal ([face_sign,0,0]) before the 6D solve; verified propagating (terminal |e_p| shifts by exactly the backoff)",
+ "sweep": {
+  "0": {
+   "right": {
+    "gate1_mm": 15.891,
+    "pads_in_rect": 0,
+    "buried_flag": true,
+    "gate2_frames": 5,
+    "gate3_support": 246,
+    "gate4_viol_rad": 1.377,
+    "gate5_registered_mm": 1.06
+   },
+   "left": {
+    "gate1_mm": 1.607,
+    "pads_in_rect": 0,
+    "buried_flag": true,
+    "gate2_frames": 14,
+    "gate3_support": 272,
+    "gate4_viol_rad": 2.536,
+    "gate5_registered_mm": 0.98
+   }
+  },
+  "2": {
+   "right": {
+    "gate1_mm": 15.891,
+    "pads_in_rect": 0,
+    "buried_flag": true,
+    "gate2_frames": 5,
+    "gate3_support": 246,
+    "gate4_viol_rad": 1.377,
+    "gate5_registered_mm": 1.06
+   },
+   "left": {
+    "gate1_mm": 1.607,
+    "pads_in_rect": 0,
+    "buried_flag": true,
+    "gate2_frames": 14,
+    "gate3_support": 272,
+    "gate4_viol_rad": 2.536,
+    "gate5_registered_mm": 0.98
+   }
+  },
+  "4": {
+   "right": {
+    "gate1_mm": 15.891,
+    "pads_in_rect": 0,
+    "buried_flag": true,
+    "gate2_frames": 5,
+    "gate3_support": 246,
+    "gate4_viol_rad": 1.377,
+    "gate5_registered_mm": 1.06
+   },
+   "left": {
+    "gate1_mm": 1.607,
+    "pads_in_rect": 0,
+    "buried_flag": true,
+    "gate2_frames": 14,
+    "gate3_support": 272,
+    "gate4_viol_rad": 2.536,
+    "gate5_registered_mm": 0.98
+   }
+  },
+  "6": {
+   "right": {
+    "gate1_mm": 15.891,
+    "pads_in_rect": 0,
+    "buried_flag": true,
+    "gate2_frames": 5,
+    "gate3_support": 246,
+    "gate4_viol_rad": 1.377,
+    "gate5_registered_mm": 1.06
+   },
+   "left": {
+    "gate1_mm": 1.607,
+    "pads_in_rect": 0,
+    "buried_flag": true,
+    "gate2_frames": 14,
+    "gate3_support": 272,
+    "gate4_viol_rad": 2.536,
+    "gate5_registered_mm": 0.98
+   }
+  }
+ },
+ "verdict": "CUT 4 NOT ADOPTED \u2014 zero gate movement across {0,2,4,6} mm: the r12.9 terminal 6D solve is DIVERGED (|e_r| = 3.0956 rad right / 2.8398 rad left = 177/163 deg) and never reaches ANY target, so retracting the target moves nothing the pads see.  CUT 5 attribution, no cut: the right 15.891 mm is a PROUD miss (pad centres short of the face plane \u2014 fingers pointing away under the diverged orientation), not through-crush; the blocker is the terminal 6D divergence itself",
+ "finding_gate_code": "the gate1 burial flag is INVERTED vs its docstring on BOTH sides: it fires when a pad centre is more than tol SHORT of the plane (proud) and passes pads that are actually through (docstring: 'a pad centre buried past the plane by more than tol is a fail').  Measured through the new per-pad burial diagnostics (gate1 record per_pad_burial): right = 1 pad 15.9 mm proud, NO through-pad; left = ff_tip 10.5 mm proud, mf_tip 1.6 mm proud, th_tip 173 mm splayed, NO through-pad.  Criterion semantics are Main's \u2014 NOT silently changed",
+ "finding_gate1_blocker": "THE gate1 blocker is the r12.9 terminal 6D divergence (the r12.1 wall at the terminal, now quantified): a converging terminal solve is the prerequisite for any um-class gate1 \u2014 multi-restart DLS or an orientation-first solve are the candidate fixes (outside r17's two orders)",
+ "floors": "g5reg 1.06/0.98 mm and frame_alignment True unchanged across the sweep",
+ "disposition": "backoff code kept behind W6B_R17_BACKOFF_MM, default 0 = off"
+}

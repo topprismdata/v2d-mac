@@ -10909,6 +10909,24 @@
           "rf_tip_collision": 52.8043,
           "th_tip_collision": 105.5983
         },
+        "per_pad_burial": {
+          "ff_tip_collision": {
+            "buried": false,
+            "through_mm": 0.766
+          },
+          "mf_tip_collision": {
+            "buried": false,
+            "through_mm": 15.891
+          },
+          "rf_tip_collision": {
+            "buried": false,
+            "through_mm": 52.804
+          },
+          "th_tip_collision": {
+            "buried": false,
+            "through_mm": 54.924
+          }
+        },
         "pad_centroid_m": [
           0.09109637109251796,
           0.060847764965938404,
@@ -10922,6 +10940,24 @@
             "mf_tip_collision": 249.948,
             "rf_tip_collision": 245.9128,
             "th_tip_collision": 175.5864
+          },
+          "per_pad_burial": {
+            "ff_tip_collision": {
+              "buried": false,
+              "through_mm": 232.467
+            },
+            "mf_tip_collision": {
+              "buried": false,
+              "through_mm": 210.821
+            },
+            "rf_tip_collision": {
+              "buried": false,
+              "through_mm": 143.142
+            },
+            "th_tip_collision": {
+              "buried": false,
+              "through_mm": 131.599
+            }
           },
           "forward_axis_deg": 130.21596827609392,
           "pad_centroid_m": [
@@ -18225,6 +18261,24 @@
           "rf_tip_left_collision": 32.6979,
           "th_tip_left_collision": 173.2194
         },
+        "per_pad_burial": {
+          "ff_tip_left_collision": {
+            "buried": true,
+            "through_mm": -10.451
+          },
+          "mf_tip_left_collision": {
+            "buried": true,
+            "through_mm": -1.607
+          },
+          "rf_tip_left_collision": {
+            "buried": false,
+            "through_mm": 32.002
+          },
+          "th_tip_left_collision": {
+            "buried": true,
+            "through_mm": -173.219
+          }
+        },
         "pad_centroid_m": [
           -0.09831882219108204,
           -0.029398305231590455,
@@ -18238,6 +18292,24 @@
             "mf_tip_left_collision": 26.474,
             "rf_tip_left_collision": 41.9257,
             "th_tip_left_collision": 46.4069
+          },
+          "per_pad_burial": {
+            "ff_tip_left_collision": {
+              "buried": false,
+              "through_mm": 14.706
+            },
+            "mf_tip_left_collision": {
+              "buried": false,
+              "through_mm": 26.474
+            },
+            "rf_tip_left_collision": {
+              "buried": false,
+              "through_mm": 41.926
+            },
+            "th_tip_left_collision": {
+              "buried": true,
+              "through_mm": -46.096
+            }
           },
           "forward_axis_deg": 32.68129750749861,
           "pad_centroid_m": [
@@ -33410,8 +33482,8 @@
   "smoothness_comparison": {
     "metric": "mean |second difference| of the realised wrist joints (6 slides+hinges) per control second, over the video grid; frozen before this run",
     "old_39frame_round3": {
-      "mean_abs_jerk_rad_s2": 4.572058868427839,
-      "max_abs_jump_rad_s": 5.975810609999992,
+      "mean_abs_jerk_rad_s2": 4.79449082976804,
+      "max_abs_jump_rad_s": 5.45534934,
       "n_frames": 390
     },
     "new_fullfps_round4": {
@@ -33428,6 +33500,81 @@
       "mean_abs_jerk_rad_s2": 0.7042751978565658,
       "max_abs_jump_rad_s": 2.9832332177498566,
       "n_frames": 322
+    }
+  },
+  "r17_normal_backoff": {
+    "config": {
+      "backoff_mm": 6.0,
+      "direction": "along the face normal, away from the box ([face_sign, 0, 0]), applied to the r12.9 terminal position target, both sides",
+      "untouched": "registered path, yaw stops, TP controller, blend structure, every gate threshold"
+    },
+    "row": {
+      "gate1_mm": [
+        15.891,
+        1.607
+      ],
+      "gate1_pads": [
+        0,
+        0
+      ],
+      "gate1_buried": [
+        true,
+        true
+      ],
+      "gate2_frames": [
+        5,
+        14
+      ],
+      "gate3_support": [
+        246,
+        272
+      ],
+      "gate4_viol_rad": [
+        1.377,
+        2.536
+      ],
+      "gate5_registered_mm": [
+        1.06,
+        0.98
+      ]
+    },
+    "pad_burial": {
+      "right": {
+        "ff_tip_collision": {
+          "buried": false,
+          "through_mm": 0.766
+        },
+        "mf_tip_collision": {
+          "buried": false,
+          "through_mm": 15.891
+        },
+        "rf_tip_collision": {
+          "buried": false,
+          "through_mm": 52.804
+        },
+        "th_tip_collision": {
+          "buried": false,
+          "through_mm": 54.924
+        }
+      },
+      "left": {
+        "ff_tip_left_collision": {
+          "buried": true,
+          "through_mm": -10.451
+        },
+        "mf_tip_left_collision": {
+          "buried": true,
+          "through_mm": -1.607
+        },
+        "rf_tip_left_collision": {
+          "buried": false,
+          "through_mm": 32.002
+        },
+        "th_tip_left_collision": {
+          "buried": true,
+          "through_mm": -173.219
+        }
+      }
     }
   }
 }

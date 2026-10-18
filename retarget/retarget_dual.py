@@ -132,6 +132,12 @@ R16_CLAMP_UR5E = _os.environ.get("W6B_R16_CLAMP_UR5E", "0") == "1"
 R16_MANIP_GATE = _os.environ.get("W6B_R16_MANIP_GATE", "0") == "1"
 R16_MANIP_THRESH = float(_os.environ.get("W6B_R16_MANIP_THRESH", "0.05"))
 R16_WRIST_TRIM = _os.environ.get("W6B_R16_WRIST_TRIM", "0") == "1"
+# r17: terminal normal backoff (Main's cut 4/5) — retract the terminal
+# position target along the face normal by this many millimetres before
+# the r12.9 6D solve (both sides; the burial crush is the target)
+R17_BACKOFF_MM = float(_os.environ.get("W6B_R17_BACKOFF_MM", "0"))
+R17_BACKOFF_M = R17_BACKOFF_MM * 1e-3
+R17_ACTIVE = "W6B_R17_BACKOFF_MM" in _os.environ
 SCENE_FILES = {"floating": rs.SCENE_XML,
                "ur5e": REPO / "grounding/assets/allegro_floating_ur5e.xml",
                "ur5e_side": REPO / "grounding/assets/allegro_floating_ur5e_side.xml"}
@@ -2437,7 +2443,18 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
         inward = np.array([-side, 0.0, 0.0])
         fwd_deg = float(np.degrees(np.arccos(np.clip(float(fwd @ inward),
                                                      -1.0, 1.0))))
-        return best, buried, fwd_deg, per_pad, ctr.tolist()
+        # r17: per-pad burial diagnostics (through-plane depth = the
+        # crush source Main's normal-backoff cut targets)
+        pad_burial = {}
+        for g in pad_geoms:
+            n4 = _gname(model, g)
+            px4 = float(data.geom_xpos[g][0])
+            sv4 = px4 - side * face_x
+            pad_burial[n4] = {
+                "buried": bool(sv4 < -tol),
+                "through_mm": round(sv4 * 1e3, 3),
+            }
+        return best, buried, fwd_deg, per_pad, ctr.tolist(), pad_burial
 
     out = {}
     for side, spec in specs.items():
@@ -2448,13 +2465,13 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
         data.qpos[spec.wrist_qadr] = cmds[side]["wrist"][-1]
         data.qpos[spec.finger_qadr] = cmds[side]["finger"][-1]
         _mj.mj_forward(model, data)
-        dist, buried, fwd_deg, per_pad, ctr = measure(spec, coll)
+        dist, buried, fwd_deg, per_pad, ctr, pad_burial = measure(spec, coll)
         # executed final state: contact-physics evidence
         data.qpos[:] = cmds[side]["exec_qpos"][-1]
         _ba = box_free_qadr(model)
         data.qpos[_ba:_ba + 7] = cmds[side]["exec_obj"][-1]
         _mj.mj_forward(model, data)
-        dist_e, buried_e, fwd_deg_e, per_pad_e, ctr_e = measure(spec, coll)
+        dist_e, buried_e, fwd_deg_e, per_pad_e, ctr_e, pad_burial_e = measure(spec, coll)
         # GPT round-3 upgrade: >= 2 pads per hand inside the rectangle
         n_in_rect = sum(1 for v in per_pad.values() if v <= tol * 1e3)
         out[side] = {
@@ -2479,6 +2496,7 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
             "pass": bool(n_in_rect >= 2 and not buried
                          and fwd_deg <= FORWARD_AXIS_MAX_DEG),
             "per_pad_rect_mm": per_pad,
+            "per_pad_burial": pad_burial,
             "pad_centroid_m": ctr,
             "executed_state_evidence": {
                 "note": ("post-contact-physics final state, identical metric: "
@@ -2486,6 +2504,7 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
                          "centres ride ~pad-radius off the plane"),
                 "rect_dist_mm": dist_e * 1e3,
                 "per_pad_rect_mm": per_pad_e,
+                "per_pad_burial": pad_burial_e,
                 "forward_axis_deg": fwd_deg_e,
                 "pad_centroid_m": ctr_e,
             },
@@ -3187,6 +3206,13 @@ def main() -> int:
             hi2 = model.jnt_range[jids2][:, 1]
             tgt_pos = np.asarray(vg[s2]["pos"], float)
             tgt_R = np.asarray(vg[s2]["R"], float)
+            if R17_BACKOFF_MM > 0.0:
+                # r17: terminal normal backoff — retract the target along
+                # the face normal (calibration semantics: a constant
+                # offset on the terminal position target, raw/registered
+                # dual-reported in the r17 ledger)
+                tgt_pos = tgt_pos + R17_BACKOFF_M * np.array(
+                    [spec2.face_sign, 0.0, 0.0])
             # the site→palm offset (constant, rigid hand attachment)
             data.qpos[qadr2] = cmds_global[s2]["wrist"][n_ctrl - 1]
             mujoco.mj_kinematics(model, data)
@@ -4275,6 +4301,38 @@ def main() -> int:
                            "degrade — checked against base_row and "
                            "verdict_checks.frame_alignment"),
             },
+        }
+    if R17_ACTIVE:
+        # r17 ledger row: terminal normal backoff (calibration semantics;
+        # raw = measured pad rectangle distance, registered = the gate5
+        # assembly's bias-subtracted leg, re-derived downstream)
+        report["r17_normal_backoff"] = {
+            "config": {
+                "backoff_mm": R17_BACKOFF_MM,
+                "direction": "along the face normal, away from the box "
+                             "([face_sign, 0, 0]), applied to the r12.9 "
+                             "terminal position target, both sides",
+                "untouched": ("registered path, yaw stops, TP controller, "
+                              "blend structure, every gate threshold"),
+            },
+            "row": {
+                "gate1_mm": [round(report["per_side"][s]["gate1_final_touch"]["rect_dist_mm"], 3)
+                             for s in VIDEOS],
+                "gate1_pads": [report["per_side"][s]["gate1_final_touch"]["n_pads_in_rect"]
+                               for s in VIDEOS],
+                "gate1_buried": [report["per_side"][s]["gate1_final_touch"]["pad_center_buried"]
+                                 for s in VIDEOS],
+                "gate2_frames": [report["per_side"][s]["gate2_contact"]["endface_contact_frames"]
+                                 for s in VIDEOS],
+                "gate3_support": [report["per_side"][s]["gate3_approach_clean"]["support_contact_frames"]
+                                  for s in VIDEOS],
+                "gate4_viol_rad": [round(report["per_side"][s]["gate4_joint_limits"]["finger_qpos_max_violation_rad"], 3)
+                                   for s in VIDEOS],
+                "gate5_registered_mm": [round(report["per_side"][s]["gate5_palm_deviation"]["registered"]["registered_palm_max_m"] * 1000, 2)
+                                        for s in VIDEOS],
+            },
+            "pad_burial": {s: report["per_side"][s]["gate1_final_touch"]["per_pad_burial"]
+                           for s in VIDEOS},
         }
     REPORT_PATH.write_text(json.dumps(_jsonable(report), indent=2))
     print(f"wrote {REPORT_PATH}")
