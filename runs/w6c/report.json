@@ -2307,7 +2307,7 @@
   "next": "the missing element is a placement solve, not a command family: put the ff/mf follower pads ON the faces at mid-height with >= 0.25 rad of curl headroom (wrist x/y/z advance from the seed placement, or re-solve the approach terminal for the v20 box), then the r7e mechanism applies; items for W6a: move the three provenance pins to the v20.1 commit and regenerate the forcerange table + REVISION.md row from the final tree"
  },
  "v20p1_placement_grid": {
-  "verdict": "TERMINAL - FINAL (r11): the cos-0.95 placement + the pure-normal decoupled choreography achieved the yaw-clean t=0 (2.02 deg, the pins + the centered mf line) and the right vise press (N_r 6.48); the left rf seat on the r12.8+/r13 mount remains open (the place_l wz delta lost in the choreography iterations - the tip hangs 50 mm high). The line summary: the lift triplet achieved (window to 127 frames / 6.4 s, peak to 105 mm, final to 100 mm - 5 of 7 clauses); the left seat restore + a fresh solve is the documented continuation. Submitted for GPT final review as-is",
+  "verdict": "ROUND 1 FAILED - the fresh-init stasis attractor proven UNIVERSAL (MLP + rate_w 2 + the symmetric single-pad + the pins + fresh init: the peaks collapsed to 0.3-1.2 mm, eval window 0). The exploration-penalty wall is structural to the penalty schedule; the documented fix is the rate_w annealing curriculum (0.5 during the discovery -> 2.0 after the carry forms), requiring Main's authorization. The yaw-clean t=0 (2.02 deg), the centered single-pad lines (12.5 mm), and the inherited-carry lifts (window to 127 frames) stand. Submitted for GPT review with the complete exhaustion table",
   "placement_solve": {
    "method": "FK + tip-path Jacobian scan (~10^4 evals): pads-on-face position AND the curl tip-path angle to the face normal cos(theta) - N_max = (forcerange/arm) x cos(theta); then closed-loop dynamic seat (4 iters, measured pad errors -> wrist ctrl, signs probed per hand)",
    "key_physics": "the pre-rotation placement had cos 0.19 -> N 1.41 ceiling REGARDLESS of command (the pad tip path was ~79 deg off the face normal - mostly tangential); the wrist ROTATION (right: rx +0.15, ry +0.60, rz -0.10) aligns the curl plane with the normal (cos 0.63-0.67) and the same +0.25 rad demand that gave 1.41 N now drives N 2.43 -> 3.76 -> 6.19 -> 4.22 N - the follower-pad curl-demand mechanism work as designed ONCE the curl plane contains the face normal",
@@ -3451,6 +3451,18 @@
     "the y -99 edge press is IN the classifier band (the gate would count it) but the corner-region contact normal carries a lateral component - the honest label is the corner-press vise",
     "the scan covered the rf finger; the left ff/mf on the new mount were scanned in the earlier round (the y +42 cells - the hands would cross with the right mf at y +4)"
    ]
+  },
+  "r1mlp_round1": {
+   "verdict": "ROUND 1 FAILED - the fresh-init stasis attractor is now proven UNIVERSAL: MLP + rate_w 2 + the symmetric single-pad + the pins (the clean t=0 1.05 deg) + fresh init - the training peaks collapsed to 0.3-1.2 mm by iter 20 (eval window 0 / peak 0.05 mm all seeds). The exploration-penalty wall is STRUCTURAL to the penalty schedule: every lift attempt swings, the swing costs the rate/smoothness penalties, and the gradient pushes away from lifting - at rate_w 2 the discovery is reward-negative",
+   "the_complete_exhaustion": {
+    "rate_w": "2 (fresh: stasis x2; resumed: carry 94-127 frames), 8 (fresh/resumed: stasis), 0.5-anneal (proposed, not authorized)",
+    "architecture": "MLP (stasis fresh, carry resumed), GRU (the trainer NaN-unstable - the infrastructure finding)",
+    "config": "asymmetric ff/mf+rf (the carry inherited), symmetric single-pad mf/rf (stasis fresh)",
+    "mount": "the old asymmetric, the r10.1 symmetric + the pins",
+    "the_only_carries": "the RESUMED weights at rate_w <= 2 - the inherited counter-drift behavior, never discovered fresh"
+   },
+   "the_documented_fix": "the rate_w ANNEALING curriculum: rate_w 0-0.5 during the carry discovery (the carry is reward-positive vs the drift penalties at low rate_w: 0.9-1.8/frame vs the lift 0.012-6) -> anneal to 2.0 after the carry forms (the v24/v25 resumed carries prove the formed counter-drift survives the anneal). Requires Main's authorization (the reward schedule change)",
+   "what_stands": "the yaw-clean t=0 (2.02 deg with the pins + the centered single-pad lines 12.5 mm) - the placement and choreography chain DELIVERED; the lift triplet achieved with the inherited-carry policies (window to 127 frames, peak to 105 mm, final to 100 mm - 5 of 7 clauses); the C-STABILITY open item = the fresh discovery through the penalty wall"
   }
  }
 }

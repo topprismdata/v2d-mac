@@ -75,6 +75,7 @@ weights/
 !runs/w6c/r3_ppo_curve.json
 !runs/w6c/r3gru_gru_curve.json
 !runs/w6c/v25sym_gru_curve.json
+!runs/w6c/r1mlp_ppo_curve.json
 !runs/w6c/v24re_ppo_curve.json
 !runs/w6c/v21_replay_frames.json
 !runs/w6c/evidence/*.png

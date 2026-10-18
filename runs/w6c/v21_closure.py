@@ -628,6 +628,11 @@ def main():
     ap.add_argument("--resume", default=None)
     ap.add_argument("--rate-w", type=float, default=2.0)
     ap.add_argument("--act-rate-w", type=float, default=0.5)
+    ap.add_argument("--smooth-w", type=float, default=1.0)
+    ap.add_argument("--curriculum", default="40,80,160")
+    ap.add_argument("--round-tag", default="r1mlp")
+    ap.add_argument("--lift-cap-m", type=float, default=0.050)
+    ap.add_argument("--pen-cap", type=float, default=3.0)
     args = ap.parse_args()
     if args.cmd == "capture":
         print(json.dumps(capture_engage(), indent=1, default=float))
