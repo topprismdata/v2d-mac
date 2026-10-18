@@ -633,6 +633,7 @@ def main():
     ap.add_argument("--round-tag", default="r1mlp")
     ap.add_argument("--lift-cap-m", type=float, default=0.050)
     ap.add_argument("--pen-cap", type=float, default=3.0)
+    ap.add_argument("--anneal", action="store_true")
     args = ap.parse_args()
     if args.cmd == "capture":
         print(json.dumps(capture_engage(), indent=1, default=float))
