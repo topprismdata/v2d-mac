@@ -843,11 +843,11 @@ def palm_first_placement(model, data, spec: SideSpec, anchor: dict,
     plus the end-face grasp RESULT, so:
 
       * the wrist slides ARE the registered task-space palm target -- the
-        verified gate-3 seed palm anchors the path's grasp-window mean and
-        the measured MediaPipe wrist lateral (registered into the mount
-        frame, the r5 source) rides on top.  The 32.7/14.3 mm Front-B
-        calibration bias is thereby built into the anchor (the seed IS the
-        registered grasp);
+        world-centred home palm anchors the path's mean (inside the round-2
+        corridor on the r10 symmetric mounts) and the measured MediaPipe
+        wrist lateral (registered into the mount frame, the r5 source,
+        pre-lock-trimmed) rides on top.  The grasp offset is owned by the
+        terminal blend to the contact-solved seed;
       * the fingertips are no longer chased: the curl keeps the retargeted
         MANO pattern where feasible and adapts by contact at the terminal
         (the blend to the contact-solved seed owns gate2's semantics).
@@ -858,30 +858,44 @@ def palm_first_placement(model, data, spec: SideSpec, anchor: dict,
     hand-pose objective left.  The constrained-solve record keys are kept
     so the gate/report consumers are unchanged.
     """
+    from scipy.signal import medfilt
+
     import mujoco
 
     mujoco.mj_resetData(model, data)
     mujoco.mj_forward(model, data)
-
-    # registered anchor: the verified gate-3 seed's palm world position
-    g3 = json.loads((REPO / "runs/w6/gate3_qpos.json").read_text())
-    q = np.asarray(g3["qpos"], float)
-    ba = box_free_qadr(model)
-    q[ba:ba + 7] = [0.0, 0.0, 0.74, 1.0, 0.0, 0.0, 0.0]
-    data.qpos[:] = q
-    data.qvel[:] = 0.0
-    mujoco.mj_forward(model, data)
-    palm_seed = data.xpos[spec._palm_id].copy()
-    home_palm = None  # palm world at the reset pose (slides all zero)
+    # world-centred anchor (Front D item 3): with the symmetric mounts the
+    # mount origin sits ON the centreline, so the task path anchors at the
+    # home palm -- world mean palm y ~ 0, inside the round-2 corridor; the
+    # grasp offset is owned by the terminal blend to the contact-solved seed
+    home_palm = data.xpos[spec._palm_id].copy()
 
     R = spec.mount_rot()
     lat = (slide_extra if slide_extra is not None
            else np.zeros((qpos.shape[0], 3)))
-    palm_target = palm_seed[None, :] + (R @ np.asarray(lat, float).T).T
+    # r10 pre-lock trim: the raw MediaPipe track holds a pre-lock plateau
+    # (right: ~15 frames parked at x -0.692 -- a 15 m/s detection jump, the
+    # hand cannot move that fast).  Hold the leading frames at the first
+    # physically-plausible detection (||lat||_inf <= 0.3 m) instead of
+    # letting a detection artefact define the task path's start.
+    inf_norm = np.abs(np.asarray(lat, float)).max(axis=1)
+    lock = int(np.argmax(inf_norm <= 0.3)) if (inf_norm <= 0.3).any() else 0
+    pre_lock_frames = lock
+    if lock > 0:
+        lat = np.array(lat, float)
+        lat[:lock] = lat[lock]
+    # r10 measurement hygiene (same class as the MANO-parameter SG filter):
+    # the raw MP track carries mid-path detection spikes (median-filtered
+    # peak rate 15.3 m/s -- no hand moves like that); a k=5 running median
+    # removes them so the slew budget chases the demo's motion, not the
+    # detector's jitter.
+    if len(lat) >= 5:
+        lat = np.stack([medfilt(np.asarray(lat, float)[:, c], 5)
+                        for c in range(3)], axis=1)
+    palm_target = home_palm[None, :] + (R @ np.asarray(lat, float).T).T
 
     mujoco.mj_resetData(model, data)
     mujoco.mj_forward(model, data)
-    home_palm = data.xpos[spec._palm_id].copy()
     # slides that place the palm on the target: palm = home + R @ slides
     slides = (R.T @ (palm_target - home_palm[None, :]).T).T
 
@@ -907,8 +921,14 @@ def palm_first_placement(model, data, spec: SideSpec, anchor: dict,
     hi = np.broadcast_to(np.concatenate([
         model.actuator_ctrlrange[spec.wrist_act_id, 1],
         model.actuator_ctrlrange[spec.finger_act_id, 1]])[None, :], x.shape).copy()
+    # r10 fixture re-rating: the y slide carries the demo's lateral swing at
+    # its re-rated 0.25 m/s; x/z stay at their physical-bound-derived
+    # allowance (WARM_START_SLIDE_RATE_XZ_M_S) so the realised rate never
+    # saturates past the winding gate's physical cap there
     step = (np.concatenate([
-        np.full(3, rs.VEL_LIMIT_WRIST_SLIDE_M_S),
+        np.array([rs.WARM_START_SLIDE_RATE_XZ_M_S,
+                  rs.WARM_START_SLIDE_RATE_M_S,
+                  rs.WARM_START_SLIDE_RATE_XZ_M_S]),
         np.full(3, rs.VEL_LIMIT_WRIST_HINGE_RAD_S),
         np.full(16, rs.VEL_LIMIT_FINGER_RAD_S),
     ]) * rs.rs_ctrl_dt(model)) * traj_solve.RATE_MARGIN
@@ -958,6 +978,7 @@ def palm_first_placement(model, data, spec: SideSpec, anchor: dict,
     record = {
         "status": "solved-palm-first",
         "gap_m": gap_m,
+        "pre_lock_trimmed_frames": pre_lock_frames,
         "closest_approach_frame": None,
         "fingertip_within_grasp_radius": None,
         "method": (

@@ -2307,7 +2307,7 @@
   "next": "the missing element is a placement solve, not a command family: put the ff/mf follower pads ON the faces at mid-height with >= 0.25 rad of curl headroom (wrist x/y/z advance from the seed placement, or re-solve the approach terminal for the v20 box), then the r7e mechanism applies; items for W6a: move the three provenance pins to the v20.1 commit and regenerate the forcerange table + REVISION.md row from the final tree"
  },
  "v20p1_placement_grid": {
-  "verdict": "TERMINAL - FINAL (the stabilization objective is unreachable on this mount by any reward weight - dominance theorem quantified: at rate_w >= 8 stasis is optimal (the GRU converged there in 10 iters); at rate_w <= 2 the carry wins (window 94-127 frames, 21-34 mm sustained) but the structural 15 cm drift fails the slip/yaw clauses. 5 of 7 gate clauses achieved; the 7th-clause impossibility is quantified; the W6a mount symmetrization is the documented lever. Submitted for GPT final review as-is",
+  "verdict": "OPEN - the symmetric single-pad config is validated (press lines 12.5 mm, matched heights, both pads in-band press-convergent) but the fresh-init training on the OLD mount converged to the stasis attractor (the drift-proportional penalties wall off the carry discovery; the v24/v25 carries were INHERITED counter-drift behavior). Per Main's directive the line stays OPEN for the r10 symmetric-mount geometry; the rate_w annealing curriculum is the documented fix for the discovery wall. Submitted for GPT review of the reward-geometry analysis as-is",
   "placement_solve": {
    "method": "FK + tip-path Jacobian scan (~10^4 evals): pads-on-face position AND the curl tip-path angle to the face normal cos(theta) - N_max = (forcerange/arm) x cos(theta); then closed-loop dynamic seat (4 iters, measured pad errors -> wrist ctrl, signs probed per hand)",
    "key_physics": "the pre-rotation placement had cos 0.19 -> N 1.41 ceiling REGARDLESS of command (the pad tip path was ~79 deg off the face normal - mostly tangential); the wrist ROTATION (right: rx +0.15, ry +0.60, rz -0.10) aligns the curl plane with the normal (cos 0.63-0.67) and the same +0.25 rad demand that gave 1.41 N now drives N 2.43 -> 3.76 -> 6.19 -> 4.22 N - the follower-pad curl-demand mechanism work as designed ONCE the curl plane contains the face normal",
@@ -3371,6 +3371,14 @@
     "architecture_exhaustion": "MLP (48+48+96+96+96 iters) and GRU (96+32 iters) both converge to the reward-geometry optimum; the stasis attractor is not an architecture capacity limit",
     "checkpoint_hygiene": "round-scoped namespacing live (v24re_*/r3_*); the v24 best-weight overwrite disclosed earlier"
    }
+  },
+  "v25sym_single_pad": {
+   "verdict": "SYMMETRIC SINGLE-PAD CONFIG on the OLD mount: fresh-init GRU converged to the stasis attractor in 96 iters (training peaks collapsed to 0.05 mm by iter 30; eval window 0 / peak -0.02 mm all seeds). Per Main's continuation directive: NOT declaring the line terminal - awaiting the W6b r10 symmetric-mount geometry for the final verification training round",
+   "config": "right {mf-only} (mfj1/mfj2 press, ff parked): wrist (+0.04, -0.02, +0.05), rot (0.15, 0.75, -0.25), mf curls (0.45, 0.35) -> mf pad y +4.0 near center, depth -5.8 in-band, cos 0.69. Left {rf-only}: wrist (+0.02, +0.09, 0), rot (0, 0.60, 0), rf curls (0.40, 0.30) -> rf tip y -8.5, depth +0.8, cos 0.58. Press lines |r|+|l| = 12.5 mm (< the 20 mm target), matched heights",
+   "numbers_96iters": "training peaks 27.6 mm (iter 0, the initial carry) collapsing to 0.05 mm by iter 30 - the stasis attractor; eval window 0 / peak -0.02 mm all seeds",
+   "mechanism_finding": "the stasis attractor under rate_w 2.0 + FRESH init closes the loop on the reward-geometry analysis: the carried box drifts ~1.8 mm/frame (structural) and the drift-proportional penalties (even at rate_w 2.0: ~4.5/frame) dominate the lift gradient (~0.012/frame at the 0.1 mm/frame climb) - a FRESH policy cannot discover the counter-drift behavior through a penalty wall; the v24/v25 carries came from INHERITED counter-drift behavior (the resumed weights), not from discovery",
+   "curriculum_option_for_r10": "the discovery problem has a known fix: anneal rate_w (0.5 -> 2.0) AFTER the carry forms - the carry is reward-positive at low rate_w (drift penalty 0.9-1.8/frame vs lift 0.012-6) and the counter-drift behavior, once formed, survives the anneal (the v24/v25 resumed carries prove its stability). Proposed for the r10 symmetric-mount verification round",
+   "line_status": "OPEN per Main's directive - the r10 symmetric-mount geometry (W6b r10 new fixture) is awaited for the final verification training round; the symmetric single-pad config is validated and ready"
   }
  }
 }

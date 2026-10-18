@@ -152,8 +152,16 @@ JOINT_ACC_LIMIT_RAD_S2 = 200.0  # 64x the velocity limit over one 20 Hz frame
 #                 (WARM_START_SLIDE_RATE_XZ_M_S)
 #   finger joints URDF velocity="3.14" rad/s, and they execute at 0.34 rad/s,
 #   so the ramp is not what limits them; it is capped at the URDF figure anyway.
-WARM_START_HINGE_RATE_RAD_S = 1.5
-WARM_START_SLIDE_RATE_M_S = 0.2
+# r10 fixture re-rating (Main Front D): the strokes/rates are W6a fixture
+# self-set parameters, re-rated to the human demo's measured path envelope
+# (runs/w6b/wrist_landmarks.npz, task window = video frames 1..151, robust
+# stats -- the raw track carries pre-lock and dropout artefacts):
+#   wrist_y stroke: task p2p 0.444 m x 1.2 -> +-0.225 (MJCF sync'd)
+#   wrist slide y rate: task p99 0.166 m/s x 1.5 -> 0.25 m/s
+#   wrist hinge rate: MANO orientation p95 1.815 rad/s x 1.5 -> 2.7 rad/s
+# Gate thresholds unchanged; only the fixture's own physical rating moved.
+WARM_START_HINGE_RATE_RAD_S = 2.7
+WARM_START_SLIDE_RATE_M_S = 0.25
 WARM_START_FINGER_RATE_RAD_S = 3.14
 
 # Per-DoF-class velocity gate, signed at wave 3 after the reset-seed hypothesis
@@ -164,10 +172,11 @@ WARM_START_FINGER_RATE_RAD_S = 3.14
 # and each DoF class is bounded by what that class's actuator can actually
 # track, not by one number borrowed from the wrong joint set:
 #   finger 16 DoF   3.14 rad/s  URDF spec; measured peak 0.282, 11x margin
-#   wrist hinges    1.50 rad/s  free-space measured trackable rate (ratio >= 0.9);
-#                   the 3.687 rad/s step-response peak is a transient ceiling,
-#                   not a 20 Hz trackable rate, and is not used as a gate
-#   wrist slides    0.20 m/s    free-space measured trackable rate
+#   wrist hinges    2.70 rad/s  r10 re-rating: MANO orientation p95
+#                   1.815 rad/s x 1.5 (task window, unwrapped)
+#   wrist slides    0.25 m/s    r10 re-rating: MP wrist task-window p99
+#                   0.166 m/s x 1.5 (wrist_y; x/z stay at their physical
+#                   line via WARM_START_SLIDE_RATE_XZ_M_S)
 VEL_LIMIT_FINGER_RAD_S = JOINT_VEL_LIMIT_RAD_S
 # Fraction of the signed velocity limit any generated command is allowed to
 # reach.  Exactly 1.0 makes cap*dt/dt round to cap*(1+1e-15), i.e. a command

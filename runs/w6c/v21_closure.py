@@ -98,16 +98,20 @@ def capture_engage() -> dict:
     # yaw +-2 deg around the engage state instead (start_noise), and the
     # frozen yaw clause judges absolute yaw <= 10 deg.
     start_ctrl = d.ctrl.copy()
+    # symmetric single-pad config (v25 Front A): right {mf-only}
+    # (y +4.0 near center, depth -5.8 in-band, cos 0.69) + left {rf-only}
+    # (y -8.5, depth +0.8, cos 0.58) - press lines |r|+|l| = 12.5 mm
+    # (< 20 target), matched heights z +1.2/+0.3, both press-convergent.
+    # The ff (right) and ff/mf (left) fingers park open.
     clear = start_ctrl.copy()
     for i_ in (7, 8, 11, 12, 37, 38):
         clear[i_] = 0.40
     clear[2] += 0.050
     transit = clear.copy()
     place_r = transit.copy()
-    place_r[0] += 0.020; place_r[1] += -0.040; place_r[2] += 0.050
-    place_r[3] += 0.15; place_r[4] += 0.60; place_r[5] += -0.10
-    place_r[7] = 0.40; place_r[8] = 0.30
-    place_r[11] = 0.40; place_r[12] = 0.30
+    place_r[0] += 0.040; place_r[1] += -0.020; place_r[2] += 0.050
+    place_r[3] += 0.15; place_r[4] += 0.75; place_r[5] += -0.25
+    place_r[11] = 0.45; place_r[12] = 0.35
     for a, b, n in ((start_ctrl, clear, 12), (clear, transit, 10),
                     (transit, place_r, 15)):
         for k in range(n):
@@ -115,8 +119,8 @@ def capture_engage() -> dict:
             settle(FS)
     settle(15 * FS)
     place_l = d.ctrl.copy()
-    place_l[23] += 0.030; place_l[22] += 0.020
-    place_l[25] += 0.20; place_l[26] += 0.60; place_l[27] += 0.00
+    place_l[23] += 0.090; place_l[22] += 0.020
+    place_l[25] += 0.00; place_l[26] += 0.60; place_l[27] += 0.00
     place_l[37] = 0.40; place_l[38] = 0.30
     for k in range(15):
         d.ctrl[:] = place_r + (place_l - place_r) * (k + 1) / 15
@@ -269,9 +273,14 @@ GRIP_FLOOR_ACTS = (2, 24, 7, 8, 11, 12, 37, 38)
 # midpoint, NOT the placement curl) - the floors below are the placement
 # curl targets CONVERTED to action units; the wrist-z channels are DELTAS
 # (floor 0 = never descend)
+# v25sym: right mf press (mfj1/mfj2), right ff park (0.40), left rf
+# press (rfj1/rfj2), left ff/mf park (0.35) - all in ACTION units
+# (2 x (ctrl - lo) / span - 1 from the placement ctrl targets)
 GRIP_FLOORS = {2: 0.0, 24: 0.0,
-               7: -0.34, 8: -0.73, 11: -0.34, 12: -0.73,
-               37: -0.34, 38: -0.65}
+               7: -0.34, 8: -0.50,
+               11: -0.60, 12: -0.44,
+               29: -0.40, 30: -0.44, 33: -0.40, 34: -0.44,
+               37: -0.34, 38: -0.50}
 
 
 def grip_floor(a: np.ndarray) -> np.ndarray:

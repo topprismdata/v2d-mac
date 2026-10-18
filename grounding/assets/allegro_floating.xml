@@ -203,7 +203,7 @@
            from the hand root's x-y-z; tip tracks the hand root with zero
            residual over the 390-frame replay. Link mass 10 g each (under
            0.5% of box mass — noise-level dynamics ripple). -->
-      <body name="arm_yaw_r" pos="0.235 -0.095 1.000">
+      <body name="arm_yaw_r" pos="0.235 0 1.000">
         <joint name="arm_yaw_r" type="hinge" axis="0 0 1" pos="0 0 0"
                range="-3.2 3.2" damping="0.3" armature="0.001"/>
         <geom name="arm_yaw_disc_r" type="cylinder" size="0.024 0.012"
@@ -230,7 +230,7 @@
           </body>
         </body>
       </body>
-      <body name="arm_yaw_l" pos="-0.235 0.035 1.000">
+      <body name="arm_yaw_l" pos="-0.235 0 1.000">
         <joint name="arm_yaw_l" type="hinge" axis="0 0 1" pos="0 0 0"
                range="-3.2 3.2" damping="0.3" armature="0.001"/>
         <geom name="arm_yaw_disc_l" type="cylinder" size="0.024 0.012"
@@ -313,7 +313,7 @@
 
     </body>
 
-    <body name="hand_root" pos="0.235 -0.095 0.755" euler="0 0 3.141592653590">
+    <body name="hand_root" pos="0.235 0 0.755" euler="0 0 3.141592653590">
       <!-- W6a-v6: wrist mounting module (GPT P0-1 rework - the v4 45-deg
            capsule read as a cannon implying a wrist DoF that does not exist).
            Short EE-flange stack on the back of the hand: mounting plate +
@@ -361,7 +361,7 @@
       </body>
       <joint name="wrist_x" type="slide" axis="1 0 0" range="-0.18 0.18"
         damping="280" armature="0.03"/>
-      <joint name="wrist_y" type="slide" axis="0 1 0" range="-0.18 0.18"
+      <joint name="wrist_y" type="slide" axis="0 1 0" range="-0.225 0.225"
         damping="25" armature="0.03"/>
       <joint name="wrist_z" type="slide" axis="0 0 1" range="-0.163 0.16"
         damping="280" armature="0.03"/>
@@ -481,7 +481,7 @@
       </body>
     </body>
 
-    <body name="hand_root_left" pos="-0.235 0.035 0.755" euler="0 0 0">
+    <body name="hand_root_left" pos="-0.235 0 0.755"> euler="0 0 0">
       <body name="wmount_left" pos="0 0 0">
         <geom name="wmount_transition_left" type="box" size="0.010 0.038 0.028"
           pos="-0.004 0 0.010" mass="0" contype="0" conaffinity="0"
@@ -522,7 +522,7 @@
       </body>
       <joint name="wrist_x_left" type="slide" axis="1 0 0" range="-0.18 0.18"
         damping="280" armature="0.03"/>
-      <joint name="wrist_y_left" type="slide" axis="0 1 0" range="-0.18 0.18"
+      <joint name="wrist_y_left" type="slide" axis="0 1 0" range="-0.225 0.225"
         damping="25" armature="0.03"/>
       <joint name="wrist_z_left" type="slide" axis="0 0 1" range="-0.163 0.16"
         damping="280" armature="0.03"/>
@@ -689,7 +689,7 @@
   <actuator>
     <position name="wrist_ax" joint="wrist_x" kp="15000" ctrlrange="-0.18 0.18"
       forcerange="-45 45"/>
-    <position name="wrist_ay" joint="wrist_y" kp="180" ctrlrange="-0.18 0.18"
+    <position name="wrist_ay" joint="wrist_y" kp="180" ctrlrange="-0.225 0.225"
       forcerange="-45 45"/>
     <position name="wrist_az" joint="wrist_z" kp="15000" ctrlrange="-0.163 0.16"
       forcerange="-45 45"/>
@@ -717,7 +717,7 @@
     <position name="tha3" joint="thj3" class="thumb_distal" kp="0.0968" forcerange="-0.01633 0.01633"/>
     <position name="wrist_ax_left" joint="wrist_x_left" kp="15000" ctrlrange="-0.18 0.18"
       forcerange="-45 45"/>
-    <position name="wrist_ay_left" joint="wrist_y_left" kp="180" ctrlrange="-0.18 0.18"
+    <position name="wrist_ay_left" joint="wrist_y_left" kp="180" ctrlrange="-0.225 0.225"
       forcerange="-45 45"/>
     <position name="wrist_az_left" joint="wrist_z_left" kp="15000" ctrlrange="-0.163 0.16"
       forcerange="-45 45"/>
