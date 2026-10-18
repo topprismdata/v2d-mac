@@ -109,8 +109,8 @@ def capture_engage() -> dict:
     clear[2] += 0.050
     transit = clear.copy()
     place_r = transit.copy()
-    place_r[0] += 0.040; place_r[1] += -0.020; place_r[2] += 0.050
-    place_r[3] += 0.15; place_r[4] += 0.75; place_r[5] += -0.25
+    place_r[0] += 0.020; place_r[1] += 0.085; place_r[2] += 0.050
+    place_r[3] += 0.15; place_r[4] += 0.60; place_r[5] += -0.25
     place_r[11] = 0.45; place_r[12] = 0.35
     for a, b, n in ((start_ctrl, clear, 12), (clear, transit, 10),
                     (transit, place_r, 15)):
@@ -119,7 +119,7 @@ def capture_engage() -> dict:
             settle(FS)
     settle(15 * FS)
     place_l = d.ctrl.copy()
-    place_l[23] += 0.090; place_l[22] += 0.020
+    place_l[23] += 0.120; place_l[22] += 0.020
     place_l[25] += 0.00; place_l[26] += 0.60; place_l[27] += 0.00
     place_l[37] = 0.40; place_l[38] = 0.30
     for k in range(15):

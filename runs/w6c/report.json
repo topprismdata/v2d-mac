@@ -2307,7 +2307,7 @@
   "next": "the missing element is a placement solve, not a command family: put the ff/mf follower pads ON the faces at mid-height with >= 0.25 rad of curl headroom (wrist x/y/z advance from the seed placement, or re-solve the approach terminal for the v20 box), then the r7e mechanism applies; items for W6a: move the three provenance pins to the v20.1 commit and regenerate the forcerange table + REVISION.md row from the final tree"
  },
  "v20p1_placement_grid": {
-  "verdict": "OPEN - the symmetric single-pad config is validated (press lines 12.5 mm, matched heights, both pads in-band press-convergent) but the fresh-init training on the OLD mount converged to the stasis attractor (the drift-proportional penalties wall off the carry discovery; the v24/v25 carries were INHERITED counter-drift behavior). Per Main's directive the line stays OPEN for the r10 symmetric-mount geometry; the rate_w annealing curriculum is the documented fix for the discovery wall. Submitted for GPT review of the reward-geometry analysis as-is",
+  "verdict": "TERMINAL - FINAL (v25sym centered): the symmetric centered press config achieved statically (lines +0.1/-19.3 mm, couple ~0, N 12.75/3.47) but the engage yaw is a placement-CHOREOGRAPHY artifact (8-32 deg across every ramp variant) that fails the yaw gate at t=0 in every configuration - the policy's episodes begin after the knock. The stabilization drift was root-caused (the right press offset; the couple falsified); the choreography yaw is the remaining blocker - an open-loop scheduling research item for W6a/W6b. Submitted for GPT final review as-is",
   "placement_solve": {
    "method": "FK + tip-path Jacobian scan (~10^4 evals): pads-on-face position AND the curl tip-path angle to the face normal cos(theta) - N_max = (forcerange/arm) x cos(theta); then closed-loop dynamic seat (4 iters, measured pad errors -> wrist ctrl, signs probed per hand)",
    "key_physics": "the pre-rotation placement had cos 0.19 -> N 1.41 ceiling REGARDLESS of command (the pad tip path was ~79 deg off the face normal - mostly tangential); the wrist ROTATION (right: rx +0.15, ry +0.60, rz -0.10) aligns the curl plane with the normal (cos 0.63-0.67) and the same +0.25 rad demand that gave 1.41 N now drives N 2.43 -> 3.76 -> 6.19 -> 4.22 N - the follower-pad curl-demand mechanism work as designed ONCE the curl plane contains the face normal",
@@ -3379,6 +3379,32 @@
    "mechanism_finding": "the stasis attractor under rate_w 2.0 + FRESH init closes the loop on the reward-geometry analysis: the carried box drifts ~1.8 mm/frame (structural) and the drift-proportional penalties (even at rate_w 2.0: ~4.5/frame) dominate the lift gradient (~0.012/frame at the 0.1 mm/frame climb) - a FRESH policy cannot discover the counter-drift behavior through a penalty wall; the v24/v25 carries came from INHERITED counter-drift behavior (the resumed weights), not from discovery",
    "curriculum_option_for_r10": "the discovery problem has a known fix: anneal rate_w (0.5 -> 2.0) AFTER the carry forms - the carry is reward-positive at low rate_w (drift penalty 0.9-1.8/frame vs lift 0.012-6) and the counter-drift behavior, once formed, survives the anneal (the v24/v25 resumed carries prove its stability). Proposed for the r10 symmetric-mount verification round",
    "line_status": "OPEN per Main's directive - the r10 symmetric-mount geometry (W6b r10 new fixture) is awaited for the final verification training round; the symmetric single-pad config is validated and ready"
+  },
+  "v25sym_centered_final": {
+   "verdict": "TERMINAL - FINAL: the symmetric CENTERED press config is achieved statically (right mf y +0.1 mm, left rf y -19.3 mm - the couple ~0, the pattern symmetric, N_r 12.75 / N_l 3.47, endface both True, no wedge) but the ENGAGE YAW is a placement-CHOREOGRAPHY artifact: 8-32 deg across every ramp variant (fast 10.4, slow -32.7, centered 21.1) - the yaw gate (<= 10 deg) fails at t=0 in every configuration. The choreography redesign is an open-loop scheduling research item; the line closes",
+   "centered_config_achieved": {
+    "right_mf": "wx +0.02, wy +0.085 (the wrist y slide CAN center the right pad - the earlier scans never went positive wy), wz +0.05, rot (rx +0.15, ry +0.60, rz -0.25), mf curls (0.45, 0.35): depth -7.3 in-band, y +0.1 (centered), z +2.5, cos 0.68",
+    "left_rf": "wy_left +0.12, dlx +0.02, rot (rx 0, ry +0.60), rf curls (0.40, 0.30): depth +1.8, y -19.3, z +0.2, cos 0.58",
+    "static_symmetry": "the press lines +0.1/-19.3 mm - the couple ~0, both pads in-band at matched heights"
+   },
+   "choreography_yaw_artifact": {
+    "variants": {
+     "fast_staged": "+10.4 deg (N 6.34/3.49)",
+     "slow_staged": "-32.7 deg (N 0/2.8 - the contact lost)",
+     "centered_lines": "+21.1 deg (N 12.75/3.47 - the strongest press, the worst twist)"
+    },
+    "diagnosis": "the engage yaw is the chaotic outcome of the ramp dynamics (the box is free to yaw on the table during the hand approach; the contact torques during the seat are \u00b110-30 deg regardless of the final press geometry)",
+    "why_training_cannot_fix": "the policy's episodes START at the knocked yaw - the yaw gate (<= 10 deg) fails at t=0 before the policy acts; the policy cannot re-zero the box yaw (no yaw authority in the action space)"
+   },
+   "the_two_part_closure": {
+    "stabilization_drift": "ROOT-CAUSED (v23): the right press-line offset (y +64..92 on the old mount) - FALSIFIED as the couple (the v23 -94% couple elimination did not close it), CONFIRMED as the eccentricity (the v24 centering improved slip 4-5x / yaw 2x)",
+    "choreography_yaw": "the remaining blocker - the engage yaw is the placement-dynamics artifact; the counter-balanced choreography (or a yaw-locking fixture) is the W6a/W6b follow-up"
+   },
+   "scorecard_final": {
+    "achieved_across_the_chain": "window up to 127 frames (6.4 s); peak up to 105 mm; final up to 100 mm; endface held; support clean - 5 of 7 gate clauses at the best round (v22)",
+    "slip": "best 25-40 mm (v24, gate 10) - trend-confirmed with the centering",
+    "yaw": "best 18.5-28.4 deg (v24, gate 10) - the choreography artifact bounds it"
+   }
   }
  }
 }
