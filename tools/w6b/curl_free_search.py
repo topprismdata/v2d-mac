@@ -5,6 +5,8 @@ Criterion: >=2 pads within 25mm of the face rect per hand.
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+import json
+
 import numpy as np
 import mujoco
 
@@ -33,10 +35,12 @@ finger_qadr = {s: [m.jnt_qposadr[jid(f'{p}j{k}{sfx}')]
                for s, sfx in (('r',''), ('l','_left'))}
 
 rng = np.random.default_rng(77)
-N = 8000
+N = int(os.environ.get('CURL_FREE_N', '8000'))
 found = {'r': 0, 'l': 0}
 best = {'r': 1e9, 'l': 1e9}
 best_q = {'r': None, 'l': None}
+best_fingers = {'r': None, 'l': None}
+pairs = []
 
 for trial in range(N):
     for s in ('r','l'):
@@ -67,9 +71,22 @@ for trial in range(N):
             if vals[1] < best[s]:
                 best[s] = vals[1]
                 best_q[s] = d.qpos[arm_qadr[s]].copy()
+                # r18: persist the FULL pair (arm + fingers) — the pad
+                # state depends on both; arm-only seeds broke r13.7
+                pairs.append({
+                    'side': 'right' if s == 'r' else 'left',
+                    'arm': d.qpos[arm_qadr[s]].copy().tolist(),
+                    'fingers': d.qpos[finger_qadr[s]].copy().tolist(),
+                    'first_mm': round(float(vals[0]), 3),
+                    'second_mm': round(float(vals[1]), 3),
+                })
 
 print(f'N={N}: right found {found["r"]}, left {found["l"]}')
 for s in ('right','left'):
     k = 'r' if s=='right' else 'l'
     qs = str(np.round(best_q[k],3).tolist()) if best_q[k] is not None else 'none'
     print(f'{s}: best 2nd-pad {best[k]:.1f} mm | q = {qs}')
+out = os.path.join(REPO, 'runs/w6b/native_seed_pairs.json')
+with open(out, 'w') as fh:
+    json.dump({'N': N, 'n_pairs': len(pairs), 'pairs': pairs}, fh)
+print(f'wrote {out} ({len(pairs)} pairs)')

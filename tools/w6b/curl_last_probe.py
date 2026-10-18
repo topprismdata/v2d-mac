@@ -89,7 +89,7 @@ def finger_probe(model, data, side: str):
     tol = rd.R5_TOUCH_TOL_M
 
     f_jids = {f: [mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT,
-                                    f"{f}a{k}{suffix}") for k in range(4)]
+                                    f"{f}j{k}{suffix}") for k in range(4)]
               for f in FINGERS}
     f_qadr = {f: [model.jnt_qposadr[j] for j in f_jids[f]] for f in FINGERS}
     lo16 = np.array([model.jnt_range[j][0] for j in

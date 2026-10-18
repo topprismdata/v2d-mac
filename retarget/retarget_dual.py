@@ -85,6 +85,7 @@ Outputs: runs/w6b/report.json, runs/w6b/replay_frames.json,
 """
 from __future__ import annotations
 
+import itertools
 import json
 import sys
 from dataclasses import dataclass, field
@@ -138,6 +139,16 @@ R16_WRIST_TRIM = _os.environ.get("W6B_R16_WRIST_TRIM", "0") == "1"
 R17_BACKOFF_MM = float(_os.environ.get("W6B_R17_BACKOFF_MM", "0"))
 R17_BACKOFF_M = R17_BACKOFF_MM * 1e-3
 R17_ACTIVE = "W6B_R17_BACKOFF_MM" in _os.environ
+# r18 cut 6: terminal solve target swap — the r12.9 6D target becomes
+# the r13.6/r13.7 NATIVE seed pose (measured pad-in-band solutions on
+# the UR5e), solved by multi-restart DLS (>=50 random starts + the
+# approach-end warm start), convergence |e_p| < 2 mm AND |e_r| < 5 deg,
+# terminal window length自适应 to the 2.0 rad/s joint-rate ceiling.
+# r18 cut 7: burial semantics tightened to the docstring intent — proud
+# AND through both violate (dual columns old/new in the gate1 record).
+R18_NATIVE_TARGET = _os.environ.get("W6B_R18_NATIVE_TARGET", "0") == "1"
+R18_RATE_CEILING = float(_os.environ.get("W6B_R18_RATE_CEILING", "2.0"))
+R18_RESTARTS = int(_os.environ.get("W6B_R18_RESTARTS", "50"))
 SCENE_FILES = {"floating": rs.SCENE_XML,
                "ur5e": REPO / "grounding/assets/allegro_floating_ur5e.xml",
                "ur5e_side": REPO / "grounding/assets/allegro_floating_ur5e_side.xml"}
@@ -2188,6 +2199,244 @@ def classify_contacts(model, data, specs) -> dict:
     return out
 
 
+def _native_curl_sweep(model, data, spec: SideSpec, arm_q: np.ndarray):
+    """r18: per-finger seed-scaling curl sweep at a FROZEN native arm
+    pose; gate1-faithful objective (burial v2 + fwd axis + best in-band
+    pad distance).  Returns the best set and the standard seed's score
+    for comparison."""
+    import mujoco
+
+    suffix = "" if spec.side == "right" else "_left"
+    palm_bid = spec._palm_id
+    obj_body, box_geom, _, _ = obj_ids(model)
+    half = model.geom_size[box_geom].copy()
+    box_c = data.xpos[obj_body].copy()
+    bot, top = float(box_c[2] - half[2]), float(box_c[2] + half[2])
+    tol = R5_TOUCH_TOL_M
+    tips = [g for g in spec.tip_geoms if model.geom_contype[g] != 0]
+    f_jids = [mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT,
+                                f"{f}j{k}{suffix}")
+              for f in ("ff", "mf", "rf", "th") for k in range(4)]
+    f_qadr = [model.jnt_qposadr[j] for j in f_jids]
+    lo16 = model.jnt_range[f_jids][:, 0]
+    hi16 = model.jnt_range[f_jids][:, 1]
+    seed16 = np.clip(np.asarray(UR5E_TERMINAL_FINGERS[spec.side], float),
+                     lo16, hi16)
+    jids_arm = [mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, n)
+                for n in spec.wrist_joints]
+    arm_qadr = [model.jnt_qposadr[j] for j in jids_arm]
+
+    def score(curl16):
+        data.qpos[arm_qadr] = arm_q
+        data.qpos[f_qadr] = curl16
+        mujoco.mj_forward(model, data)
+        best = np.inf
+        n_rect = 0
+        buried_v2 = False
+        centers = []
+        in_band_gaps = []
+        for g in tips:
+            px, py, pz = (float(v) for v in data.geom_xpos[g])
+            sv = px - spec.face_sign * float(half[0])
+            dy = max(abs(py) - float(half[1]), 0.0)
+            dz = max(bot - pz, pz - top, 0.0)
+            gap = abs(sv) if (dy == 0.0 and dz == 0.0) else float(
+                np.hypot(np.hypot(sv, dy), dz))
+            if dy == 0.0 and dz == 0.0 and abs(sv) > tol:
+                buried_v2 = True
+            in_band = (bot + 0.4 * 2 * half[2]) <= pz <= (top - 0.01)
+            if in_band:
+                in_band_gaps.append(gap)
+                if gap <= tol:
+                    n_rect += 1
+            best = min(best, gap if in_band else gap + 0.5)
+            centers.append(data.geom_xpos[g].copy())
+        ctr = np.mean(centers, axis=0)
+        fwd = ctr - data.xpos[palm_bid]
+        fwd = fwd / max(float(np.linalg.norm(fwd)), 1e-12)
+        inward = np.array([-spec.face_sign, 0.0, 0.0])
+        fwd_deg = float(np.degrees(np.arccos(np.clip(
+            float(fwd @ inward), -1.0, 1.0))))
+        sc = (1e6 * int(buried_v2) + 1e5 * int(fwd_deg > 35.0)
+              + best)
+        return (sc, best, n_rect, buried_v2, fwd_deg,
+                sorted(in_band_gaps))
+
+    seed_score, seed_gap, seed_rect, _, seed_fwd, _ = score(seed16)
+    best = {"score": seed_score, "gap_mm": round(seed_gap, 3),
+            "n_in_rect": seed_rect, "buried": False,
+            "fwd_deg": round(seed_fwd, 1), "curl16": seed16.copy(),
+            "curl_scale": "1.0x seed (standard)", "seed_score": seed_score}
+    # r18: the curl-free search's solutions used INDEPENDENT random
+    # finger draws (uniform proximal 0-0.3, medial/distal 0-0.9) — the
+    # scaled-seed family is a narrow subset of that.  Repeat the r13.6
+    # method at this frozen arm pose: N random finger draws, keep
+    # >=2 pads within the r13.6 band (10/25 mm), minimise the 2nd-pad
+    # distance, then verify against the strict gate1 criteria.
+    rng_f = np.random.default_rng(77)
+    N_F = 20000
+    strict_best = None   # >=2 pads within 10 mm (the r13.6 tight class)
+    loose_best = None    # >=2 pads within 25 mm (the r13.6 loose class)
+    pan_qadr = model.jnt_qposadr[mujoco.mj_name2id(
+        model, mujoco.mjtObj.mjOBJ_JOINT,
+        f"ur5e_{'r' if spec.side == 'right' else 'l'}_shoulder_pan_joint")]
+    # the original search keyed its draw pattern on
+    # (qposadr - shoulder_pan_qposadr) % 4 — replicate exactly (the
+    # working finger family lives in that absolute-address pattern)
+    for _ in range(N_F):
+        curl16 = np.empty(16)
+        for i, adr in enumerate(f_qadr):
+            curl16[i] = (rng_f.uniform(0.0, 0.3)
+                         if (adr - pan_qadr) % 4 == 0
+                         else rng_f.uniform(0.0, 0.9))
+        curl16 = np.clip(curl16, lo16, hi16)
+        (sc, gap, n_rect, b2, fwd_deg,
+         gaps_sorted) = score(curl16)
+        # r13.6 criterion: >=2 pads in-band; rank by the 2nd-best gap
+        if len(gaps_sorted) >= 2 and not b2:
+            second = gaps_sorted[1]
+            cand = {"score": sc, "gap_mm": round(gaps_sorted[0], 3),
+                    "second_mm": round(second, 2),
+                    "n_in_rect": n_rect, "buried": b2,
+                    "fwd_deg": round(fwd_deg, 1),
+                    "curl16": curl16.copy(),
+                    "curl_scale": "random (r13.6 method)",
+                    "seed_score": seed_score}
+            if second <= 25.0:
+                if loose_best is None or second < loose_best["second_mm"]:
+                    loose_best = cand
+            if second <= 10.0:
+                if strict_best is None or second < strict_best["second_mm"]:
+                    strict_best = cand
+    # prefer the tight (10 mm) class, then the loose (25 mm) class; each
+    # carries its honest pad distances — the gate scores R5 as-is
+    if strict_best is not None:
+        best = strict_best
+    elif loose_best is not None and loose_best["score"] < best["score"]:
+        best = loose_best
+    return best
+
+
+def _finger_polish(model, data, spec: SideSpec, arm_q: np.ndarray,
+                   f_start: np.ndarray):
+    """r18: continuous coordinate-descent polish of the FULL terminal
+    configuration (6 arm + 16 finger joints) starting from the measured
+    native pair — pad-in-band is configuration-specific (the 2 mm/5 deg
+    pose tolerance leaves tens of mm of pad displacement via the
+    arm-joint distribution), so the pair's own joints are the start and
+    the polish tightens them toward R5.  Objective = the gate1-faithful
+    composite: burial v2 (hard), n_rect reward, fwd axis (hard), then
+    the 2nd-smallest in-band gap."""
+    import mujoco
+
+    suffix = "" if spec.side == "right" else "_left"
+    palm_bid = spec._palm_id
+    obj_body, box_geom, _, _ = obj_ids(model)
+    half = model.geom_size[box_geom].copy()
+    box_c = data.xpos[obj_body].copy()
+    bot, top = float(box_c[2] - half[2]), float(box_c[2] + half[2])
+    tol = R5_TOUCH_TOL_M
+    tips = [g for g in spec.tip_geoms if model.geom_contype[g] != 0]
+    f_jids = [mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT,
+                                f"{f}j{k}{suffix}")
+              for f in ("ff", "mf", "rf", "th") for k in range(4)]
+    f_qadr = [model.jnt_qposadr[j] for j in f_jids]
+    lo16 = model.jnt_range[f_jids][:, 0]
+    hi16 = model.jnt_range[f_jids][:, 1]
+    arm_qadr = [model.jnt_qposadr[j] for j in
+                [mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, n)
+                 for n in spec.wrist_joints]]
+    lo_arm = model.jnt_range[
+        [mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, n)
+         for n in spec.wrist_joints]][:, 0]
+    hi_arm = model.jnt_range[
+        [mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, n)
+         for n in spec.wrist_joints]][:, 1]
+    # r18: the polish must live in the COMMANDABLE set — the holdable-band
+    # rule (gate4 winding physics) floors the finger commands at
+    # [lo + 2|forcerange|/kp, hi - 2|forcerange|/kp]; an unclamped polish
+    # optimum is unexecutable (measured: 0.022 mm command optimum ->
+    # 516.9 mm after the clamp)
+    flo = model.actuator_ctrlrange[spec.finger_act_id, 0]
+    fhi = model.actuator_ctrlrange[spec.finger_act_id, 1]
+    kp = model.actuator_gainprm[spec.finger_act_id, 0]
+    cap = 2.0 * np.abs(model.actuator_forcerange[spec.finger_act_id, 0]) / kp
+    band_lo, band_hi = flo + cap, fhi - cap
+    degenerate = band_lo >= band_hi
+    band_lo = np.where(degenerate, flo, band_lo)
+    band_hi = np.where(degenerate, fhi, band_hi)
+
+    def score(arm_q, curl16):
+        curl16 = np.clip(curl16, band_lo, band_hi)
+        data.qpos[arm_qadr] = arm_q
+        data.qpos[f_qadr] = np.clip(curl16, lo16, hi16)
+        mujoco.mj_forward(model, data)
+        gaps = []
+        buried_v2 = False
+        centers = []
+        for g in tips:
+            px, py, pz = (float(v) for v in data.geom_xpos[g])
+            sv = px - spec.face_sign * float(half[0])
+            dy = max(abs(py) - float(half[1]), 0.0)
+            dz = max(bot - pz, pz - top, 0.0)
+            gap = abs(sv) if (dy == 0.0 and dz == 0.0) else float(
+                np.hypot(np.hypot(sv, dy), dz))
+            in_band = (bot + 0.4 * 2 * half[2]) <= pz <= (top - 0.01)
+            if in_band and abs(sv) > tol:
+                buried_v2 = True
+            if in_band:
+                gaps.append(gap)
+            centers.append(data.geom_xpos[g].copy())
+        gaps.sort()
+        # consistent mm units; the no-in-band fallback (1000 mm) is
+        # punitive so the descent can never profit by leaving the band
+        second = gaps[1] if len(gaps) >= 2 else (gaps[0] + 500.0
+                                                 if gaps else 1000.0)
+        best = gaps[0] if gaps else 1000.0
+        ctr = np.mean(centers, axis=0)
+        fwd = ctr - data.xpos[palm_bid]
+        fwd = fwd / max(float(np.linalg.norm(fwd)), 1e-12)
+        inward = np.array([-spec.face_sign, 0.0, 0.0])
+        fwd_deg = float(np.degrees(np.arccos(np.clip(
+            float(fwd @ inward), -1.0, 1.0))))
+        n_rect = sum(1 for v in gaps if v <= tol)
+        sc = (1e6 * int(buried_v2) - 50.0 * n_rect
+              + 1e5 * int(fwd_deg > 35.0) + second * 10.0 + best)
+        return sc, best, n_rect, buried_v2
+
+    arm_x = np.clip(np.asarray(arm_q, float), lo_arm, hi_arm)
+    x = np.clip(np.asarray(f_start, float), lo16, hi16)
+    sc, gap, n_rect, _ = score(arm_x, x)
+    evals = 1
+    for step in (0.05, 0.02, 0.008, 0.003):
+        improved = True
+        while improved:
+            improved = False
+            for j in range(6):
+                for sgn in (+1.0, -1.0):
+                    cand = arm_x.copy()
+                    cand[j] = np.clip(arm_x[j] + sgn * step,
+                                      lo_arm[j], hi_arm[j])
+                    s2, g2, r2, _ = score(cand, x)
+                    evals += 1
+                    if s2 < sc:
+                        arm_x, sc, gap, n_rect = cand, s2, g2, r2
+                        improved = True
+            for j in range(16):
+                for sgn in (+1.0, -1.0):
+                    cand = x.copy()
+                    cand[j] = np.clip(x[j] + sgn * step, lo16[j], hi16[j])
+                    s2, g2, r2, _ = score(arm_x, cand)
+                    evals += 1
+                    if s2 < sc:
+                        x, sc, gap, n_rect = cand, s2, g2, r2
+                        improved = True
+        if n_rect >= 2 and gap <= tol:
+            break
+    x = np.clip(x, band_lo, band_hi)
+    return arm_x, x, sc, gap, n_rect, evals
+
+
 def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
     """Command both hands through the resampled trajectory; record everything
     the gates read.  Only data.ctrl is written inside the loop."""
@@ -2446,6 +2695,7 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
         # r17: per-pad burial diagnostics (through-plane depth = the
         # crush source Main's normal-backoff cut targets)
         pad_burial = {}
+        buried_v2 = False
         for g in pad_geoms:
             n4 = _gname(model, g)
             px4 = float(data.geom_xpos[g][0])
@@ -2454,7 +2704,12 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
                 "buried": bool(sv4 < -tol),
                 "through_mm": round(sv4 * 1e3, 3),
             }
-        return best, buried, fwd_deg, per_pad, ctr.tolist(), pad_burial
+            # r18 cut 7: tightened burial semantics per the docstring
+            # intent — proud AND through both violate (|sv| > tol)
+            if abs(sv4) > tol:
+                buried_v2 = True
+        return (best, buried, fwd_deg, per_pad, ctr.tolist(), pad_burial,
+                buried_v2)
 
     out = {}
     for side, spec in specs.items():
@@ -2465,13 +2720,14 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
         data.qpos[spec.wrist_qadr] = cmds[side]["wrist"][-1]
         data.qpos[spec.finger_qadr] = cmds[side]["finger"][-1]
         _mj.mj_forward(model, data)
-        dist, buried, fwd_deg, per_pad, ctr, pad_burial = measure(spec, coll)
+        dist, buried, fwd_deg, per_pad, ctr, pad_burial, buried_v2 = measure(spec, coll)
         # executed final state: contact-physics evidence
         data.qpos[:] = cmds[side]["exec_qpos"][-1]
         _ba = box_free_qadr(model)
         data.qpos[_ba:_ba + 7] = cmds[side]["exec_obj"][-1]
         _mj.mj_forward(model, data)
-        dist_e, buried_e, fwd_deg_e, per_pad_e, ctr_e, pad_burial_e = measure(spec, coll)
+        (dist_e, buried_e, fwd_deg_e, per_pad_e, ctr_e, pad_burial_e,
+         buried_v2_e) = measure(spec, coll)
         # GPT round-3 upgrade: >= 2 pads per hand inside the rectangle
         n_in_rect = sum(1 for v in per_pad.values() if v <= tol * 1e3)
         out[side] = {
@@ -2486,6 +2742,15 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
             "n_pads_in_rect": n_in_rect,
             "n_pads_required": 2,
             "pad_center_buried": bool(buried),
+            "pad_center_buried_v2": bool(buried_v2),
+            "pass_v2": bool(n_in_rect >= 2 and not buried_v2
+                            and fwd_deg <= FORWARD_AXIS_MAX_DEG),
+            "burial_semantics_note": (
+                "r18 cut 7: the legacy pad_center_buried flag is "
+                "side-asymmetric (fires on pads SHORT of the plane and "
+                "passes through-pads — measured r17); v2 = docstring "
+                "intent (proud AND through both violate, |sv| > tol). "
+                "Both columns reported; v2 is the tightened semantics"),
             "r5_tol_m": tol,
             "forward_axis_deg": fwd_deg,
             "forward_axis_max_deg": FORWARD_AXIS_MAX_DEG,
@@ -2505,6 +2770,7 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
                 "rect_dist_mm": dist_e * 1e3,
                 "per_pad_rect_mm": per_pad_e,
                 "per_pad_burial": pad_burial_e,
+                "pad_center_buried_v2": bool(buried_v2_e),
                 "forward_axis_deg": fwd_deg_e,
                 "pad_centroid_m": ctr_e,
             },
@@ -3194,6 +3460,8 @@ def main() -> int:
     if verified_grasp is not None:
         vg = measure_verified_grasp()
         n_term = n_blend + n_hold
+        r18_solve_rec = {}
+        native_done = False
         for s2 in VIDEOS:
             spec2 = specs[s2]
             pb2 = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY,
@@ -3206,6 +3474,22 @@ def main() -> int:
             hi2 = model.jnt_range[jids2][:, 1]
             tgt_pos = np.asarray(vg[s2]["pos"], float)
             tgt_R = np.asarray(vg[s2]["R"], float)
+            if R18_NATIVE_TARGET:
+                # r18 cut 6: the floating verified-grasp pose extrapolated
+                # to the UR5e flange frame is unreachable (measured r17:
+                # |e_r| = 177/163 deg after 200 iterations).  Target the
+                # r13.6/r13.7 NATIVE seed pose instead — FK of the
+                # curl-free-search joints, measured in the production
+                # scene, self-consistent by construction.
+                side_key6 = "r" if s2 == "right" else "l"
+                tgt_q6 = np.asarray(UR5E_NATIVE_SEED[side_key6], float)
+                data.qpos[qadr2] = tgt_q6
+                mujoco.mj_kinematics(model, data)
+                mujoco.mj_comPos(model, data)
+                tgt_pos = data.xpos[pb2].copy()
+                Rq6 = np.zeros(9)
+                mujoco.mju_quat2Mat(Rq6, data.xquat[pb2])
+                tgt_R = Rq6.reshape(3, 3).copy()
             if R17_BACKOFF_MM > 0.0:
                 # r17: terminal normal backoff — retract the target along
                 # the face normal (calibration semantics: a constant
@@ -3219,119 +3503,292 @@ def main() -> int:
             _st = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE,
                                     "attachment_site")
             off_world = data.xpos[pb2] - data.site_xpos[_st]
+            if R18_NATIVE_TARGET:
+                # r18 cut 6: multi-restart DLS (approach-end warm start +
+                # R18_RESTARTS seeded random starts), convergence
+                # |e_p| < 2 mm AND |e_r| < 5 deg; among the successes the
+                # solution closest to the approach end minimises the
+                # terminal blend jump
+                from scipy.spatial.transform import Rotation as _Rot6
+                rng6 = np.random.default_rng(1818)
+                q_app = cmds_global[s2]["wrist"][n_ctrl - 1].copy()
+                best6 = None
+                n_conv6 = 0
+                for attempt in range(R18_RESTARTS + 1):
+                    q = q_app.copy() if attempt == 0 else \
+                        rng6.uniform(lo2, hi2)
+                    sol6 = None
+                    for _it in range(200):
+                        data.qpos[qadr2] = q
+                        mujoco.mj_kinematics(model, data)
+                        mujoco.mj_comPos(model, data)
+                        e_p6 = tgt_pos - data.xpos[pb2]
+                        R6 = np.zeros(9)
+                        mujoco.mju_quat2Mat(R6, data.xquat[pb2])
+                        e_r6 = _Rot6.from_matrix(
+                            tgt_R @ R6.reshape(3, 3).T).as_rotvec()
+                        err6 = np.concatenate([e_p6, e_r6])
+                        if (np.linalg.norm(e_p6) < 2e-3
+                                and np.linalg.norm(e_r6) < np.deg2rad(5.0)):
+                            sol6 = q.copy()
+                            break
+                        jacp6 = np.zeros((3, model.nv))
+                        jacr6 = np.zeros((3, model.nv))
+                        mujoco.mj_jacBody(model, data, jacp6, jacr6, pb2)
+                        J6 = np.vstack([jacp6[:, vjad2], jacr6[:, vjad2]])
+                        dq6 = np.linalg.solve(J6 @ J6.T + 1e-4 * np.eye(6),
+                                              err6)
+                        q = np.clip(q + J6.T @ dq6, lo2, hi2)
+                    if sol6 is not None:
+                        n_conv6 += 1
+                        jump6 = float(np.abs(sol6 - q_app).max())
+                        if best6 is None or jump6 < best6[0]:
+                            best6 = (jump6, sol6, e_p6, e_r6)
+                r18_solve_rec[s2] = {
+                    "converged": bool(best6 is not None),
+                    "n_converged_attempts": int(n_conv6),
+                    "attempts": int(R18_RESTARTS + 1),
+                    "min_jump_rad": (round(float(best6[0]), 4)
+                                     if best6 else None),
+                    "final_e_p_mm": (round(float(
+                        np.linalg.norm(best6[2]) * 1000), 3)
+                        if best6 else None),
+                    "final_e_r_deg": (round(float(np.degrees(
+                        np.linalg.norm(best6[3]))), 2) if best6 else None),
+                }
+                native_done = best6 is not None
+                if native_done:
+                    q = best6[1]
+                    # r18 completion: the native seed is a (arm, fingers)
+                    # PAIR — the curl-free search's pad-in-band solutions
+                    # depend on BOTH (arm-only seeds broke r13.7's right).
+                    pairs_path = REPO / "runs/w6b/native_seed_pairs.json"
+                    native_pairs = (json.loads(pairs_path.read_text())
+                                    ["pairs"] if pairs_path.is_file()
+                                    else [])
+                    pair = min((p for p in native_pairs
+                                if p["side"] == s2),
+                               key=lambda p: p["second_mm"], default=None)
+                    suffix16 = "" if s2 == "right" else "_left"
+                    fj16 = [mujoco.mj_name2id(
+                        model, mujoco.mjtObj.mjOBJ_JOINT,
+                        f"{f}a{k}{suffix16}") for f in
+                        ("ff", "mf", "rf", "th") for k in range(4)]
+                    lo16_f = model.jnt_range[fj16][:, 0]
+                    hi16_f = model.jnt_range[fj16][:, 1]
+                    f_start = (np.clip(np.asarray(pair["fingers"], float),
+                                       lo16_f, hi16_f)
+                               if pair is not None else None)
+                    # blend the pair's fingers as the terminal curl, then
+                    # continuously polish the FULL configuration (arm +
+                    # fingers, starting from the PAIR's exact joints) to
+                    # pull the pads from the r13.6 band toward R5.
+                    (arm_pol, pol_curl, pol_score, pol_gap, pol_rect,
+                     pol_evals) = _finger_polish(
+                        model, data, spec2,
+                        np.asarray(pair["arm"], float)
+                        if pair is not None else q,
+                        f_start if f_start is not None
+                        else np.zeros(16))
+                    r18_solve_rec[s2]["pair"] = (None if pair is None else {
+                        "first_mm": pair["first_mm"],
+                        "second_mm": pair["second_mm"]})
+                    r18_solve_rec[s2]["finger_polish"] = {
+                        "gap_mm": round(pol_gap, 3),
+                        "n_in_rect": pol_rect,
+                        "score": round(float(pol_score), 2),
+                        "evals": int(pol_evals),
+                    }
+                    if pair is not None:
+                        q = arm_pol
+                        cmds_global[s2]["finger_target_override"] = pol_curl
+
+                    # r18: adaptive terminal window — the blend length
+                    # grows until the per-frame joint rate complies with
+                    # the 2.0 rad/s ceiling (the approach segment is the
+                    # open-loop scheduling domain); the window ramps
+                    # approach-end -> native pose (smoothstep), then holds
+                    delta6 = float(np.abs(q - q_app).max())
+                    blend_needed = int(np.ceil(
+                        delta6 / (R18_RATE_CEILING / 20.0))) + 1
+                    n_blend6 = max(n_blend, blend_needed)
+                    if n_blend6 > n_blend:
+                        extra = n_blend6 - n_blend
+                        for arr_key in ("wrist", "finger"):
+                            arr = cmds_global[s2][arr_key]
+                            pad6 = np.tile(arr[-1:], (extra, 1))
+                            cmds_global[s2][arr_key] = np.concatenate(
+                                [arr, pad6], axis=0)
+                    ramp6 = 0.5 * (1.0 - np.cos(
+                        np.linspace(0.0, np.pi, n_blend6)))
+                    for k in range(n_blend6):
+                        idx = n_ctrl + k
+                        if idx < cmds_global[s2]["wrist"].shape[0]:
+                            cmds_global[s2]["wrist"][idx] = \
+                                q_app + ramp6[k] * (q - q_app)
+                    for k in range(n_hold):
+                        idx = n_ctrl + n_blend6 + k
+                        if idx < cmds_global[s2]["wrist"].shape[0]:
+                            cmds_global[s2]["wrist"][idx] = q
+                    r18_solve_rec[s2]["blend_frames"] = int(n_blend6)
+                    r18_solve_rec[s2]["rate_ceiling_rad_s"] = R18_RATE_CEILING
+                    r18_solve_rec[s2]["pad_note"] = (
+                        "pad state at the solved configuration is "
+                        "measured by the gate1 record (per_pad_burial "
+                        "v2 semantics)")
+                else:
+                    n_blend6 = n_blend
             # DLS from the last approach pose toward the verified palm
-            q = cmds_global[s2]["wrist"][n_ctrl - 1].copy()
-            for _it in range(200):
-                data.qpos[qadr2] = q
-                mujoco.mj_kinematics(model, data)
-                mujoco.mj_comPos(model, data)
-                # the site tracks (verified palm - off_world)
-                site_tgt = tgt_pos - off_world
-                e_p = site_tgt - data.site_xpos[_st]
-                e_r = _Rot.from_matrix(
-                    tgt_R @ data.site_xmat[_st].reshape(3, 3).T
-                ).as_rotvec()
-                err = np.concatenate([e_p, e_r])
-                if np.linalg.norm(err) < 5e-4:
-                    break
-                jacp = np.zeros((3, model.nv))
-                jacr = np.zeros((3, model.nv))
-                mujoco.mj_jacSite(model, data, jacp, jacr, _st)
-                J = np.vstack([jacp[:, vjad2], jacr[:, vjad2]])
-                dq = np.linalg.solve(J @ J.T + 1e-4 * np.eye(6), err)
-                q = np.clip(q + J.T @ dq, lo2, hi2)
-            # hold the terminal IK solution for the blend+hold window
-            for k in range(n_term):
-                idx = n_ctrl + k
-                if idx < cmds_global[s2]["wrist"].shape[0]:
-                    cmds_global[s2]["wrist"][idx] = q
-            print(f"    r12.9 terminal IK {s2}: "
-                  f"final |e_p|={np.linalg.norm(e_p):.4f} m, "
-                  f"|e_r|={np.linalg.norm(e_r):.4f}")
-
-            if R16_WRIST_TRIM and s2 == "left":
-                # r16 cut 3: left terminal wrist trim.  The probe measured
-                # the left pads 19.0 mm off the rectangle with the finger
-                # axis already 22.9 deg from the face inward normal — a
-                # j4-j6 small-domain scan against the gate1 pad metric
-                # (raw leg; the registered leg re-derives downstream in
-                # the gate5 assembly).  Applied as constant wrist offsets
-                # over the blend+hold window.
-                obj_body3, box_geom3, _, _ = obj_ids(model)
-                half3 = model.geom_size[box_geom3].copy()
-                box_c3 = data.xpos[obj_body3].copy()
-                bot3 = float(box_c3[2] - half3[2])
-                top3 = float(box_c3[2] + half3[2])
-                tips3 = [g for g in spec2.tip_geoms
-                         if model.geom_contype[g] != 0]
-                tol3 = R5_TOUCH_TOL_M
-                # the scan must score the TERMINAL finger posture (the
-                # blend target), not the approach-end retargeted curl
-                f_cmd = np.clip(
-                    np.asarray(UR5E_TERMINAL_FINGERS[s2], float),
-                    model.actuator_ctrlrange[spec2.finger_act_id, 0],
-                    model.actuator_ctrlrange[spec2.finger_act_id, 1])
-
-                def _pad_score(arm_q):
-                    data.qpos[qadr2] = arm_q
-                    data.qpos[spec2.finger_qadr] = f_cmd
-                    mujoco.mj_forward(model, data)
-                    best = np.inf
-                    n_buried = 0
-                    centers = []
-                    for g3 in tips3:
-                        px, py, pz = (float(v) for v in
-                                      data.geom_xpos[g3])
-                        sv = px - spec2.face_sign * float(half3[0])
-                        dy = max(abs(py) - float(half3[1]), 0.0)
-                        dz = max(bot3 - pz, pz - top3, 0.0)
-                        buried3 = False
-                        if dy == 0.0 and dz == 0.0:
-                            # gate1 burial semantics: a pad centre pushed
-                            # past the plane by more than tol is a FAIL
-                            if -sv * spec2.face_sign < -tol3:
-                                buried3 = True
-                                n_buried += 1
-                            gap3 = abs(sv)
-                        else:
-                            gap3 = float(np.hypot(np.hypot(sv, dy), dz))
-                        in_band3 = (bot3 + 0.4 * 2 * half3[2]) <= pz \
-                            <= (top3 - 0.01)
-                        best = min(best, gap3 if in_band3 else gap3 + 0.5)
-                        centers.append(data.geom_xpos[g3].copy())
-                    ctr3 = np.mean(centers, axis=0)
-                    fwd3 = ctr3 - data.xpos[spec2._palm_id]
-                    fwd3 = fwd3 / max(float(np.linalg.norm(fwd3)), 1e-12)
-                    inward3 = np.array([-spec2.face_sign, 0.0, 0.0])
-                    fwd_deg3 = float(np.degrees(np.arccos(np.clip(
-                        float(fwd3 @ inward3), -1.0, 1.0))))
-                    # lexicographic: burial and the fwd-axis leg are hard
-                    # gate clauses (huge penalties); within the feasible
-                    # set the best in-band pad distance is the objective
-                    # (cut 3's own target — the mm gap)
-                    return (1e6 * n_buried
-                            + (1e4 if fwd_deg3 > 35.0 else 0.0)
-                            + best * 1000.0)
-
-                base_score = _pad_score(q)
-                grid3 = np.deg2rad(np.arange(-30.0, 31.0, 5.0))
-                best_off, best_s = np.zeros(3), base_score
-                for o4 in grid3:
-                    for o5 in grid3:
-                        for o6 in grid3:
-                            off = np.array([0.0, 0.0, 0.0, o4, o5, o6])
-                            s3 = _pad_score(np.clip(q + off, lo2, hi2))
-                            if s3 < best_s:
-                                best_s, best_off = s3, off
-                q_trim = np.clip(q + best_off, lo2, hi2)
+            # (r18: skipped when the native multi-restart solved it)
+            if not (R18_NATIVE_TARGET and native_done):
+                q = cmds_global[s2]["wrist"][n_ctrl - 1].copy()
+                for _it in range(200):
+                    data.qpos[qadr2] = q
+                    mujoco.mj_kinematics(model, data)
+                    mujoco.mj_comPos(model, data)
+                    # the site tracks (verified palm - off_world)
+                    site_tgt = tgt_pos - off_world
+                    e_p = site_tgt - data.site_xpos[_st]
+                    e_r = _Rot.from_matrix(
+                        tgt_R @ data.site_xmat[_st].reshape(3, 3).T
+                    ).as_rotvec()
+                    err = np.concatenate([e_p, e_r])
+                    if np.linalg.norm(err) < 5e-4:
+                        break
+                    jacp = np.zeros((3, model.nv))
+                    jacr = np.zeros((3, model.nv))
+                    mujoco.mj_jacSite(model, data, jacp, jacr, _st)
+                    J = np.vstack([jacp[:, vjad2], jacr[:, vjad2]])
+                    dq = np.linalg.solve(J @ J.T + 1e-4 * np.eye(6), err)
+                    q = np.clip(q + J.T @ dq, lo2, hi2)
+                # hold the terminal IK solution for the blend+hold window
                 for k in range(n_term):
                     idx = n_ctrl + k
                     if idx < cmds_global[s2]["wrist"].shape[0]:
-                        cmds_global[s2]["wrist"][idx] = q_trim
-                print(f"    r16 wrist trim left: offsets "
-                      f"{np.rad2deg(best_off).round(1).tolist()} deg, "
-                      f"pad score {base_score*1000:.2f} -> "
-                      f"{best_s*1000:.2f} mm (raw)")
+                        cmds_global[s2]["wrist"][idx] = q
+                print(f"    r12.9 terminal IK {s2}: "
+                      f"final |e_p|={np.linalg.norm(e_p):.4f} m, "
+                      f"|e_r|={np.linalg.norm(e_r):.4f}")
+            else:
+                print(f"    r18 native-target solve {s2}: "
+                      f"converged n={r18_solve_rec[s2]['n_converged_attempts']}"
+                      f"/{r18_solve_rec[s2]['attempts']}, "
+                      f"|e_p|={r18_solve_rec[s2]['final_e_p_mm']} mm, "
+                      f"|e_r|={r18_solve_rec[s2]['final_e_r_deg']} deg, "
+                      f"blend={r18_solve_rec[s2]['blend_frames']} frames")
+        if R16_WRIST_TRIM and s2 == "left":
+            # r16 cut 3: left terminal wrist trim.  The probe measured
+            # the left pads 19.0 mm off the rectangle with the finger
+            # axis already 22.9 deg from the face inward normal — a
+            # j4-j6 small-domain scan against the gate1 pad metric
+            # (raw leg; the registered leg re-derives downstream in
+            # the gate5 assembly).  Applied as constant wrist offsets
+            # over the blend+hold window.
+            obj_body3, box_geom3, _, _ = obj_ids(model)
+            half3 = model.geom_size[box_geom3].copy()
+            box_c3 = data.xpos[obj_body3].copy()
+            bot3 = float(box_c3[2] - half3[2])
+            top3 = float(box_c3[2] + half3[2])
+            tips3 = [g for g in spec2.tip_geoms
+                     if model.geom_contype[g] != 0]
+            tol3 = R5_TOUCH_TOL_M
+            # the scan must score the TERMINAL finger posture (the
+            # blend target), not the approach-end retargeted curl
+            f_cmd = np.clip(
+                np.asarray(UR5E_TERMINAL_FINGERS[s2], float),
+                model.actuator_ctrlrange[spec2.finger_act_id, 0],
+                model.actuator_ctrlrange[spec2.finger_act_id, 1])
+
+            def _pad_score(arm_q):
+                data.qpos[qadr2] = arm_q
+                data.qpos[spec2.finger_qadr] = f_cmd
+                mujoco.mj_forward(model, data)
+                best = np.inf
+                n_buried = 0
+                centers = []
+                for g3 in tips3:
+                    px, py, pz = (float(v) for v in
+                                  data.geom_xpos[g3])
+                    sv = px - spec2.face_sign * float(half3[0])
+                    dy = max(abs(py) - float(half3[1]), 0.0)
+                    dz = max(bot3 - pz, pz - top3, 0.0)
+                    buried3 = False
+                    if dy == 0.0 and dz == 0.0:
+                        # gate1 burial semantics: a pad centre pushed
+                        # past the plane by more than tol is a FAIL
+                        if -sv * spec2.face_sign < -tol3:
+                            buried3 = True
+                            n_buried += 1
+                        gap3 = abs(sv)
+                    else:
+                        gap3 = float(np.hypot(np.hypot(sv, dy), dz))
+                    in_band3 = (bot3 + 0.4 * 2 * half3[2]) <= pz \
+                        <= (top3 - 0.01)
+                    best = min(best, gap3 if in_band3 else gap3 + 0.5)
+                    centers.append(data.geom_xpos[g3].copy())
+                ctr3 = np.mean(centers, axis=0)
+                fwd3 = ctr3 - data.xpos[spec2._palm_id]
+                fwd3 = fwd3 / max(float(np.linalg.norm(fwd3)), 1e-12)
+                inward3 = np.array([-spec2.face_sign, 0.0, 0.0])
+                fwd_deg3 = float(np.degrees(np.arccos(np.clip(
+                    float(fwd3 @ inward3), -1.0, 1.0))))
+                # lexicographic: burial and the fwd-axis leg are hard
+                # gate clauses (huge penalties); within the feasible
+                # set the best in-band pad distance is the objective
+                # (cut 3's own target — the mm gap)
+                return (1e6 * n_buried
+                        + (1e4 if fwd_deg3 > 35.0 else 0.0)
+                        + best * 1000.0)
+
+            base_score = _pad_score(q)
+            grid3 = np.deg2rad(np.arange(-30.0, 31.0, 5.0))
+            best_off, best_s = np.zeros(3), base_score
+            for o4 in grid3:
+                for o5 in grid3:
+                    for o6 in grid3:
+                        off = np.array([0.0, 0.0, 0.0, o4, o5, o6])
+                        s3 = _pad_score(np.clip(q + off, lo2, hi2))
+                        if s3 < best_s:
+                            best_s, best_off = s3, off
+            q_trim = np.clip(q + best_off, lo2, hi2)
+            for k in range(n_term):
+                idx = n_ctrl + k
+                if idx < cmds_global[s2]["wrist"].shape[0]:
+                    cmds_global[s2]["wrist"][idx] = q_trim
+            print(f"    r16 wrist trim left: offsets "
+                  f"{np.rad2deg(best_off).round(1).tolist()} deg, "
+                  f"pad score {base_score*1000:.2f} -> "
+                  f"{best_s*1000:.2f} mm (raw)")
+        if R18_NATIVE_TARGET:
+            # apply finger-target overrides (the curl sweep's solution
+            # becomes the side's terminal finger target).  The write spans
+            # the FULL remaining stream — the adaptive window may have
+            # extended it beyond n_ctrl + n_blend + n_hold, and tail
+            # frames left on the standard seed made the terminal frame
+            # read the seed (measured r18)
+            for s in VIDEOS:
+                tgt16 = cmds_global[s].pop("finger_target_override", None)
+                if tgt16 is None:
+                    continue
+                stream = cmds_global[s]["finger"]
+                f0 = stream[n_ctrl - 1]
+                span = stream.shape[0] - n_ctrl
+                ramp_f = 0.5 * (1.0 - np.cos(
+                    np.linspace(0.0, np.pi, span)))
+                for k in range(span):
+                    stream[n_ctrl + k] = f0 + ramp_f[k] * (tgt16 - f0)
+            # the terminal window is COMMON — both sides share one
+            # timeline; pad the shorter side by holding its terminal pose
+            max_len = max(cmds_global[s]["wrist"].shape[0] for s in VIDEOS)
+            for s in VIDEOS:
+                for k2 in ("wrist", "finger"):
+                    arr = cmds_global[s][k2]
+                    if arr.shape[0] < max_len:
+                        pad6 = np.tile(arr[-1:], (max_len - arr.shape[0], 1))
+                        cmds_global[s][k2] = np.concatenate([arr, pad6],
+                                                            axis=0)
+                r18_solve_rec[s]["window_frames_common"] = int(max_len)
+
 
     # r13.7: overwrite the terminal arm commands with the NATIVE seed
     # (the curl-free search found configurations where the pads land in
@@ -4333,6 +4790,50 @@ def main() -> int:
             },
             "pad_burial": {s: report["per_side"][s]["gate1_final_touch"]["per_pad_burial"]
                            for s in VIDEOS},
+        }
+    if R18_NATIVE_TARGET:
+        # r18 ledger: terminal solve target swap + burial v2
+        report["r18_native_target"] = {
+            "config": {
+                "env": "W6B_R18_NATIVE_TARGET=1",
+                "target": ("r13.6/r13.7 native seed pose (FK of the "
+                           "curl-free-search joints, measured in the "
+                           "production scene) replacing the floating "
+                           "verified-grasp extrapolation whose "
+                           "unreachability r17 quantified (|e_r| 177/163 "
+                           "deg)"),
+                "solver": (f"multi-restart DLS, {R18_RESTARTS} seeded "
+                           "random starts + approach-end warm start, "
+                           "convergence |e_p| < 2 mm AND |e_r| < 5 deg; "
+                           "among successes the solution closest to the "
+                           "approach end minimises the blend jump"),
+                "window": (f"adaptive blend length at the "
+                           f"{R18_RATE_CEILING} rad/s joint-rate ceiling, "
+                           "smoothstep approach-end -> native, then hold"),
+            },
+            "per_side_solve": r18_solve_rec,
+            "burial_v2": {
+                s: {
+                    "pad_center_buried_legacy": report["per_side"][s]["gate1_final_touch"]["pad_center_buried"],
+                    "pad_center_buried_v2": report["per_side"][s]["gate1_final_touch"]["pad_center_buried_v2"],
+                    "pass_legacy": report["per_side"][s]["gate1_final_touch"]["pass"],
+                    "pass_v2": report["per_side"][s]["gate1_final_touch"]["pass_v2"],
+                } for s in VIDEOS
+            },
+            "row": {
+                "gate1_mm": [round(report["per_side"][s]["gate1_final_touch"]["rect_dist_mm"], 3)
+                             for s in VIDEOS],
+                "gate1_pads": [report["per_side"][s]["gate1_final_touch"]["n_pads_in_rect"]
+                               for s in VIDEOS],
+                "gate2_frames": [report["per_side"][s]["gate2_contact"]["endface_contact_frames"]
+                                 for s in VIDEOS],
+                "gate3_support": [report["per_side"][s]["gate3_approach_clean"]["support_contact_frames"]
+                                  for s in VIDEOS],
+                "gate4_viol_rad": [round(report["per_side"][s]["gate4_joint_limits"]["finger_qpos_max_violation_rad"], 3)
+                                   for s in VIDEOS],
+                "gate5_registered_mm": [round(report["per_side"][s]["gate5_palm_deviation"]["registered"]["registered_palm_max_m"] * 1000, 2)
+                                        for s in VIDEOS],
+            },
         }
     REPORT_PATH.write_text(json.dumps(_jsonable(report), indent=2))
     print(f"wrote {REPORT_PATH}")

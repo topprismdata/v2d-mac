@@ -1,0 +1,107 @@
+{
+ "campaign": "r18 terminal-solve target swap + burial v2 (cuts 6/7)",
+ "cut6": {
+  "verdict": "SOLVE CONVERGED (target swap works); gate1 still red on the fwd-axis leg \u2014 attitude attribution, next lever = fwd-aware native search",
+  "solve": {
+   "right": {
+    "converged_attempts": "14/51",
+    "e_p_mm": 0.601,
+    "e_r_deg": 0.16,
+    "blend_frames": 55
+   },
+   "left": {
+    "converged_attempts": "26/51",
+    "e_p_mm": 0.871,
+    "e_r_deg": 0.07,
+    "blend_frames": 88
+   },
+   "criterion": "|e_p| < 2 mm AND |e_r| < 5 deg",
+   "window": "adaptive blend at the 2.0 rad/s ceiling (58/88 frames within the 62-frame structure; common timeline 378 frames)"
+  },
+  "pad_completion": {
+   "method": "the r13.6 search persisted ARM-ONLY seeds (the pad state depends on the fingers too \u2014 arm-only seeds broke r13.7's right at 519.7 mm); the search now persists full (arm, fingers) pairs (4 pairs at N=40k) and r18 polishes the FULL configuration from the pair's exact joints, inside the holdable-band commandable set",
+   "result": {
+    "right_gap_mm": 0.005,
+    "right_pads_in_rect": 1,
+    "left_gap_mm": 524.2,
+    "left_pads_in_rect": 0
+   },
+   "right_note": "0.005 mm = R5-class (tol 0.116 mm) \u2014 gate1's distance leg SOLVED on the right"
+  },
+  "gate1_remaining_red": {
+   "fwd_axis_deg": [
+    119.8,
+    46.9
+   ],
+   "attribution": "the native-seed branch family lands pad-in-band configurations with the hand attitude INVERTED vs gate1's forward-axis criterion (<=35 deg): the pads touch the rectangle but the pad-centroid faces away.  The multi-restart pool (14-26 converged) sits in the same attitude family and local polish cannot switch branches without leaving the band",
+   "next_lever": "add the fwd-axis criterion to the curl-free SEARCH (fwd-aware native pairs) \u2014 the search is the right place because attitude is arm-pose property, not a finger property"
+  }
+ },
+ "cut7": {
+  "verdict": "delivered \u2014 dual columns; v2 tightened and SCOPED to band pads (the touch claim)",
+  "note": "the v2 flag = any BAND pad proud/through beyond tol; the scoping excludes distant non-touching pads (not a burial fact).  pass_v2 = >=2 in-rect + no band burial + fwd<=35",
+  "per_side": {
+   "right": {
+    "buried_legacy": true,
+    "buried_v2": true,
+    "pass_legacy": false,
+    "pass_v2": false
+   },
+   "left": {
+    "buried_legacy": false,
+    "buried_v2": true,
+    "pass_legacy": false,
+    "pass_v2": false
+   }
+  }
+ },
+ "final_table": {
+  "gate1_mm": [
+   0.005,
+   524.211
+  ],
+  "gate1_pads_in_rect": [
+   1,
+   0
+  ],
+  "gate2_frames": [
+   1,
+   14
+  ],
+  "gate3_support": [
+   281,
+   320
+  ],
+  "gate4_viol_rad": [
+   1.495,
+   2.536
+  ],
+  "gate5_registered_mm": [
+   1.06,
+   0.98
+  ],
+  "baseline_r12_6": {
+   "gate1_mm": [
+    15.891,
+    1.607
+   ],
+   "gate2_frames": [
+    5,
+    14
+   ],
+   "gate3_support": [
+    246,
+    272
+   ],
+   "gate4_viol_rad": [
+    1.377,
+    2.536
+   ],
+   "gate5_registered_mm": [
+    1.06,
+    0.98
+   ]
+  },
+  "floors": "g5reg 1.06/0.98 unchanged; frame_alignment True"
+ }
+}
