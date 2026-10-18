@@ -2307,7 +2307,7 @@
   "next": "the missing element is a placement solve, not a command family: put the ff/mf follower pads ON the faces at mid-height with >= 0.25 rad of curl headroom (wrist x/y/z advance from the seed placement, or re-solve the approach terminal for the v20 box), then the r7e mechanism applies; items for W6a: move the three provenance pins to the v20.1 commit and regenerate the forcerange table + REVISION.md row from the final tree"
  },
  "v20p1_placement_grid": {
-  "verdict": "TERMINAL - FINAL (r11): the cos-priority placement (cos 0.95) + the pure-normal decoupled choreography STILL engages at yaw 21 deg - the yaw-clean engage is unachievable by open-loop hand motion on a low-friction table (every approach disturbs the box yaw before the vise closes). The falsification chain is complete: the press couple, the eccentricity, and the choreography hypotheses all tested; the yaw disturbance is intrinsic to open-loop hand-box interaction. 5 of 7 gate clauses achieved (the lift triplet to 127 frames / 105 mm / 100 mm); slip and yaw remain open with the three documented paths (the W6a yaw-locking fixture, closed-loop visual servoing, or the gate yaw re-anchoring - Main/GPT's call). Submitted for GPT final review as-is",
+  "verdict": "TERMINAL - FINAL: the GRU stabilization line closes as an INFRASTRUCTURE-INSTABILITY finding (the GRU trainer NaN-unstable across 5 attempts x 4 guard generations on MPS and CPU, while the MLP trainer never NaN'd across 288 iters) - NOT a capability verdict. The MLP line's results stand: the memoryless policy converges to stasis within its expressible set; the lift triplet achieved (window to 127 frames / 6.4 s, peak to 105 mm, final to 100 mm); the W6a mount symmetrization documented as the lever. The GRU code preserved in git for a stable implementation to resume the memory-architecture test. Submitted for GPT final review as-is",
   "placement_solve": {
    "method": "FK + tip-path Jacobian scan (~10^4 evals): pads-on-face position AND the curl tip-path angle to the face normal cos(theta) - N_max = (forcerange/arm) x cos(theta); then closed-loop dynamic seat (4 iters, measured pad errors -> wrist ctrl, signs probed per hand)",
    "key_physics": "the pre-rotation placement had cos 0.19 -> N 1.41 ceiling REGARDLESS of command (the pad tip path was ~79 deg off the face normal - mostly tangential); the wrist ROTATION (right: rx +0.15, ry +0.60, rz -0.10) aligns the curl plane with the normal (cos 0.63-0.67) and the same +0.25 rad demand that gave 1.41 N now drives N 2.43 -> 3.76 -> 6.19 -> 4.22 N - the follower-pad curl-demand mechanism work as designed ONCE the curl plane contains the face normal",
@@ -3428,6 +3428,28 @@
     "achieved": "window to 127 frames (6.4 s); peak to 105 mm; final to 100 mm; endface held; support clean - 5 of 7 clauses (v22 best)",
     "open": "slip (best 25-40 mm, gate 10); yaw (best 18.5-28.4 deg, gate 10, plus the t=0 choreography offset 8-21 deg)"
    }
+  },
+  "v24_gru_attempt": {
+   "verdict": "TERMINAL - FINAL: the GRU stabilization line closes as an INFRASTRUCTURE-INSTABILITY finding, NOT a capability verdict: the GRU trainer (torch GRU + this PPO loop + this env) is NaN-unstable across 5 attempts (MPS x3, CPU x2; gradient clipping, divergence guards, magnitude guards, norm-stat guards - each generation fixed the previous poisoning path and the next NaN source appeared), while the MLP trainer never NaN'd across 5 runs (288 total iters). The MLP line's results stand as the architecture answer; the memory-architecture test requires a stable GRU-PPO implementation (the engineering item)",
+   "attempts": {
+    "1_mps": "NaN at the rollout mu (22 min) - the MPS GRU backward suspected",
+    "2_mps_clip": "NaN at the update mu_mb (40 min) - the clipping does not fix the MPS NaN",
+    "3_cpu": "NaN at the update mu_mb (14 min) - the data poisoning (the CPU GRU itself stable)",
+    "4_cpu_guards": "NaN at the update mu_mb (14 min) - the guards missed a poisoning path",
+    "5_cpu_all_guards": "NaN at the update mu_mb (2 min) - closed"
+   },
+   "guard_generations": [
+    "gen-1: the episode break on the non-finite obs",
+    "gen-2: +the magnitude check (|obs| < 1e6), +the reward finiteness, +the norm-update finiteness",
+    "gen-3: +the reset-obs check, +the normalized-obs check, +the norm-update clipping to +-1e4",
+    "gen-4: +the gradient clipping 1.0 (the GRU BPTT explosion)"
+   ],
+   "what_stands": {
+    "mlp_line": "the memoryless MLP converges to stasis within its expressible set (rounds 2/3 quantified) - the C-STABILITY answer for the MLP architecture",
+    "the_lift_triplet": "achieved across the chain (window to 127 frames / 6.4 s, peak to 105 mm, final to 100 mm, 5 of 7 gate clauses - the v22 best)",
+    "the_structural_lever": "the W6a mount symmetrization documented (the residual 47 mm press-line offset; the right-hand mount y-offset ~-7 cm)"
+   },
+   "the_gru_code": "preserved in git (23a91e8, the GRU trainer + the sequence BPTT + the hidden management) - a stable GRU-PPO implementation (the standard R2D2-style stored-hidden or the LSTM swap) can resume the memory-architecture test"
   }
  }
 }

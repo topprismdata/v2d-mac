@@ -98,20 +98,16 @@ def capture_engage() -> dict:
     # yaw +-2 deg around the engage state instead (start_noise), and the
     # frozen yaw clause judges absolute yaw <= 10 deg.
     start_ctrl = d.ctrl.copy()
-    # symmetric single-pad config (v25 Front A): right {mf-only}
-    # (y +4.0 near center, depth -5.8 in-band, cos 0.69) + left {rf-only}
-    # (y -8.5, depth +0.8, cos 0.58) - press lines |r|+|l| = 12.5 mm
-    # (< 20 target), matched heights z +1.2/+0.3, both press-convergent.
-    # The ff (right) and ff/mf (left) fingers park open.
     clear = start_ctrl.copy()
     for i_ in (7, 8, 11, 12, 37, 38):
         clear[i_] = 0.40
     clear[2] += 0.050
     transit = clear.copy()
     place_r = transit.copy()
-    place_r[0] += 0.020; place_r[1] += 0.085; place_r[2] += 0.050
-    place_r[3] += 0.15; place_r[4] += 0.60; place_r[5] += -0.25
-    place_r[11] = 0.45; place_r[12] = 0.35
+    place_r[0] += 0.020; place_r[1] += -0.040; place_r[2] += 0.050
+    place_r[3] += 0.15; place_r[4] += 0.60; place_r[5] += -0.10
+    place_r[7] = 0.40; place_r[8] = 0.30
+    place_r[11] = 0.40; place_r[12] = 0.30
     for a, b, n in ((start_ctrl, clear, 12), (clear, transit, 10),
                     (transit, place_r, 15)):
         for k in range(n):
@@ -119,8 +115,8 @@ def capture_engage() -> dict:
             settle(FS)
     settle(15 * FS)
     place_l = d.ctrl.copy()
-    place_l[23] += 0.120; place_l[22] += 0.020
-    place_l[25] += 0.00; place_l[26] += 0.60; place_l[27] += 0.00
+    place_l[23] += 0.030; place_l[22] += 0.020
+    place_l[25] += 0.20; place_l[26] += 0.60; place_l[27] += 0.00
     place_l[37] = 0.40; place_l[38] = 0.30
     for k in range(15):
         d.ctrl[:] = place_r + (place_l - place_r) * (k + 1) / 15
@@ -228,9 +224,7 @@ def make_closure_env(episode_len: int = EP_LEN, seed: int = 0):
 
 
 # ---------------------------------------------------------------- reward
-def closure_reward(env, info, prev=None, rate_w=8.0,
-                   abs_slip_w=0.5, abs_yaw_w=0.1, lift_cap_m=0.050,
-                   pen_cap=3.0):
+def closure_reward(env, info, prev=None, rate_w=2.0):
     """prev: {'yaw': deg, 'slip': m} from the previous frame - the
     stabilization continuation adds yaw-RATE and slip-RATE penalties
     (weight rate_w) that damp swing kinetic energy directly."""
@@ -240,19 +234,11 @@ def closure_reward(env, info, prev=None, rate_w=8.0,
     slip = float(np.linalg.norm(
         env.data.xpos[env.obj_body][:2] - env._v21_xy0))
     yaw = abs(bp["yaw_deg"])
-    # round 3 re-balance: the lift term is LINEAR to lift_cap_m (50 mm) -
-    # "carry 20 mm steadily" now outscores "0 mm perfectly still"; the
-    # rate/smoothness penalties are CAPPED per frame - the total penalty
-    # is bounded, so stasis is no longer the optimal solution
-    r = 6.0 * min(clear / lift_cap_m, 1.0)
+    r = 6.0 * min(clear / 0.005, 1.0)
     if clear >= 0.005:
         r += 0.3
-    # stabilization round 2: the RATE terms are the main objective (damp
-    # the swing - a constant-torque drift shows as constant slip/yaw
-    # rate); the absolute slip/yaw penalties are demoted to gate-level
-    # reminders (GPT: peak must not substitute for stability)
-    r -= abs_slip_w * max(0.0, slip * 1e3 - 1.0) / 10.0
-    r -= abs_yaw_w * yaw / 10.0
+    r -= 3.0 * max(0.0, slip * 1e3 - 1.0) / 10.0
+    r -= 0.5 * yaw / 10.0
     r += 0.3 * min(n_r * n_l / 9.0, 1.0)
     half = float(env.model.geom_size[env.obj_geom][2])
     for g in ("ff_tip_collision", "mf_tip_collision",
@@ -261,48 +247,28 @@ def closure_reward(env, info, prev=None, rate_w=8.0,
         if p[2] > half + 0.002:
             r -= 1.0
     if prev is not None:
-        r -= min(rate_w * abs(bp["yaw_deg"] - prev["yaw"]) / 1.0, pen_cap)
-        r -= min(rate_w * abs(slip - prev["slip"]) / 0.001, pen_cap)
+        r -= rate_w * abs(bp["yaw_deg"] - prev["yaw"]) / 1.0
+        r -= rate_w * abs(slip - prev["slip"]) / 0.001
     new_prev = {"yaw": bp["yaw_deg"], "slip": slip}
     return r, new_prev
 
 
 # ------------------------------------------------------------------ ppo
-GRIP_FLOOR_ACTS = (2, 24, 7, 8, 11, 12, 37, 38)
-# the FINGER channels are ABSOLUTE setpoints (a=0 -> the ctrlrange
-# midpoint, NOT the placement curl) - the floors below are the placement
-# curl targets CONVERTED to action units; the wrist-z channels are DELTAS
-# (floor 0 = never descend)
-# v25sym: right mf press (mfj1/mfj2), right ff park (0.40), left rf
-# press (rfj1/rfj2), left ff/mf park (0.35) - all in ACTION units
-# (2 x (ctrl - lo) / span - 1 from the placement ctrl targets)
-GRIP_FLOORS = {2: 0.0, 24: 0.0,
-               7: -0.34, 8: -0.50,
-               11: -0.60, 12: -0.44,
-               29: -0.40, 30: -0.44, 33: -0.40, 34: -0.44,
-               37: -0.34, 38: -0.50}
+GRIP_FLOOR_ACTS = (7, 8, 11, 12, 37, 38)
 
 
 def grip_floor(a: np.ndarray) -> np.ndarray:
-    """Deployment toolkit (a): the climb (wrist z 2/24) and press/curl
-    channels cannot go below the placement values - the baseline owns the
-    climb (monotone up) and the policy modulates grip upward only, so a
-    fading mean action can never relax the vise or stall the climb."""
-    for idx, fl in GRIP_FLOORS.items():
-        a[idx] = max(a[idx], fl)
+    """Deployment toolkit (a): the press/curl channels cannot go below
+    the placement curl - the policy modulates grip upward only, so a
+    fading mean action can never relax the vise."""
+    for idx in GRIP_FLOOR_ACTS:
+        a[idx] = max(a[idx], 0.0)
     return a
 
 
 def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0,
-          resume: str | None = None, rate_w: float = 8.0,
-          act_rate_w: float = 0.5, smooth_w: float = 1.0,
-          curriculum: str = "40,80,160", round_tag: str = "r3",
-          lift_cap_m: float = 0.050, pen_cap: float = 3.0,
-          hidden: int = 128):
-    """GRU coupled-closure PPO: the carry dynamics need MEMORY (the
-    sustained differential wrist offset countering the press-couple
-    torque) that the memoryless MLP cannot express (rounds 2/3: stasis
-    was the best stable solution in the MLP's expressible set)."""
+          resume: str | None = None, rate_w: float = 2.0,
+          act_rate_w: float = 0.5):
     import torch
     import torch.nn as nn
 
@@ -310,18 +276,16 @@ def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0,
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
 
-    gru = nn.GRU(N_OBS, hidden, 1, batch_first=True).to(dev)
-    actor = nn.Linear(hidden, N_ACT).to(dev)
-    # residual design: the actor starts as the ZERO function - the
-    # untrained policy is the proven zero-action carry (the pads hold,
-    # the baseline climbs at 58% drag) and the policy learns the residual
-    # stabilization from there; a random head output shakes the ungated
-    # thumb/spread channels and breaks the seal (measured)
-    with torch.no_grad():
-        actor.weight.zero_()
-        actor.bias.zero_()
-    critic = nn.Linear(hidden, 1).to(dev)
-    log_std = nn.Parameter(torch.full((N_ACT,), -2.3, device=dev))
+    def mlp(sizes):
+        layers = []
+        for i in range(len(sizes) - 2):
+            layers += [nn.Linear(sizes[i], sizes[i + 1]), nn.Tanh()]
+        layers += [nn.Linear(sizes[-2], sizes[-1])]
+        return nn.Sequential(*layers)
+
+    actor = mlp([N_OBS, 256, 256, N_ACT]).to(dev)
+    critic = mlp([N_OBS, 256, 256, 1]).to(dev)
+    log_std = nn.Parameter(torch.full((N_ACT,), -1.0, device=dev))
 
     class Norm:
         def __init__(self):
@@ -340,191 +304,24 @@ def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0,
                            -10, 10)
 
     norm = Norm()
-    opt = torch.optim.Adam(list(gru.parameters()) + list(actor.parameters())
-                           + list(critic.parameters()) + [log_std], lr=3e-4)
+    opt = torch.optim.Adam(list(actor.parameters()) + [log_std]
+                           + list(critic.parameters()), lr=3e-4)
     if resume and (OUT_DIR / resume).exists():
         ck = torch.load(OUT_DIR / resume, map_location="cpu",
                         weights_only=False)
-        if "gru" in ck:
-            gru.load_state_dict(ck["gru"])
-            actor.load_state_dict(ck["actor"])
-            critic.load_state_dict(ck["critic"])
-            with torch.no_grad():
-                log_std.copy_(ck["log_std"].to(dev))
-        # the observation-normalization statistics are architecture-
-        # independent - always warm-started from the previous line
+        actor.load_state_dict(ck["actor"])
+        critic.load_state_dict(ck["critic"])
+        with torch.no_grad():
+            log_std.copy_(ck["log_std"].to(dev))
         norm.mean, norm.var, norm.n = (ck["norm"]["mean"],
                                        ck["norm"]["var"], ck["norm"]["n"])
-        print(f"[v21-gru] resumed from {resume} (iter {ck.get('iter')}); "
-              f"norm warm-started")
+        print(f"[v21] resumed from {resume} (iter {ck.get('iter')})")
 
     def to_t(x):
         return torch.tensor(x, dtype=torch.float32, device=dev)
 
-    def gru_seq(obs_seq, h0=None):
-        """obs_seq: (T, N_OBS) -> mu (T, A), v (T,), h final (GRU hidden
-        is a single tensor, not an LSTM (h, c) pair)."""
-        if h0 is None:
-            h0 = torch.zeros(1, 1, hidden, device=dev)
-        out, hn = gru(obs_seq.unsqueeze(0), h0)   # (1, T, N_OBS) batch_first
-        return actor(out[0]), critic(out[0]).squeeze(-1), hn
-
-    def rollout_policy(state):
-        """One stochastic step carrying the GRU hidden state (a single
-        tensor - nn.GRU, not an LSTM)."""
-        obs, h = state
-        o_n = norm.norm(obs)
-        with torch.no_grad():
-            out, h = gru(to_t(o_n).view(1, 1, -1), h.to(dev))
-            mu = actor(out[0, 0])
-            std = log_std.exp().clamp(0.05, 0.10)
-            dist = torch.distributions.Normal(mu, std)
-            a_t = dist.sample()
-            logp = dist.log_prob(a_t).sum(-1)
-            v = critic(out[0, 0]).squeeze(-1)
-        return a_t.detach()[0] if a_t.dim() > 1 else a_t.detach(), \
-            float(logp), float(v), h
-
-    def eval_rollout(env, seed, mean_act):
-        """Deterministic-mean rollout carrying the GRU hidden state; the
-        deployment matches the training distribution (hidden carried,
-        std-0.1 noise available via mean_act)."""
-        obs, _ = env.reset(seed=seed)
-        env._z_rest = float(env.data.xpos[env.obj_body][2]) - env.box_half_z
-        h = torch.zeros(1, 1, hidden, device=dev)
-        frames = []
-        for k in range(env.max_episode_steps):
-            o_n = norm.norm(obs)
-            with torch.no_grad():
-                out, h = gru(to_t(o_n).view(1, 1, -1), h)
-                a_t = actor(out[0, 0])
-            a = np.clip(a_t.cpu().numpy(), -1.0, 1.0)
-            a = grip_floor(a)
-            # the eval baseline climbs for the WHOLE episode: the climb
-            # cap is a TRAINING curriculum device; the gate measures the
-            # carried height without it
-            a[2] = a[2] + BASE_Z
-            a[24] = a[24] + BASE_Z
-            obs, _r, term, trunc, info = env.step(np.clip(a, -1.0, 1.0))
-            er, el = W.endface_contact_per_hand(env)
-            bp = W.box_pose(env)
-            n_r, n_l = env._pad_normals_obs()
-            frames.append({"lift": info["lift"], "endface": (er, el),
-                           "sup": table_support_n(env),
-                           "xpos": bp["xpos"][:2].copy(),
-                           "yaw": bp["yaw_deg"], "tilt": bp["tilt_deg"],
-                           "clear": bp["bottom_clearance_m"],
-                           "n_r": n_r, "n_l": n_l,
-                           "qpos": env.data.qpos.copy(),
-                           "obj7": np.concatenate([
-                               env.data.xpos[env.obj_body],
-                               env.data.xquat[env.obj_body]]).copy()})
-            if term or trunc:
-                break
-        m = W.eval_stream_against_gate(env, [
-            {"lift": f["lift"], "endface": f["endface"], "sup": f["sup"],
-             "xpos": f["xpos"], "yaw": f["yaw"], "tilt": f["tilt"],
-             "clear": f["clear"]} for f in frames])
-        return m, frames
-
-    def evaluate(act_state_fn, seeds=(0, 1, 2), export_replay: bool = False,
-                 evidence: bool = False) -> dict:
-        env = make_closure_env(EP_LEN, seeds[0])
-        episodes = []
-        for s in seeds:
-            best_frames = None
-            best_clear = -9e9
-            for roll in range(3):
-                m_r, frames = eval_rollout(env, s * 10 + roll, None)
-                c_max = max(f["clear"] for f in frames)
-                if c_max > best_clear:
-                    best_clear = c_max
-                    best_frames = frames
-            m = W.eval_stream_against_gate(env, [
-                {"lift": f["lift"], "endface": f["endface"], "sup": f["sup"],
-                 "xpos": f["xpos"], "yaw": f["yaw"], "tilt": f["tilt"],
-                 "clear": f["clear"]} for f in best_frames])
-            m["seed"] = s
-            m["slip_mm"] = m["slip_m"] * 1e3
-            episodes.append({"metrics": m, "frames": best_frames})
-            print(f"[eval seed {s}] pass={m['pass']} "
-                  f"window={m['window_frames']} "
-                  f"peak={m['peak_lift_m']*1e3:.2f}mm "
-                  f"slip={m['slip_mm']:.1f}mm yaw={m['yaw_abs_deg']:.1f} "
-                  f"final={m['final_lift_m']*1e3:.2f}mm")
-        n_pass = sum(e["metrics"]["pass"] for e in episodes)
-        out = {
-            "episodes": [{"seed": e["metrics"]["seed"],
-                          "pass": e["metrics"]["pass"],
-                          "window_frames": e["metrics"]["window_frames"],
-                          "peak_mm": e["metrics"]["peak_lift_m"] * 1e3,
-                          "final_mm": e["metrics"]["final_lift_m"] * 1e3,
-                          "slip_mm": e["metrics"]["slip_mm"],
-                          "yaw_abs_deg": e["metrics"]["yaw_abs_deg"],
-                          "support_mean_n": e["metrics"]["support_mean_n"]}
-                         for e in episodes],
-            "passed": n_pass >= 2,
-            "n_pass": n_pass,
-            "window_frames_max": max(e["metrics"]["window_frames"]
-                                     for e in episodes),
-            "peak_mm_max": max(e["metrics"]["peak_lift_m"] * 1e3
-                               for e in episodes),
-            "slip_mm_min": min(e["metrics"]["slip_mm"] for e in episodes),
-            "yaw_min": min(e["metrics"]["yaw_abs_deg"] for e in episodes),
-        }
-        if export_replay and n_pass >= 2:
-            best_ep = max(episodes,
-                          key=lambda e: e["metrics"]["window_frames"])
-            _export_replay_and_evidence(env, best_ep["frames"])
-        return out
-
-    def _export_replay_and_evidence(env, frames) -> None:
-        import PIL.Image as Image
-        json.dump({"fps": W.CTRL_HZ,
-                   "fps_scope": "control-rate export: one frame per 20 Hz "
-                                "control frame of the v21 GRU closure "
-                                "policy carry; qpos 65-dof",
-                   "frames": [{"t": round(k / W.CTRL_HZ, 4),
-                               "qpos": [float(v) for v in f["qpos"]],
-                               "obj": [float(v) for v in f["obj7"]],
-                               "control_frame": k} for k, f in
-                              enumerate(frames)]},
-                  open(REPLAY_PATH, "w"), indent=1, default=float)
-        m = env.model
-        m.vis.global_.offwidth = 960
-        m.vis.global_.offheight = 540
-        renderer = mujoco.Renderer(m, height=480, width=854)
-        cam = mujoco.MjvCamera()
-        cam.type = mujoco.mjtCamera.mjCAMERA_FREE
-        presets = {"front": (105.0, -22.0, 0.80),
-                   "side": (-20.0, -30.0, 0.72),
-                   "close": (-20.0, -24.0, 0.46)}
-        out = OUT_DIR / "evidence"
-        out.mkdir(parents=True, exist_ok=True)
-        lifts = [f["clear"] for f in frames]
-        w0 = int(np.argmax(np.array(lifts) >= 0.005))
-        picks = [(max(0, w0 - 5), "front"),
-                 (min(len(frames) - 1, w0 + 10), "side"),
-                 (min(len(frames) - 1, w0 + 20), "close")]
-        for k, preset in picks:
-            f = frames[k]
-            env.data.qpos[:] = f["qpos"]
-            oa = env.obj_qpos_adr
-            env.data.qpos[oa:oa + 7] = f["obj7"]
-            mujoco.mj_forward(m, env.data)
-            cam.lookat[:] = [0.0, 0.0, 0.74]
-            cam.azimuth, cam.elevation, cam.distance = presets[preset]
-            renderer.update_scene(env.data, camera=cam)
-            Image.fromarray(renderer.render()).save(
-                out / f"v21gru_f{k:03d}_lift{f['lift']*1e3:.1f}mm_"
-                      f"{preset}.png")
-        renderer.close()
-
-    def policy_state(env, seed):
-        obs, _ = env.reset(seed=seed)
-        env._z_rest = float(env.data.xpos[env.obj_body][2]) - env.box_half_z
-        h = torch.zeros(1, 1, hidden, device=dev)
-        return obs, h
+    def act_fn(o):
+        return actor_forward(actor, norm, o, dev)
 
     curve = []
     best = {"score": -np.inf, "path": None}
@@ -532,130 +329,81 @@ def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0,
     early_stop = False
     env = make_closure_env(EP_LEN, seed)
     for it in range(iters):
-        cap = [40, 80, 160][min(it // 32, 2)]
-        ep_frames = []
-        ep_returns, ep_peaks = [], []
-        obs, h = policy_state(env, int(rng.integers(1 << 31)))
-        if not np.isfinite(obs).all():
-            print("[v21-gru] non-finite reset obs - episode skipped")
-            continue
+        ep_frames, ep_returns, ep_peaks = [], [], []
+        prev = None
+        prev_a = None
+        obs_raw, _ = env.reset(seed=int(rng.integers(1 << 31)))
+        norm.update(obs_raw)
         done = False
         ep_rew = 0.0
         ep_peak = 0.0
-        prev = None
-        prev_a = None
-        ep_k = 0
         while len(ep_frames) < steps_per_iter:
-            a_t, logp, v, h = rollout_policy((obs, h))
+            o_n = norm.norm(obs_raw)
+            with torch.no_grad():
+                mu = actor(to_t(o_n))
+                std = log_std.exp().clamp(0.05, 0.05)  # continuation: sharpened
+                dist = torch.distributions.Normal(mu, std)
+                a_t = dist.sample()
+                logp = dist.log_prob(a_t).sum(-1)
+                v = critic(to_t(o_n)).squeeze(-1)
             a_np = a_t.cpu().numpy()
             a_np = grip_floor(a_np)
-            if ep_k < cap:
-                a_np[2] = a_np[2] + BASE_Z
-                a_np[24] = a_np[24] + BASE_Z
+            a_np[2] = a_np[2] + BASE_Z
+            a_np[24] = a_np[24] + BASE_Z
             obs_raw, r_env, term, trunc, info = env.step(
                 np.clip(a_np, -1.0, 1.0))
-            shaped, prev = closure_reward(env, info, prev, rate_w,
-                                          lift_cap_m=lift_cap_m,
-                                          pen_cap=pen_cap)
-            if smooth_w > 0.0 and prev_a is not None:
-                shaped -= smooth_w * float(np.mean(np.abs(a_np - prev_a)))
+            shaped, prev = closure_reward(env, info, prev, rate_w)
             if act_rate_w > 0.0 and prev_a is not None:
                 da = np.abs(a_np[[0, 1, 22, 23]] - prev_a[[0, 1, 22, 23]])
                 shaped -= act_rate_w * float(da.mean())
             prev_a = a_np.copy()
-            ep_k += 1
             r_shaped = (r_env + shaped) * W.REWARD_SCALE
             done = term or trunc
-            o_n = norm.norm(obs_raw)
-            if not np.isfinite(o_n).all():
-                print("[v21-gru] non-finite normalized obs - episode ended")
-                break
-            ep_frames.append((o_n, a_np, r_shaped,
-                              float(done), float(v), float(logp)))
+            ep_frames.append((o_n, a_np, r_shaped, float(done),
+                              float(v), float(logp)))
             ep_rew += r_shaped
             ep_peak = max(ep_peak, info["lift"])
             if len(ep_frames) >= steps_per_iter:
                 break
             if done:
-                obs, h = policy_state(env, int(rng.integers(1 << 31)))
+                obs_raw, _ = env.reset(seed=int(rng.integers(1 << 31)))
+                norm.update(obs_raw)
                 done = False
                 prev = None
                 prev_a = None
-                ep_k = 0
                 ep_rew = 0.0
         ep_returns.append(ep_rew)
         ep_peaks.append(ep_peak)
 
-        # ---- GRU sequence update: re-run each episode's obs sequence ----
-        obs_eps = []
-        cur = []
-        for fr in ep_frames:
-            cur.append(fr)
-            if fr[3] > 0.5:
-                obs_eps.append(cur)
-                cur = []
-        if cur:
-            obs_eps.append(cur)
-
-        flat_logp, flat_v = [], []
-        flat_mu_std = []
-        for epi in obs_eps:
-            o = to_t(np.array([f[0] for f in epi]))
-            with torch.no_grad():
-                mu, v, _ = gru_seq(o)
-            a = to_t(np.array([f[1] for f in epi]))
-            std = log_std.exp().clamp(0.05, 0.10)
-            dist = torch.distributions.Normal(mu, std)
-            lp = dist.log_prob(a).sum(-1)
-            flat_logp.append(lp)
-            flat_v.append(v)
-            flat_mu_std.append((mu, std))
+        obs_b, act_b, rew_b, done_b, val_b, logp_b = (
+            np.array(x, dtype=np.float32) for x in zip(*ep_frames))
         with torch.no_grad():
-            logp_b = torch.cat(flat_logp).cpu().numpy()
-            v_b = torch.cat(flat_v).cpu().numpy()
-        # align with the flat buffer (the episode split above reconstructs
-        # the same order as ep_frames)
-        rew_b = np.array([f[2] for f in ep_frames], dtype=np.float32)
-        done_b = np.array([f[3] for f in ep_frames], dtype=np.float32)
-        act_b = np.array([f[1] for f in ep_frames], dtype=np.float32)
-        val_b = v_b
-
+            last_val = critic(to_t(norm.norm(obs_raw))).item()
         adv = np.zeros_like(rew_b)
         gae = 0.0
         for k in reversed(range(len(rew_b))):
-            nxt = v_b[k + 1] if k < len(rew_b) - 1 else 0.0
+            nxt = last_val if k == len(rew_b) - 1 else val_b[k + 1]
             delta = rew_b[k] + 0.99 * nxt * (1.0 - done_b[k]) - val_b[k]
             gae = delta + 0.99 * 0.95 * (1.0 - done_b[k]) * gae
             adv[k] = gae
         ret_b = adv + val_b
         adv_t = to_t((adv - adv.mean()) / (adv.std() + 1e-8))
+        obs_t, act_t = to_t(obs_b), to_t(act_b)
         ret_t, val_old, logp_old = to_t(ret_b), to_t(val_b), to_t(logp_b)
-
-        # recompute the sequence mu/std per episode for the PPO update
+        idx = np.arange(len(obs_b))
         stats = {"pi": 0.0, "v": 0.0, "ent": 0.0}
-        idx = np.arange(len(rew_b))
         for _ in range(4):
             rng.shuffle(idx)
             for s in range(0, len(idx), 256):
                 mb = idx[s:s + 256]
-                mu_mb = torch.cat([
-                    gru_seq(to_t(np.array([f[0] for f in epi])))[0]
-                    for epi in obs_eps])
-                std = log_std.exp().clamp(0.05, 0.10)
-                dist = torch.distributions.Normal(mu_mb[mb], std)
-                logp = dist.log_prob(to_t(act_b)[mb]).sum(-1)
+                mu = actor(obs_t[mb])
+                std = log_std.exp().clamp(0.05, 2.0)
+                dist = torch.distributions.Normal(mu, std)
+                logp = dist.log_prob(act_t[mb]).sum(-1)
                 ratio = (logp - logp_old[mb]).exp()
                 pi_loss = -torch.min(ratio * adv_t[mb],
                                      ratio.clamp(0.8, 1.2) * adv_t[mb]).mean()
-                v = critic(torch.cat([
-                    gru_seq(gru, actor, critic,
-                            to_t(np.array([f[0] for f in epi])))[1]
-                    for epi in obs_eps]))[mb] if False else None
-                # value recomputed per episode below (keep simple)
-                v_mb = torch.cat([
-                    gru_seq(to_t(np.array([f[0] for f in epi])))[1]
-                    for epi in obs_eps])
-                v = v_mb[mb]
+                v = critic(obs_t[mb]).squeeze(-1)
                 v_loss = 0.5 * ((v - ret_t[mb]) ** 2).mean()
                 ent = dist.entropy().sum(-1).mean()
                 loss = pi_loss + 0.5 * v_loss - 1e-3 * ent
@@ -666,45 +414,34 @@ def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0,
                          "ent": float(ent)}
         curve.append({"iter": it, "return": float(np.mean(ep_returns)),
                       "peak_mm": float(np.mean(ep_peaks) * 1e3), **stats})
-        print(f"[v21-gru {it:3d}] ret={np.mean(ep_returns):7.2f} "
+        print(f"[v21 {it:3d}] ret={np.mean(ep_returns):7.2f} "
               f"peak={np.mean(ep_peaks)*1e3:6.2f}mm pi={stats['pi']:+.4f} "
               f"v={stats['v']:.4f}")
         if (it + 1) % eval_every == 0 or it == iters - 1:
-            def act_state_fn(env_, seed_):
-                return policy_state(env_, seed_)
-            m = evaluate(None, seeds=(0, 1, 2))
+            m = evaluate(act_fn, seeds=(0, 1, 2))
             score = (min(m["window_frames_max"], 20) * 20.0
                      + min(m["peak_mm_max"], 20.0) / 20.0 * 300.0
-                     - max(0.0, m["slip_mm_min"] - 6.0) * 50.0
-                     - max(0.0, m["yaw_min"] - 8.0) * 40.0
+                     - max(0.0, m["slip_mm_max"] - 6.0) * 50.0
+                     - max(0.0, m["yaw_max"] - 8.0) * 40.0
                      + (800.0 if m["passed"] else 0.0))
-            ck = {"gru": gru.state_dict(), "actor": actor.state_dict(),
-                  "critic": critic.state_dict(),
+            ck = {"actor": actor.state_dict(), "critic": critic.state_dict(),
                   "log_std": log_std.detach().cpu(),
-                  "norm": {"mean": norm.mean, "var": norm.var,
-                           "n": norm.n},
-                  "eval": m, "iter": it, "hidden": hidden}
-            torch.save(ck, OUT_DIR /
-                       f"{round_tag}_gru_eval{it+1}.pt")
-            print(f"[v21-gru {it:3d}] eval pass={m['passed']} "
+                  "norm": {"mean": norm.mean, "var": norm.var, "n": norm.n},
+                  "eval": m, "iter": it}
+            torch.save(ck, OUT_DIR / f"v21_ppo_eval{it+1}.pt")
+            print(f"[v21 {it:3d}] eval pass={m['passed']} "
                   f"window={m['window_frames_max']} "
                   f"peak={m['peak_mm_max']:.2f}mm score={score:.1f}")
-            if score > best["score"]:
-                best = {"score": score,
-                        "path": f"{round_tag}_gru_eval{it+1}.pt"}
-                torch.save(ck, OUT_DIR / f"{round_tag}_gru_best.pt")
-            consec = getattr(train, "_consec", 0)
-            consec = consec + 1 if m["passed"] else 0
-            train._consec = consec
-            if consec >= 2:
+            consec_pass = consec_pass + 1 if m["passed"] else 0
+            if consec_pass >= 2:
                 early_stop = True
-                print(f"[v21-gru] EARLY STOP: gate passed 2 consecutive "
-                      f"evals at iter {it}")
-                break
-    (OUT_DIR / f"{round_tag}_gru_curve.json").write_text(
+            if score > best["score"]:
+                best = {"score": score, "path": f"v21_ppo_eval{it+1}.pt"}
+                torch.save(ck, OUT_DIR / "v21_ppo_best.pt")
+    (OUT_DIR / "v21_ppo_curve.json").write_text(
         json.dumps({"curve": curve, "best": best, "early_stop": early_stop},
                    indent=1, default=float))
-    print(f"v21 gru done; best {best}; early_stop={early_stop}")
+    print(f"v21 ppo done; best {best}; early_stop={early_stop}")
 
 
 def table_support_n(env) -> float:
@@ -879,22 +616,15 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--ckpt", default="v21_ppo_best.pt")
     ap.add_argument("--resume", default=None)
-    ap.add_argument("--rate-w", type=float, default=8.0)
+    ap.add_argument("--rate-w", type=float, default=2.0)
     ap.add_argument("--act-rate-w", type=float, default=0.5)
-    ap.add_argument("--smooth-w", type=float, default=1.0)
-    ap.add_argument("--curriculum", default="40,80,160")
-    ap.add_argument("--round-tag", default="r3")
-    ap.add_argument("--lift-cap-m", type=float, default=0.050)
-    ap.add_argument("--pen-cap", type=float, default=3.0)
     args = ap.parse_args()
     if args.cmd == "capture":
         print(json.dumps(capture_engage(), indent=1, default=float))
     elif args.cmd == "train":
         train(args.iters, args.steps, args.eval_every, args.seed,
               resume=args.resume, rate_w=args.rate_w,
-              act_rate_w=args.act_rate_w, smooth_w=args.smooth_w,
-              curriculum=args.curriculum, round_tag=args.round_tag,
-              lift_cap_m=args.lift_cap_m, pen_cap=args.pen_cap)
+              act_rate_w=args.act_rate_w)
     elif args.cmd == "eval":
         import torch
         dev = "mps" if torch.backends.mps.is_available() else "cpu"
