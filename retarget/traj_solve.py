@@ -209,9 +209,13 @@ def solve_constrained_traj(model, data, ctx, x0: np.ndarray,
     per_frame_residual = np.linalg.norm(
         res.reshape(res.shape[0], n_bodies, 3), axis=2
     ).max(axis=1)
-    deviation = _split_deviation(
-        _hand_world(model, data, ctx, x) - _hand_world(model, data, ctx, x0), n_bodies
-    )
+    hand_solved = _hand_world(model, data, ctx, x)
+    hand_input = _hand_world(model, data, ctx, x0)
+    deviation = _split_deviation(hand_solved - hand_input, n_bodies)
+    # r9 Front B (anatomical registration): the per-frame PALM deviation
+    # VECTOR (solve vs retargeted input) -- the raw norm series cannot take
+    # a constant-bias correction; the vector can.
+    palm_dev_vec = hand_solved[:, 0:3] - hand_input[:, 0:3]
     record = {
         "method": (
             "temporally coupled solve: alternating projection onto "
@@ -236,6 +240,14 @@ def solve_constrained_traj(model, data, ctx, x0: np.ndarray,
                 "frame (the hand's base pose) and the worst fingertip"
             ),
             **deviation,
+        },
+        "palm_deviation_per_frame_world": {
+            "definition": (
+                "per-frame palm-frame deviation VECTOR (solved minus retargeted "
+                "input), world axes -- the registration-capable series behind "
+                "hand_world_pose_deviation.palm_frame"
+            ),
+            "m": [[round(float(v), 6) for v in row] for row in palm_dev_vec],
         },
         "command_deviation_from_retarget": {
             "rms_rad_or_m": float(np.sqrt(np.mean((x - x0) ** 2))),
