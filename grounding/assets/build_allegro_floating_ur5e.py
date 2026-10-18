@@ -29,6 +29,7 @@ from __future__ import annotations
 import copy
 import pathlib
 import shutil
+import sys
 import xml.etree.ElementTree as ET
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -37,9 +38,17 @@ MENAGERIE = (HERE.parents[1] / "runs/upstream/mujoco_menagerie/"
              "universal_robots_ur5e/ur5e.xml")
 MESH_SRC = HERE / "ur5e_assets"
 OUT = HERE / "allegro_floating_ur5e.xml"
+OUT_SIDE = HERE / "allegro_floating_ur5e_side.xml"
 
 CEILING_MOUNT_POS = {"r": "0.235 0 1.000", "l": "-0.235 0 1.000"}
 CEILING_MOUNT_QUAT = "1 0 0 0"  # 180 deg about x: the arm hangs down
+# r12.4 side-mount (Main Front D follow-up): the arms mount at shoulder
+# height ~table+150 mm on the gantry columns, working HORIZONTALLY -- the
+# standard dual-arm workstation geometry, away from the ceiling-mount
+# wrist singularity.  A decorative support post carries each base.
+SIDE_MOUNT_POS = {"r": "0.40 0 0.85", "l": "-0.40 0 0.85"}
+SIDE_MOUNT_QUAT = {"r": "0 0 -0.7071 0.7071",  # 90 deg about z: face -x
+                   "l": "0 0 0.7071 0.7071"}   # face +x
 ATTACH_POS = "0 0.1 0"
 ATTACH_QUAT = "-1 1 0 0"  # the menagerie attachment_site's own transform
 WRIST_JOINTS = ("wrist_x", "wrist_y", "wrist_z",
@@ -76,7 +85,7 @@ def strip_wrist_joints(hand_root: ET.Element) -> None:
             hand_root.remove(j)
 
 
-def compose() -> None:
+def compose(mode: str = "ceiling") -> None:
     scene = ET.parse(SRC).getroot()
     ur5e = ET.parse(MENAGERIE).getroot()
     world = scene.find("worldbody")
@@ -164,6 +173,9 @@ def compose() -> None:
             remove_actuator(cand)
 
     # ---- 4. insert two renamed UR5e trees + actuators ---------------------
+    mount_pos = CEILING_MOUNT_POS if mode == "ceiling" else SIDE_MOUNT_POS
+    mount_quat = CEILING_MOUNT_QUAT if mode == "ceiling" else SIDE_MOUNT_QUAT
+    out_path = OUT if mode == "ceiling" else OUT_SIDE
     for sfx in ("_r", "_l"):
         base = copy.deepcopy(named(ur5e, "body", "base"))
         for node in base.iter():
@@ -181,8 +193,9 @@ def compose() -> None:
                                    "eef_collision": "ur5e_eef_collision",
                                    }[cls])
         base.set("childclass", "ur5e")
-        base.set("pos", CEILING_MOUNT_POS["r" if sfx == "_r" else "l"])
-        base.set("quat", CEILING_MOUNT_QUAT)
+        key = "r" if sfx == "_r" else "l"
+        base.set("pos", mount_pos[key])
+        base.set("quat", mount_quat[key])
         world.append(base)
         ur5e_act_sec = ur5e.find("actuator")
         for an in UR5E_ACT_NAMES:
@@ -217,9 +230,9 @@ def compose() -> None:
         w3.append(hand)
 
     ET.indent(scene)
-    ET.ElementTree(scene).write(OUT, encoding="unicode")
-    print(f"wrote {OUT}")
+    ET.ElementTree(scene).write(out_path, encoding="unicode")
+    print(f"wrote {out_path}")
 
 
 if __name__ == "__main__":
-    compose()
+    compose(sys.argv[1] if len(sys.argv) > 1 else "ceiling")

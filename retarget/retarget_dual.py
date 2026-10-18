@@ -107,8 +107,10 @@ from retarget.mano_fk import load_mano, mano_forward  # noqa: E402
 # scene-agnostic.
 import os as _os
 SCENE_KIND = _os.environ.get("W6B_SCENE", "floating")
-SCENE_XML = (rs.SCENE_XML if SCENE_KIND != "ur5e" else
-             REPO / "grounding/assets/allegro_floating_ur5e.xml")
+SCENE_FILES = {"floating": rs.SCENE_XML,
+               "ur5e": REPO / "grounding/assets/allegro_floating_ur5e.xml",
+               "ur5e_side": REPO / "grounding/assets/allegro_floating_ur5e_side.xml"}
+SCENE_XML = SCENE_FILES.get(SCENE_KIND, rs.SCENE_XML)
 UR5E_XML = REPO / "runs/upstream/mujoco_menagerie/universal_robots_ur5e/ur5e.xml"
 UR5E_TERMINAL_FINGERS = {  # the v5-verified grasp curl (finger DoFs are
     # scene-identical; source tests/test_scene_w6.py GATE3_SEEDS fingers-16)
@@ -229,7 +231,7 @@ class SideSpec:
     @classmethod
     def build(cls, side: str) -> "SideSpec":
         s = "" if side == "right" else "_left"
-        if SCENE_KIND == "ur5e":
+        if SCENE_KIND.startswith("ur5e"):
             # r12: under the UR5e arms the "wrist" DoFs ARE the arm joints
             # (position servos, menagerie-native parameters); the floating
             # slides/hinge-wrist are retired with the box arms.
@@ -360,7 +362,7 @@ class SideSpec:
                     for i in left_ids]
                 return getattr(model, "actuator_" + name)[left_ids], \
                     getattr(model, "actuator_" + name)[right_ids]
-            if SCENE_KIND == "ur5e":
+            if SCENE_KIND.startswith("ur5e"):
                 for name in ("ctrlrange", "forcerange"):
                     a, b = _pair_vals(name)
                     assert np.allclose(a, b), (
@@ -1095,6 +1097,12 @@ def ur5e_ik_placement(model, data, spec: SideSpec,
     palm_normals = np.empty((T, 3))  # r12.1 probe: palm -x hat world
     for t in range(T):
         tgt = palm_task[t]
+        # r12.4 SHIPPED: position-only DLS.  The 6D pose-following attempt
+        # (adaptive damping, full-weight orientation) diverged: the constant
+        # registered orientation enters wrist singularities mid-path and
+        # pulls the position off (g5 registered 0.64/1.48 m).  A stable
+        # orientation controller (task-priority or sampling) is the
+        # documented follow-up.
         for it in range(80):
             data.qpos[qadr] = q
             mujoco.mj_kinematics(model, data)
@@ -1462,7 +1470,7 @@ def retarget_chain_side(joints: np.ndarray, model, data, spec: SideSpec,
                   "slide_shape": np.zeros((qpos22.shape[0], 3)),
                   "legacy_base_slide": np.zeros(3),
                   "retired": "ur5e: anchor decomposition retired (6R DLS)"}
-    if SCENE_KIND == "ur5e":
+    if SCENE_KIND.startswith("ur5e"):
         # r12: the task path in WORLD axes -- the registered MediaPipe
         # lateral as measured (no floating-wrist mount rotation), anchored
         # at the per-side registered grasp pose in front of the end face
@@ -1547,7 +1555,7 @@ def grasp_registration(model, data, spec: SideSpec, go_rotvec: np.ndarray) -> di
 
     import mujoco
 
-    if SCENE_KIND == "ur5e":
+    if SCENE_KIND.startswith("ur5e"):
         # r12: no floating-era seed exists in the UR5e scene -- the scene
         # grasp frame is CONSTRUCTED from the task geometry: fingers into
         # the end face, plate normal toward the face, right-handed thumb
@@ -1749,7 +1757,7 @@ def dual_warm_start(model, data, specs, first_cmd, frame_skip) -> dict:
     URDF velocity limits and the reset settle starts the hands at the first
     commanded pose; the floating-wrist ramp is input shaping for a retired
     mechanism.  A minimal record keeps the report consumers alive."""
-    if SCENE_KIND == "ur5e":
+    if SCENE_KIND.startswith("ur5e"):
         return {s: {"skipped": "ur5e: reset settle starts the hands at the "
                                 "first commanded pose; the IK stream is "
                                 "rate-projected",
@@ -1962,7 +1970,7 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
 # gates
 # --------------------------------------------------------------------------
 def metric_calibration(model, data) -> dict:
-    if SCENE_KIND == "ur5e":
+    if SCENE_KIND.startswith("ur5e"):
         # r12: the pad-to-face metric calibration runs on the floating-era
         # seed layout, which does not exist in the UR5e scene.  The UR5e
         # calibration evidence = the reachability scan + the IK residuals
@@ -2326,7 +2334,7 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
         })
         wrist_q = h["qpos"][:, spec.wrist_qadr]
         wrist_ctrl = h["ctrl"][:, spec.wrist_act_id]
-        if SCENE_KIND == "ur5e":
+        if SCENE_KIND.startswith("ur5e"):
             # r12: the smoke-5 winding RATE tables key the retired floating
             # wrist; the UR5e arm joints are gated by the URDF-limit command
             # projection instead.  The finger POSITION gate is finger-keyed
@@ -2689,7 +2697,7 @@ def main() -> int:
     print("[2/7] metric calibration on the verified gate-3 pose (box restored)")
     cal = metric_calibration(model, data)
     for s in VIDEOS:
-        if SCENE_KIND == "ur5e":
+        if SCENE_KIND.startswith("ur5e"):
             print(f"    {s}: {cal.get('skipped', '')}")
             continue
         e = cal["per_side"][s]
@@ -2781,7 +2789,7 @@ def main() -> int:
     # terminal_target_provenance.
     g3 = json.loads((REPO / "runs/w6/gate3_qpos.json").read_text())
     g3q = np.asarray(g3["qpos"], float)
-    if SCENE_KIND == "ur5e":
+    if SCENE_KIND.startswith("ur5e"):
         g3q = g3q  # the finger DoFs are scene-identical; the arm block is
         # unused under UR5e (the arm holds the registered task pose)
     ctrl_lo = model.actuator_ctrlrange[:, 0]
@@ -2792,7 +2800,7 @@ def main() -> int:
     blend_record = {}
     for side in VIDEOS:
         spec = specs[side]
-        if SCENE_KIND == "ur5e":
+        if SCENE_KIND.startswith("ur5e"):
             # r12: the arm HOLDS its registered terminal pose (no arm blend
             # toward the floating-era seed wrist); only the fingers blend to
             # the v5-verified curl (finger DoFs are scene-identical)
@@ -2882,7 +2890,7 @@ def main() -> int:
         print(f"    holdable-band clamp {s}: clamped={len(bc['clamped_joints'])} "
               f"exempt={len(bc['exempt_joints'])} "
               f"frames_touched={bc['frames_touched']}/{bc['n_stream_frames']}")
-    if SCENE_KIND == "ur5e":
+    if SCENE_KIND.startswith("ur5e"):
         # r12: the clearance lives in the IK target (ur5e_ik_placement lifts
         # the palm path); the slide-z clamp is floating-wrist machinery
         clamp_rec = {"skipped": "ur5e: clearance lift applied to the palm "
@@ -3180,7 +3188,7 @@ def main() -> int:
                  "gate5_palm_deviation"):
         verdict[gate] = all(report["per_side"][s][gate]["pass"] for s in VIDEOS)
     g4 = report["per_side"]
-    if SCENE_KIND == "ur5e":
+    if SCENE_KIND.startswith("ur5e"):
         # r12: the smoke-5 winding tables key the retired floating wrist;
         # the UR5e arm joints are gated by the URDF-limit command projection
         # (record.command_outside_ctrlrange_after == 0) + the finger legs
