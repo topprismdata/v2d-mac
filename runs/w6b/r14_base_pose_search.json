@@ -1,0 +1,6656 @@
+{
+ "frozen_criteria": {
+  "C1_reach": ">= 0.98 frames < 1 mm",
+  "C2_jump": "<= 60 deg wrap-normalized",
+  "C3_continuity": "<= 0.5 rad/frame^2",
+  "C4_collision": "no arm/hand vs static support contact"
+ },
+ "grid": "y in [-0.20, 0.20] step 0.05 x z in [0.70, 1.00] step 0.05 x {identity, rx180, rz180}, x=+-0.235",
+ "results": [
+  {
+   "mode": "identity",
+   "by": -0.2,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9792834887225796,
+     "max_jump_deg": 57.29117463175588,
+     "max_cont_rad": 0.9999196296591899
+    },
+    "left": {
+     "reach_frac": 0.38846153846153847,
+     "max_err_mm": 90.9306004042992,
+     "max_jump_deg": 11.268174861475899,
+     "max_cont_rad": 0.19666675202321038
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 153,
+   "C1": false,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.2,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9948258289722369,
+     "max_jump_deg": 16.512944540316653,
+     "max_cont_rad": 0.2882052514277471
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9681991698639983,
+     "max_jump_deg": 2.782877598122322,
+     "max_cont_rad": 0.04409341441949799
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "ff_proximal_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 205,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.2,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9954356026315088,
+     "max_jump_deg": 18.832458183573777,
+     "max_cont_rad": 0.32868840154751333
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9891966246065795,
+     "max_jump_deg": 16.583971104249105,
+     "max_cont_rad": 0.288274227209091
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.2,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9485247817598871,
+     "max_jump_deg": 17.90407717377591,
+     "max_cont_rad": 0.3124850962135508
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9683814979189921,
+     "max_jump_deg": 8.766684546274089,
+     "max_cont_rad": 0.15387031901425186
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.2,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.997336549773545,
+     "max_jump_deg": 26.313168301244886,
+     "max_cont_rad": 0.4592514234881263
+    },
+    "left": {
+     "reach_frac": 0.6038461538461538,
+     "max_err_mm": 75.88198587573885,
+     "max_jump_deg": 6.3166123299627035,
+     "max_cont_rad": 0.09349996584208498
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.2,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.998509362147977,
+     "max_jump_deg": 40.20670645539808,
+     "max_cont_rad": 0.7017394090295552
+    },
+    "left": {
+     "reach_frac": 0.6076923076923076,
+     "max_err_mm": 75.88198587573893,
+     "max_jump_deg": 8.531306260983495,
+     "max_cont_rad": 0.10621012115844664
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 185,
+   "C1": false,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.2,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9555693894048038,
+     "max_jump_deg": 52.11868265864142,
+     "max_cont_rad": 0.9096426141953642
+    },
+    "left": {
+     "reach_frac": 0.6076923076923076,
+     "max_err_mm": 75.88198587573767,
+     "max_jump_deg": 10.196291023755402,
+     "max_cont_rad": 0.1205848358077683
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 112,
+   "C1": false,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.15,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9980775249951745,
+     "max_jump_deg": 17.445285656905646,
+     "max_cont_rad": 0.3044776736639454
+    },
+    "left": {
+     "reach_frac": 0.9923076923076923,
+     "max_err_mm": 1.1778767749058914,
+     "max_jump_deg": 6.379822272055608,
+     "max_cont_rad": 0.10019201604303202
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.15,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.982577982030271,
+     "max_jump_deg": 42.45508088366953,
+     "max_cont_rad": 0.740980945620537
+    },
+    "left": {
+     "reach_frac": 0.0,
+     "max_err_mm": 70.46582065299613,
+     "max_jump_deg": 16.28164656268979,
+     "max_cont_rad": 0.4678884125985041
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.15,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9686249606497015,
+     "max_jump_deg": 66.05607081055703,
+     "max_cont_rad": 1.1743147578505027
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9939746170157451,
+     "max_jump_deg": 5.487971229955841,
+     "max_cont_rad": 0.08766403982632731
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.15,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9945662991883405,
+     "max_jump_deg": 55.52075073403072,
+     "max_cont_rad": 0.9690199034878945
+    },
+    "left": {
+     "reach_frac": 0.85,
+     "max_err_mm": 41.47406227602534,
+     "max_jump_deg": 11.272096843358758,
+     "max_cont_rad": 0.15427209418601784
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 214,
+   "C1": false,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.15,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9962774655201186,
+     "max_jump_deg": 18.145052738303526,
+     "max_cont_rad": 0.3166909132314095
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.97690937211229,
+     "max_jump_deg": 8.83415530187034,
+     "max_cont_rad": 0.154185096650151
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 245,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.15,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9910512759143137,
+     "max_jump_deg": 47.96384235293905,
+     "max_cont_rad": 0.8371269709662905
+    },
+    "left": {
+     "reach_frac": 0.0,
+     "max_err_mm": 511.7211916403364,
+     "max_jump_deg": 111.70383771653496,
+     "max_cont_rad": 1.9589094201738217
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 166,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.15,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9988272816134863,
+     "max_jump_deg": 38.01118173600785,
+     "max_cont_rad": 0.7365332424272597
+    },
+    "left": {
+     "reach_frac": 0.0,
+     "max_err_mm": 304.0697756045582,
+     "max_jump_deg": 6.39957687780308,
+     "max_cont_rad": 0.10840890755306187
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 240,
+   "arm_link_contact_frames": 0,
+   "C1": false,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 240
+  },
+  {
+   "mode": "identity",
+   "by": -0.1,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9972657903037567,
+     "max_jump_deg": 16.257077954417543,
+     "max_cont_rad": 0.2837395370579707
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9895965048123203,
+     "max_jump_deg": 3.5436196177839627,
+     "max_cont_rad": 0.061847829768593154
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "ff_base_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 163,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.1,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9954231378509102,
+     "max_jump_deg": 56.86052909950781,
+     "max_cont_rad": 0.9924034472124577
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9702422390502687,
+     "max_jump_deg": 6.199513730106,
+     "max_cont_rad": 0.10106318994760866
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.1,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9423076923076923,
+     "max_err_mm": 191.3345600382235,
+     "max_jump_deg": 153.18614342261344,
+     "max_cont_rad": 3.7296095554317863
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9670905551852826,
+     "max_jump_deg": 4.632922921677032,
+     "max_cont_rad": 0.06328277751184896
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 239,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.1,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9940993183945661,
+     "max_jump_deg": 48.5112085105305,
+     "max_cont_rad": 0.8466803126302516
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9841723918870287,
+     "max_jump_deg": 3.051398286426755,
+     "max_cont_rad": 0.04565338188650636
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.1,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9949464972179828,
+     "max_jump_deg": 161.89626659272008,
+     "max_cont_rad": 4.950528143523862
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9707687535916941,
+     "max_jump_deg": 4.805061711145914,
+     "max_cont_rad": 0.06460673603653344
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.1,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9965762362275236,
+     "max_jump_deg": 163.70198602829174,
+     "max_cont_rad": 2.857138648247446
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.987601979771547,
+     "max_jump_deg": 4.489477639039178,
+     "max_cont_rad": 0.05115865329342428
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "ff_proximal_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.1,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9496373463928441,
+     "max_jump_deg": 11.891832540802552,
+     "max_cont_rad": 0.20755163193280746
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9708666391909211,
+     "max_jump_deg": 5.336046334302721,
+     "max_cont_rad": 0.06377448037014677
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "ff_medial_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.05,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.990249426087633,
+     "max_jump_deg": 36.30901472592146,
+     "max_cont_rad": 0.6337118551224359
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9985760789792636,
+     "max_jump_deg": 4.728209153959281,
+     "max_cont_rad": 0.0522773757440953
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "ff_base_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 151,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.05,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.0,
+     "max_err_mm": 257.64574713443125,
+     "max_jump_deg": 173.81382600616126,
+     "max_cont_rad": 3.46162557614668
+    },
+    "left": {
+     "reach_frac": 0.8730769230769231,
+     "max_err_mm": 155.0707477154011,
+     "max_jump_deg": 108.21839198422097,
+     "max_cont_rad": 5.267440854711344
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.05,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.990022024290388,
+     "max_jump_deg": 44.128605947175735,
+     "max_cont_rad": 0.7701894680933673
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9688957910558104,
+     "max_jump_deg": 3.766645203284171,
+     "max_cont_rad": 0.0443205417485526
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "ff_proximal_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 239,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.05,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9984994369140064,
+     "max_jump_deg": 21.90588428266462,
+     "max_cont_rad": 0.38232980629337376
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9677244972226713,
+     "max_jump_deg": 4.489538909619791,
+     "max_cont_rad": 0.062469383801353695
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.05,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9987789623154086,
+     "max_jump_deg": 167.92895283985544,
+     "max_cont_rad": 2.943426815129048
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9814661466660812,
+     "max_jump_deg": 3.862657274459693,
+     "max_cont_rad": 0.04285219342943458
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "ff_proximal_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.05,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9971381625954404,
+     "max_jump_deg": 95.89975558220114,
+     "max_cont_rad": 1.6737664867672213
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9834561433137469,
+     "max_jump_deg": 5.944726264815168,
+     "max_cont_rad": 0.0697455261362887
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 234,
+   "arm_link_contact_frames": 112,
+   "C1": true,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 233
+  },
+  {
+   "mode": "identity",
+   "by": -0.05,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.990049800138632,
+     "max_jump_deg": 32.143204447428204,
+     "max_cont_rad": 0.5610047497493067
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9921567041014465,
+     "max_jump_deg": 5.558977494474639,
+     "max_cont_rad": 0.07371125967581094
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.0,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9384615384615385,
+     "max_err_mm": 59.29233385846165,
+     "max_jump_deg": 87.90791440542364,
+     "max_cont_rad": 1.5342825449337447
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9775414748671202,
+     "max_jump_deg": 4.482947392996257,
+     "max_cont_rad": 0.051789113857385494
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "th_proximal_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 155,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.0,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.55,
+     "max_err_mm": 116.11343554424242,
+     "max_jump_deg": 167.07593044683824,
+     "max_cont_rad": 4.29364357912163
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9683663697930416,
+     "max_jump_deg": 4.247519338598342,
+     "max_cont_rad": 0.04861983166919048
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "ff_proximal_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 229,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.0,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.6038461538461538,
+     "max_err_mm": 134.34631574162182,
+     "max_jump_deg": 166.1651460731499,
+     "max_cont_rad": 4.990981391895769
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9749854593347792,
+     "max_jump_deg": 4.28732079647313,
+     "max_cont_rad": 0.04924627725601072
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "th_tip_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 245,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.0,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9878708607214979,
+     "max_jump_deg": 71.87600433558157,
+     "max_cont_rad": 1.2544729288336176
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9940584204032094,
+     "max_jump_deg": 6.695528264336223,
+     "max_cont_rad": 0.09261636316070376
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.0,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9876337785942458,
+     "max_jump_deg": 95.30947170504496,
+     "max_cont_rad": 1.6634640895894084
+    },
+    "left": {
+     "reach_frac": 0.7884615384615384,
+     "max_err_mm": 94.49014976986872,
+     "max_jump_deg": 172.09434446332094,
+     "max_cont_rad": 3.03717707197275
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 245,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.0,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9869172607833707,
+     "max_jump_deg": 57.86403993552157,
+     "max_cont_rad": 1.0099180153803389
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9968797656303122,
+     "max_jump_deg": 5.219071097275964,
+     "max_cont_rad": 0.0762637037006364
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": -0.0,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9937438589063315,
+     "max_jump_deg": 23.66939062813162,
+     "max_cont_rad": 0.41310879840158543
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.997163258555404,
+     "max_jump_deg": 7.045771422511158,
+     "max_cont_rad": 0.09477893037284835
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.05,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9423076923076923,
+     "max_err_mm": 98.13310980122876,
+     "max_jump_deg": 82.3858242473459,
+     "max_cont_rad": 1.4378976976539926
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9670730432466704,
+     "max_jump_deg": 6.035766970276226,
+     "max_cont_rad": 0.10534400651444298
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 219,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.05,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9887238163916281,
+     "max_jump_deg": 31.071303344612478,
+     "max_cont_rad": 0.542296546249414
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9671423006888645,
+     "max_jump_deg": 5.507608250648874,
+     "max_cont_rad": 0.07911284512916184
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "ff_proximal_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 224,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.05,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9423076923076923,
+     "max_err_mm": 117.76308503663466,
+     "max_jump_deg": 174.33619681888635,
+     "max_cont_rad": 3.289014516059664
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9900303568912389,
+     "max_jump_deg": 6.857264667261494,
+     "max_cont_rad": 0.11968184612438659
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "th_tip_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 245,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.05,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9906960288085581,
+     "max_jump_deg": 18.600578506119387,
+     "max_cont_rad": 0.3246413377074717
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9978418544287326,
+     "max_jump_deg": 4.479225473553082,
+     "max_cont_rad": 0.07777990330312079
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.05,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9923409949765104,
+     "max_jump_deg": 41.51868804485881,
+     "max_cont_rad": 0.7246378074911934
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9723367526657043,
+     "max_jump_deg": 8.913017757783694,
+     "max_cont_rad": 0.14608611218923873
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.05,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9881263861018956,
+     "max_jump_deg": 33.498105571120924,
+     "max_cont_rad": 0.5846522353967156
+    },
+    "left": {
+     "reach_frac": 0.6307692307692307,
+     "max_err_mm": 156.4762208691212,
+     "max_jump_deg": 133.20035305821597,
+     "max_cont_rad": 4.862479315582026
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.05,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9886131781470064,
+     "max_jump_deg": 31.355545879023026,
+     "max_cont_rad": 0.5472575143490914
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9744984674926623,
+     "max_jump_deg": 6.94810099747619,
+     "max_cont_rad": 0.12126723916706178
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "ff_proximal_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 246,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.1,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9423076923076923,
+     "max_err_mm": 113.75904996602385,
+     "max_jump_deg": 75.91243655476558,
+     "max_cont_rad": 1.3249220849320256
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9664539866947802,
+     "max_jump_deg": 9.271287874473112,
+     "max_cont_rad": 0.14476674393036515
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.1,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9716835754552393,
+     "max_jump_deg": 67.47235719416224,
+     "max_cont_rad": 1.177614787119814
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9664431203949384,
+     "max_jump_deg": 8.953423387886838,
+     "max_cont_rad": 0.14179118891508047
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.1,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9307692307692308,
+     "max_err_mm": 72.829804079706,
+     "max_jump_deg": 100.10240418334043,
+     "max_cont_rad": 4.539737068169629
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9664266829292203,
+     "max_jump_deg": 8.728232806357783,
+     "max_cont_rad": 0.13837399049077548
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.1,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.99334942908711,
+     "max_jump_deg": 33.546530467677535,
+     "max_cont_rad": 0.5854974092815659
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9662963910134371,
+     "max_jump_deg": 9.167251750759739,
+     "max_cont_rad": 0.14236681885884117
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 201,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.1,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9991604023792425,
+     "max_jump_deg": 21.084127695824648,
+     "max_cont_rad": 0.3679874482030656
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9674875362978547,
+     "max_jump_deg": 3.0854726274612476,
+     "max_cont_rad": 0.050428223573637077
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.1,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9876028415218595,
+     "max_jump_deg": 54.441170075686685,
+     "max_cont_rad": 0.9501776664589432
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9665803327230859,
+     "max_jump_deg": 6.317095655874804,
+     "max_cont_rad": 0.10963823348263224
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.1,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9960229908426161,
+     "max_jump_deg": 26.025260900049084,
+     "max_cont_rad": 0.45422649139639937
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9664889485201038,
+     "max_jump_deg": 6.70666008720716,
+     "max_cont_rad": 0.10846472348438319
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.15,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.998322518577467,
+     "max_jump_deg": 46.85168865628817,
+     "max_cont_rad": 0.8177162271715062
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9969916176045437,
+     "max_jump_deg": 5.787782337723488,
+     "max_cont_rad": 0.0996514658635359
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 186,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.15,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9673456027169955,
+     "max_jump_deg": 47.751821133501394,
+     "max_cont_rad": 0.8394416916116088
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9984123609739056,
+     "max_jump_deg": 4.432996601909815,
+     "max_cont_rad": 0.07043819061077516
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.15,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.8423076923076923,
+     "max_err_mm": 41.42241503717224,
+     "max_jump_deg": 16.590572751651845,
+     "max_cont_rad": 0.2895601193079802
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9966991125581304,
+     "max_jump_deg": 5.762736854175747,
+     "max_cont_rad": 0.09889087430934174
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "ff_proximal_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 240,
+   "C1": false,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.15,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9882822901546423,
+     "max_jump_deg": 33.051223513713126,
+     "max_cont_rad": 0.5768526721268632
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9966308642631471,
+     "max_jump_deg": 5.778904297478947,
+     "max_cont_rad": 0.09927965093280577
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.15,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9872167898904564,
+     "max_jump_deg": 28.246890238266946,
+     "max_cont_rad": 0.4930012381072037
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9965719579030606,
+     "max_jump_deg": 5.780417768039624,
+     "max_cont_rad": 0.09935952880019361
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.15,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.8423076923076923,
+     "max_err_mm": 41.4224150383612,
+     "max_jump_deg": 25.471248371694777,
+     "max_cont_rad": 0.4445571486793183
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9995617690758603,
+     "max_jump_deg": 4.542775741612305,
+     "max_cont_rad": 0.06838596008073328
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.15,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.98643019162283,
+     "max_jump_deg": 33.306510097574105,
+     "max_cont_rad": 0.581308263551406
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9965125585722269,
+     "max_jump_deg": 5.777532474134913,
+     "max_cont_rad": 0.09936875761903319
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "ff_medial_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 186,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.2,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9879704775084485,
+     "max_jump_deg": 20.456111432136332,
+     "max_cont_rad": 0.3570264966456316
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9715936354800713,
+     "max_jump_deg": 4.142757508535461,
+     "max_cont_rad": 0.07230475863566088
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.2,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9923076923076923,
+     "max_err_mm": 2.2977854149783252,
+     "max_jump_deg": 13.669081330726309,
+     "max_cont_rad": 0.23857047494406203
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9715854731691574,
+     "max_jump_deg": 4.101848119663997,
+     "max_cont_rad": 0.07159075510487489
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 198,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.2,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9823320913112984,
+     "max_jump_deg": 62.50222908759387,
+     "max_cont_rad": 1.0908696874142843
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9724602715193831,
+     "max_jump_deg": 3.9697271143416244,
+     "max_cont_rad": 0.06869051774909307
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.2,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9824435246497019,
+     "max_jump_deg": 63.23230350846081,
+     "max_cont_rad": 1.1036118898430032
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9723869551056422,
+     "max_jump_deg": 3.988232472333807,
+     "max_cont_rad": 0.06923204779732695
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 257,
+   "C1": true,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.2,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9877219407284468,
+     "max_jump_deg": 21.55077002592605,
+     "max_cont_rad": 0.3761318932925133
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9716958834062406,
+     "max_jump_deg": 4.10435478893042,
+     "max_cont_rad": 0.07163450473683275
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.2,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9844127560992486,
+     "max_jump_deg": 23.222848870446644,
+     "max_cont_rad": 0.40531517448233995
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9715618338755683,
+     "max_jump_deg": 4.140980834481831,
+     "max_cont_rad": 0.07227374982369006
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 186,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "identity",
+   "by": 0.2,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9903732739829499,
+     "max_jump_deg": 43.90038862645205,
+     "max_cont_rad": 0.766206324436659
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.971778716098972,
+     "max_jump_deg": 4.127506935879445,
+     "max_cont_rad": 0.07203858592999857
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 124,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.2,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9955840695072035,
+     "max_jump_deg": 62.9160007445399,
+     "max_cont_rad": 1.098091365179425
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.967711010220415,
+     "max_jump_deg": 2.8969520494096437,
+     "max_cont_rad": 0.0709168796821622
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.2,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9924543701950732,
+     "max_jump_deg": 32.39409203601326,
+     "max_cont_rad": 0.5653835642225051
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9677049866929022,
+     "max_jump_deg": 2.8940164644118473,
+     "max_cont_rad": 0.07080013409336183
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.2,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9965384870780786,
+     "max_jump_deg": 55.370223895562276,
+     "max_cont_rad": 0.9663927145440023
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9676962214794289,
+     "max_jump_deg": 2.8922720324658298,
+     "max_cont_rad": 0.07028801751291913
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.2,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9913777331775561,
+     "max_jump_deg": 20.108807315355925,
+     "max_cont_rad": 0.3509648963020826
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9677061420327561,
+     "max_jump_deg": 2.892903960646188,
+     "max_cont_rad": 0.06961548747508839
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.2,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9923076923076923,
+     "max_err_mm": 2.5378429982587836,
+     "max_jump_deg": 23.177078324219618,
+     "max_cont_rad": 0.40451632775024216
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9677589732776462,
+     "max_jump_deg": 2.8956383752161696,
+     "max_cont_rad": 0.06891616023685154
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.2,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9992652397145829,
+     "max_jump_deg": 73.89870293304135,
+     "max_cont_rad": 1.5528830331228018
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9973361292972244,
+     "max_jump_deg": 2.9000335246126743,
+     "max_cont_rad": 0.0691789263662902
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.2,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.998198042921939,
+     "max_jump_deg": 57.58754164033405,
+     "max_cont_rad": 1.0050922097531652
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9679780720838413,
+     "max_jump_deg": 2.902029267718743,
+     "max_cont_rad": 0.0678453348806396
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 234,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.15,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9952420927469563,
+     "max_jump_deg": 41.46215864276509,
+     "max_cont_rad": 0.7236511833004742
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9679419735034568,
+     "max_jump_deg": 3.4439149815670564,
+     "max_cont_rad": 0.06689303077034059
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.15,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9905596879114174,
+     "max_jump_deg": 89.7744789896039,
+     "max_cont_rad": 1.5770964762551771
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9680158748964425,
+     "max_jump_deg": 3.6774185533766883,
+     "max_cont_rad": 0.07229879883079682
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.15,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9900193169142264,
+     "max_jump_deg": 51.71562646622402,
+     "max_cont_rad": 0.9026079565671292
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9680299515355382,
+     "max_jump_deg": 3.7720882170512864,
+     "max_cont_rad": 0.07283900487188011
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.15,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9952916686567715,
+     "max_jump_deg": 82.04541579339447,
+     "max_cont_rad": 1.431962641762489
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9680307293651628,
+     "max_jump_deg": 3.7729669621653388,
+     "max_cont_rad": 0.07224896148113952
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.15,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9076923076923077,
+     "max_err_mm": 4.702878146729832,
+     "max_jump_deg": 26.220911410467284,
+     "max_cont_rad": 0.42450650657090616
+    },
+    "left": {
+     "reach_frac": 0.9846153846153847,
+     "max_err_mm": 3.067656943804716,
+     "max_jump_deg": 3.741943366673371,
+     "max_cont_rad": 0.07176548341565159
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.15,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9846153846153847,
+     "max_err_mm": 10.212785552296264,
+     "max_jump_deg": 49.013951544468725,
+     "max_cont_rad": 0.8554548338639393
+    },
+    "left": {
+     "reach_frac": 0.9538461538461539,
+     "max_err_mm": 3.9219360310505866,
+     "max_jump_deg": 3.6867020451734813,
+     "max_cont_rad": 0.07199574989424207
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.15,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9899363425787513,
+     "max_jump_deg": 37.31723286277972,
+     "max_cont_rad": 0.6513085811889356
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9682915068662835,
+     "max_jump_deg": 3.6796736377392323,
+     "max_cont_rad": 0.07350234295981561
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 214,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.1,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9973939659856306,
+     "max_jump_deg": 14.311204247917523,
+     "max_cont_rad": 0.24977763405155962
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9684669635774916,
+     "max_jump_deg": 4.660717721123474,
+     "max_cont_rad": 0.08134486973965149
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.1,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9461538461538461,
+     "max_err_mm": 23.642698995298982,
+     "max_jump_deg": 32.74257635285614,
+     "max_cont_rad": 0.5714657629429765
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9678165475864702,
+     "max_jump_deg": 4.051119916802444,
+     "max_cont_rad": 0.05629542480222005
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.1,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9423076923076923,
+     "max_err_mm": 26.08171883597714,
+     "max_jump_deg": 86.57281523086381,
+     "max_cont_rad": 1.51098062667739
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9684591740615206,
+     "max_jump_deg": 4.791280282518093,
+     "max_cont_rad": 0.08362361631582498
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.1,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.5153846153846153,
+     "max_err_mm": 115.09482189716381,
+     "max_jump_deg": 44.88659856803535,
+     "max_cont_rad": 0.7834189350331888
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9684663491665144,
+     "max_jump_deg": 4.8723687131506646,
+     "max_cont_rad": 0.08503887641563822
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.1,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.8692307692307693,
+     "max_err_mm": 58.33550746769544,
+     "max_jump_deg": 79.37328575147157,
+     "max_cont_rad": 1.3853251744894806
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9684943379552556,
+     "max_jump_deg": 4.889494131892804,
+     "max_cont_rad": 0.08533777135847137
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.1,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.8884615384615384,
+     "max_err_mm": 113.17394934952904,
+     "max_jump_deg": 41.49993351088917,
+     "max_cont_rad": 0.7243104791237462
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9685612601735623,
+     "max_jump_deg": 4.886994854635727,
+     "max_cont_rad": 0.08529415074141511
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.1,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9999337546150717,
+     "max_jump_deg": 135.85727976670762,
+     "max_cont_rad": 3.9610339957339393
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9686307861074885,
+     "max_jump_deg": 4.822641312231329,
+     "max_cont_rad": 0.08417096954113641
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "ff_proximal_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 226,
+   "C1": true,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.05,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9898732697733678,
+     "max_jump_deg": 52.395871697890215,
+     "max_cont_rad": 0.9144804755806959
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9717376899307083,
+     "max_jump_deg": 5.013088591323526,
+     "max_cont_rad": 0.06933397796819163
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.05,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9985672499330869,
+     "max_jump_deg": 18.10020884907177,
+     "max_cont_rad": 0.3159082397149158
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9725341999390643,
+     "max_jump_deg": 4.82474415693812,
+     "max_cont_rad": 0.06698930561703276
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.05,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.7307692307692307,
+     "max_err_mm": 112.01374623211375,
+     "max_jump_deg": 137.5062313214075,
+     "max_cont_rad": 2.6008960163526216
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9744524923324148,
+     "max_jump_deg": 5.27302977288407,
+     "max_cont_rad": 0.07238242032847508
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.05,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9307692307692308,
+     "max_err_mm": 56.26869992677239,
+     "max_jump_deg": 79.42175781418938,
+     "max_cont_rad": 1.3861711715791396
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9743073099543792,
+     "max_jump_deg": 5.274725888167207,
+     "max_cont_rad": 0.07242682683897317
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.05,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.8576923076923076,
+     "max_err_mm": 64.85218499680911,
+     "max_jump_deg": 161.45571575614835,
+     "max_cont_rad": 2.8179338361088746
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9743032557207116,
+     "max_jump_deg": 5.256104149696997,
+     "max_cont_rad": 0.07216782781305331
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.05,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.65,
+     "max_err_mm": 225.12959352631154,
+     "max_jump_deg": 145.51075804334064,
+     "max_cont_rad": 4.533097205308851
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9741085824910518,
+     "max_jump_deg": 5.206965763517408,
+     "max_cont_rad": 0.07155394301350282
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 259,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.05,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9928868763101639,
+     "max_jump_deg": 101.88888346909579,
+     "max_cont_rad": 4.996307127009031
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.973526352695844,
+     "max_jump_deg": 5.100873957067482,
+     "max_cont_rad": 0.07025526318395015
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "ff_proximal_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.0,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9950869961804104,
+     "max_jump_deg": 13.703167826382751,
+     "max_cont_rad": 0.2391653965237337
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9780289994383423,
+     "max_jump_deg": 5.985937053357112,
+     "max_cont_rad": 0.09418759525271514
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.0,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9892091916835974,
+     "max_jump_deg": 77.83394562933903,
+     "max_cont_rad": 1.3584586210502159
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9778759187153362,
+     "max_jump_deg": 6.001647390041402,
+     "max_cont_rad": 0.09450172757227193
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.0,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9920193684908359,
+     "max_jump_deg": 131.5423012686195,
+     "max_cont_rad": 2.295846262787724
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9817417681662348,
+     "max_jump_deg": 6.068266260207176,
+     "max_cont_rad": 0.095955385585484
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.0,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9951390566929862,
+     "max_jump_deg": 173.63546427274835,
+     "max_cont_rad": 3.115702790891648
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9819740588997532,
+     "max_jump_deg": 6.145955099334101,
+     "max_cont_rad": 0.09708663941893225
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.0,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9461538461538461,
+     "max_err_mm": 36.6727816263652,
+     "max_jump_deg": 163.13117678183391,
+     "max_cont_rad": 8.138016333541284
+    },
+    "left": {
+     "reach_frac": 0.9346153846153846,
+     "max_err_mm": 12.333633599087264,
+     "max_jump_deg": 6.377970252623518,
+     "max_cont_rad": 0.09623045142829012
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.0,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.95,
+     "max_err_mm": 22.27374859216811,
+     "max_jump_deg": 151.14327166506095,
+     "max_cont_rad": 2.6379477327915657
+    },
+    "left": {
+     "reach_frac": 0.9192307692307692,
+     "max_err_mm": 12.723854880670363,
+     "max_jump_deg": 6.2878981213748,
+     "max_cont_rad": 0.0953394747165206
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 256,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": -0.0,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9939718305817572,
+     "max_jump_deg": 67.39927213688196,
+     "max_cont_rad": 1.1763392122362646
+    },
+    "left": {
+     "reach_frac": 0.9769230769230769,
+     "max_err_mm": 4.446569696319344,
+     "max_jump_deg": 5.970195107631261,
+     "max_cont_rad": 0.09478868644437766
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 219,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.05,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.991967049809985,
+     "max_jump_deg": 11.552504733447739,
+     "max_cont_rad": 0.20162924445089292
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9728337583353109,
+     "max_jump_deg": 7.7675637974572265,
+     "max_cont_rad": 0.1382158957055063
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.05,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9913663434520409,
+     "max_jump_deg": 12.55665383342492,
+     "max_cont_rad": 0.21915495242643246
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9712835349625579,
+     "max_jump_deg": 7.7229816802645255,
+     "max_cont_rad": 0.13503298573005773
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.05,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9423076923076923,
+     "max_err_mm": 113.94244353779878,
+     "max_jump_deg": 84.40173110810822,
+     "max_cont_rad": 1.4730880076078599
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9972133620349712,
+     "max_jump_deg": 8.897397173048631,
+     "max_cont_rad": 0.143804486692225
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.05,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9423076923076923,
+     "max_err_mm": 115.31714959695934,
+     "max_jump_deg": 83.30968791109066,
+     "max_cont_rad": 1.452767165016591
+    },
+    "left": {
+     "reach_frac": 0.9807692307692307,
+     "max_err_mm": 3.8072787905928966,
+     "max_jump_deg": 8.535245098229248,
+     "max_cont_rad": 0.151601097700913
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.05,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9976909795707738,
+     "max_jump_deg": 159.89559414841438,
+     "max_cont_rad": 3.6848363297932414
+    },
+    "left": {
+     "reach_frac": 0.8807692307692307,
+     "max_err_mm": 83.89883222557285,
+     "max_jump_deg": 107.43928207138644,
+     "max_cont_rad": 4.481509944071061
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.05,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9955927826164521,
+     "max_jump_deg": 44.29185119948921,
+     "max_cont_rad": 0.7730386352344865
+    },
+    "left": {
+     "reach_frac": 0.926923076923077,
+     "max_err_mm": 98.62403626070153,
+     "max_jump_deg": 82.84398333393041,
+     "max_cont_rad": 1.432286936564926
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.05,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.994792685078117,
+     "max_jump_deg": 45.40957985158261,
+     "max_cont_rad": 0.7925466803573946
+    },
+    "left": {
+     "reach_frac": 0.9153846153846154,
+     "max_err_mm": 8.83719501884751,
+     "max_jump_deg": 8.13238755621179,
+     "max_cont_rad": 0.1447786561691835
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.1,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9881205777798284,
+     "max_jump_deg": 51.278759747265234,
+     "max_cont_rad": 0.8949831939289132
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9664974619718569,
+     "max_jump_deg": 2.8897463226008235,
+     "max_cont_rad": 0.05344748859022319
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.1,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9879398851040644,
+     "max_jump_deg": 39.83247750303619,
+     "max_cont_rad": 0.6952078816545509
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9662045592757075,
+     "max_jump_deg": 4.452903309277449,
+     "max_cont_rad": 0.077717824019843
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.1,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9423076923076923,
+     "max_err_mm": 69.64012419573578,
+     "max_jump_deg": 140.90036107614534,
+     "max_cont_rad": 2.4754551877669746
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9727856260507254,
+     "max_jump_deg": 3.6286704904895823,
+     "max_cont_rad": 0.059937394870888866
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.1,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9961538461538462,
+     "max_err_mm": 1.7663923596260638,
+     "max_jump_deg": 46.13941404153069,
+     "max_cont_rad": 0.8052846899656143
+    },
+    "left": {
+     "reach_frac": 0.9692307692307692,
+     "max_err_mm": 2.141906942452636,
+     "max_jump_deg": 4.774020705898744,
+     "max_cont_rad": 0.07906076391953883
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.1,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9816422647202303,
+     "max_jump_deg": 53.8006824590141,
+     "max_cont_rad": 0.9389990487297554
+    },
+    "left": {
+     "reach_frac": 0.8923076923076924,
+     "max_err_mm": 125.46173020744514,
+     "max_jump_deg": 112.85220566184917,
+     "max_cont_rad": 2.00608261908633
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.1,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9625395191089535,
+     "max_jump_deg": 49.3190616386116,
+     "max_cont_rad": 0.8607800095878022
+    },
+    "left": {
+     "reach_frac": 0.9038461538461539,
+     "max_err_mm": 101.49690294885472,
+     "max_jump_deg": 111.59426078865464,
+     "max_cont_rad": 4.38391561553708
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.1,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9888345246851424,
+     "max_jump_deg": 177.26140397265803,
+     "max_cont_rad": 3.1537391807978006
+    },
+    "left": {
+     "reach_frac": 0.926923076923077,
+     "max_err_mm": 9.044516103949187,
+     "max_jump_deg": 7.496684122981016,
+     "max_cont_rad": 0.07929500191398713
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.15,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9967017908236364,
+     "max_jump_deg": 61.40851708487161,
+     "max_cont_rad": 1.0717808118982
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9869032093033033,
+     "max_jump_deg": 5.924541618660535,
+     "max_cont_rad": 0.07047942329615786
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.15,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9479702561058694,
+     "max_jump_deg": 60.409341786679946,
+     "max_cont_rad": 1.054341913140159
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9764660083415792,
+     "max_jump_deg": 3.8066586007231016,
+     "max_cont_rad": 0.05997679213239865
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.15,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9902270328083416,
+     "max_jump_deg": 108.215181388522,
+     "max_cont_rad": 1.8887112158725978
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9704128870401975,
+     "max_jump_deg": 2.9498558269001793,
+     "max_cont_rad": 0.05246516952843577
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.15,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9076923076923077,
+     "max_err_mm": 61.39508337041219,
+     "max_jump_deg": 118.93406605325131,
+     "max_cont_rad": 2.1810577846436123
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9779547509955737,
+     "max_jump_deg": 3.9431707637068256,
+     "max_cont_rad": 0.06094014729602715
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.15,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9423076923076923,
+     "max_err_mm": 43.50074210057934,
+     "max_jump_deg": 46.51133431523919,
+     "max_cont_rad": 0.8117758659137485
+    },
+    "left": {
+     "reach_frac": 0.9653846153846154,
+     "max_err_mm": 9.873598127936766,
+     "max_jump_deg": 8.763501792392468,
+     "max_cont_rad": 0.10315026628436597
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.15,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9384615384615385,
+     "max_err_mm": 44.942552470349945,
+     "max_jump_deg": 61.77937443094561,
+     "max_cont_rad": 1.0782535209471185
+    },
+    "left": {
+     "reach_frac": 0.9538461538461539,
+     "max_err_mm": 11.228765381002338,
+     "max_jump_deg": 9.793793968443062,
+     "max_cont_rad": 0.11566627707256139
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "ff_medial_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 250,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.15,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9918275751224651,
+     "max_jump_deg": 48.77450874301196,
+     "max_cont_rad": 0.8512757686083194
+    },
+    "left": {
+     "reach_frac": 0.9807692307692307,
+     "max_err_mm": 6.067293849770132,
+     "max_jump_deg": 6.994791383121358,
+     "max_cont_rad": 0.09767751064558094
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.2,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.982261339121075,
+     "max_jump_deg": 21.546492791294657,
+     "max_cont_rad": 0.37605724146531516
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9745071817315285,
+     "max_jump_deg": 4.087368561960833,
+     "max_cont_rad": 0.06684383612349132
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.2,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9932527037904285,
+     "max_jump_deg": 27.464800221865872,
+     "max_cont_rad": 0.47935119227402845
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9720342369077101,
+     "max_jump_deg": 2.52974988115234,
+     "max_cont_rad": 0.04032052150264498
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.2,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9423076923076923,
+     "max_err_mm": 282.4537706375646,
+     "max_jump_deg": 158.95119900797482,
+     "max_cont_rad": 7.408232988029677
+    },
+    "left": {
+     "reach_frac": 0.6,
+     "max_err_mm": 174.62713477448435,
+     "max_jump_deg": 9.87982017478308,
+     "max_cont_rad": 0.13750837817095363
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.2,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9645572893453022,
+     "max_jump_deg": 52.96250086577485,
+     "max_cont_rad": 0.9243700201981186
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9685840540477247,
+     "max_jump_deg": 3.3836715431015736,
+     "max_cont_rad": 0.05905620923315957
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.2,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9878276614765783,
+     "max_jump_deg": 26.18195570624491,
+     "max_cont_rad": 0.45696133168529096
+    },
+    "left": {
+     "reach_frac": 0.9923076923076923,
+     "max_err_mm": 5.704228457435975,
+     "max_jump_deg": 6.666488456163853,
+     "max_cont_rad": 0.10076700687102758
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.2,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9423076923076923,
+     "max_err_mm": 70.53591631259788,
+     "max_jump_deg": 21.41112250814043,
+     "max_cont_rad": 0.4191408565436857
+    },
+    "left": {
+     "reach_frac": 0.9923076923076923,
+     "max_err_mm": 9.196964837125977,
+     "max_jump_deg": 8.542121401378054,
+     "max_cont_rad": 0.13148461037159986
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 134,
+   "C1": false,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rx180",
+   "by": 0.2,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.6846153846153846,
+     "max_err_mm": 93.28337682980533,
+     "max_jump_deg": 88.21753738300775,
+     "max_cont_rad": 1.5396864853346672
+    },
+    "left": {
+     "reach_frac": 0.9961538461538462,
+     "max_err_mm": 4.1812388396528695,
+     "max_jump_deg": 5.786381142890425,
+     "max_cont_rad": 0.08988124271670372
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "ff_medial_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 235,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.2,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.996770004248684,
+     "max_jump_deg": 21.517652160058756,
+     "max_cont_rad": 0.37555387749189517
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9911767128409092,
+     "max_jump_deg": 6.2522930343012915,
+     "max_cont_rad": 0.10565067024778774
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.2,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9962322176278717,
+     "max_jump_deg": 19.470003773730227,
+     "max_cont_rad": 0.3398156712273137
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.992734699937639,
+     "max_jump_deg": 17.362171106833404,
+     "max_cont_rad": 0.3022145473888047
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.2,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9956999199450508,
+     "max_jump_deg": 17.946075842781756,
+     "max_cont_rad": 0.3132181112691579
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.983440074108257,
+     "max_jump_deg": 4.613311489856621,
+     "max_cont_rad": 0.06231587454108234
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.2,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.995327043980661,
+     "max_jump_deg": 17.227183058327483,
+     "max_cont_rad": 0.30067106521160114
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9836055165649211,
+     "max_jump_deg": 6.491383814511252,
+     "max_cont_rad": 0.09996059530422752
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.2,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9950466771996703,
+     "max_jump_deg": 16.51128258790128,
+     "max_cont_rad": 0.2881762448860874
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9904520296869997,
+     "max_jump_deg": 2.9868414414177797,
+     "max_cont_rad": 0.052130217387753586
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.2,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.994839785089251,
+     "max_jump_deg": 15.235683443602417,
+     "max_cont_rad": 0.26591283988244996
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9955739812756127,
+     "max_jump_deg": 2.9903244231614785,
+     "max_cont_rad": 0.05219100688696798
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.2,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9947175796803474,
+     "max_jump_deg": 14.11821882866906,
+     "max_cont_rad": 0.24640940307733228
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9985805425860089,
+     "max_jump_deg": 3.2346578983477663,
+     "max_cont_rad": 0.05645543050180857
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.15,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.998491584264159,
+     "max_jump_deg": 22.552262856320695,
+     "max_cont_rad": 0.393611240618017
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9967552250585514,
+     "max_jump_deg": 6.871876132324859,
+     "max_cont_rad": 0.09161826256039873
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.15,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9988382597460024,
+     "max_jump_deg": 20.104077210953402,
+     "max_cont_rad": 0.3508823404062955
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9688603187050673,
+     "max_jump_deg": 4.815945388417889,
+     "max_cont_rad": 0.08405410362412935
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.15,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9986954849138482,
+     "max_jump_deg": 17.60225211900885,
+     "max_cont_rad": 0.30721725524285337
+    },
+    "left": {
+     "reach_frac": 0.0,
+     "max_err_mm": 110.13070146913282,
+     "max_jump_deg": 10.043867023431588,
+     "max_cont_rad": 0.1287895330780528
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.15,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.998463132383657,
+     "max_jump_deg": 16.27640519654636,
+     "max_cont_rad": 0.28407686106844876
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9956847534536605,
+     "max_jump_deg": 6.38764936903172,
+     "max_cont_rad": 0.07412870911781111
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.15,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9981908731538328,
+     "max_jump_deg": 15.530989932605367,
+     "max_cont_rad": 0.27106691041805586
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9882427226632687,
+     "max_jump_deg": 2.891382667521196,
+     "max_cont_rad": 0.05046414748334138
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.15,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9980914741387275,
+     "max_jump_deg": 14.111257380266451,
+     "max_cont_rad": 0.24628790288199887
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.997972415272289,
+     "max_jump_deg": 4.053439640099441,
+     "max_cont_rad": 0.07074586775058922
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.15,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9979768809446985,
+     "max_jump_deg": 13.156258467301148,
+     "max_cont_rad": 0.22962002749778754
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9688901895745378,
+     "max_jump_deg": 4.756419741996764,
+     "max_cont_rad": 0.08301518510470274
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.1,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9981004622020182,
+     "max_jump_deg": 21.7280865120927,
+     "max_cont_rad": 0.3792266497941883
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9704998488889501,
+     "max_jump_deg": 4.309776602881968,
+     "max_cont_rad": 0.07521979174570648
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.1,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9991914906841148,
+     "max_jump_deg": 19.224555544173437,
+     "max_cont_rad": 0.33553179147835666
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9706240476682595,
+     "max_jump_deg": 4.417626106409586,
+     "max_cont_rad": 0.07710212067890465
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.1,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9500486298535158,
+     "max_jump_deg": 16.614192804966375,
+     "max_cont_rad": 0.28997236700781537
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9984279256663507,
+     "max_jump_deg": 3.924203704514453,
+     "max_cont_rad": 0.06849027516273587
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "mf_medial_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.1,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9497627213274966,
+     "max_jump_deg": 15.087035650237214,
+     "max_cont_rad": 0.26331844646240277
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.997272088092692,
+     "max_jump_deg": 3.8109695344048955,
+     "max_cont_rad": 0.06651396606856075
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.1,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9493942261713793,
+     "max_jump_deg": 15.249530101830844,
+     "max_cont_rad": 0.2661545096589345
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9706618601244398,
+     "max_jump_deg": 4.439312718231006,
+     "max_cont_rad": 0.07748062345879037
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.1,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9038461538461539,
+     "max_err_mm": 45.42871504326725,
+     "max_jump_deg": 95.17378858885196,
+     "max_cont_rad": 5.019422459252561
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9706803484871066,
+     "max_jump_deg": 4.44576791895098,
+     "max_cont_rad": 0.07759328796523102
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "ff_proximal_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 258,
+   "C1": false,
+   "C2": false,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.1,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9493830295989614,
+     "max_jump_deg": 12.226797735294431,
+     "max_cont_rad": 0.21339787745627392
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9707154549660894,
+     "max_jump_deg": 4.439280280213871,
+     "max_cont_rad": 0.07748005730858853
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.05,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9964690890381929,
+     "max_jump_deg": 20.524322843384134,
+     "max_cont_rad": 0.3582170103593376
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9924835407569496,
+     "max_jump_deg": 4.572120896028391,
+     "max_cont_rad": 0.05058283889236437
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "mf_distal_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 245,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.05,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9974652226524502,
+     "max_jump_deg": 17.7724709627961,
+     "max_cont_rad": 0.31018813451587857
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9974392920461471,
+     "max_jump_deg": 3.4830858487677303,
+     "max_cont_rad": 0.039254060589169804
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "ff_distal_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.05,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9983748654719741,
+     "max_jump_deg": 15.312132853550267,
+     "max_cont_rad": 0.26724713379724685
+    },
+    "left": {
+     "reach_frac": 0.0,
+     "max_err_mm": 61.74265297615823,
+     "max_jump_deg": 35.397284052313445,
+     "max_cont_rad": 0.4316056933984447
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "ff_medial_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.05,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9986913716927709,
+     "max_jump_deg": 15.508845699525182,
+     "max_cont_rad": 0.2706804206404778
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9672530225864968,
+     "max_jump_deg": 5.002864628578081,
+     "max_cont_rad": 0.060902859774407236
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.05,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9987576849462602,
+     "max_jump_deg": 17.28800292978433,
+     "max_cont_rad": 0.30173257221916244
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9905613842809706,
+     "max_jump_deg": 4.524949332906954,
+     "max_cont_rad": 0.050075935665422566
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.05,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9987771768490767,
+     "max_jump_deg": 15.480089465796915,
+     "max_cont_rad": 0.2701785296814462
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9987058871471827,
+     "max_jump_deg": 6.175254073998134,
+     "max_cont_rad": 0.10436407886542476
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.05,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9987151220326301,
+     "max_jump_deg": 13.457912385654739,
+     "max_cont_rad": 0.2348848815746002
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.973817924158949,
+     "max_jump_deg": 5.185764231402478,
+     "max_cont_rad": 0.07136352484415043
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.0,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9926808813752821,
+     "max_jump_deg": 24.5763843750734,
+     "max_cont_rad": 0.4289388255807197
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9681485522835116,
+     "max_jump_deg": 3.9365995335214037,
+     "max_cont_rad": 0.04943657771679666
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "ff_medial_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.0,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9929086042500866,
+     "max_jump_deg": 22.56855632856459,
+     "max_cont_rad": 0.39389561535525536
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9682275007712943,
+     "max_jump_deg": 4.055620224644216,
+     "max_cont_rad": 0.04617293145791512
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "ff_proximal_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.0,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9928568460932689,
+     "max_jump_deg": 21.49297756135943,
+     "max_cont_rad": 0.37512322450298363
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9810118167945386,
+     "max_jump_deg": 4.3563859226781645,
+     "max_cont_rad": 0.05014586884609207
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.0,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9928885357519911,
+     "max_jump_deg": 21.95211104067073,
+     "max_cont_rad": 0.3831366154231031
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9844911333986323,
+     "max_jump_deg": 4.612991404200296,
+     "max_cont_rad": 0.06391259677935102
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.0,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9928687589399398,
+     "max_jump_deg": 22.039430688988766,
+     "max_cont_rad": 0.3846606307879362
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9685561824789088,
+     "max_jump_deg": 5.7722854283378675,
+     "max_cont_rad": 0.08246093096259921
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.0,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9928498611266252,
+     "max_jump_deg": 21.938771343674084,
+     "max_cont_rad": 0.382903793789293
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9850301912904342,
+     "max_jump_deg": 4.620932771537645,
+     "max_cont_rad": 0.06786624329506008
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": -0.0,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.992809422976767,
+     "max_jump_deg": 21.841376508074667,
+     "max_cont_rad": 0.3812039332336447
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9679680295256968,
+     "max_jump_deg": 4.646285530753035,
+     "max_cont_rad": 0.07120192076778742
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": true,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.05,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9888313085741088,
+     "max_jump_deg": 31.021586136391665,
+     "max_cont_rad": 0.5414288172710611
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9892198046752467,
+     "max_jump_deg": 5.629610192103712,
+     "max_cont_rad": 0.09689220277750055
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.05,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9886269313427014,
+     "max_jump_deg": 30.893858549920143,
+     "max_cont_rad": 0.5391995503415077
+    },
+    "left": {
+     "reach_frac": 0.676923076923077,
+     "max_err_mm": 51.72667698907292,
+     "max_jump_deg": 14.332227602266553,
+     "max_cont_rad": 0.11244317138888027
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.05,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9884219604079261,
+     "max_jump_deg": 32.05621150671671,
+     "max_cont_rad": 0.559486436507899
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9957059227544017,
+     "max_jump_deg": 8.354969587443863,
+     "max_cont_rad": 0.1246318514911402
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.05,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.988564510068035,
+     "max_jump_deg": 31.788897984511795,
+     "max_cont_rad": 0.5548209354103202
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.995407408871989,
+     "max_jump_deg": 7.371443934698158,
+     "max_cont_rad": 0.12490834280286256
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 239,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.05,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9886514214017446,
+     "max_jump_deg": 31.580953099468818,
+     "max_cont_rad": 0.5511916125036393
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9768023294037911,
+     "max_jump_deg": 7.379454485333793,
+     "max_cont_rad": 0.11186601956324704
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.05,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9885991313992941,
+     "max_jump_deg": 31.431058468599915,
+     "max_cont_rad": 0.5485754576639151
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9778638578836351,
+     "max_jump_deg": 7.477321697148742,
+     "max_cont_rad": 0.11194852732230665
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.05,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9886280898625532,
+     "max_jump_deg": 31.332286214739593,
+     "max_cont_rad": 0.546851556624437
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.967445382654043,
+     "max_jump_deg": 8.543604444304563,
+     "max_cont_rad": 0.1291416243064636
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.1,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9999380025067208,
+     "max_jump_deg": 33.64852921156758,
+     "max_cont_rad": 0.5872776231953459
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.972277982948673,
+     "max_jump_deg": 6.622991595010603,
+     "max_cont_rad": 0.1135543745935097
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 194,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.1,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9991143399456167,
+     "max_jump_deg": 36.96676747790089,
+     "max_cont_rad": 0.6451918063085305
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9664279316582841,
+     "max_jump_deg": 6.966981436557104,
+     "max_cont_rad": 0.10945315207708672
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.1,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9924774336985719,
+     "max_jump_deg": 35.43631112329726,
+     "max_cont_rad": 0.6184803038626272
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9682188127167932,
+     "max_jump_deg": 4.4831352995503195,
+     "max_cont_rad": 0.07824547178953534
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.1,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9869997851208274,
+     "max_jump_deg": 35.28463056521584,
+     "max_cont_rad": 0.615832978712844
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9894586309350034,
+     "max_jump_deg": 4.41379339649267,
+     "max_cont_rad": 0.08410856314491078
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.1,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9867112644363033,
+     "max_jump_deg": 35.039706010290814,
+     "max_cont_rad": 0.6115582388104208
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9664499087939368,
+     "max_jump_deg": 4.576909877951471,
+     "max_cont_rad": 0.07988214693730494
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.1,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.986847415653855,
+     "max_jump_deg": 34.866655267590346,
+     "max_cont_rad": 0.6085379335772758
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9676631060620821,
+     "max_jump_deg": 4.838185577282713,
+     "max_cont_rad": 0.10273072461978083
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.1,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9869312117760465,
+     "max_jump_deg": 34.80950221900204,
+     "max_cont_rad": 0.6075404247018581
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9662906353012131,
+     "max_jump_deg": 4.6676426225779855,
+     "max_cont_rad": 0.08146573207040865
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.15,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 0.9576923076923077,
+     "max_err_mm": 2.3421290064657088,
+     "max_jump_deg": 33.819626029266885,
+     "max_cont_rad": 0.5902638260038833
+    },
+    "left": {
+     "reach_frac": 0.9923076923076923,
+     "max_err_mm": 3.563453709046928,
+     "max_jump_deg": 5.690687687717697,
+     "max_cont_rad": 0.07898451319626076
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 239,
+   "C1": false,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.15,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9947341499405018,
+     "max_jump_deg": 33.702661144011245,
+     "max_cont_rad": 0.588222403646955
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9779465342265464,
+     "max_jump_deg": 6.019584869995357,
+     "max_cont_rad": 0.07977063981441912
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.15,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.996939558230372,
+     "max_jump_deg": 34.12147646092983,
+     "max_cont_rad": 0.5955321098849676
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.973312579509633,
+     "max_jump_deg": 4.137360690530981,
+     "max_cont_rad": 0.0523234851077331
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.15,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.998106651800613,
+     "max_jump_deg": 34.01651935354585,
+     "max_cont_rad": 0.5937002627877483
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9825385890508157,
+     "max_jump_deg": 5.625813322579097,
+     "max_cont_rad": 0.06903165637061814
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 255,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.15,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9995054973512144,
+     "max_jump_deg": 33.98938449397101,
+     "max_cont_rad": 0.5932266701461008
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9668021175266479,
+     "max_jump_deg": 2.723644659312437,
+     "max_cont_rad": 0.03654185400683671
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 237,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.15,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9861872782551261,
+     "max_jump_deg": 33.975667872319754,
+     "max_cont_rad": 0.5929872699360363
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9741936947754531,
+     "max_jump_deg": 3.562406107228335,
+     "max_cont_rad": 0.05704969118872977
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 235,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.15,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9862810796534794,
+     "max_jump_deg": 33.93970553660818,
+     "max_cont_rad": 0.5923596087711618
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9661218334350444,
+     "max_jump_deg": 2.9037673885366435,
+     "max_cont_rad": 0.04597829674967713
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.2,
+   "bz": 0.7,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9970203203081601,
+     "max_jump_deg": 31.166418679972086,
+     "max_cont_rad": 0.543956622020578
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9774629976103432,
+     "max_jump_deg": 4.088256174138626,
+     "max_cont_rad": 0.04886585522542153
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.2,
+   "bz": 0.75,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9972277312603006,
+     "max_jump_deg": 31.182197631607785,
+     "max_cont_rad": 0.5442320166791337
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9766897855877175,
+     "max_jump_deg": 4.140733556416383,
+     "max_cont_rad": 0.05146753583886898
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.2,
+   "bz": 0.8,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9980627201912617,
+     "max_jump_deg": 31.19977142139551,
+     "max_cont_rad": 0.544538737172983
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9765513034333969,
+     "max_jump_deg": 4.0250995973162995,
+     "max_cont_rad": 0.05178237474283276
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "arm_link",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "arm_link",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 220,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.2,
+   "bz": 0.85,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9987842748306556,
+     "max_jump_deg": 31.215724058103827,
+     "max_cont_rad": 0.5448171632079175
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9772890888590487,
+     "max_jump_deg": 4.09234886183238,
+     "max_cont_rad": 0.05300646945107684
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 237,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.2,
+   "bz": 0.9,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9993173622679069,
+     "max_jump_deg": 31.225152961705064,
+     "max_cont_rad": 0.5449817286206122
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9665073686338543,
+     "max_jump_deg": 3.0890161585639975,
+     "max_cont_rad": 0.0539135026142491
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 237,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.2,
+   "bz": 0.95,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9997495966011773,
+     "max_jump_deg": 31.227217379857798,
+     "max_cont_rad": 0.5450177595145154
+    },
+    "left": {
+     "reach_frac": 0.6730769230769231,
+     "max_err_mm": 174.62713477448452,
+     "max_jump_deg": 10.64689014319215,
+     "max_cont_rad": 0.14835731335854074
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": false,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  },
+  {
+   "mode": "rz180",
+   "by": 0.2,
+   "bz": 1.0,
+   "per_side": {
+    "right": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.986042867395894,
+     "max_jump_deg": 31.195353316031174,
+     "max_cont_rad": 0.5444616266876752
+    },
+    "left": {
+     "reach_frac": 1.0,
+     "max_err_mm": 0.9665402037998755,
+     "max_jump_deg": 2.463817056161526,
+     "max_cont_rad": 0.04291240199095803
+    }
+   },
+   "collision_first_hit": {
+    "frame": 0,
+    "geoms": [
+     "palm_collision",
+     "table_slab"
+    ]
+   },
+   "collision_kind": "hand_geom",
+   "contact_frames": 260,
+   "arm_link_contact_frames": 260,
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "pass": false,
+   "hand_contact_frames": 260
+  }
+ ],
+ "passing": [],
+ "attribution": {
+  "verdict": "no-pass \u2014 0/189 candidates satisfy the frozen criteria; keep the incumbent mount (no composer update)",
+  "per_criterion": {
+   "C1_reach": "132/189 pass; failures = rx180 hang-down mount (30) and low-z identity/rz180 poses (workspace boundary at the face anchor)",
+   "C2_jump": "134/189 pass; never the first killer",
+   "C3_continuity": "66/189 pass; kills 52 of the C12-survivors (rz180 25, identity 16, rx180 11); threshold 0.5 rad/f^2 calibrated above the shipped incumbent's measured 0.413 (disclosed pre-run)",
+   "C4_collision": "0/189 pass \u2014 FIRST KILLER FOR EVERY SURVIVOR: 138 arm-link vs table/stops (fixture geometry), 51 hand-geom vs table (task geometry)"
+  },
+  "c4_infeasibility": {
+   "task_geometry": "the registered command path rides at CONSTANT z=0.76 (~6 cm over the slab top 0.70) and the terminal-curl hand hangs deeper than that \u2014 hand-vs-table contact is command-inherent under ANY base pose",
+   "hand_only_frames": "per-candidate hand-vs-support contact frames in results[].hand_contact_frames; MINIMUM 233/260 (identity y=-0.05 z=0.95); ZERO candidates reach 0 \u2014 gate3's command-side redness cannot be removed by a base move",
+   "incumbent": "260/260 contact frames incl. an ARM LINK (unnamed ur5e wrist/forearm geom) grinding the yaw-stop bolts the whole path \u2014 never gated (gate3 counts hand-only), disclosed here as a fixture fact",
+   "6d_probe": "a 6D sweep variant (r12.9 solver, verified-grasp orientation, backward warm-started) converges on ~0% of frames at every probed fixture \u2014 the r12.1 ceiling-mount wall; position-only swing is why production ships what it ships"
+  },
+  "symmetric_pair": "none selectable \u2014 step 3 (composer update + full-gate rerun) not triggered",
+  "incumbent_reference": {
+   "reach_frac": {
+    "right": 1.0,
+    "left": 1.0
+   },
+   "max_err_mm": {
+    "right": 0.994,
+    "left": 0.997
+   },
+   "contact_frames": 260,
+   "hand_contact_frames": 260
+  },
+  "hand_frames_note": "hand_contact_frames merged from the gate3-semantics rerun (named *_collision hand/finger geoms only)"
+ }
+}
