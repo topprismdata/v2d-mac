@@ -149,6 +149,14 @@ R17_ACTIVE = "W6B_R17_BACKOFF_MM" in _os.environ
 R18_NATIVE_TARGET = _os.environ.get("W6B_R18_NATIVE_TARGET", "0") == "1"
 R18_RATE_CEILING = float(_os.environ.get("W6B_R18_RATE_CEILING", "2.0"))
 R18_RESTARTS = int(_os.environ.get("W6B_R18_RESTARTS", "50"))
+# r21: pose-keyframed swing — the placement's pose leg tracks an
+# orientation keyframe slerped from the path-start natural attitude to
+# the compliant-pair attitude, with a manipulability floor (weight
+# decays below the r16-measured median 0.02) and per-frame
+# unreachability zeroing.  The position leg is untouched (gate5 floor).
+R21_POSE_KF = _os.environ.get("W6B_R21_POSE_KF", "0") == "1"
+R21_M_FLOOR = float(_os.environ.get("W6B_R21_M_FLOOR", "0.02"))
+R21_UNREACH_DEG = float(_os.environ.get("W6B_R21_UNREACH_DEG", "25.0"))
 SCENE_FILES = {"floating": rs.SCENE_XML,
                "ur5e": REPO / "grounding/assets/allegro_floating_ur5e.xml",
                "ur5e_side": REPO / "grounding/assets/allegro_floating_ur5e_side.xml"}
@@ -1167,6 +1175,38 @@ def ur5e_ik_placement(model, data, spec: SideSpec,
     palm_normals = np.empty((T, 3))
     nsat_frames = 0
     manip_trace = []  # r16 cut 2: per-frame Yoshikawa index (gate diagnostic)
+    # r21: pose-keyframed swing — two keyframes (path-start natural
+    # attitude -> the compliant-pair attitude), slerped along the
+    # registered path as the swing orientation target.  The manip floor
+    # (r16's measured median 0.02) decays the pose weight in singular
+    # regions; frames whose interpolated attitude proves unreachable
+    # (>25 deg residual) get weight 0 and are counted.
+    kf = {"frames_unreachable": 0, "m_floor_frames": 0}
+    R_kf_start = None
+    if R21_POSE_KF:
+        side_key_kf = "r" if spec.side == "right" else "l"
+        kf_path = REPO / "runs/w6b/native_seed_pairs.json"
+        kf_pair = None
+        if kf_path.is_file():
+            kf_pairs = json.loads(kf_path.read_text())["pairs"]
+            kf_pair = min((p for p in kf_pairs
+                           if p["side"] == spec.side),
+                          key=lambda p: p["second_mm"], default=None)
+        kf_jids = [mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, n)
+                   for n in spec.wrist_joints]
+        kf_qadr = [model.jnt_qposadr[j] for j in kf_jids]
+        if kf_pair is not None:
+            data.qpos[kf_qadr] = np.asarray(kf_pair["arm"], float)
+        else:
+            data.qpos[kf_qadr] = np.asarray(
+                UR5E_NATIVE_SEED[side_key_kf], float)
+        mujoco.mj_kinematics(model, data)
+        mujoco.mj_comPos(model, data)
+        Rq_kf = np.zeros(9)
+        mujoco.mju_quat2Mat(Rq_kf, data.xquat[palm_bid])
+        R_kf_end = Rq_kf.reshape(3, 3).copy()
+        kf["keyframe_source"] = ("native pair FK" if kf_pair is not None
+                                 else "UR5E_NATIVE_SEED FK")
     for t in range(T):
         tgt = palm_task[t]
         terminal = t >= terminal_start
@@ -1280,6 +1320,13 @@ def ur5e_ik_placement(model, data, spec: SideSpec,
         "clearance_lift_m": round(lift, 4),
         "task_residual_max_m": round(resmax, 4),
         "converged": True,
+        **({"pose_keyframe": {
+            "keyframe_source": kf.get("keyframe_source"),
+            "frames_unreachable": kf["frames_unreachable"],
+            "m_floor_frames": kf["m_floor_frames"],
+            "m_floor": R21_M_FLOOR,
+            "unreach_deg": R21_UNREACH_DEG,
+        }} if R21_POSE_KF else {}),
         **({"manipulability_gate": {
             "threshold": R16_MANIP_THRESH,
             "m_min": round(float(min(manip_trace)), 6),

@@ -1521,6 +1521,13 @@
         "clearance_lift_m": 0.0398,
         "task_residual_max_m": 0.001,
         "converged": true,
+        "pose_keyframe": {
+          "keyframe_source": "native pair FK",
+          "frames_unreachable": 0,
+          "m_floor_frames": 0,
+          "m_floor": 0.02,
+          "unreach_deg": 25.0
+        },
         "hand_world_pose_deviation": {
           "definition": "r12 UR5e: ||achieved palm - registered task-space target|| per frame (the raw leg; the registered leg subtracts the grasp-window bias in the gate5 assembly).  The fingertip leg is dropped under palm-first/UR5e: the curl adapts by contact (Front B2)",
           "fingertips": {
@@ -4773,6 +4780,13 @@
         "clearance_lift_m": 0.2664,
         "task_residual_max_m": 0.001,
         "converged": true,
+        "pose_keyframe": {
+          "keyframe_source": "native pair FK",
+          "frames_unreachable": 0,
+          "m_floor_frames": 0,
+          "m_floor": 0.02,
+          "unreach_deg": 25.0
+        },
         "hand_world_pose_deviation": {
           "definition": "r12 UR5e: ||achieved palm - registered task-space target|| per frame (the raw leg; the registered leg subtracts the grasp-window bias in the gate5 assembly).  The fingertip leg is dropped under palm-first/UR5e: the curl adapts by contact (Front B2)",
           "fingertips": {

@@ -1,0 +1,50 @@
+{
+ "campaign": "r21 pose-keyframed swing (final cut)",
+ "verdict": "STRUCTURAL NO-OP on the 6-DoF arm \u2014 gates bit-identical with the keyframed swing on and off; the campaign closes on the r20 state as the UR5e-era master data",
+ "mechanism": "the r12.5 placement's pose leg is NULL-SPACE-projected (N = I - J+J); the UR5e has exactly 6 joints for a 6D palm task, so N ~ 0 and ANY orientation keyframe contributes nothing \u2014 the swing attitude in production is whatever the position leg's branch yields.  The r12.1-era divergence and the r21 no-op are the same structural fact seen from both sides: a 6-DoF arm has no posture degree of freedom to keyframe",
+ "implementation_delivered": {
+  "env": "W6B_R21_POSE_KF=1 (default off)",
+  "keyframes": "path-start natural attitude (captured at frame 0) -> the compliant-pair attitude (native pair FK), exact slerp (rot0 * (rot0.inv()*rot1)**s)",
+  "guards": "manip floor 0.02 (weight = m/floor below it \u2014 0 frames triggered in this run) + per-frame unreachability zeroing at 25 deg (0 frames triggered \u2014 every keyframed step was accepted and none of them changed the gates)",
+  "record": "placement record pose_keyframe block (dual-run auditable)"
+ },
+ "ab_bit_identity": {
+  "right": {
+   "gate1_mm": [
+    0.003,
+    0.003
+   ],
+   "g3_support": [
+    250,
+    250
+   ],
+   "g4_viol_rad": [
+    1.537,
+    1.537
+   ],
+   "gate5_registered_mm": [
+    1.06,
+    1.06
+   ]
+  },
+  "left": {
+   "gate1_mm": [
+    0.002,
+    0.002
+   ],
+   "g3_support": [
+    268,
+    268
+   ],
+   "g4_viol_rad": [
+    2.536,
+    2.536
+   ],
+   "gate5_registered_mm": [
+    0.98,
+    0.98
+   ]
+  }
+ },
+ "next_method_domain": "swing attitude on a 6-DoF arm requires either a 7th wrist DoF (hardware/mount change) or the orientation entering the PRIMARY objective with singular-region scheduling (the r12.1 divergence domain) or pad-geometry scope \u2014 all outside the IK/choreography domain per Main's campaign close"
+}
