@@ -2307,7 +2307,7 @@
   "next": "the missing element is a placement solve, not a command family: put the ff/mf follower pads ON the faces at mid-height with >= 0.25 rad of curl headroom (wrist x/y/z advance from the seed placement, or re-solve the approach terminal for the v20 box), then the r7e mechanism applies; items for W6a: move the three provenance pins to the v20.1 commit and regenerate the forcerange table + REVISION.md row from the final tree"
  },
  "v20p1_placement_grid": {
-  "verdict": "TERMINAL - FINAL: the GRU stabilization line closes as an INFRASTRUCTURE-INSTABILITY finding (the GRU trainer NaN-unstable across 5 attempts x 4 guard generations on MPS and CPU, while the MLP trainer never NaN'd across 288 iters) - NOT a capability verdict. The MLP line's results stand: the memoryless policy converges to stasis within its expressible set; the lift triplet achieved (window to 127 frames / 6.4 s, peak to 105 mm, final to 100 mm); the W6a mount symmetrization documented as the lever. The GRU code preserved in git for a stable implementation to resume the memory-architecture test. Submitted for GPT final review as-is",
+  "verdict": "TERMINAL for the r12.8+/r13 mount generation: the mount y-offset (+75 mm) shifted the left reach such that the rf tip meets the face only at the y -99 mm edge (the corner-press territory; in the classifier band but with a lateral normal component) - the press lines (right +4, left -99) carry a structural ~0.27 N*m yaw couple that no scanned placement cancels (4288 FK evals). The follow-up is a fresh systematic placement solve on the new mount (both hands, the y-centering objective). Submitted for GPT review as-is",
   "placement_solve": {
    "method": "FK + tip-path Jacobian scan (~10^4 evals): pads-on-face position AND the curl tip-path angle to the face normal cos(theta) - N_max = (forcerange/arm) x cos(theta); then closed-loop dynamic seat (4 iters, measured pad errors -> wrist ctrl, signs probed per hand)",
    "key_physics": "the pre-rotation placement had cos 0.19 -> N 1.41 ceiling REGARDLESS of command (the pad tip path was ~79 deg off the face normal - mostly tangential); the wrist ROTATION (right: rx +0.15, ry +0.60, rz -0.10) aligns the curl plane with the normal (cos 0.63-0.67) and the same +0.25 rad demand that gave 1.41 N now drives N 2.43 -> 3.76 -> 6.19 -> 4.22 N - the follower-pad curl-demand mechanism work as designed ONCE the curl plane contains the face normal",
@@ -3450,6 +3450,16 @@
     "the_structural_lever": "the W6a mount symmetrization documented (the residual 47 mm press-line offset; the right-hand mount y-offset ~-7 cm)"
    },
    "the_gru_code": "preserved in git (23a91e8, the GRU trainer + the sequence BPTT + the hidden management) - a stable GRU-PPO implementation (the standard R2D2-style stored-hidden or the LSTM swap) can resume the memory-architecture test"
+  },
+  "r12_geometry_shift_terminal": {
+   "verdict": "TERMINAL for the r12.8+/r13 mount generation: the mount y-offset (+75 mm) shifted the left hand's reach such that the rf tip meets the -x face only at the y -99 mm EDGE region (the classifier band |y| <= 111 - in-band, but the corner-press territory 21 mm from the face edge) - the press lines (right mf y +4, left rf y -99) carry a structural ~0.27 N*m yaw couple that no placement in the scanned space cancels. The fresh comprehensive scan (4288 FK evals) confirms: the best left rf cell is the y -99 edge with cos 0.58",
+   "the_scan": "4288 FK evals: wrist x -4..+2 cm, y -6..+3 cm, z -2..+2 cm, rotations rx 0/0.2, ry 0.45/0.6/0.75, rz -0.15/0, rf curls 0.40/0.30 - the best cell depth +1.4 mm (seated), y -99.2, z +4.7, cos 0.58",
+   "why_the_old_constants_died": "the r12.8+ mount y-offset (+75 mm) shifted the left hand's reach +y: the former y -25..-49 cells are now y +42..+75 (the hands would cross); the rf tip's face contact exists only at the far -y edge",
+   "the_followup": "a fresh systematic placement solve on the r12.8+ mount (the placement solver re-run with the y-centering objective over BOTH hands - the right mf at y +4 is already centered; the left needs the solver-grade search over the finger sets {rf}/{mf+rf}/{ff+mf} x the wrist space) - the next round's item, beyond this round's budget",
+   "honesty_clauses": [
+    "the y -99 edge press is IN the classifier band (the gate would count it) but the corner-region contact normal carries a lateral component - the honest label is the corner-press vise",
+    "the scan covered the rf finger; the left ff/mf on the new mount were scanned in the earlier round (the y +42 cells - the hands would cross with the right mf at y +4)"
+   ]
   }
  }
 }
