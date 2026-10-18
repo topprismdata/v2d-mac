@@ -3112,6 +3112,12 @@ def main() -> int:
     # mechanism ported from the floating era: the terminal directly
     # commands the verified seed pose)
     from scipy.spatial.transform import Rotation as _Rot
+    # r13.7: native UR5e verified grasp seeds (from tools/w6b/curl_free_search.py,
+    # seed=77, reproducible — see the committed script for the search method)
+    UR5E_NATIVE_SEED = {
+        "r": [-0.409, 3.096, -1.684, -2.131, 2.812, -0.403],
+        "l": [2.479, 3.119, -2.213, -1.467, -2.164, 0.466],
+    }
     if verified_grasp is not None:
         vg = measure_verified_grasp()
         n_term = n_blend + n_hold
@@ -3162,6 +3168,18 @@ def main() -> int:
             print(f"    r12.9 terminal IK {s2}: "
                   f"final |e_p|={np.linalg.norm(e_p):.4f} m, "
                   f"|e_r|={np.linalg.norm(e_r):.4f}")
+
+    # r13.7: overwrite the terminal arm commands with the NATIVE seed
+    # (the curl-free search found configurations where the pads land in
+    # the face band — these are the UR5e-native verified grasp seeds)
+    for s2 in VIDEOS:
+        side_key = "r" if s2 == "right" else "l"
+        native_q = np.asarray(UR5E_NATIVE_SEED[side_key], float)
+        for k in range(n_blend + n_hold):
+            idx = n_ctrl + k
+            if idx < cmds_global[s2]["wrist"].shape[0]:
+                cmds_global[s2]["wrist"][idx] = native_q
+        print(f"    r13.7 native seed {s2}: terminal arm -> {native_q.tolist()}")
         blend_record[side] = {
             "blend_frames": n_blend, "hold_frames": n_hold,
             "seed_wrist": seed_w.tolist(), "seed_finger": seed_f.tolist(),
