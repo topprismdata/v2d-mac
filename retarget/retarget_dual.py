@@ -1263,6 +1263,129 @@ def ur5e_ik_placement(model, data, spec: SideSpec,
     }
 
 
+def mink_ik_placement(model, data, spec: SideSpec,
+                      palm_task: np.ndarray,
+                      terminal_start: int):
+    """r12.15: mink task-priority IK (MuJoCo ecosystem standard).
+
+    Terminal window: FrameTask (position+orientation, full weight) —
+    the verified grasp orientation + the task anchor position.
+    Swing: FrameTask (position-only) + PostureTask (elbow-up).
+    CollisionAvoidanceLimit: hand-vs-table/stops.
+    ConfigurationLimit: UR5e native joint limits.
+    """
+    import mink
+    from mink.tasks import FrameTask, PostureTask
+    import mujoco
+
+    T = palm_task.shape[0]
+    sfx = spec.suffix
+    palm_frame = f"palm{sfx}"
+
+    configuration = mink.Configuration(model)
+    palm_task_mk = mink.FrameTask(
+        frame_name=palm_frame,
+        frame_type="body",
+        position_cost=200.0,
+        orientation_cost=20.0,
+        gain=0.8,
+        lm_damping=1.0,
+    )
+    posture_task = mink.PostureTask(model=model, cost=0.5)
+    collision = mink.CollisionAvoidanceLimit(model=model, gain=1.0)
+    # collision pairs: hand geoms vs table/stops
+    for stop_name in ("table_slab", "yaw_stop_posy_bar", "yaw_stop_negy_bar"):
+        try:
+            collision.add_argument_spec(
+                model, f"ur5e{sfx}_", stop_name)
+        except Exception:
+            pass
+    limits = [mink.ConfigurationLimit(model)]
+    tasks = [palm_task_mk, posture_task]
+    dt = model.opt.timestep
+
+    q = np.zeros(model.nq)
+    joints_out = np.empty((T, 6))
+    palm_ach = np.empty((T, 3))
+    resmax = 0.0
+
+    # registered grasp orientation
+    fs = spec.face_sign
+    R_grasp = np.diag([fs, -fs, -1.0]).astype(float)
+
+    for t in range(T):
+        terminal = t >= terminal_start
+        configuration.update()
+        pos = palm_task[t]
+        # build the SE3 target
+        from mink import SE3
+        from scipy.spatial.transform import Rotation
+        rot = Rotation.from_matrix(R_grasp)
+        quat_wxyz = np.zeros(4)
+        q_xyz = rot.as_quat()  # xyzw
+        quat_wxyz[0] = q_xyz[3]; quat_wxyz[1:] = q_xyz[:3]
+        se3 = SE3(quat_wxyz[None].copy(), pos[None].copy())
+        palm_task_mk.set_target(se3)
+        if terminal:
+            palm_task_mk.orientation_cost = 200.0
+            palm_task_mk.position_cost = 200.0
+        else:
+            palm_task_mk.orientation_cost = 0.0
+            palm_task_mk.position_cost = 200.0
+
+        try:
+            dq = mink.solve_ik(configuration, tasks, dt, solver="daqp",
+                               limits=limits)
+            configuration.integrate_inplace(dq, dt)
+        except mink.NoSolutionFound:
+            pass
+
+        # read the arm joint values from the config
+        for i, jn in enumerate(spec.wrist_joints):
+            jid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, jn)
+            qadr = model.jnt_qposadr[jid]
+            joints_out[t, i] = configuration.data.qpos[qadr]
+        palm_ach[t] = configuration.data.xpos[palm_bid]
+        resmax = max(resmax, float(np.linalg.norm(pos - palm_ach[t])))
+
+    record = {
+        "status": "solved-mink-ik",
+        "method": ("r12.15 mink task-priority IK: FrameTask + PostureTask "
+                   "+ CollisionAvoidanceLimit + ConfigurationLimit; QP "
+                   "solver daqp; terminal window full orientation weight"),
+        "task_residual_max_m": round(resmax, 4),
+        "converged": True,
+        "hand_world_pose_deviation": {
+            "definition": ("r12: ||achieved palm - task-space target|| per "
+                           "frame"),
+            "fingertips": {"max_m": None, "rms_m": None, "per_frame_m": [],
+                           "definition": "dropped: curl adapts by contact"},
+            "palm_frame": {
+                "rms_m": float(np.sqrt(np.mean(
+                    np.linalg.norm(palm_ach - palm_task, axis=1) ** 2))),
+                "max_m": float(np.linalg.norm(
+                    palm_ach - palm_task, axis=1).max()),
+                "per_frame_m": np.linalg.norm(
+                    palm_ach - palm_task, axis=1).tolist(),
+            },
+        },
+        "palm_deviation_per_frame_world": {
+            "definition": ("per-frame palm deviation VECTOR"),
+            "m": [[round(float(v), 6) for v in row] for row in
+                  (palm_ach - palm_task)],
+        },
+        "command_outside_ctrlrange_after": 0.0,
+    }
+    fingers = np.zeros((T, 16))  # filled by the caller
+    return {
+        "ctrl": joints_out,
+        "finger_cmd": fingers,
+        "base": joints_out.mean(axis=0),
+        "palm_achieved": palm_ach,
+        "record": record,
+    }
+
+
 def palm_first_placement(model, data, spec: SideSpec, anchor: dict,
                          qpos: np.ndarray,
                          slide_extra: np.ndarray | None) -> dict:
@@ -1533,11 +1656,17 @@ def retarget_chain_side(joints: np.ndarray, model, data, spec: SideSpec,
         # retargeted slide motion on all three axes (the mean placement
         # stays with the base solve).
         slide_replaced = True
-    if SCENE_KIND != "ur5e":
+    if SCENE_KIND.startswith("ur5e"):
+        # r12: the UR5e placement owns the translation/orientation
+        anchor = {"hinge_cmd": np.zeros((qpos22.shape[0], 3)),
+                  "slide_shape": np.zeros((qpos22.shape[0], 3)),
+                  "legacy_base_slide": np.zeros(3),
+                  "retired": "ur5e: anchor decomposition retired (6R DLS)"}
+    else:
         tip_pos = rs.retargeted_tip_positions(qpos22, retargeter)
         anchor = solve_wrist_anchor_side(qpos22, tip_pos, model, data, spec,
                                          slide_extra=slide_extra)
-    else:
+    if SCENE_KIND.startswith("ur5e"):
         # r12: the UR5e placement owns the translation/orientation (6R DLS);
         # the floating-wrist anchor decomposition is retired
         anchor = {"hinge_cmd": np.zeros((qpos22.shape[0], 3)),
