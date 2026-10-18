@@ -1062,16 +1062,18 @@ def ur5e_ik_placement(model, data, spec: SideSpec,
                 if int(old_m.geom_bodyid[g]) in _sub
                 and old_m.geom_contype[g] != 0)
     hang = max(0.0, float(palm_grasp_pos[2] - min_z))
-    # r12.7 Focus A: the APPROACH posture hang (the fingers extended +
-    # hanging at the clip start) exceeds the grasp-posture hang -- measure
-    # both and use the max
-    mujoco.mj_resetData(model, data)
-    mujoco.mj_forward(model, data)
-    _p0 = data.xpos[_pb].copy()
-    _min0 = min(float(data.geom_xpos[g][2]) for g in range(old_m.ngeom)
-                if int(old_m.geom_bodyid[g]) in _sub
-                and old_m.geom_contype[g] != 0)
-    hang = max(hang, float(_p0[2] - _min0))
+    # r12.10 per-side champion merge: the APPROACH-phase max hang is the
+    # LEFT-side champion config (the r12.7 left gate3 124->0 fix); the
+    # RIGHT uses the grasp-posture hang only (the r12.6 g1 0.9 mm
+    # champion -- the approach-max regressed the right terminal)
+    if spec.side == "left":
+        mujoco.mj_resetData(model, data)
+        mujoco.mj_forward(model, data)
+        _p0 = data.xpos[_pb].copy()
+        _min0 = min(float(data.geom_xpos[g][2]) for g in range(old_m.ngeom)
+                    if int(old_m.geom_bodyid[g]) in _sub
+                    and old_m.geom_contype[g] != 0)
+        hang = max(hang, float(_p0[2] - _min0))
     mujoco.mj_resetData(model, data)
     mujoco.mj_forward(model, data)
     palm_task = palm_task.copy()
