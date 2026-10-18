@@ -122,6 +122,16 @@ def capture_engage() -> dict:
         settle(FS)
     settle(10 * FS)
 
+    # curl press (Main cut-b: pure normal loading AFTER the seat)
+    for k in range(12):
+        f = (k + 1) / 12.0
+        d.ctrl[11] += (0.20 * f) / 12
+        d.ctrl[12] += (0.20 * f) / 12
+        d.ctrl[37] += (0.15 * f) / 12
+        d.ctrl[38] += (0.15 * f) / 12
+        settle(FS)
+    settle(20 * FS)
+
     def padp(g):
         return d.geom_xpos[mujoco.mj_name2id(
             m, mujoco.mjtObj.mjOBJ_GEOM, g)] - d.xpos[bid]
