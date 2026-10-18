@@ -114,8 +114,9 @@ def capture_engage() -> dict:
             settle(FS)
     settle(15 * FS)
     place_l = d.ctrl.copy()
-    place_l[23] += 0.030; place_l[22] += 0.020
-    place_l[25] += 0.20; place_l[26] += 0.60; place_l[27] += 0.00
+    place_l[23] += 0.120; place_l[22] += 0.020
+    place_l[24] += 0.020
+    place_l[25] += 0.00; place_l[26] += 0.60; place_l[27] += 0.00
     place_l[37] = 0.40; place_l[38] = 0.30
     for k in range(15):
         d.ctrl[:] = place_r + (place_l - place_r) * (k + 1) / 15
