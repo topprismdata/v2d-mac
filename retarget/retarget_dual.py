@@ -1084,11 +1084,11 @@ def ur5e_ik_placement(model, data, spec: SideSpec,
     # (the fingers hang), zero at the terminal (the pads seat on the face).
     # Without the decay the terminal sits at the lifted height and the pads
     # land 0.5 m off the face (the Focus A regression).
-    if lift > 0.0:
-        _ts = max(1, palm_task.shape[0] - 62)
-        decay = np.ones(palm_task.shape[0])
-        decay[:_ts] = np.linspace(1.0, 0.0, _ts)
-        palm_task[:, 2] += lift * decay
+    # r12.7 Focus B: the LEFT registered target carries a +27 mm y bias
+    # (the left pad band centre vs the registered palm target -- constant
+    # across both mounts, the Front B calibration semantics)
+    if spec.side == "left":
+        palm_task[:, 1] += 0.027
 
     q = np.zeros(6)
     joints = np.empty((T, 6))
