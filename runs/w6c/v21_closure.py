@@ -267,6 +267,33 @@ def closure_reward(env, info, prev=None, rate_w=2.0):
 GRIP_FLOOR_ACTS = (7, 8, 11, 12, 37, 38)
 
 
+N_TARGET_PER_SIDE = 3.9   # the lift friction threshold 2.16 x 1.8
+                          # safety (Main r3 authorization)
+SERVO_KP = 0.05           # the action units per N of N-error
+SERVO_DEADBAND = 0.5      # N
+SERVO_MAX = 0.05          # the per-frame action cap
+
+
+def force_servo(env, a: np.ndarray) -> np.ndarray:
+    """r3 authorized: the normal-force inner loop on the curl channels -
+    the curl increment toward the target N per side (the lift friction
+    threshold 2.16 x 1.8 safety), +- deadband, capped per frame. Training
+    AND the deterministic eval share the servo (the deployment-gap fix:
+    the mean action + the servo = the vise never relaxes). The servo
+    holds the NORMAL force only - slip/yaw/window remain the policy's to
+    earn."""
+    n_r, n_l = env._pad_normals_obs()
+    for side, n_now in ((0, n_r), (1, n_l)):
+        err = N_TARGET_PER_SIDE - n_now
+        if abs(err) <= SERVO_DEADBAND:
+            continue
+        delta = float(np.clip(SERVO_KP * err, -SERVO_MAX, SERVO_MAX))
+        base = 11 + side * 22          # mfa1: ctrl 11 (right), 33 (left)
+        a[base] = max(a[base], 0.0) + delta
+        a[base + 1] = max(a[base + 1], 0.0) + delta
+    return a
+
+
 def grip_floor(a: np.ndarray) -> np.ndarray:
     """Deployment toolkit (a): the press/curl channels cannot go below
     the placement curl - the policy modulates grip upward only, so a
