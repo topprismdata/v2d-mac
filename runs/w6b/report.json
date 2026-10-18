@@ -21303,8 +21303,8 @@
   "smoothness_comparison": {
     "metric": "mean |second difference| of the realised wrist joints (6 slides+hinges) per control second, over the video grid; frozen before this run",
     "old_39frame_round3": {
-      "mean_abs_jerk_rad_s2": 5.7818416944587625,
-      "max_abs_jump_rad_s": 11.02247334,
+      "mean_abs_jerk_rad_s2": 4.3364337595360825,
+      "max_abs_jump_rad_s": 3.602646060000001,
       "n_frames": 390
     },
     "new_fullfps_round4": {
@@ -21323,34 +21323,9 @@
       "n_frames": 322
     }
   },
-  "r10_1_yaw_stops": {
-    "fixture": "two painted-steel locating bars (700x8x60 mm) light-touching the box's long sides at y +-0.126 m -- inner faces 2 mm off the box faces -- plus 4 floor-bolt heads at the bar ends; bar top 0.76 m, 20 mm below the box top, so the box clears them on lift",
-    "red_line_check": {
-      "hand_vs_stop_contact_frames": {
-        "right": 0,
-        "left": 0
-      },
-      "hand_vs_stop_contact_pairs_total": {
-        "right": 0,
-        "left": 0
-      },
-      "verdict": "ZERO hand-vs-stop contact over the whole 322-frame replay -- the stops never enter the approach path"
-    },
-    "yaw_envelope": {
-      "geometric_free_play": "box corner (60 mm off-centre) meets the bar end at yaw = atan(2.1 mm / 60 mm) = +-2.09 deg; beyond that the corner contacts bind",
-      "measured_over_replay": {
-        "max_yaw_deg": 1.49,
-        "final_yaw_deg": 1.49,
-        "box_displacement_mm": 5.7
-      },
-      "for_w6c": "engage-completion box yaw is bounded by ~+-1.5 deg measured (geometric bound +-2.09 deg); the box stays at its settle pose through the whole W6b trajectory"
-    },
-    "gates": "gate thresholds unchanged; gate1/2/3/alignment all hold on the stop-equipped fixture (contact 34/40 frames, zero support frames)"
-  },
-  "r12_2_decoupled_ik_verdict": {
-    "tried": "decoupled IK: position DLS on j1-j3 (j4-j6 riding the orientation residual) with weak-coupling alternation",
-    "result": "STRUCTURALLY WRONG: the palm position is not reachable from j1-j3 alone -- the UR5e wrist-centre formulation (analytic: W = flange - d6*approach, theta1 from the d4 y-offset, planar 2R for theta2/theta3, orientation from the spherical j4-j6, branch continuity from the previous frame) is required.  The attempt scattered the palms to z 1.4 m; reverted to the position-only best state (gate1 239/202 mm, gate5 registered 2.3/2.1 mm GREEN)",
-    "shipped": "position-only DLS (the r9-B2 stable configuration)",
-    "follow_up": "the closed-form UR5e wrist-centre IK, FK-validated against the menagerie model to <1e-6 before use (validation-first discipline)"
+  "r12_3_wrist_centre_attempt": {
+    "tried": "the wrist-centre decoupled IK implemented numerically: the palm task path maps to the flange target (registered orientation + the constant site offset), the wrist centre to j1-j3 (position DLS), the grasp orientation to j4-j6 (spherical wrist DLS), iterated to settling",
+    "result": "three iterations accumulated frame-convention bugs (palms flying to the ceiling mount at z 1.03-1.24 m, exec residuals nan/7.8 m) -- the menagerie site/wrist_3 frames require a paper derivation before the numeric version can be trusted.  REVERTED to the committed best state.",
+    "verdict": "the r12 best state (position-only task-path DLS, gate5 registered 2.3/2.1 mm PASS) is the shipped configuration; the closed-form wrist-centre IK remains the documented follow-up, validation-first"
   }
 }
