@@ -1,0 +1,152 @@
+{
+ "criteria": {
+  "pads": ">=2 tip pads in the end-face rectangle at gate1's R5 tolerance, touch z in the frozen mid band",
+  "cos": ">= 0.5 curl tip-path vs face inward normal",
+  "depth": "no finger geom deeper than 10 mm below the slab top"
+ },
+ "per_side": {
+  "right": {
+   "arm_q": [
+    0.7236,
+    0.1599,
+    2.245,
+    4.1467,
+    -1.9679,
+    0.0
+   ],
+   "n_grid": 4096,
+   "n_solutions": 0,
+   "solutions": [],
+   "best_any": {
+    "rect_m": 0.09130179988703468,
+    "rec": {
+     "curl": {
+      "ff": 0.0,
+      "mf": 0.0,
+      "rf": 0.0,
+      "th": 0.0
+     },
+     "pads": {
+      "ff": {
+       "gap_mm": 223.366,
+       "in_band": false,
+       "cos": 0.0,
+       "depth_mm": 5.6
+      },
+      "mf": {
+       "gap_mm": 236.585,
+       "in_band": true,
+       "cos": 0.0,
+       "depth_mm": -46.8
+      },
+      "rf": {
+       "gap_mm": 245.814,
+       "in_band": false,
+       "cos": 0.0,
+       "depth_mm": -99.8
+      },
+      "th": {
+       "gap_mm": 91.302,
+       "in_band": false,
+       "cos": 0.0,
+       "depth_mm": 89.2
+      }
+     },
+     "n_in_rect": 0,
+     "deep": [
+      "th"
+     ]
+    }
+   }
+  },
+  "left": {
+   "arm_q": [
+    -0.918,
+    -5.7263,
+    2.4647,
+    -2.5753,
+    1.873,
+    0.0
+   ],
+   "n_grid": 4096,
+   "n_solutions": 0,
+   "solutions": [],
+   "best_any": {
+    "rect_m": 0.01902131357071226,
+    "rec": {
+     "curl": {
+      "ff": 0.0,
+      "mf": 0.0,
+      "rf": 0.0,
+      "th": 0.0
+     },
+     "pads": {
+      "ff": {
+       "gap_mm": 19.021,
+       "in_band": false,
+       "cos": 0.0,
+       "depth_mm": 5.6
+      },
+      "mf": {
+       "gap_mm": 35.065,
+       "in_band": true,
+       "cos": 0.0,
+       "depth_mm": -43.5
+      },
+      "rf": {
+       "gap_mm": 48.682,
+       "in_band": false,
+       "cos": 0.0,
+       "depth_mm": -93.1
+      },
+      "th": {
+       "gap_mm": 218.838,
+       "in_band": false,
+       "cos": 0.901,
+       "depth_mm": 89.2
+      }
+     },
+     "n_in_rect": 0,
+     "deep": [
+      "th"
+     ]
+    }
+   }
+  }
+ },
+ "solved": false,
+ "palm_pose_gap": {
+  "right": {
+   "palm_pos": [
+    0.1822,
+    0.0806,
+    0.76
+   ],
+   "palm_normal_vs_face_inward_deg": 114.2,
+   "finger_axis_vs_face_inward_deg": 152.9,
+   "at_verified_grasp_deg": [
+    135.5,
+    46.5
+   ],
+   "best_rect_mm": 91.302
+  },
+  "left": {
+   "palm_pos": [
+    -0.1433,
+    0.0517,
+    0.76
+   ],
+   "palm_normal_vs_face_inward_deg": 106.7,
+   "finger_axis_vs_face_inward_deg": 22.9,
+   "at_verified_grasp_deg": [
+    134.2,
+    45.3
+   ],
+   "best_rect_mm": 19.021
+  }
+ },
+ "gap_reading": {
+  "right": "ORIENTATION-INFEASIBLE at the path end: the finger axis points 152.9 deg away from the face inward normal (the curl arc covers ~40-60 deg; the verified grasp sits at 46.5 deg) \u2014 pads would need ~106 deg of wrist re-orientation; curl alone leaves the best pad 91.3 mm off the rectangle",
+  "left": "POSITION-MARGINAL: finger axis already 22.9 deg from inward (BETTER than the verified grasp's 45.3 deg) but the best pad misses the rectangle by 19.0 mm \u2014 a ~19 mm palm shift or a small wrist trim would solve it"
+ }
+}

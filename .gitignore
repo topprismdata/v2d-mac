@@ -27,6 +27,7 @@ runs/**
 !runs/w6b/report.json
 !runs/w6b/replay_frames.json
 !runs/w6b/r14_base_pose_search.json
+!runs/w6b/r15_curl_probe.json
 !runs/w6b/evidence/*.png
 !runs/p0/**/SUMMARY.md
 # P1 threshold sign-off material (measured P0 distributions per gate),
