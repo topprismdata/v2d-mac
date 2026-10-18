@@ -1,0 +1,124 @@
+{
+ "campaign": "r22 flip-diagnosis + swing-safe-hand",
+ "diagnosis": {
+  "box_flip_timeline": "box up_z starts 0.952, dips <0.9 from frame 20, min -0.232 (inverted) at the r20 base; 370/390 frames disturbed; the box drifts 16 cm in xy and ends lifted at z 0.864",
+  "kick_timeline": "velocity kicks from frames 1-2 (gate2-left contact at frame 0 \u2014 the hands START at the box face) and the flip kick at frames 19-28 (0.28 m/s)",
+  "suspect_confirmed": "the swing finger MANO-extension pattern (ffj0 -0.39 = backward-bent throughout the swing) + the palm path riding 5 cm off the face at face-band height: the splayed fingers sweep the face/top and nudge the box from the first frames",
+  "w6d": "no render started by this agent; gate-runs only"
+ },
+ "fix_ladder": {
+  "fix1_safe_hand_alone": {
+   "curl": "0.5 uniform fist",
+   "result": "WORSE \u2014 up_z min -0.863 (full inversion), gate2 332/52 (the compact fist grinds the face constantly)",
+   "disposition": "not adopted alone"
+  },
+  "fix2_margin8_alone": {
+   "result": "up_z min -0.12 (no inversion), left gate3 0 (first clean), but 358 frames tilted and the right grind 297 frames remain",
+   "disposition": "not adopted alone"
+  },
+  "fix1_plus_fix2_margin8": {
+   "verdict": "ADOPTED \u2014 the campaign-best configuration",
+   "result": {
+    "box_up_z_min": 0.411,
+    "box_frames_below_0p9": 358,
+    "box_flip": "ELIMINATED (worst tilt 65 deg, never inverted)",
+    "gate4_viol_rad": [
+     0.512,
+     1.475
+    ],
+    "gate3_support": [
+     139,
+     15
+    ],
+    "gate2_frames": [
+     132,
+     71
+    ],
+    "g5reg_mm": [
+     1.06,
+     0.99
+    ]
+   }
+  },
+  "margin15_probe": "g2 collapses to 54/1 but the box flips again (min -0.229): the terminal entry sweep kicks the box when the hand travels farther \u2014 margin 8 is the Pareto point; 15 rejected"
+ },
+ "final_frozen_table": {
+  "gate1_pad1_mm": [
+   0.0035,
+   0.0015
+  ],
+  "gate1_dist_within_r5": [
+   true,
+   true
+  ],
+  "gate1_fwd_deg": [
+   15.5,
+   19.7
+  ],
+  "gate1_pads_in_rect": [
+   1,
+   1
+  ],
+  "gate1_per_pad_rect_mm": {
+   "right": {
+    "ff_tip_collision": 44.8765,
+    "mf_tip_collision": 14.0461,
+    "rf_tip_collision": 0.0035,
+    "th_tip_collision": 186.0096
+   },
+   "left": {
+    "ff_tip_left_collision": 70.9709,
+    "mf_tip_left_collision": 4.8355,
+    "rf_tip_left_collision": 0.0015,
+    "th_tip_left_collision": 196.5689
+   }
+  },
+  "gate1_burial_v2": {
+   "right": true,
+   "left": true
+  },
+  "gate2_frames": [
+   132,
+   71
+  ],
+  "gate3_support": [
+   139,
+   15
+  ],
+  "gate4_viol_rad": [
+   0.512,
+   1.475
+  ],
+  "gate5_registered_mm": [
+   1.06,
+   0.99
+  ],
+  "box_up_z_min": 0.411,
+  "box_frames_below_0p9": 358,
+  "baseline_r12_6": {
+   "gate1_mm": [
+    15.891,
+    1.607
+   ],
+   "gate2_frames": [
+    5,
+    14
+   ],
+   "gate3_support": [
+    246,
+    272
+   ],
+   "gate4_viol_rad": [
+    1.377,
+    2.536
+   ],
+   "gate5_registered_mm": [
+    1.06,
+    0.98
+   ]
+  },
+  "floors": "g5reg 1.06/0.99 mm, frame_alignment True \u2014 held"
+ },
+ "verdict": "PARTIAL-BEST \u2014 the flip is ELIMINATED (up_z min 0.411, was -0.232) and gate4 halves (right 1.537 -> 0.512 rad; left gate3 268 -> 15), but the Main bar (up_z > 0.9 throughout) is NOT met: the box still tilts to ~65 deg mid-trajectory and gate2 keeps 132/71 face-contact frames.  Honest disclosure branch: the delivered trajectory contains a box tilt to ~65 deg with face-contact frames \u2014 NOT render-clean",
+ "next_method_domain": "the tilt source is the palm path's 6 cm face-adjacent cruise + the finger NORMAL pressing the face band during the swing \u2014 the fix domain is the path shape itself (a lift over the box top) or pad-geometry scope"
+}

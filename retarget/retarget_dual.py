@@ -157,6 +157,14 @@ R18_RESTARTS = int(_os.environ.get("W6B_R18_RESTARTS", "50"))
 R21_POSE_KF = _os.environ.get("W6B_R21_POSE_KF", "0") == "1"
 R21_M_FLOOR = float(_os.environ.get("W6B_R21_M_FLOOR", "0.02"))
 R21_UNREACH_DEG = float(_os.environ.get("W6B_R21_UNREACH_DEG", "25.0"))
+# r22: flip-diagnosis fixes — (1) W6B_R22_SAFE_HAND: the swing finger
+# stream becomes a FIXED half-grip (curl 0.5 uniform, not the MANO
+# extension pattern whose splay sweeps the box — the curl channel is
+# unconstrained by any gate, the terminal window enters the seed curl);
+# (2) W6B_R22_MARGIN_MM: the swing palm path offset along the face
+# normal (away from the box), decaying to zero at the terminal window
+R22_SAFE_HAND = _os.environ.get("W6B_R22_SAFE_HAND", "0") == "1"
+R22_MARGIN_MM = float(_os.environ.get("W6B_R22_MARGIN_MM", "0"))
 SCENE_FILES = {"floating": rs.SCENE_XML,
                "ur5e": REPO / "grounding/assets/allegro_floating_ur5e.xml",
                "ur5e_side": REPO / "grounding/assets/allegro_floating_ur5e_side.xml"}
@@ -1867,6 +1875,18 @@ def retarget_chain_side(joints: np.ndarray, model, data, spec: SideSpec,
                             for c in range(3)], axis=1)
         face_anchor = np.array([spec.face_sign * 0.11, 0.0, 0.76])
         palm_task = face_anchor[None, :] + np.asarray(lat, float)
+        if R22_MARGIN_MM > 0.0:
+            # r22 fix 2: the swing path walks face-normal-out (away from
+            # the box) by the margin, decaying smoothly to zero across
+            # the last 30 frames before the terminal window (the pads
+            # enter the band at the terminal)
+            margin_m = R22_MARGIN_MM * 1e-3
+            n_decay = min(30, palm_task.shape[0])
+            decay = 0.5 * (1.0 + np.cos(
+                np.linspace(0.0, np.pi, n_decay)))
+            palm_task[:-n_decay, 0] += spec.face_sign * margin_m
+            palm_task[-n_decay:, 0] += (spec.face_sign * margin_m
+                                        * decay)
         # r12.1 verdict: the 6D terminal solve (position + ramped
         # orientation) DIVERGES at this workspace boundary twice (the wrist
         # singularity at the ceiling mount); the shipped configuration is
@@ -3498,6 +3518,24 @@ def main() -> int:
             "wrist": ch["placement"]["ctrl"],
             "finger": ch["placement"]["finger_cmd"],
         }
+
+    if R22_SAFE_HAND:
+        # r22 fix 1: swing-safe hand — the swing finger stream becomes a
+        # FIXED half-grip (0.5 uniform curl; the retargeted MANO stream's
+        # splay/extension pattern is the r22-attributed box-sweep
+        # source).  The terminal blend downstream still ramps into the
+        # seed/override curl inside the terminal window.  Single
+        # variable: the finger stream timing/pattern only.
+        safe_rec = {}
+        for side in VIDEOS:
+            stream = cmds_global[side]["finger"]
+            n_ctrl_s = stream.shape[0]
+            stream[:n_ctrl_s] = 0.5
+            safe_rec[side] = {"swing_curl": 0.5,
+                              "frames": int(n_ctrl_s)}
+        print(f"    r22 safe hand: swing curl 0.5 uniform")
+    else:
+        safe_rec = {}
 
     # --- terminal blend: approach = video-driven; TERMINAL STATE = the v5
     # gate3 seed (the ticket's own definition: "已验证的门 3 抓握就绪构型作为
