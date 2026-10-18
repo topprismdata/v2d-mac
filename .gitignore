@@ -32,6 +32,7 @@ runs/**
 !runs/w6b/r17_backoff_sweep.json
 !runs/w6b/r18_native_target.json
 !runs/w6b/native_seed_pairs.json
+!runs/w6b/r19_fwd_pairs.json
 !runs/w6b/evidence/*.png
 !runs/p0/**/SUMMARY.md
 # P1 threshold sign-off material (measured P0 distributions per gate),

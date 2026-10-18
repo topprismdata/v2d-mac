@@ -1,0 +1,60 @@
+{
+ "campaign": "r19 fwd-aware native pairs + r15 reprobe",
+ "cut8_fwd_aware_search": {
+  "constraints": "gate1 fwd axis <= 35 deg (HARD admission; attitude is arm-pose property \u2014 polish cannot fix it, measured r18) + the r13.6 10/25 mm pad band; the through depth recorded per pair (the r18 polish enforces no-through at R5)",
+  "N": 80000,
+  "seed": 77,
+  "yield": {
+   "right": 1,
+   "left": 0
+  },
+  "right_pair": {
+   "fwd_deg": 7.95,
+   "pads_mm": [
+    4.294,
+    10.64
+   ],
+   "arm": [
+    -2.602,
+    0.657,
+    1.827,
+    2.333,
+    2.946,
+    -0.766
+   ],
+   "note": "a DIFFERENT branch from the r13.7 native seed (-0.409, 3.096, ...) whose family is uniformly attitude-inverted (fwd 98.7-167.7 deg)"
+  },
+  "left": "0 pairs in 80k \u2014 the left arm's in-band attitude family is 52-84 deg (fwd-inverted); needs its own continued search or a different mount",
+  "instrumented_falsification": "an unconstrained 20k rerun measured the fwd distribution of all 10/25 mm finds: 6 inverted vs 1 compliant \u2014 the inversion is the family's property, not a search bug"
+ },
+ "cut9_r15_reprobe": {
+  "verdict": "NO SOLUTION stands (corrected geometry)",
+  "corrected_gaps_mm": {
+   "right": 50.907,
+   "left": 11.595
+  },
+  "old_numbers_void": {
+   "right": 91.302,
+   "left": 19.021
+  },
+  "cause": "measurement-layer bug: finger joints addressed by actuator names -> id -1 -> finger writes collapsed onto one qpos slot"
+ },
+ "r18_chain_with_fwd_pair": {
+  "gate1_right": {
+   "rect_dist_mm": 0.003,
+   "dist_within_r5": true,
+   "pads_in_rect": 1,
+   "fwd_deg": 15.5,
+   "buried_v2": false,
+   "reading": "the distance leg + fwd leg + no-burial leg ALL pass; the remaining red is the 2-pad criterion (1/2)"
+  },
+  "gate1_left": {
+   "rect_dist_mm": 9.324,
+   "pads_in_rect": 0,
+   "fwd_deg": 43.5,
+   "reading": "no fwd-compliant left pair exists in 80k \u2014 red"
+  },
+  "floors": "g5reg ~1 mm held; frame_alignment True"
+ },
+ "verdict": "PARTIAL \u2014 the fwd-aware pair solved gate1-right's distance/fwd/burial legs to R5 class (0.003 mm, fwd 15.5 deg); gate1 remains red on the 2-pad leg (right 1/2, the second pad 14 mm structural at this branch) and on the left entirely (0 fwd-compliant pairs).  TRUE-endgame evidence still short: 1 fwd-compliant right pair exists, so 'UR5e hoist + end-face grasp' is not exhaustively excluded \u2014 the left side is the hard half"
+}

@@ -2433,7 +2433,58 @@ def _finger_polish(model, data, spec: SideSpec, arm_q: np.ndarray,
                         improved = True
         if n_rect >= 2 and gap <= tol:
             break
-    x = np.clip(x, band_lo, band_hi)
+    # r19: gate1 needs >= 2 pads IN-RECT — a second descent phase whose
+    # objective drops the best-pad term (already ~0) and drives the
+    # 2nd-smallest in-band gap to the plane
+    if n_rect < 2:
+        for step in (0.05, 0.02, 0.008, 0.003):
+            improved = True
+            while improved:
+                improved = False
+                for j in list(range(6)) + list(range(16)):
+                    for sgn in (+1.0, -1.0):
+                        cand_a, cand_f = arm_x.copy(), x.copy()
+                        lo_j = lo_arm[j] if j < 6 else lo16[j - 6]
+                        hi_j = hi_arm[j] if j < 6 else hi16[j - 6]
+                        if j < 6:
+                            cand_a[j] = np.clip(cand_a[j] + sgn * step,
+                                                lo_j, hi_j)
+                        else:
+                            cand_f[j - 6] = np.clip(
+                                cand_f[j - 6] + sgn * step, lo_j, hi_j)
+                        data.qpos[arm_qadr] = cand_a
+                        data.qpos[f_qadr] = np.clip(
+                            cand_f, band_lo, band_hi)
+                        mujoco.mj_forward(model, data)
+                        gaps2 = []
+                        buried2 = False
+                        for g in tips:
+                            px, py, pz = (float(v) for v in
+                                          data.geom_xpos[g])
+                            sv = px - spec.face_sign * float(half[0])
+                            dy = max(abs(py) - float(half[1]), 0.0)
+                            dz = max(bot - pz, pz - top, 0.0)
+                            g2 = abs(sv) if (dy == 0.0 and dz == 0.0) \
+                                else float(np.hypot(np.hypot(sv, dy), dz))
+                            in_b = (bot + 0.4 * 2 * half[2]) <= pz \
+                                <= (top - 0.01)
+                            if in_b and abs(sv) > tol:
+                                buried2 = True
+                            if in_b:
+                                gaps2.append(abs(sv))
+                        gaps2.sort()
+                        sec2 = gaps2[1] if len(gaps2) >= 2 else (
+                            gaps2[0] + 500.0 if gaps2 else 5000.0)
+                        evals += 1
+                        sc2 = (1e6 * int(buried2) + 1e3 * sec2
+                               + 1e1 * (gaps2[0] if gaps2 else 5000.0))
+                        if sc2 < sc:
+                            arm_x, x = cand_a, cand_f
+                            gap = sec2
+                            n_rect = sum(1 for v in gaps2 if v <= tol)
+                            sc = sc2
+                            improved = True
+    return arm_x, x, sc, gap, n_rect, evals
     return arm_x, x, sc, gap, n_rect, evals
 
 

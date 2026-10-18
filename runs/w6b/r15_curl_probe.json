@@ -18,38 +18,38 @@
    "n_solutions": 0,
    "solutions": [],
    "best_any": {
-    "rect_m": 0.09130179988703468,
+    "rect_m": 0.05090701614134752,
     "rec": {
      "curl": {
       "ff": 0.0,
       "mf": 0.0,
       "rf": 0.0,
-      "th": 0.0
+      "th": 1.15
      },
      "pads": {
       "ff": {
        "gap_mm": 223.366,
        "in_band": false,
-       "cos": 0.0,
+       "cos": 0.421,
        "depth_mm": 5.6
       },
       "mf": {
        "gap_mm": 236.585,
        "in_band": true,
-       "cos": 0.0,
+       "cos": 0.433,
        "depth_mm": -46.8
       },
       "rf": {
        "gap_mm": 245.814,
        "in_band": false,
-       "cos": 0.0,
+       "cos": 0.435,
        "depth_mm": -99.8
       },
       "th": {
-       "gap_mm": 91.302,
+       "gap_mm": 50.907,
        "in_band": false,
-       "cos": 0.0,
-       "depth_mm": 89.2
+       "cos": 0.021,
+       "depth_mm": 28.4
       }
      },
      "n_in_rect": 0,
@@ -66,17 +66,17 @@
     2.4647,
     -2.5753,
     1.873,
-    0.0
+    -0.0
    ],
    "n_grid": 4096,
    "n_solutions": 0,
    "solutions": [],
    "best_any": {
-    "rect_m": 0.01902131357071226,
+    "rect_m": 0.011595295465539404,
     "rec": {
      "curl": {
       "ff": 0.0,
-      "mf": 0.0,
+      "mf": 1.15,
       "rf": 0.0,
       "th": 0.0
      },
@@ -84,26 +84,26 @@
       "ff": {
        "gap_mm": 19.021,
        "in_band": false,
-       "cos": 0.0,
-       "depth_mm": 5.6
+       "cos": 0.276,
+       "depth_mm": 5.4
       },
       "mf": {
-       "gap_mm": 35.065,
-       "in_band": true,
-       "cos": 0.0,
-       "depth_mm": -43.5
+       "gap_mm": 11.595,
+       "in_band": false,
+       "cos": 0.775,
+       "depth_mm": -5.4
       },
       "rf": {
        "gap_mm": 48.682,
        "in_band": false,
-       "cos": 0.0,
+       "cos": 0.261,
        "depth_mm": -93.1
       },
       "th": {
-       "gap_mm": 218.838,
+       "gap_mm": 210.145,
        "in_band": false,
-       "cos": 0.901,
-       "depth_mm": 89.2
+       "cos": 0.923,
+       "depth_mm": 78.9
       }
      },
      "n_in_rect": 0,
@@ -115,38 +115,13 @@
   }
  },
  "solved": false,
- "palm_pose_gap": {
-  "right": {
-   "palm_pos": [
-    0.1822,
-    0.0806,
-    0.76
-   ],
-   "palm_normal_vs_face_inward_deg": 114.2,
-   "finger_axis_vs_face_inward_deg": 152.9,
-   "at_verified_grasp_deg": [
-    135.5,
-    46.5
-   ],
-   "best_rect_mm": 91.302
+ "r19_reprobe_disclosure": {
+  "void_numbers": "the originally published gaps (right 91.3 mm, left 19.0 mm) were measured through a finger-joint name-resolution bug: the probe addressed finger joints by actuator names (ffa0-style, mjOBJ_JOINT -> id -1 -> all 16 writes collapsed onto the last qpos slot), corrupting every finger configuration it believed it was scoring",
+  "corrected_numbers": {
+   "right_best_rect_mm": 50.907,
+   "left_best_rect_mm": 11.595
   },
-  "left": {
-   "palm_pos": [
-    -0.1433,
-    0.0517,
-    0.76
-   ],
-   "palm_normal_vs_face_inward_deg": 106.7,
-   "finger_axis_vs_face_inward_deg": 22.9,
-   "at_verified_grasp_deg": [
-    134.2,
-    45.3
-   ],
-   "best_rect_mm": 19.021
-  }
- },
- "gap_reading": {
-  "right": "ORIENTATION-INFEASIBLE at the path end: the finger axis points 152.9 deg away from the face inward normal (the curl arc covers ~40-60 deg; the verified grasp sits at 46.5 deg) \u2014 pads would need ~106 deg of wrist re-orientation; curl alone leaves the best pad 91.3 mm off the rectangle",
-  "left": "POSITION-MARGINAL: finger axis already 22.9 deg from inward (BETTER than the verified grasp's 45.3 deg) but the best pad misses the rectangle by 19.0 mm \u2014 a ~19 mm palm shift or a small wrist trim would solve it"
+  "verdict_after_fix": "NO SOLUTION stands \u2014 the path-end arm pose still cannot reach the band with any curl set, but the corrected gap is 40-45% smaller on both sides",
+  "fix_round": "r19 (measurement-layer bug, not a verdict reversal)"
  }
 }
