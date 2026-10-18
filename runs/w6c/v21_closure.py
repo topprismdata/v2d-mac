@@ -536,6 +536,9 @@ def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0,
         ep_frames = []
         ep_returns, ep_peaks = [], []
         obs, h = policy_state(env, int(rng.integers(1 << 31)))
+        if not np.isfinite(obs).all():
+            print("[v21-gru] non-finite reset obs - episode skipped")
+            continue
         done = False
         ep_rew = 0.0
         ep_peak = 0.0
@@ -563,7 +566,11 @@ def train(iters: int, steps_per_iter: int, eval_every: int, seed: int = 0,
             ep_k += 1
             r_shaped = (r_env + shaped) * W.REWARD_SCALE
             done = term or trunc
-            ep_frames.append((norm.norm(obs_raw), a_np, r_shaped,
+            o_n = norm.norm(obs_raw)
+            if not np.isfinite(o_n).all():
+                print("[v21-gru] non-finite normalized obs - episode ended")
+                break
+            ep_frames.append((o_n, a_np, r_shaped,
                               float(done), float(v), float(logp)))
             ep_rew += r_shaped
             ep_peak = max(ep_peak, info["lift"])

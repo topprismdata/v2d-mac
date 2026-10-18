@@ -1115,9 +1115,9 @@ def ur5e_ik_placement(model, data, spec: SideSpec,
     palm_ach = np.empty((T, 3))
     resmax = 0.0
     palm_normals = np.empty((T, 3))  # r12.1 probe: palm -x hat world
-    # r12.6 fix 2: the terminal window moved earlier (T-100) so the pads
-    # settle into the face band and register contact
-    terminal_start = max(0, T - 100)  # the blend/hold window
+    # r12.12 bisect: reverted to T-62 (the r12.6 value) — the T-100
+    # extension may have regressed the right terminal
+    terminal_start = max(0, T - 62)  # the blend/hold window
     q = np.zeros(6)
     joints = np.empty((T, 6))
     palm_ach = np.empty((T, 3))

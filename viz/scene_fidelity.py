@@ -58,7 +58,7 @@ def _floral_texture(path: pathlib.Path, size: int = 1024) -> None:
         dx, dy = r * np.cos(a), r * np.sin(a) * 0.45
         green = (66 + int(rng.integers(0, 55)), 105 + int(rng.integers(0, 70)), 58)
         d.ellipse([x - r, y - dy, x + r, y + dy], fill=green)
-    for _ in range(400):  # flowers: 5 petals around a centre
+    for _ in range(720):  # flowers: 5 petals around a centre (Main: 700+)
         x, y = rng.integers(0, size, 2)
         pr = rng.integers(9, 20)
         col = FLOWERS[rng.integers(0, len(FLOWERS))]
@@ -95,10 +95,10 @@ def _pegboard_texture(path: pathlib.Path, size: int = 512) -> None:
     for cy in range(step // 2, size, step):
         for cx in range(step // 2, size, step):
             d.ellipse([cx - r, cy - r - 2, cx + r, cy + r - 2],
-                      fill=(96, 90, 78))     # cast shadow above
-            d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(52, 50, 46))
+                      fill=(78, 72, 62))     # cast shadow above
+            d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(34, 32, 29))
             d.arc([cx - r - 1, cy - r - 1, cx + r + 1, cy + r + 1],
-                  180, 360, fill=(250, 247, 238))
+                  180, 360, fill=(252, 250, 244))
     img.save(path)
 
 

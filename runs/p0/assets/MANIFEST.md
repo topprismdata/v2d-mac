@@ -1,0 +1,4 @@
+# P0 资产台账 (SHA256)
+source: nvidia-isaac/video_to_data @ 193382a184308f6800331f3db829f76dc4294cfe
+5616a861a332a2d0025db1282f00ed5d2b3fc28b9ed43ec9cb83846cc05debdf  tissue_box.mp4
+53a87882b8e81dd1587b20e17096e59615da44dc1d715ef22494a8fb7f41f2ca  tissue_box_lift_hold.json

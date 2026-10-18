@@ -16,10 +16,10 @@
     "cpu_fallbacks": []
   },
   "cpu_fallbacks": [],
-  "mps_inference_seconds": 28.03545695799403,
-  "cpu_control_seconds": 21.60890879202634,
+  "mps_inference_seconds": 20.15170070808381,
+  "cpu_control_seconds": 10.05769691686146,
   "cpu_control_frames": 4,
-  "speedup_vs_cpu_control": 5.780780252058129,
+  "speedup_vs_cpu_control": 3.7432437077730754,
   "n_frames": 30,
   "input_frames": [
     "f_0001.jpg",

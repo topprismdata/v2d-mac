@@ -10,7 +10,7 @@
     "torch_mps_built": true
   },
   "key_lib_versions": {
-    "python": "3.12.12",
+    "python": "3.13.9",
     "torch": "2.14.1",
     "numpy": "2.5.4",
     "torchvision": "0.29.1",
@@ -18,7 +18,7 @@
     "hydra-core": "1.3.7",
     "omegaconf": "2.3.1",
     "iopath": "0.1.10",
-    "SAM-2": "1.0"
+    "SAM-2": "n/a"
   },
   "weights_version": {
     "name": "sam2.1_hiera_small.pt",
@@ -26,7 +26,7 @@
     "sha256": "6d1aa6f30de5c92224f8172114de081d104bbd23dd9dc5c58996f0cad5dc4d38",
     "size_bytes": 184416285,
     "config": "configs/sam2.1/sam2.1_hiera_s.yaml",
-    "config_path": "/Users/guohongbin/v2d-mac/runs/upstream/sam2/sam2/configs/sam2.1/sam2.1_hiera_s.yaml",
+    "config_path": "/Users/guohongbin/v2d-mac/runs/.venv-mj/lib/python3.13/site-packages/sam2/configs/sam2.1/sam2.1_hiera_s.yaml",
     "sam2_repo": "https://github.com/facebookresearch/sam2.git",
     "sam2_commit": "2b90b9f5ceec907a1c18123530e92e794ad901a4"
   },
@@ -55,8 +55,8 @@
   },
   "mps_evidence": {
     "mps_peak_allocated_bytes": 105906176,
-    "mps_infer_sec": 0.32572095887735486,
-    "cpu_infer_sec": 1.2058531669899821,
+    "mps_infer_sec": 0.19198916689492762,
+    "cpu_infer_sec": 0.5903762499801815,
     "param_devices": [
       "mps"
     ],
@@ -72,7 +72,7 @@
       "aten.unsqueeze.default",
       "aten.view.default"
     ],
-    "speedup_cpu_over_mps": 3.7021049279301286
+    "speedup_cpu_over_mps": 3.075049803738584
   },
   "cpu_control": {
     "real_cpu_inference": true,
@@ -104,7 +104,7 @@
           764,
           484
         ],
-        "infer_sec": 0.33904808410443366,
+        "infer_sec": 0.2752201249822974,
         "ran_inference": true,
         "param_devices": [
           "mps"
@@ -129,7 +129,7 @@
           764,
           484
         ],
-        "infer_sec": 1.3312869581859559,
+        "infer_sec": 0.6269907080568373,
         "ran_inference": true,
         "param_devices": [
           "cpu"
@@ -167,7 +167,7 @@
           777,
           483
         ],
-        "infer_sec": 0.32572095887735486,
+        "infer_sec": 0.19198916689492762,
         "ran_inference": true,
         "param_devices": [
           "mps"
@@ -192,7 +192,7 @@
           777,
           483
         ],
-        "infer_sec": 1.2058531669899821,
+        "infer_sec": 0.5903762499801815,
         "ran_inference": true,
         "param_devices": [
           "cpu"
@@ -230,7 +230,7 @@
           893,
           477
         ],
-        "infer_sec": 0.27869508299045265,
+        "infer_sec": 0.18638491700403392,
         "ran_inference": true,
         "param_devices": [
           "mps"
@@ -255,7 +255,7 @@
           893,
           477
         ],
-        "infer_sec": 1.0807845420204103,
+        "infer_sec": 0.586745582986623,
         "ran_inference": true,
         "param_devices": [
           "cpu"

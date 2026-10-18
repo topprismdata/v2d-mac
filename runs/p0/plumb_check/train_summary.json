@@ -1,0 +1,17 @@
+{
+  "total_steps_requested": 150000,
+  "cumulative_timesteps": 151552,
+  "resumed_from_timesteps": null,
+  "init_from_bc": "runs/p0/plumb_check/bc_policy.pt",
+  "wall_seconds": 86.25820875167847,
+  "seed": 0,
+  "n_envs": 8,
+  "episode_len": 250,
+  "best_training_episode": {
+    "z_peak": 0.0,
+    "episode": 1,
+    "global_step": 2000
+  },
+  "n_episodes": 600,
+  "early_stop_target_m": 0.1
+}
