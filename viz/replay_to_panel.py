@@ -59,10 +59,20 @@ NQ_MIN = 51               # frames must carry at least the base; v20.1 carries
                           # the full model nq (65 = base + arm/pad angles)
 
 
-def _model_nq() -> int:
+SCENES = {"floating": REPO / "grounding/assets/allegro_floating.xml",
+          "ur5e": REPO / "grounding/assets/allegro_floating_ur5e.xml"}
+
+
+def _scene_for_width(width: int) -> str:
+    """Pick the scene whose model nq matches the replay qpos width."""
     import mujoco
-    return int(mujoco.MjModel.from_xml_path(
-        str(REPO / "grounding/assets/allegro_floating.xml")).nq)
+    for kind, xml in SCENES.items():
+        nq = int(mujoco.MjModel.from_xml_path(str(xml)).nq)
+        if nq == width:
+            return kind
+    raise SystemExit(
+        f"replay qpos width {width} matches no known scene "
+        f"({ {k: int(mujoco.MjModel.from_xml_path(str(v)).nq) for k, v in SCENES.items()} })")
 
 # Placeholder frames: t=2.233 s is source frame 67 (pads seat on the end
 # faces in the human clip), so the two replay frames line up with the two
@@ -159,9 +169,9 @@ def _placeholder_frames() -> list[dict]:
             for (_, t), q in zip(PLACEHOLDER, [q_reset, q_reach])]
 
 
-def _convert_replay(raw: dict | list) -> tuple[list[dict], float]:
+def _convert_replay(raw: dict | list) -> tuple[list[dict], float, str]:
     """Normalize W6b's replay_frames.json into schema frames; returns
-    (frames, fps as declared by the file)."""
+    (frames, fps, scene kind inferred from the qpos width)."""
     frames = raw["frames"] if isinstance(raw, dict) else raw
     fps = float(raw.get("fps", REPLAY_FPS)) if isinstance(raw, dict) else REPLAY_FPS
     if isinstance(raw, dict) and "fps" in raw:
@@ -171,11 +181,9 @@ def _convert_replay(raw: dict | list) -> tuple[list[dict], float]:
         if "qpos" not in fr:
             raise SystemExit(f"replay frame {i}: missing 'qpos'")
         q = [float(v) for v in fr["qpos"]]
-        if len(q) < NQ_MIN:
-            raise SystemExit(f"replay frame {i}: qpos length {len(q)} < {NQ_MIN} "
-                             f"({pathlib.Path(str(REPLAY_IN)).name} must carry at "
-                             "least the 51-dim base, v20.1 carries the full "
-                             "model nq incl. arm/pad angles)")
+        scene_kind = _scene_for_width(len(q))   # validates width, names scene
+        if i == 0:
+            print(f"scene: {scene_kind} (qpos width {len(q)})")
         obj = fr.get("obj")
         if obj is None:
             # no separate object pose -> the free-joint slice of qpos is it
@@ -188,13 +196,12 @@ def _convert_replay(raw: dict | list) -> tuple[list[dict], float]:
                     "qpos": q, "obj": obj})
     if not out:
         raise SystemExit("replay_frames.json carries zero frames")
-    return out, fps
+    return out, fps, _scene_for_width(len(out[0]["qpos"]))
 
 
 def _w6b_gates() -> list[dict]:
-    """Derive the gate badges from runs/w6b/report.json (verdict_checks +
-    per_side + trajectory_error) -- every number verbatim from the committed
-    round-4 report, green/red exactly as measured."""
+    """Derive the gate badges from runs/w6b/report.json -- every number
+    verbatim from the committed r20 report, green/red exactly as measured."""
     if not REPORT_IN.exists():
         raise SystemExit(
             f"real replay ({REPLAY_IN}) without {REPORT_IN} -- supply the W6b "
@@ -209,17 +216,8 @@ def _w6b_gates() -> list[dict]:
     g3r, g3l = r["gate3_approach_clean"], l["gate3_approach_clean"]
     g4r, g4l = r["gate4_joint_limits"], l["gate4_joint_limits"]
     g5r, g5l = r["gate5_palm_deviation"], l["gate5_palm_deviation"]
-
-    pad = lambda g, k: (g.get("per_pad_rect_mm") or
-                        g.get("executed_state_evidence", {}).get("per_pad_rect_mm", {})).get(k)
-
-    def g4_txt(g):
-        n = len(g.get("finger_qpos_violation_frames", []))
-        peak = g.get("finger_qpos_max_violation_rad", 0.0) * 1e3
-        return f"{n} 帧·峰 {peak:.0f} mrad"
-
-    wr_rep = rep["trajectory_error"]["wrist_referenced"]
-    wr_r, wr_l = wr_rep["per_side"]["right"], wr_rep["per_side"]["left"]
+    wr_r = rep["trajectory_error"]["wrist_referenced"]["per_side"]["right"]
+    wr_l = rep["trajectory_error"]["wrist_referenced"]["per_side"]["left"]
 
     def wrist_side(w):
         ok = w.get("pass_4c_limit_15pct")
@@ -227,48 +225,67 @@ def _w6b_gates() -> list[dict]:
         return (f"{w['conf_weighted_median_err_m'] * 1e3:.1f} mm"
                 f"（{frac:.1f}%，15% 线{'达标' if ok else '超限'}）")
 
+    def g4_txt(g):
+        n = len(g.get("finger_qpos_violation_frames", []))
+        peak = (g.get("finger_qpos_max_violation_rad") or 0.0) * 1e3
+        return f"{n} 帧·峰 {peak:.0f} mrad"
+
+    def reg(g5):
+        reg = g5.get("registered", {})
+        return {"max": reg.get("registered_palm_max_m", 0.0) * 1e3,
+                "pass": bool(reg.get("registered_pass_40mm"))}
+
+    reg_r, reg_l = reg(g5r), reg(g5l)
+    gate5_pass = reg_r["pass"] and reg_l["pass"]
+
     return [
-        {"id": "w6b_gate1", "name": "门 1 双手终触",
+        {"id": "w6b_gate1", "name": "门 1 终触（双列）",
          "verdict": "pass" if checks["gate1_final_touch"] else "fail",
-         "measured": (f"右 ff {pad(g1r, 'ff_tip_collision'):.3f}+mf "
-                      f"{pad(g1r, 'mf_tip_collision'):.3f} mm·前向 "
-                      f"{g1r['forward_axis_deg']:.1f}° / 左 ff "
-                      f"{pad(g1l, 'ff_tip_left_collision'):.3f}+mf "
-                      f"{pad(g1l, 'mf_tip_left_collision'):.3f} mm·前向 "
-                      f"{g1l['forward_axis_deg']:.1f}° / 帽 0.116 mm·35°"),
-         "scope": "指令终态双手各 ≥2 指垫入端面矩形带、垫心前向角 ≤35°、无埋入"},
+         "measured": (f"R5 距离腿 ✓ 右 {g1r['rect_dist_mm']:.4f} / "
+                      f"左 {g1l['rect_dist_mm']:.4f} mm；"
+                      f"2 垫腿 ✗ 右 {g1r['n_pads_in_rect']}/2、"
+                      f"左 {g1l['n_pads_in_rect']}/2"
+                      f"（前向 {g1r['forward_axis_deg']:.1f}°/"
+                      f"{g1l['forward_axis_deg']:.1f}° 达标）"),
+         "scope": ("v5.1 双列语义：R5 距离腿=单垫矩形距离 ≤0.116 mm（已达标）；"
+                   "2 垫腿=≥2 指垫同入带内（当前 1/2，红）——两腿须同时过")},
         {"id": "w6b_gate2", "name": "门 2 端面接触保持",
          "verdict": "pass" if checks["gate2_contact"] else "fail",
-         "measured": (f"右 {g2r['endface_contact_frames']} 帧（首触 "
-                      f"第 {g2r['first_endface_control_frame']} 控制帧）/ "
-                      f"左 {g2l['endface_contact_frames']} 帧（首触 "
-                      f"第 {g2l['first_endface_control_frame']}）"),
+         "measured": (f"右 {g2r['endface_contact_frames']} 帧（首触 第 "
+                      f"{g2r['first_endface_control_frame']} 控制帧）/ "
+                      f"左 {g2l['endface_contact_frames']} 帧（首触 第 "
+                      f"{g2l['first_endface_control_frame']}）"),
          "scope": "接触物理执行下指垫贴住端面的控制帧数（按 report 逐侧实数）"},
         {"id": "w6b_gate3", "name": "门 3 接近段干净",
          "verdict": "pass" if checks["gate3_approach_clean"] else "fail",
          "measured": (f"右压支撑 {len(g3r.get('support_contact_control_frames', []))} 帧 / "
                       f"左 {len(g3l.get('support_contact_control_frames', []))} 帧"
                       + ("" if checks["gate3_approach_clean"]
-                         else "（失败=F5 接近高度预算，W6c 域处理）")),
-         "scope": "接近段手指不得触桌或支撑（历史上的失败源于接近高度预算不足，非 retarget 接线）"},
+                         else "（红=接近段支撑接触，如实入档）")),
+         "scope": "接近段手指不得触桌或支撑（r8 起支撑帧清零为过门条件）"},
         {"id": "w6b_gate4", "name": "门 4 关节限位",
          "verdict": "pass" if checks["gate4_joint_limits"] else "fail",
          "measured": f"右 {g4_txt(g4r)} / 左 {g4_txt(g4l)}",
-         "scope": "手指 qpos 不越关节限、指令全部落在 ctrlrange 内"},
-        {"id": "w6b_gate5", "name": "门 5 掌偏差",
-         "verdict": "pass" if checks["gate5_palm_deviation"] else "fail",
-         "measured": (f"右 {g5r['execution_dev_max_m'] * 1e3:.0f} mm / "
-                      f"左 {g5l['execution_dev_max_m'] * 1e3:.0f} mm / "
-                      f"帽 {g5r['cap_m'] * 1e3:.0f} mm"),
-         "scope": "执行掌心位姿相对 MANO 目标的最大偏差（超帽即标红，如实入档）"},
+         "scope": "手指与垫铰 qpos 不越关节限、指令全部落在 ctrlrange 内"},
+        {"id": "w6b_gate5", "name": "门 5 掌偏差（配准）",
+         "verdict": "pass" if gate5_pass else "fail",
+         "measured": (f"右 {reg_r['max']:.2f} / 左 {reg_l['max']:.2f} mm"
+                      f"（配准后 max，≤40 mm 达标）；"
+                      f"求解收敛 右 {g5r['constrained_solve_palm_max_m'] * 1e3:.2f} / "
+                      f"左 {g5l['constrained_solve_palm_max_m'] * 1e3:.2f} mm"),
+         "scope": ("解剖学配准（Main Front B）：扣掉抓握窗常量偏置后的掌心残差——"
+                   "raw 未配准腿（含工具系偏置）如实留在 report")},
         {"id": "w6b_wrist", "name": "腕轨迹误差",
          "verdict": "pass" if checks.get("wrist_referenced_error") else "fail",
          "measured": f"左 {wrist_side(wr_l)} / 右 {wrist_side(wr_r)}",
-         "scope": "MediaPipe 腕点 vs 回放腕的置信加权中位误差，占手跨度百分比（r5n 4c 同尺判据，逐手机判定）"},
+         "scope": "MediaPipe 腕点 vs 回放腕的置信加权中位误差，占手跨度百分比"
+                  "（4c 同尺判据，逐手机判定）"},
         {"id": "w6b_align", "name": "1:1 帧对齐",
          "verdict": "pass" if checks.get("frame_alignment") else "fail",
-         "measured": (f"{len(json.loads(REPLAY_IN.read_text())['frames'])} 帧 @30 fps ↔ 原片逐帧"
-                      + ("（对齐断言 PASS）" if checks.get("frame_alignment") else "（对齐断言未过）")),
+         "measured": (f"{len(json.loads(REPLAY_IN.read_text())['frames'])} 帧 @30 fps"
+                      " ↔ 原片逐帧"
+                      + ("（对齐断言 PASS）" if checks.get("frame_alignment")
+                         else "（对齐断言未过）")),
          "scope": "仿真帧 i ↔ 原片帧 i+1（t=i/30 s）的对齐断言——本面板滑块的时基依据"},
     ]
 
@@ -287,8 +304,10 @@ def build() -> dict:
         segments = []
 
     replay_fps = REPLAY_FPS
+    scene_kind = "floating"
     if REPLAY_IN.exists():
-        frames, replay_fps = _convert_replay(json.loads(REPLAY_IN.read_text()))
+        frames, replay_fps, scene_kind = _convert_replay(
+            json.loads(REPLAY_IN.read_text()))
         source = "runs/w6b/replay_frames.json (W6b)"
         placeholder, notes = False, []
     else:
@@ -332,14 +351,13 @@ def build() -> dict:
                 "runs/.venv-mj/bin/python viz/render_replay.py 即为成片。"),
             "notes_per_frame": notes,
             "playback": playback,
+            "scene": scene_kind,
             "phase_notes": {
-                # v25 终局 (Main, lift-line terminal — dominance theorem)
-                "抬离": ("抬离：能力已实现（window 至 127 帧/6.4 秒、peak 至 "
-                         "105mm、3 seed）；稳定化支配定理已量化——"
-                         "rate_w≥8 静止最优（MLP/GRU 双穷尽同一驻定吸引子）、"
-                         "rate_w≤2 携带最优但结构性漂移必败 slip/yaw 门："
-                         "此机座+非对称指集（右双垫/左单垫）下 7/7 对任何"
-                         "奖励权重不可达。5/7 为硬件边界，全证明链在 report。"),
+                # C-STABILITY 终局 (Main, final)
+                "抬离": ("抬离：C-STABILITY 终局——8 类控制穷尽 + 发现墙 "
+                         "rate_w<0.0067 量化 + 力伺服未闭合 + yaw-clean "
+                         "t=0 1.05° + lift 三元组 127 帧/105mm/100mm"
+                         "=5/7 条款。"),
             },
             "video_fps": VIDEO_FPS,
             "total_source_frames": SOURCE_TOTAL_FRAMES,

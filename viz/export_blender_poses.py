@@ -94,15 +94,31 @@ def mat_to_quat_wxyz(q: np.ndarray) -> np.ndarray:
 
 def main() -> None:
     import mujoco
-    import scene_fidelity
-
-    m = scene_fidelity.build_fidelity_model()
-    d = mujoco.MjData(m)
-    obj_adr = int(m.jnt_qposadr[mujoco.mj_name2id(
-        m, mujoco.mjtObj.mjOBJ_JOINT, "object_free")])
+    import scene_fidelity as sf
 
     data = json.loads((REPO / "viz/panel_data_v2.json").read_text())
     frames = data["replay"]["frames"]
+    width = len(frames[0]["qpos"])
+
+    # scene selection by qpos width: the replay carries the FULL qpos of the
+    # scene it was generated on (floating=65, ur5e=59)
+    scenes = {"floating": sf.SCENE_FLOATING, "ur5e": sf.SCENE_UR5E}
+    scene_kind = scene = None
+    for kind, xml in scenes.items():
+        import mujoco as _mj
+        nq = int(_mj.MjModel.from_xml_path(str(xml)).nq)
+        if nq == width:
+            scene_kind, scene = kind, xml
+            break
+    if scene is None:
+        raise SystemExit(f"replay qpos width {width} matches no known scene "
+                         f"(floating=65, ur5e=59)")
+    print(f"scene: {scene_kind} (nq {width})")
+
+    m = sf.build_fidelity_model(scene)
+    d = mujoco.MjData(m)
+    obj_adr = int(m.jnt_qposadr[mujoco.mj_name2id(
+        m, mujoco.mjtObj.mjOBJ_JOINT, "object_free")])
 
     geoms = []
     for g in range(m.ngeom):
@@ -122,12 +138,14 @@ def main() -> None:
     # v25/r12 prep: when the UR5e lands (menagerie universal_robots_ur5e,
     # welded into the scene by W6b), its LINK poses drive real-CAD STL meshes
     # in Blender -- far better than primitives for a photoreal arm
-    UR_LINKS = ("shoulder_link", "upper_arm_link", "forearm_link",
-                "wrist_1_link", "wrist_2_link", "wrist_3_link")
-    ur_bodies = [(b, mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, b))
-                 for b in range(m.nbody)
-                 if (mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, b) or "")
-                 in UR_LINKS]
+    UR_LINK_SUFFIXES = ("shoulder_link", "upper_arm_link", "forearm_link",
+                        "wrist_1_link", "wrist_2_link", "wrist_3_link")
+    ur_bodies = []
+    for b in range(m.nbody):
+        n = mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, b) or ""
+        if "ur5e" in n and n.endswith(UR_LINK_SUFFIXES):
+            ur_bodies.append((b, n))
+    ur_bodies = sorted(set(ur_bodies))
 
     out_frames = []
     for fr in frames:
@@ -142,8 +160,7 @@ def main() -> None:
                           (*p, qw, qx, qy, qz)])
         ur = [{"name": n,
                "pose": [round(float(v), 6) for v in
-                        (*d.xpos[b],
-                         *mat_to_quat_wxyz(d.xquat[b].reshape(3, 3)))]}
+                        (*d.xpos[b], *d.xquat[b])]}   # xquat is already wxyz
               for b, n in ur_bodies]
         out_frames.append({"t": float(fr["t"]), "q": fr["qpos"],
                            "poses": poses, "ur": ur})
@@ -161,6 +178,7 @@ def main() -> None:
     payload = {
         "meta": {
             "n_frames": len(out_frames), "fps": data["replay"]["fps"],
+            "scene": scene_kind,
             "n_geoms": len(geoms),
             "source": "scene_fidelity.build_fidelity_model() @ r8 replay",
             "axis_note": ("IDENTITY mapping: mujoco and blender are both "

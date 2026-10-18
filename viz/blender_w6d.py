@@ -107,12 +107,21 @@ def mat_principled(name, color, rough, metal=0.0, alpha=1.0,
 # and this loader swaps the primitive arm for the real CAD meshes.
 UR5E_MESH_DIR = HERE.parent / "runs/upstream/menagerie/universal_robots_ur5e/assets"
 UR5E_LINKS = {
-    "shoulder_link": ["shoulder_0", "shoulder_1", "shoulder_2"],
-    "upper_arm_link": ["upperarm_0", "upperarm_1", "upperarm_2", "upperarm_3"],
-    "forearm_link": ["forearm_0", "forearm_1", "forearm_2", "forearm_3"],
-    "wrist_1_link": ["wrist1_0", "wrist1_1", "wrist1_2"],
-    "wrist_2_link": ["wrist2_0", "wrist2_1", "wrist2_2"],
-    "wrist_3_link": ["wrist3"],
+    # both arms share the menagerie CAD (one arm's OBJs, two instances)
+    "ur5e_r_shoulder_link": ["shoulder_0", "shoulder_1", "shoulder_2"],
+    "ur5e_l_shoulder_link": ["shoulder_0", "shoulder_1", "shoulder_2"],
+    "ur5e_r_upper_arm_link": ["upperarm_0", "upperarm_1", "upperarm_2",
+                              "upperarm_3"],
+    "ur5e_l_upper_arm_link": ["upperarm_0", "upperarm_1", "upperarm_2",
+                              "upperarm_3"],
+    "ur5e_r_forearm_link": ["forearm_0", "forearm_1", "forearm_2", "forearm_3"],
+    "ur5e_l_forearm_link": ["forearm_0", "forearm_1", "forearm_2", "forearm_3"],
+    "ur5e_r_wrist_1_link": ["wrist1_0", "wrist1_1", "wrist1_2"],
+    "ur5e_l_wrist_1_link": ["wrist1_0", "wrist1_1", "wrist1_2"],
+    "ur5e_r_wrist_2_link": ["wrist2_0", "wrist2_1", "wrist2_2"],
+    "ur5e_l_wrist_2_link": ["wrist2_0", "wrist2_1", "wrist2_2"],
+    "ur5e_r_wrist_3_link": ["wrist3"],
+    "ur5e_l_wrist_3_link": ["wrist3"],
 }
 
 
@@ -261,6 +270,23 @@ def make_camera(name, pos, look):
 
 
 def main() -> None:
+    # pre-launch guard: a second concurrent instance on the same outdir
+    # halves the CPU and the two writers race frames (v25 batch incident).
+    # ps shows every live "Blender -b -P viz/blender_w6d.py"; anything that
+    # is not THIS process is a racer.
+    import os as _os
+    import subprocess as _sp
+    my_pid = str(_os.getpid())
+    others = [l.strip() for l in _sp.run(
+        ["ps", "-axo", "pid,command"], capture_output=True, text=True)
+        .stdout.splitlines()
+        if "Blender -b -P viz/blender_w6d.py" in l and "grep" not in l
+        and not l.strip().startswith(my_pid)]
+    if others:
+        raise SystemExit("another blender_w6d.py render is already running "
+                         "(concurrent instances race frames) -- aborting: "
+                         + " | ".join(others[:2]))
+
     opts = parse_args()
     poses_path = pathlib.Path(opts.get("data", str(HERE / "blender" / "poses.json")))
     payload = json.loads(poses_path.read_text())
