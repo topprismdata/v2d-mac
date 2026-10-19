@@ -118,6 +118,13 @@ def capture_engage() -> dict:
     place_l[24] += -0.015
     place_l[25] += 0.00; place_l[26] += 0.60; place_l[27] += 0.00
     place_l[37] = 0.40; place_l[38] = 0.30
+        # the placement overrides
+        for _k, _idx in (("V21_RWX", 0), ("V21_RWY", 1), ("V21_RWZ", 2),
+                         ("V21_LWX", 22), ("V21_LWY", 23), ("V21_LWZ", 24)):
+            _v = os.environ.get(_k)
+            if _v:
+                (place_r if _idx < 22 else place_l)[_idx] = float(_v)
+
     for k in range(15):
         d.ctrl[:] = place_r + (place_l - place_r) * (k + 1) / 15
         settle(FS)
