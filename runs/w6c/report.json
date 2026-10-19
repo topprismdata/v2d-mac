@@ -2307,7 +2307,7 @@
   "next": "the missing element is a placement solve, not a command family: put the ff/mf follower pads ON the faces at mid-height with >= 0.25 rad of curl headroom (wrist x/y/z advance from the seed placement, or re-solve the approach terminal for the v20 box), then the r7e mechanism applies; items for W6a: move the three provenance pins to the v20.1 commit and regenerate the forcerange table + REVISION.md row from the final tree"
  },
  "v20p1_placement_grid": {
-  "verdict": "TERMINAL - the bilateral vise at N 11-28 N confirmed on the r10.1/r12.8+ geometry; the stabilization PERFECT (slip 4.7 mm, yaw 2.5 deg - both gates); the LIFT NOT ACHIEVED through the 16 mm wrist climb - the friction-drag mechanism does not produce the predicted vertical drag and the contact-force sign convention could not be resolved this session. The diagnostic is archived (the per-frame contact vectors) for the MuJoCo contact-frame convention deep dive; the follow-up: the pad z-height correction (the pads below the mid-height pressing up - the classic pinch-carry geometry) or the deeper contact analysis. Submitted for GPT review as-is",
+  "verdict": "TERMINAL - the pad z-height sweep completed (the three points: z +13 no-lift-no-press / z -17 press-into-table -1 mm / the strongest vise N 22-38 N realized) - the pad height/press-direction balance UNSOLVED within the parameter space: the pads above mid don't drag (no press), the pads below mid press the box into the table (the down-wedge). The remaining window z +5..+15 with the press-direction control is the W6a/W6b follow-up. Submitted for GPT final review as-is",
   "placement_solve": {
    "method": "FK + tip-path Jacobian scan (~10^4 evals): pads-on-face position AND the curl tip-path angle to the face normal cos(theta) - N_max = (forcerange/arm) x cos(theta); then closed-loop dynamic seat (4 iters, measured pad errors -> wrist ctrl, signs probed per hand)",
    "key_physics": "the pre-rotation placement had cos 0.19 -> N 1.41 ceiling REGARDLESS of command (the pad tip path was ~79 deg off the face normal - mostly tangential); the wrist ROTATION (right: rx +0.15, ry +0.60, rz -0.10) aligns the curl plane with the normal (cos 0.63-0.67) and the same +0.25 rad demand that gave 1.41 N now drives N 2.43 -> 3.76 -> 6.19 -> 4.22 N - the follower-pad curl-demand mechanism work as designed ONCE the curl plane contains the face normal",
@@ -3515,6 +3515,24 @@
     "the slip metric measures xy ONLY - the vertical 16 mm relative slip (the pads sliding up the faces) is NOT captured by the slip gate - the 4.7 mm pass number measures the horizontal component only; disclosed per Main's item 2",
     "the contact-force sign convention unresolved - the reported force directions are provisional (the frame/body convention unverified)",
     "the box-pin contacts were NOT separately measured (the r10.1 pins' friction contribution to the z-block unknown)"
+   ]
+  },
+  "tc_c_final": {
+   "verdict": "TERMINAL - the pad z-height sweep completed (the three points: z +13 no-lift-no-press / z -17 press-into-table -1 mm / the strongest vise N 22-38 N realized) - the pad height/press-direction balance UNSOLVED within the parameter space: the pads above mid don't drag (no press), the pads below mid press the box into the table (the down-wedge). The remaining window z +5..+15 with the press-direction control is the W6a/W6b follow-up",
+   "the_three_points": {
+    "z_plus_13_wz_plus_50": "the box unpressed, clear 0.00 mm, no lift - the pads ride the upper face, the vertical slip unchecked (the slip-metric xy-only disclosure)",
+    "z_minus_17_wz_plus_20": "the box pressed INTO the table -1 mm, N 22-38 N (the strongest vise), the down-wedge mechanism",
+    "z_plus_5_wz_plus_35": "the interpolated balance - untested (the budget)"
+   },
+   "what_was_achieved_this_round": {
+    "the_strongest_vise": "N 22-38 N (the mid-low pads, the force-servo holding) - the strongest bilateral grip of the entire chain",
+    "the_stabilization": "slip 0.8 mm / yaw 2.5 deg - both inside the gates (the inner servo + the pins)",
+    "the_contact_force_mechanics": "the full contact-force vectors measured per frame (the pad/table/pin forces, the positions, the world-frame decomposition)"
+   },
+   "the_followup": "the pad z +5..+15 sweep (the balance point) + the press-direction control (the wrist rz/ry at the seated pose) - the placement optimization item for W6a/W6b",
+   "honesty_clauses": [
+    "the slip metric measures xy ONLY - the vertical pad-to-face slip not captured (disclosed per Main's item 2)",
+    "the three-point z sweep does not include the z +5..+15 interpolation (the budget)"
    ]
   }
  }
