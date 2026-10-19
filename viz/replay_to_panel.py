@@ -242,8 +242,8 @@ def _w6b_gates() -> list[dict]:
     return [
         {"id": "w6b_gate1", "name": "门 1 终触（双列）",
          "verdict": "pass" if checks["gate1_final_touch"] else "fail",
-         "measured": (f"R5 距离腿 ✓ 右 {g1r['rect_dist_mm']:.4f} / "
-                      f"左 {g1l['rect_dist_mm']:.4f} mm；"
+         "measured": (f"R5 距离腿 ✓ 右 {g1r['rect_dist_mm'] * 1e3:.6f} / "
+                      f"左 {g1l['rect_dist_mm'] * 1e3:.6f} μm；"
                       f"2 垫腿 ✗ 右 {g1r['n_pads_in_rect']}/2、"
                       f"左 {g1l['n_pads_in_rect']}/2"
                       f"（前向 {g1r['forward_axis_deg']:.1f}°/"
@@ -354,11 +354,9 @@ def build() -> dict:
             "playback": playback,
             "scene": scene_kind,
             "phase_notes": {
-                # C-STABILITY 终局 (Main, final)
-                "抬离": ("抬离：C-STABILITY 终局——8 类控制穷尽 + 发现墙 "
-                         "rate_w<0.0067 量化 + 力伺服未闭合 + yaw-clean "
-                         "t=0 1.05° + lift 三元组 127 帧/105mm/100mm"
-                         "=5/7 条款。"),
+                # GPT 定稿句 (Main, badge resync post-v6)：强断言撤
+                "抬离": ("抬离：已检验域内未发现可重复抬离轨迹"
+                         "+接触可达性阻塞证据。"),
                 # r26 Track A：翻转消除；上摆段盒-垫接触瞬态如实注（g2 归因）
                 "接近": ("上摆段盒-垫接触瞬态：右 2 帧瞬时触面即离——"
                          "g2 低帧数归因（非持续保持失效）"),
