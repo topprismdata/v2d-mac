@@ -3120,11 +3120,12 @@
   },
   "cleanroom_replay": "fresh process, base XML, checkpoint 1aec5c140888b3a7: right=16.37 N left=7.75 N - the v6 package vise line may cite these numbers as file-anchored reproducible (partial-transmission flag LIFTED for the numbers; the mechanism wording corrected to top-edge grip)",
   "force_provenance": {
-   "headline_numbers": "right 9.72 N / left 6.53 N - the verifier's 1200-frame settled static replay (bit-identical), adopted as THE vise force numbers; all other readings below are protocol-annotated",
+   "headline_numbers": "right 9.72 N / left 6.53 N - frame-0 STATIC solve (mj_forward with qpos/ctrl frozen, NO integration), bit-identical; adopted as THE vise force numbers. Protocol wording is exact: static = mj_forward only; any stepped (mj_step) reading is a different state class and must not be conflated with the headline.",
    "n_reading_timestamps": {
-    "16.37/7.75": "mj_forward-INSTANT solve (warmstart not converged; not bit-reproducible) - superseded",
-    "5.106/6.526": "this session's 1200-frame settled replay: left matches the verifier exactly; right undercounted by the W.pad_normal_forces first-match-per-geom-pair convention (multi-contact pairs counted once)",
-    "9.72/6.53": "verifier settled standard - HEADLINE"
+    "9.72/6.53": "STATIC (frame-0 mj_forward, no integration) - HEADLINE, verifier-round-3 VERIFIED",
+    "3.652/3.247 (rf_distal/rf_tip per-geom)": "STEPPED-state numbers (from the 1200-frame run breakdown) - used only in the double-count refutation, not comparable to the headline",
+    "5.106/6.526": "STEPPED (1200-frame) replay; left coincides with the static left; right undercounted by the pad_normal_forces first-match-per-geom-pair convention",
+    "16.37/7.75": "SOURCE STATE UNSPECIFIED (neither pure static nor annotated stepped) - SUPERSEDED, retained only as the provenance record"
    },
    "double_count_hypothesis": "REFUTED: the rf readings are two DISTINCT real contacts (rf_distal_collision 3.652 N + rf_tip_collision 3.247 N, sum 6.899 N legitimate); the 16.37-vs-9.72 delta is the unsettled-vs-settled solve and the left residual 1.221 is the same delta - no double-count exists",
    "static_jam_note": "the file state is a STATIC JAM (pin-wedge + bilateral top-edge hooks); curl press-decouples from it (the servo only unloads the jam) - the force numbers are jam-statics, not active press",
