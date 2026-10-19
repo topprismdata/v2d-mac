@@ -38254,5 +38254,121 @@
         0.51
       ]
     }
+  },
+  "r27_deployed_terminal": {
+    "campaign": "r26/r27 deployed terminal \u2014 transmittable anchor (Main r27)",
+    "measurement_recipe": [
+      "1. load grounding/assets/allegro_floating_ur5e.xml",
+      "2. data.qpos[:] = model.qpos0",
+      "3. data.qpos[spec.wrist_qadr] = the deployed terminal wrist qpos (embedded below, per side, spec order)",
+      "4. data.qpos[spec.finger_qadr] = the deployed terminal finger qpos (embedded below, ff/mf/rf/th x k0..3 order)",
+      "5. mujoco.mj_forward",
+      "6. the pad-face distances = |tip pad centre - the box end-face plane| (the box at its table rest pose (0,0,0.74), half 0.06/0.12/0.04) per tip",
+      "7. the expected values = per_pad_um below (recomputed this round, sha-anchored)"
+    ],
+    "deployed_terminal_qpos": {
+      "right": {
+        "wrist_6": [
+          -2.651665,
+          0.65662,
+          1.826958,
+          2.333061,
+          2.996277,
+          -0.766304
+        ],
+        "fingers_16": [
+          0.032473,
+          0.307181,
+          0.256882,
+          0.79685,
+          0.255559,
+          0.635443,
+          0.827002,
+          0.308371,
+          0.382574,
+          0.819818,
+          0.259234,
+          0.255111,
+          0.263,
+          0.474229,
+          0.145315,
+          0.045517
+        ]
+      },
+      "left": {
+        "wrist_6": [
+          -2.93077,
+          0.541779,
+          1.987518,
+          0.416436,
+          2.171692,
+          0.028277
+        ],
+        "fingers_16": [
+          0.47,
+          0.313554,
+          0.177126,
+          0.176852,
+          0.093784,
+          0.17719,
+          0.828155,
+          0.440569,
+          0.300255,
+          0.313065,
+          0.123743,
+          0.433903,
+          0.263,
+          0.436191,
+          0.181515,
+          0.118903
+        ]
+      }
+    },
+    "sha16_anchors": {
+      "right": "cbbf89764a432e28",
+      "left": "5bea4273f87758bf"
+    },
+    "per_pad_um": {
+      "right": {
+        "ff_tip_visual": 48888.802,
+        "ff_tip_collision": 44876.497,
+        "mf_tip_visual": 17136.484,
+        "mf_tip_collision": 14046.054,
+        "rf_tip_visual": 5172.539,
+        "rf_tip_collision": 0.229,
+        "th_tip_visual": 193261.873,
+        "th_tip_collision": 189972.596
+      },
+      "left": {
+        "ff_tip_left_visual": 77105.823,
+        "ff_tip_left_collision": 74246.18,
+        "mf_tip_left_visual": 10386.938,
+        "mf_tip_left_collision": 6143.102,
+        "rf_tip_left_visual": 6383.259,
+        "rf_tip_left_collision": 3.903,
+        "th_tip_left_visual": 200755.459,
+        "th_tip_left_collision": 198174.969
+      }
+    },
+    "best_pad_um": {
+      "right": 0.229,
+      "left": 3.903
+    },
+    "seed_reference_um": {
+      "note": "the verifier's recomputation from gate3_qpos.json (sha c58e49fc) = the SEED's own pad state: right 4.67 um / left 16.39 um \u2014 the deployed terminal solve is 20x/4.2x BETTER than the seed; both are within R5 (116 um)",
+      "right_best_um": 4.67,
+      "left_best_um": 16.39
+    },
+    "window_definitions": {
+      "gate1_terminal_frame": "the last control frame of the deployed stream (index -1 = n_ctrl + n_blend + n_hold - 1); the gate1 record measures THIS configuration",
+      "gate3_window": "the whole deployed stream (pre-roll frames included when enabled; this final run has no pre-roll \u2014 322 control frames)",
+      "gate5_registered": "max over the path of ||placement solve - retargeted input|| after the grasp-window bias subtraction (GRASP_FRAMES 121-151 video = control 80-100)"
+    },
+    "mapping_65_to_59": "the r13.x seed is a FLOATING-scene 65-dim qpos (box free joint 7 + two 29-dim hands/arms); the UR5e scene is 59-dim.  The mapping is NAME-ADDRESSED, not positional: spec.wrist_qadr (the 6 arm joints ur5e_{r,l}_*_joint) and spec.finger_qadr (the 16 finger joints {ff,mf,rf,th}j{0..3}{,_left}) \u2014 the box free joint (7) and the legacy floating joints are DROPPED.  A fresh agent addresses the same names; no positional transfer exists",
+    "gate3_disclosure_fixed": {
+      "right": "351 support-contact frames \u2014 RED, disclosed",
+      "left": "0 support-contact frames \u2014 clean",
+      "note": "both legs stated; the earlier 'left 0' alone was a selective narrowing of the disclosure (Main r27 item 3)"
+    }
   }
 }
