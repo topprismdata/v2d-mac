@@ -38269,58 +38269,58 @@
     "deployed_terminal_qpos": {
       "right": {
         "wrist_6": [
-          -2.651665,
-          0.65662,
-          1.826958,
-          2.333061,
-          2.996277,
-          -0.766304
+          -2.6516651884184297,
+          0.6566195847714057,
+          1.826957963637636,
+          2.333060554991353,
+          2.9962767620945807,
+          -0.7663039370760951
         ],
         "fingers_16": [
-          0.032473,
-          0.307181,
-          0.256882,
-          0.79685,
-          0.255559,
-          0.635443,
-          0.827002,
-          0.308371,
-          0.382574,
-          0.819818,
-          0.259234,
-          0.255111,
+          0.03247334813096517,
+          0.3071811800015368,
+          0.2568818157610023,
+          0.7968502554416319,
+          0.2555592011470987,
+          0.635443108436377,
+          0.8270019028255672,
+          0.3083707160985037,
+          0.38257363786148807,
+          0.8198181989508727,
+          0.2592338580732182,
+          0.25511065216698703,
           0.263,
-          0.474229,
-          0.145315,
-          0.045517
+          0.4742288239873269,
+          0.1453151143508488,
+          0.04551703968855328
         ]
       },
       "left": {
         "wrist_6": [
-          -2.93077,
-          0.541779,
-          1.987518,
-          0.416436,
-          2.171692,
-          0.028277
+          -2.9307698900013612,
+          0.5417791454993088,
+          1.9875177654144969,
+          0.416435587854071,
+          2.1716920191852336,
+          0.028277192985759328
         ],
         "fingers_16": [
           0.47,
-          0.313554,
-          0.177126,
-          0.176852,
-          0.093784,
-          0.17719,
-          0.828155,
-          0.440569,
-          0.300255,
-          0.313065,
-          0.123743,
-          0.433903,
+          0.3135542904650912,
+          0.17712570332244743,
+          0.17685171935678065,
+          0.09378421210050672,
+          0.17718966861617766,
+          0.8281552779138852,
+          0.4405692693872184,
+          0.3002554345678437,
+          0.31306462088083625,
+          0.12374336928402013,
+          0.4339027664052482,
           0.263,
-          0.436191,
-          0.181515,
-          0.118903
+          0.4361913433033811,
+          0.18151497129581354,
+          0.11890276042602042
         ]
       }
     },
@@ -38369,6 +38369,21 @@
       "right": "351 support-contact frames \u2014 RED, disclosed",
       "left": "0 support-contact frames \u2014 clean",
       "note": "both legs stated; the earlier 'left 0' alone was a selective narrowing of the disclosure (Main r27 item 3)"
-    }
+    },
+    "sha16_recipe": "sha16 = hashlib.sha256(np.concatenate([wrist6, fingers16].astype('<f8').tobytes()).hexdigest()[:16] \u2014 float64, C-order, little-endian, wrist 6 first then fingers 16, both in spec order (ff/mf/rf/th x k0..3), values at FULL float64 precision (the embedded wrist_6/fingers_16 lists are the same float64 values round-tripped through JSON at 17 significant digits)",
+    "best_pad_quantization_note": "the embedded wrist/finger values are float64 round-tripped through JSON (17 significant digits) \u2014 reproducing from THIS text reproduces the anchor exactly; the earlier 6-dp text rounding carried +/-0.05 um pad-position quantization, larger than the +/-10%-rel band on the 0.229 um value \u2014 hence this full-precision re-embed (Main r26 round-2 item 2).  Both the recorded and any +/-0.2 um-recomputed values are ~340x inside R5 (116 um) \u2014 the criterion substantively unaffected",
+    "stream_anchors": {
+      "replay_frames_json": {
+        "path": "runs/w6b/replay_frames.json",
+        "sha256_16": "856ae10f314a7965",
+        "content": "the 390-frame deployed grid: per-frame obj pose (the box free joint, pos+quat) + qpos_full (the 59-dim full state) + control_frame index \u2014 the box up_z curve and the gate3 contact audit recompute from THIS file (the box up_z min 0.962, 0 frames <0.9; gate3 right 279 / left 0 support frames)"
+      },
+      "debug_history_npz": {
+        "path": "runs/w6b/debug_history.npz",
+        "sha256_16": "936cbe920597d643",
+        "content": "the deployed command streams: cmd_wrist_{side} (378,6) and cmd_finger_{side} (378,16) \u2014 the sha16 anchors above hash THESE arrays' last frames"
+      }
+    },
+    "absolute_tolerance_reading": "absolute-tolerance\u53e3\u5f84: right 0.229 \u00b1 0.05 um (the 3-dp embed's quantization band), left 3.903 \u00b1 0.05 um \u2014 both ~340x/24x inside R5 (116 um); the criterion is substantively unaffected by the quantization"
   }
 }
