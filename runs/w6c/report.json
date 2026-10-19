@@ -2896,5 +2896,10 @@
   "mechanism_conclusion": "the lift basin requires the first-step QACC transient; mechanical equivalents (state init, active wedge) do not enter it; the transient is the variant model's init semantics, not controllable via joint state or actuation",
   "standing_result": "direct protocol (kp2000 slides damping 0.5, no pre-phase, ramped climb): peak 43.46mm, window 120f, yaw 5.0 - reproducible 2x; slip dual-report stands (all-in 17.1 init transient / post-init 0.1 climb drift)",
   "next": "solver-level: noslip iterations / solver settings on the variant, or accept the dual-report slip口径 with the documented attribution for GPT review"
+ },
+ "noslip_fork": {
+  "verdict": "NEGATIVE (A-ticket closed): noslip iterations {1,10,100} on the gentle protocol - no lift at any setting (0.10mm flat); the direct protocol with wedge actuators present (even at the working angles) also no lift - the 43mm standing result REQUIRES free hinges (no wedge actuators) + the first-step impulse; the impulse-basin effect stands as a documented reproducible fact",
+  "configuration_lock": "43.46mm/120f protocol = kp2000 slides + damping 0.5 + NO wedge actuators + free pad hinges + direct engage + ramped climb; any pre-phase or hinge actuation loses the basin",
+  "evidence_note": "the 17mm first-frame slip is the same-basin init transient (QACC warning pre-control at t=0.002-0.012); the post-init climb drift is 0.1mm over 200f"
  }
 }
