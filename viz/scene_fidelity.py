@@ -303,8 +303,9 @@ def build_fidelity_spec(scene_xml: pathlib.Path = SCENE_FLOATING):
 def scene_for_qpos_width(width: int):
     """Return (scene_xml, kind) whose model nq matches a replay qpos width."""
     import mujoco
-    for kind, xml in (("ur5e_vise", SCENE_UR5E_VISE),
-                      ("floating", SCENE_FLOATING), ("ur5e", SCENE_UR5E)):
+    for kind, xml in (("ur5e", SCENE_UR5E),
+                      ("ur5e_vise", SCENE_UR5E_VISE),
+                      ("floating", SCENE_FLOATING)):
         if int(mujoco.MjModel.from_xml_path(str(xml)).nq) == width:
             return xml, kind
     raise SystemExit(f"replay qpos width {width} matches no known scene")

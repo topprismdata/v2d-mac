@@ -138,6 +138,12 @@ def capture_engage() -> dict:
             m, mujoco.mjtObj.mjOBJ_GEOM, g)] - d.xpos[bid]
 
     cr_lo, cr_hi = m.actuator_ctrlrange[:, 0], m.actuator_ctrlrange[:, 1]
+    # seat-correction budget: the loop below subtracts the box-relative tip
+    # height from the ABSOLUTE ctrl z each iteration; without a budget the
+    # left seat ratcheted 8.9 cm down (0.0309 -> -0.0577) = a ~955 N
+    # down-press through the kp-15000 z actuator that pinned the box to the
+    # table for every prior run. Bound total correction to +-8 mm.
+    z_seat_r, z_seat_l = float(d.ctrl[2]), float(d.ctrl[24])
     for _ in range(6):
         bl = padp("rf_tip_left_collision")
         y_err = bl[1] - (-0.095)
@@ -147,8 +153,12 @@ def capture_engage() -> dict:
         x_r = (padp("ff_tip_collision")[0] + padp("mf_tip_collision")[0]) / 2 \
             - 0.066
         x_l = -bl[0] + 0.066
-        d.ctrl[2] = float(np.clip(d.ctrl[2] - z_r, cr_lo[2], cr_hi[2]))
-        d.ctrl[24] = float(np.clip(d.ctrl[24] - bl[2], cr_lo[24], cr_hi[24]))
+        d.ctrl[2] = float(np.clip(d.ctrl[2] - z_r,
+                                  max(cr_lo[2], z_seat_r - 0.008),
+                                  min(cr_hi[2], z_seat_r + 0.008)))
+        d.ctrl[24] = float(np.clip(d.ctrl[24] - bl[2],
+                                   max(cr_lo[24], z_seat_l - 0.008),
+                                   min(cr_hi[24], z_seat_l + 0.008)))
         d.ctrl[0] = float(np.clip(d.ctrl[0] + float(np.clip(x_r, -0.012, 0.012)),
                                   cr_lo[0], cr_hi[0]))
         if abs(y_err) < 0.004:

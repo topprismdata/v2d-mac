@@ -59,9 +59,9 @@ NQ_MIN = 51               # frames must carry at least the base; v20.1 carries
                           # the full model nq (65 = base + arm/pad angles)
 
 
-SCENES = {"ur5e_vise": REPO / "grounding/assets/allegro_floating_ur5e_r24_vise.xml",
-          "floating": REPO / "grounding/assets/allegro_floating.xml",
-          "ur5e": REPO / "grounding/assets/allegro_floating_ur5e.xml"}
+SCENES = {"ur5e": REPO / "grounding/assets/allegro_floating_ur5e.xml",
+          "ur5e_vise": REPO / "grounding/assets/allegro_floating_ur5e_r24_vise.xml",
+          "floating": REPO / "grounding/assets/allegro_floating.xml"}
 
 
 def _scene_for_width(width: int) -> str:
@@ -256,13 +256,12 @@ def _w6b_gates() -> list[dict]:
                       f"{g2r['first_endface_control_frame']} 控制帧）/ "
                       f"左 {g2l['endface_contact_frames']} 帧（首触 第 "
                       f"{g2l['first_endface_control_frame']}）"),
-         "scope": "接触物理执行下指垫贴住端面的控制帧数（按 report 逐侧实数）"},
+         "scope": ("接触物理执行下指垫贴住端面的控制帧数。r26 低帧数归因："
+                  "上摆段盒-垫接触瞬态（右 2 帧瞬时触面即离，非持续保持）")},
         {"id": "w6b_gate3", "name": "门 3 接近段干净",
          "verdict": "pass" if checks["gate3_approach_clean"] else "fail",
          "measured": (f"右压支撑 {g3r.get('support_contact_frames', 0)} 帧 / "
-                      f"左 {g3l.get('support_contact_frames', 0)} 帧"
-                      + ("" if checks["gate3_approach_clean"]
-                         else "（红=接近段支撑接触，如实入档）")),
+                      f"左 {g3l.get('support_contact_frames', 0)} 帧"),
          "scope": "接近段手指不得触桌或支撑（r25 终局：中程倾斜过侧 ~95° 后回正，"
                   "夹具域已尽——vise 锁漂移、pre-roll 触发保险丝被否）"},
         {"id": "w6b_gate4", "name": "门 4 关节限位",
@@ -360,9 +359,9 @@ def build() -> dict:
                          "rate_w<0.0067 量化 + 力伺服未闭合 + yaw-clean "
                          "t=0 1.05° + lift 三元组 127 帧/105mm/100mm"
                          "=5/7 条款。"),
-                # r25 渲染披露（Main 终渲令）：中程 toppling 如实标注
-                "触面": ("盒中程倾斜过侧 ~95° 后回正——终端面压自由盒 toppling "
-                         "力矩，夹具域已尽（vise 锁漂移、pre-roll 触发保险丝被否）"),
+                # r26 Track A：翻转消除；上摆段盒-垫接触瞬态如实注（g2 归因）
+                "接近": ("上摆段盒-垫接触瞬态：右 2 帧瞬时触面即离——"
+                         "g2 低帧数归因（非持续保持失效）"),
             },
             "video_fps": VIDEO_FPS,
             "total_source_frames": SOURCE_TOTAL_FRAMES,

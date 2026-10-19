@@ -102,8 +102,9 @@ def main() -> None:
 
     # scene selection by qpos width: the replay carries the FULL qpos of the
     # scene it was generated on (ur5e_vise=59, floating=65)
-    scenes = {"ur5e_vise": sf.SCENE_UR5E_VISE,
-              "floating": sf.SCENE_FLOATING, "ur5e": sf.SCENE_UR5E}
+    scenes = {"ur5e": sf.SCENE_UR5E,
+              "ur5e_vise": sf.SCENE_UR5E_VISE,
+              "floating": sf.SCENE_FLOATING}
     scene_kind = scene = None
     for kind, xml in scenes.items():
         import mujoco as _mj
