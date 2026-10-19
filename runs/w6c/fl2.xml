@@ -1,0 +1,18 @@
+<mujoco>
+  <option timestep="0.002"/>
+  <worldbody>
+    <geom type="plane" size="1 1 0.1" friction="1.0 0.005 0.0001"/>
+    <geom type="box" size="0.01 0.1 0.1" pos="-0.0405 0 0.1" friction="1.0 0.005 0.0001"/>
+    <body name="box" pos="0 0 0.04">
+      <freejoint name="boxj"/>
+      <geom type="box" size="0.03 0.06 0.04" mass="0.15" friction="1.4 0.005 0.0001"/>
+    </body>
+    <body name="pad" pos="0.0315 0 0.04">
+      <joint type="slide" name="pz" axis="0 0 1" ref="0" damping="50"/>
+      <geom type="box" size="0.005 0.03 0.03" mass="0.5" friction="1.8 0.005 0.0001"/>
+    </body>
+  </worldbody>
+  <actuator>
+    <position joint="pz" kp="2000" ctrlrange="-0.1 0.1"/>
+  </actuator>
+</mujoco>
