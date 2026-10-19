@@ -778,4 +778,8 @@
 <position name="mf_pad_liftz_act" joint="mf_pad_liftz" kp="2000" ctrlrange="-0.08 0.08"/>
 <position name="ff_pad_left_liftz_act" joint="ff_pad_left_liftz" kp="2000" ctrlrange="-0.08 0.08"/>
 <position name="mf_pad_left_liftz_act" joint="mf_pad_left_liftz" kp="2000" ctrlrange="-0.08 0.08"/></actuator>
+<actuator><position name="ff_padrx_wedge" joint="ff_padrx" kp="200" ctrlrange="-0.6 0.6"/>
+<position name="mf_padrx_wedge" joint="mf_padrx" kp="200" ctrlrange="-0.6 0.6"/>
+<position name="ff_padrx_left_wedge" joint="ff_padrx_left" kp="200" ctrlrange="-0.6 0.6"/>
+<position name="mf_padrx_left_wedge" joint="mf_padrx_left" kp="200" ctrlrange="-0.6 0.6"/></actuator>
 </mujoco>

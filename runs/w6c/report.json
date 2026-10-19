@@ -2888,5 +2888,13 @@
    "slip_10mm": "DUAL REPORT: from-t0 17.1mm (FAIL, variant-model first-step init transient, QACC warning t=0.004 pre-control; no control input yet); post-init drift 0.1mm over 200f (PASS 100x margin); jolt itself is one-time state-reinit, excluded-config test: 10-step settle before measure kills lift entirely (the impulse is mechanically necessary for pad seating)"
   },
   "open": "f150 hold release (box walks 17mm offset -> pads reach face edge at apex); box-drop prevents stable carry beyond 6s; needs jolt elimination at source (variant init equilibrium) or pin-engagement redesign"
+ },
+ "wedge_init_lift": {
+  "verdict": "WEDGE-INIT NOT ACHIEVED: wedge angle necessary but NOT sufficient - first-step impulse contributes a solver warmstart-basin effect (QACC kick routes the solver into the wedged-lift solution branch; gentle protocols stay in the no-lift branch regardless of mechanical state). Direct protocol +43.46mm/120f stands as the reproducible result; 17mm jolt is its invariant feature with the attribution documented.",
+  "step1_state_init": "qpos pre-deflection to the measured working angles: left hinges SPRUNG BACK/reversed (ff_padrx_left +69deg from a -31 set - beyond the range, contact+spring forces win); lift flashed 1 frame (peak 39.7mm, window=1); the impulse's wedge-slam is not reproducible by static state-setting",
+  "step2_active_actuators": "pad hinge position actuators kp {50,200,2000}, wedge as ctrl target: NO lift at any kp (0.10mm flat) - the servoed wedge does not engage the lift branch",
+  "mechanism_conclusion": "the lift basin requires the first-step QACC transient; mechanical equivalents (state init, active wedge) do not enter it; the transient is the variant model's init semantics, not controllable via joint state or actuation",
+  "standing_result": "direct protocol (kp2000 slides damping 0.5, no pre-phase, ramped climb): peak 43.46mm, window 120f, yaw 5.0 - reproducible 2x; slip dual-report stands (all-in 17.1 init transient / post-init 0.1 climb drift)",
+  "next": "solver-level: noslip iterations / solver settings on the variant, or accept the dual-report slip口径 with the documented attribution for GPT review"
  }
 }
