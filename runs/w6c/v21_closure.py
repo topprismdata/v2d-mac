@@ -166,6 +166,15 @@ def capture_engage() -> dict:
                 d.ctrl[22] - float(np.clip(x_l, -0.015, 0.015)),
                 cr_lo[22], cr_hi[22]))
         settle(10 * FS)
+    # zero the wrist-z steady-state error: the checkpoint ctrl z predates
+    # the v20.1 table/box heights, so the seat loop (correctly) pulled the
+    # hands ~9 cm down to reach the box - but the ctrl-qpos gap then acts
+    # as a ~955 N permanent down-press through the kp-15000 actuator during
+    # the whole climb. Re-baseline: ctrl = achieved qpos (zero force), the
+    # vise N must come from the x-press below, never from z error.
+    d.ctrl[2] = float(d.qpos[int(m.jnt_qposadr[int(m.actuator_trnid[2][0])])])
+    d.ctrl[24] = float(d.qpos[int(m.jnt_qposadr[int(m.actuator_trnid[24][0])])])
+    settle(10 * FS)
     # force-source onset on both sides until the vise sum stabilizes
     lo_c, hi_c = m.actuator_ctrlrange[:, 0], m.actuator_ctrlrange[:, 1]
     for f in range(60):
@@ -174,9 +183,31 @@ def capture_engage() -> dict:
         # this mount) - a gentler seat keeps the engage yaw near ~6-7 deg
         for idx, jn, dem in ((7, "ffj1", 0.10), (8, "ffj2", 0.10),
                              (11, "mfj1", 0.10), (12, "mfj2", 0.10),
+                             (29, "ffj1_left", 0.10), (30, "ffj2_left", 0.10),
+                             (33, "mfj1_left", 0.10), (34, "mfj2_left", 0.10),
                              (37, "rfj1_left", 0.30),
                              (38, "rfj2_left", 0.30)):
             d.ctrl[idx] = float(np.clip(d.qpos[_jadr(m, jn)] + dem,
+                                        lo_c[idx], hi_c[idx]))
+        settle(FS)
+    # honest N-curl servo: with the z-press poison removed the vise must be
+    # built by finger-curl interference alone - ramp curl demand until both
+    # pads reach the N target, then hold.
+    N_TGT = 12.0
+    dem_s = {7: 0.0, 8: 0.0, 11: 0.0, 12: 0.0, 29: 0.0, 30: 0.0,
+             33: 0.0, 34: 0.0, 37: 0.0, 38: 0.0}
+    for _f in range(90):
+        n_r, n_l = W.pad_normal_forces(env)
+        for idx, jn, base in ((7, "ffj1", 0.10), (8, "ffj2", 0.10),
+                              (11, "mfj1", 0.10), (12, "mfj2", 0.10),
+                              (29, "ffj1_left", 0.10), (30, "ffj2_left", 0.10),
+                              (33, "mfj1_left", 0.10), (34, "mfj2_left", 0.10),
+                              (37, "rfj1_left", 0.30),
+                              (38, "rfj2_left", 0.30)):
+            n_side = n_r if idx < 22 else n_l
+            dem_s[idx] = float(np.clip(
+                dem_s[idx] + 0.02 * (N_TGT - n_side) / N_TGT, -0.2, 0.6))
+            d.ctrl[idx] = float(np.clip(d.qpos[_jadr(m, jn)] + base + dem_s[idx],
                                         lo_c[idx], hi_c[idx]))
         settle(FS)
     settle(20 * FS)
