@@ -2913,10 +2913,10 @@
   "evidence_note": "the 17mm first-frame slip is the same-basin init transient (QACC warning pre-control at t=0.002-0.012); the post-init climb drift is 0.1mm over 200f"
  },
  "honest_grid_24p8": {
-  "verdict": "NO gate-passing candidate in 24+8 (32/32 fail: window 0, peak -0.57..-0.62mm)",
+  "verdict": "24+8 grid NO gate-passing candidate (32/32 fail: window 0, peak -0.57..-0.62mm)。在已检验控制策略、搜索域及物理配置内，未发现可重复的抬离轨迹；存在明确的接触可达性阻塞证据。",
   "context": "this is the EXPECTED honest-field verdict on the 44-dof base env: the lift is mechanically blocked by the curl-arc press-compliance (established this session); the lift exists ONLY in the pad-z-slaving variant (43.46mm) which is outside the 44-dof policy action space",
   "grid_data": "runs/w6c/v20_lift_grid.json (32 combos: timing x2 ff_r x2 mf_r x2 dz x3 press24 + 8 force-source/mixed)",
-  "honest_number": "the discovery wall (rate_w<0.0067) is now STRUCTURAL, not a discovery-tuning issue: the base env's lift gradient is zero regardless of the reward rate because the mechanics block the lift"
+  "honest_number": "发现墙按 GPT v6 终审措辞降级：不再是『结构性/力学阻塞已证明』的强断言，改为『在已检验范围内未发现可重复抬离』的证据性陈述。"
  },
  "c_stability_submission": {
   "status": "COMPLETE",
@@ -2978,10 +2978,10 @@
     },
     "verdict": "0/3 seeds: the policy presses the box DOWN (-2.9mm) on the base env - never lifts; consistent with the grid 32/32 negative"
    },
-   "discovery_wall_clean": "STRUCTURAL - THIRD CONFIRMATION: the discovery wall (rate_w<0.0067 in the poison field) is now the mechanics wall in the honest field: the base env's curl-arc press-compliance blocks the lift for BOTH the scripted grid AND the learned policy; the lift gradient is zero at the root; no reward shaping can fix a mechanical block",
+   "discovery_wall_clean": "在已检验控制策略、搜索域及物理配置内，未发现可重复的抬离轨迹；存在明确的接触可达性阻塞证据。（原『结构性第三次确认』措辞按②号裁决撤换——证据支持『未发现』，不支持『必然无效』。）",
    "f150_walkoff": "moot on the base env (no lift to walk off); the walk-off remains solved-territory for the pad-slaving variant (the wedge-hold policy needs the hinge channels in the action space)"
   },
-  "final_verdict": "C-STABILITY FINAL (cleanroom-closed): NO LIFT ANYWHERE - base env mechanically blocked (grid 32/32 + policy 0/3 + structural wall triple-confirmed); pad-slaving variant transmission-refuted (cleanroom re-test: world-vertical axes 1-frame flash, active-N press builds zero N - the pads leave the face in the variant model). Poison-chain fix + mechanism analysis + transmission discipline stand as the pack's verified content. The lift line closes honestly; the reopening leads (variant re-seating pipeline, worldvert axes) are documented in cleanroom_lift."
+  "final_verdict": "C-STABILITY 终态（GPT v6 终审 8.9 APPROVE 措辞定稿）：在已检验控制策略、搜索域及物理配置内，未发现可重复的抬离轨迹；存在明确的接触可达性阻塞证据。 已验证内容：955N 毒链修复、vise 帧 0 静态 jam（9.72/6.53 N，VERIFIED）、传输纪律（净室+hash 锚定）。lift 相关主张全部按④号分层冻结表降级（见 wedge_mechanism_adjudication）。"
  },
  "cleanroom_lift": {
   "verdict": "CLEANROOM NEGATIVE - both leads tested, no reproducible lift: C-STABILITY final state = 'no lift anywhere in this system yet' (closing the loop with grid 32/32 + policy 0/3)",
@@ -3036,6 +3036,12 @@
     "3. active-N recipe only becomes meaningful AFTER a true re-seat"
    ],
    "c_stability_final": "NO LIFT ANYWHERE (fully closed): base env mechanically blocked; variant refuted with AND without re-seating"
+  },
+  "gpt_v6_followup_leads": {
+   "status": "另立可行性研究任务立项书（不封死）",
+   "lead_1": "可达性数值上界：对当前接触配置计算抬离所需的接触力/运动学可达域上界，给出可证伪的数值门槛",
+   "lead_2": "手指 DOF 接触模式搜索：在 32 指角空间系统性搜索可维持正压的接触模式（不限于已试卷曲族）",
+   "lead_3": "从 VERIFIED vise（帧 0 静态 jam 9.72/6.53 N）出发的准静态路径证书：逐步抬升的准静态可行性证明或反证"
   }
  },
  "vise_claim_transmission": {
@@ -3134,6 +3140,15 @@
     "base_xml_sha256_16": "604ae7e09e4f7f7a",
     "engage_ckpt_sha256_16": "1aec5c140888b3a7"
    }
+  }
+ },
+ "wedge_mechanism_adjudication": {
+  "status_table_GPT_v6": {
+   "+27deg pad tilt": "HISTORICAL OBSERVATION (未传输——仅在原 session 内存态中出现，净室不可复现)",
+   "pinch-lift geometry": "HYPOTHESIS (几何假说成立方向未被否定，亦未验证)",
+   "'+27deg -> 43mm lift' causal claim": "WITHDRAWN (峰值系求解器瞬态伪影，传输驳回)",
+   "'solver warmstart basin effect'": "WITHDRAWN (GPT 判缺乏独立证据——此前定案过头，降为未验证工作假说)",
+   "vise frame-0 static jam (9.72/6.53 N)": "VERIFIED (独立保留——静态解 bit-identical，双腕顶棱勾压几何实测)"
   }
  }
 }
