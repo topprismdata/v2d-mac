@@ -3037,5 +3037,87 @@
    ],
    "c_stability_final": "NO LIFT ANYWHERE (fully closed): base env mechanically blocked; variant refuted with AND without re-seating"
   }
+ },
+ "vise_claim_transmission": {
+  "verdict": "TRANSMISSION CLOSED via file-anchored replay: the bilateral vise numbers REPRODUCE from the committed checkpoint on the base model (fresh process: right 16.37 N / left 7.75 N); headline amended to 'bilateral top-edge grip vise' with the measured geometry (not the earlier 'side-face vise' wording); the abstract line-distance claim (31.1mm) RETRACTED in favor of the measured contact coordinates",
+  "gap1_capture_pose": {
+   "source_of_truth": "runs/w6c/v21_engage_checkpoint.npz sha256[:16]=1aec5c140888b3a7 (qpos 65 / ctrl 50)",
+   "reload": "MjModel.from_xml_path('grounding/assets/allegro_floating.xml'); d.qpos[:]=z['qpos']; d.ctrl[:]=z['ctrl']; mj_forward",
+   "right_wrist_qpos": {
+    "wrist_x": 0.0809,
+    "wrist_y": -0.0057,
+    "wrist_z": 0.1055,
+    "wrist_rx": 0.2502,
+    "wrist_ry": 1.5615,
+    "wrist_rz": -0.2787
+   },
+   "left_wrist_qpos": {
+    "wrist_x_left": 0.1332,
+    "wrist_y_left": -0.1102,
+    "wrist_z_left": 0.0074,
+    "wrist_rx_left": -1.3081,
+    "wrist_ry_left": 1.3483,
+    "wrist_rz_left": -0.1522
+   },
+   "finger_qpos": {
+    "ffj": [
+     -0.3617,
+     1.5041,
+     1.6481,
+     0.4547
+    ],
+    "mfj": [
+     -0.1319,
+     1.4642,
+     1.6471,
+     0.4414
+    ],
+    "rfj": [
+     -0.0685,
+     0.341,
+     0.836,
+     0.8151
+    ],
+    "thj": [
+     0.3586,
+     0.4753,
+     0.4525,
+     0.1506
+    ],
+    "ffj_left": [
+     -0.0663,
+     1.636,
+     1.6432,
+     0.1717
+    ],
+    "mfj_left": [
+     0.5074,
+     0.5339,
+     1.7308,
+     1.019
+    ],
+    "rfj_left": [
+     0.6203,
+     1.7463,
+     1.4622,
+     0.5836
+    ],
+    "thj_left": [
+     0.3646,
+     0.4666,
+     0.4324,
+     0.1502
+    ]
+   },
+   "note": "the pose is transmitted BY THE FILE; from-scratch re-derivation of the seat loop is NOT required for the claim"
+  },
+  "gap2_left_rf": "AMENDED: the left seat state EXISTS in the checkpoint and reloads at N_l 7.75 N - 'place_l wz lost' referred to the pre-fix capture narration, not the final artifact. Headline stands bilateral, with the protocol being file-replay (not from-scratch).",
+  "gap3_line_distance": "RETRACTED the 31.1mm abstract line-distance. Measured geometry (contact points, fresh reload): RIGHT rf grips the box +x TOP EDGE - contacts at (80.1..83.2, -61.1..-33.5, 780.2..781.8)mm (rf_distal x2 + rf_tip), i.e. the fingers hook over the top +x edge; LEFT mf_distal presses the top edge at the pin line (-35.9..-36.0, -121.0..-122.2, 782.8)mm. The grip is a bilateral TOP-EDGE hook/press, not a +/-x side-face squeeze; the MJCF 43.5mm figure was a different, unstated measure and is withdrawn.",
+  "gap4_conventions": {
+   "curl_channel_mapping": "model actuator indices: ff 6-9 (ffa0-3), mf 10-13, rf 14-17, th 18-21; left = +22 (28-43); ctrl semantic = absolute setpoint over [ctrl_lo, ctrl_hi]",
+   "N_summation": "W.pad_normal_forces: per hand, sum of |contact force f[:3]| over ALL hand-body vs object contacts (includes rf_distal AND rf_tip; unit N)",
+   "servo_stop_rule": "N-curl servo: fixed 90-iteration budget, per-iter demand delta 0.02*(N_tgt-N)/N_tgt clipped to [-0.2, 0.8]; NO early stop; N_tgt=12 N/side"
+  },
+  "cleanroom_replay": "fresh process, base XML, checkpoint 1aec5c140888b3a7: right=16.37 N left=7.75 N - the v6 package vise line may cite these numbers as file-anchored reproducible (partial-transmission flag LIFTED for the numbers; the mechanism wording corrected to top-edge grip)"
  }
 }
