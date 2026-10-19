@@ -294,6 +294,43 @@ def force_servo(env, a: np.ndarray) -> np.ndarray:
     return a
 
 
+def inner_servo(env, st: dict) -> None:
+    """Track C: the 1 kHz-class low-level servo, called per substep.
+
+    (1) the normal-force N loop: the curl ctrl increments toward the
+    target N per side; (2) the box-pose damping: the tilt and the yaw
+    rate feed the wrist differential channels - the constructive
+    suppression of the carry drift."""
+    m, d = env.model, env.data
+
+    n_r, n_l = env._pad_normals_obs()
+    for lo_off in (11, 37):
+        n_now = n_r if lo_off == 11 else n_l
+        err = N_TARGET_PER_SIDE - n_now
+        if abs(err) > 0.3:
+            inc = float(np.clip(st["kp"] * err / 25.0, -0.002, 0.002))
+            d.ctrl[lo_off] = float(np.clip(d.ctrl[lo_off] + inc,
+                                           st["lo"][lo_off], st["hi"][lo_off]))
+            d.ctrl[lo_off + 1] = float(np.clip(
+                d.ctrl[lo_off + 1] + inc, st["lo"][lo_off + 1],
+                st["hi"][lo_off + 1]))
+
+    q = d.qpos[env.obj_qpos_adr + 3: env.obj_qpos_adr + 7]
+    roll = float(np.arctan2(2.0 * (q[0] * q[1] + q[2] * q[3]),
+                            1.0 - 2.0 * (q[1] ** 2 + q[2] ** 2)))
+    yaw = float(np.arctan2(2.0 * (q[0] * q[3] + q[1] * q[2]),
+                           1.0 - 2.0 * (q[2] ** 2 + q[3] ** 2)))
+    wz = float(d.qvel[env.obj_qvel_adr + 5])
+    d_ctrl = -st["k_tilt"] * roll - st["k_yaw"] * wz
+    d.ctrl[24] = float(np.clip(d.ctrl[24] + d_ctrl, st["lo"][24], st["hi"][24]))
+    d.ctrl[2] = float(np.clip(d.ctrl[2] - d_ctrl, st["lo"][2], st["hi"][2]))
+    st["roll"], st["yaw"] = roll, yaw
+
+
+def cr_hi(env):
+    return env.model.actuator_ctrlrange[:, 1]
+
+
 def grip_floor(a: np.ndarray) -> np.ndarray:
     """Deployment toolkit (a): the press/curl channels cannot go below
     the placement curl - the policy modulates grip upward only, so a
