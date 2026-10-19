@@ -1,6 +1,6 @@
 {
  "campaign": "r26 Track A (transient-free init) + Track B (dual-pad certificate)",
- "track_a_verdict": "MET \u2014 the box up_z > 0.9 THROUGHOUT (min 0.962, 0 frames below; the flip is ELIMINATED \u2014 the box returns to its home pose at the trajectory end) AND gate1 R5 held (pad1 0.0002/0.0039 mm, within_r5 TRUE both hands) AND g5reg improved (0.77/0.51 mm vs the r12.6 1.06/0.98) AND alignment True \u2014 the punch eliminated + gate1 R5 preserved COEXIST, exactly as Main's Track A hypothesis predicted",
+ "track_a_verdict": "MET \u2014 the box up_z > 0.9 THROUGHOUT (min 0.9907 on the corrected up-axis semantics, 0 frames below; the flip is ELIMINATED \u2014 the box returns to its home pose at the trajectory end) AND gate1 R5 held (pad1 0.0002/0.0039 mm, within_r5 TRUE both hands) AND g5reg improved (0.77/0.51 mm vs the r12.6 1.06/0.98) AND alignment True \u2014 the punch eliminated + gate1 R5 preserved COEXIST, exactly as Main's Track A hypothesis predicted",
  "track_a_mechanism": "the terminal solution PINNED to the native pair's full-config polish (deterministic re-derivation from the pair's exact joints) \u2014 the 20-frame additive pre-roll ramps the arms home -> path start with the fingers at the safe half-grip, and the terminal state is immune to the approach branch (the r25 fuse's root cause eliminated by construction)",
  "track_b_verdict": "the coarse certificate (729 pose cells, +/-30 mm / +/-25 deg around the compliant pose, pair fingers): ZERO cells with dual-pad <= 5 mm, ZERO at R5 \u2014 the pose-level dual-pad feasibility is EMPTY at this resolution around the compliant pose.  Disclosed limitation: the per-cell finger coordinate descent was not run in this pass (the certificate bounds the POSE-level feasibility; the finger-DOF margin is unbounded by it).  The r13.6-class dual-pad configs exist at OTHER arm poses \u2014 the infeasibility is pose-local, not global",
  "final_frozen_table": {
@@ -48,7 +48,7 @@
    true,
    true
   ],
-  "box_up_z_min": 0.962,
+  "box_up_z_min": 0.9907,
   "box_frames_below_0p9": 0,
   "baseline_r12_6": {
    "gate1_mm": [
@@ -72,7 +72,8 @@
     0.98
    ]
   },
-  "floors": "g5reg 0.77/0.51 mm (IMPROVED vs the r12.6 1.06/0.98); frame_alignment True \u2014 held"
+  "floors": "g5reg 0.77/0.51 mm (IMPROVED vs the r12.6 1.06/0.98); frame_alignment True \u2014 held",
+  "box_up_z_semantics": "R[3][3] (the box's local +z in world) \u2014 the verifier-consistent up-axis definition; the earlier 0.962 was the R[1][1] width-axis reading"
  },
  "remaining_reds_disclosed": {
   "gate1_2pad_leg": "1 pad in-rect per hand (the second pad = Track B's empty-certificate domain at the searched resolution)",

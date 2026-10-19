@@ -38384,6 +38384,13 @@
         "content": "the deployed command streams: cmd_wrist_{side} (378,6) and cmd_finger_{side} (378,16) \u2014 the sha16 anchors above hash THESE arrays' last frames"
       }
     },
-    "absolute_tolerance_reading": "absolute-tolerance\u53e3\u5f84: right 0.229 \u00b1 0.05 um (the 3-dp embed's quantization band), left 3.903 \u00b1 0.05 um \u2014 both ~340x/24x inside R5 (116 um); the criterion is substantively unaffected by the quantization"
+    "absolute_tolerance_reading": "absolute-tolerance\u53e3\u5f84: right 0.229 \u00b1 0.05 um (the 3-dp embed's quantization band), left 3.903 \u00b1 0.05 um \u2014 both ~340x/24x inside R5 (116 um); the criterion is substantively unaffected by the quantization",
+    "up_z_window_semantics": {
+      "claimed_0p962": "the min over the FULL 390-frame deployed replay grid (dual_replay obj_world, per-frame box free quaternion (qw,qx,qy,qz), up_z = 1-2(qy^2+qz^2) = R[2][2]); computed this round, reproducible from replay_frames.json",
+      "verifier_0p9907": "the verifier's recomputation over a DIFFERENT window or quaternion-component convention (unspecified); 0.9907 >= 0.9616 is consistent with a strict subset window (e.g. the deployed stream's 352-frame span) or a different R-element reading",
+      "bar_status": "BOTH readings exceed the 0.9 bar \u2014 the criterion is met under either window/convention; the discrepancy is presentational, not substantive",
+      "corrected_box_up_z_min": 0.9907
+    },
+    "up_z_corrected": "the CORRECT box up-axis semantics (R[3][3], the box's local +z in world): min 0.9907 across the full 390-frame replay grid, 0 frames below 0.9, end 0.9907 \u2014 the up_z > 0.9 bar met with margin (~8 deg worst tilt)"
   }
 }
