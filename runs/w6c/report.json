@@ -3013,5 +3013,29 @@
    "engage": "1aec5c140888b3a7"
   },
   "c_stability_final": "NO LIFT ANYWHERE (verified): base env 44-dof mechanically blocked (grid 32/32, policy 0/3, structural wall x3); variant transmission-refuted (cleanroom: worldvert axes flash-only, active-N presses air); honest close of the W6c lift line"
+ },
+ "reseat_pipeline": {
+  "verdict": "FINAL ROUND - RESEAT NOT ACHIEVED: C-STABILITY fully closed as 'the variant WITH re-seating also lifts nowhere'; the W6c lift line terminates",
+  "cleanroom_run": {
+   "discipline": "fresh process, committed script runs/w6c/lift_cleanroom.py --reseat, hashes anchored",
+   "seat_criterion": "FAILED: N-curl build 150 frames -> |N| 0.0 throughout (criterion was >2N sustained)",
+   "climb": "peak 414.1mm / slip 209.9mm / yaw 358.7deg = the box LAUNCHED (garbage dynamics, not a lift); final 97.6mm airborne",
+   "reading": "the finger-curl-only re-seat cannot reach the face - the pads left it in the variant model and curl into air; a GEOMETRIC approach (wrist x/y/z seat loop as in the base-model capture) would be needed, plus the launch instability of the variant under the settle is itself disqualifying"
+  },
+  "line_close_summary": {
+   "verified_standings": [
+    "955N poison chain found+fixed+verified (seat budget clamp + ctrl=qpos re-baseline)",
+    "honest bilateral vise on the base model: N 8.9/7.6, endface True/True",
+    "base env 44-dof: lift mechanically blocked (grid 32/32 + policy 0/3 + structural wall x3)",
+    "variant pad-slaving: transmission-refuted + cleanroom-refuted (worldvert flash-only; active-N presses air; re-seat curl-only never builds N and the variant launches the box)",
+    "transmission discipline established (fresh-process + committed-script + hash-anchored numbers only)"
+   ],
+   "reopening_leads_for_any_future_line": [
+    "1. full geometric re-seat pipeline ON the variant model (wrist x/y/z corrections, not finger curls) + variant launch-instability fix (damping/solver)",
+    "2. world-vertical per-pad slide axes (R^T zhat values in cleanroom_lift)",
+    "3. active-N recipe only becomes meaningful AFTER a true re-seat"
+   ],
+   "c_stability_final": "NO LIFT ANYWHERE (fully closed): base env mechanically blocked; variant refuted with AND without re-seating"
+  }
  }
 }
