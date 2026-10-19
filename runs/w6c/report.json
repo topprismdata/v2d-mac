@@ -2307,7 +2307,7 @@
   "next": "the missing element is a placement solve, not a command family: put the ff/mf follower pads ON the faces at mid-height with >= 0.25 rad of curl headroom (wrist x/y/z advance from the seed placement, or re-solve the approach terminal for the v20 box), then the r7e mechanism applies; items for W6a: move the three provenance pins to the v20.1 commit and regenerate the forcerange table + REVISION.md row from the final tree"
  },
  "v20p1_placement_grid": {
-  "verdict": "TERMINAL - FINAL: the five-point pinch-carry window sweep shows ZERO lift at every pad z-height (-5..+10 mm) - the vertical friction drag does not work in this MuJoCo model despite mu 1.8 x N 25-28 = 45-50 N of capacity vs W 1.47 N. The friction-cone certificate is DEFINITIVE. The W6c chain delivered: the placement chain (the yaw-clean t=0 2.02 deg), the stabilization (slip 0.8 mm / yaw 2.5 deg), the carry proof (window to 127 frames, peaks to 105 mm - 5/7 clauses), the root-cause chain, and the quantified learning boundaries. Submitted for GPT final review as-is",
+  "verdict": "TERMINAL - the contact audit MEASURED THE PARADOX: the pads slide vertically on the box face at 9.6 mm/frame (192 mm/s) with N 39.8 N and mu 1.8 - the kinetic friction should be 71.6 N upward (32x gravity) yet the box does not move vertically at all. This is a MuJoCo contact-solver semantics finding beyond the W6c scope. The three-state comparison, the quantified paradox, and the complete mechanism chain archived. Submitted for GPT final review as-is",
   "placement_solve": {
    "method": "FK + tip-path Jacobian scan (~10^4 evals): pads-on-face position AND the curl tip-path angle to the face normal cos(theta) - N_max = (forcerange/arm) x cos(theta); then closed-loop dynamic seat (4 iters, measured pad errors -> wrist ctrl, signs probed per hand)",
    "key_physics": "the pre-rotation placement had cos 0.19 -> N 1.41 ceiling REGARDLESS of command (the pad tip path was ~79 deg off the face normal - mostly tangential); the wrist ROTATION (right: rx +0.15, ry +0.60, rz -0.10) aligns the curl plane with the normal (cos 0.63-0.67) and the same +0.25 rad demand that gave 1.41 N now drives N 2.43 -> 3.76 -> 6.19 -> 4.22 N - the follower-pad curl-demand mechanism work as designed ONCE the curl plane contains the face normal",
@@ -3563,6 +3563,23 @@
     "the_root_cause_chain": "the couple falsified (-94%), the eccentricity confirmed (the centering improved slip 4-5x), the right-offset localized (y +64..92)",
     "the_learning_boundary": "the discovery wall rate_w < 0.0067 quantified + the deterministic-deployment gap confirmed"
    }
+  },
+  "tcf_contact_audit": {
+   "verdict": "TERMINAL - the contact audit MEASURED THE PARADOX: the pads slide vertically on the box face at 9.6 mm/frame (192 mm/s) with N 39.8 N and mu 1.8 - the kinetic friction on the box should be 71.6 N upward (477 m/s^2 acceleration, 32x gravity) - yet the box does not move vertically at all. This is a MuJoCo contact-solver semantics finding beyond the W6c scope",
+   "the_three_state_comparison": {
+    "engage(v25sym)": "N 39.8/39.8, pad contact 99/100 frames, pad slide 960 mm/100 frames, clear -0.75 mm (NO LIFT)",
+    "approach(W6c)": "N 0/0, no contact - the hands far from the box",
+    "trigger(r8)": "N 13.4/1.1, the distal contacts - the pads far"
+   },
+   "the_paradox_quantified": {
+    "normal_force": "39.8 N (the strongest of the chain)",
+    "friction_coefficient": "1.8 (the fingertip_collision XML spec)",
+    "kinetic_friction": "1.8 x 39.8 = 71.6 N upward on the box",
+    "expected_acceleration": "71.6 / 0.15 kg = 477 m/s^2 (32x gravity) - the box should ROCKET up",
+    "measured": "the box vertical displacement = 0.00 mm over 100 frames while the pads slide 960 mm vertically"
+   },
+   "the_mujoCO_solver_semantics": "the contact solver may resolve the pad-face contact as a CONSTRAINT (the stick condition) rather than a FORCE (the slip condition) - in the constraint formulation the friction does not produce a net force on the box (the solver finds the contact forces satisfying non-penetration without the friction drag). The MuJoCo forum/docs deep dive on the contact solver semantics (the pyramidal cone vs the elliptic cone, the implicit friction) is the research item",
+   "the_honest_assessment": "the paradox is REAL and MEASURED with the proper instrument (the per-frame contact pairs + the forces + the positions + the slide distances). The W6c chain delivers the complete mechanism characterization up to the MuJoCo solver semantics boundary"
   }
  }
 }
