@@ -2981,6 +2981,37 @@
    "discovery_wall_clean": "STRUCTURAL - THIRD CONFIRMATION: the discovery wall (rate_w<0.0067 in the poison field) is now the mechanics wall in the honest field: the base env's curl-arc press-compliance blocks the lift for BOTH the scripted grid AND the learned policy; the lift gradient is zero at the root; no reward shaping can fix a mechanical block",
    "f150_walkoff": "moot on the base env (no lift to walk off); the walk-off remains solved-territory for the pad-slaving variant (the wedge-hold policy needs the hinge channels in the action space)"
   },
-  "final_verdict": "C-STABILITY EVIDENCE PACK COMPLETE: (1) lift ACHIEVED on honest physics in the pad-slaving variant (43.46mm/120f/yaw 5.0, 2x reproducible, wedge-pinch mechanism measured); (2) base env 44-dof: lift mechanically impossible (grid 32/32 + policy 0/3 + structural wall triple-confirmed); (3) poison chain fixed+documented; (4) slip dual-report with locked attribution. The line's honest close: variant-lift yes, policy-lift-on-base no."
+  "final_verdict": "C-STABILITY FINAL (cleanroom-closed): NO LIFT ANYWHERE - base env mechanically blocked (grid 32/32 + policy 0/3 + structural wall triple-confirmed); pad-slaving variant transmission-refuted (cleanroom re-test: world-vertical axes 1-frame flash, active-N press builds zero N - the pads leave the face in the variant model). Poison-chain fix + mechanism analysis + transmission discipline stand as the pack's verified content. The lift line closes honestly; the reopening leads (variant re-seating pipeline, worldvert axes) are documented in cleanroom_lift."
+ },
+ "cleanroom_lift": {
+  "verdict": "CLEANROOM NEGATIVE - both leads tested, no reproducible lift: C-STABILITY final state = 'no lift anywhere in this system yet' (closing the loop with grid 32/32 + policy 0/3)",
+  "discipline": "every number from a fresh process running the COMMITTED script runs/w6c/lift_cleanroom.py (zero in-memory state; hashes logged in-output)",
+  "lead_b_worldvert_axes": {
+   "result": {
+    "peak_mm": 14.83,
+    "window_5mm_f": 1,
+    "slip_mm": 17.0,
+    "yaw_deg": 0.0,
+    "unstable": false,
+    "final_mm": 0.08
+   },
+   "reading": "1-frame flash transient (same artifact class as all prior single-frame peaks), no explosion, no sustained lift"
+  },
+  "lead_a_active_N_press": {
+   "result": {
+    "peak_mm": 0.1,
+    "window_5mm_f": 0,
+    "slip_mm": 17.0,
+    "yaw_deg": 0.0,
+    "unstable": false
+   },
+   "N_trace": "0.0/0.0 from f0 through f299 DESPITE the active wrist-x servo (KP 2e-4/frame, cap 2e-2)",
+   "root_gap_found": "in the VARIANT model the pads are NOT on the face after the engage-checkpoint load (the seed penetration pre-press decays before the climb starts) - the x servo presses AIR. The never-built press recipe was never the missing piece: the missing piece is VARIANT-MODEL RE-SEATING (the engage pipeline must run on the variant model so the pads start seated) - the next ticket's lead if the line reopens"
+  },
+  "hashes": {
+   "lifttest_xml_at_run": "df2e7c6a7571fd9a (worldvert build)",
+   "engage": "1aec5c140888b3a7"
+  },
+  "c_stability_final": "NO LIFT ANYWHERE (verified): base env 44-dof mechanically blocked (grid 32/32, policy 0/3, structural wall x3); variant transmission-refuted (cleanroom: worldvert axes flash-only, active-N presses air); honest close of the W6c lift line"
  }
 }
