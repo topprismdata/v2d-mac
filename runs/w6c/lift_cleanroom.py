@@ -93,8 +93,9 @@ def run(noser: bool) -> dict:
         d.ctrl[2] += rate
         d.ctrl[24] += rate
         if not noser:
-            n_r, n_l = W.pad_normal_forces(
-                type('E', (), {'model': m, 'data': d})())
+            fake = type('E', (), {'model': m, 'data': d})()
+            fake.obj_geom = int(m.geom('object_geom').id)
+            n_r, n_l = W.pad_normal_forces(fake)
             # right: ctrl x increase presses harder; left: decrease presses
             x_acc[0] = float(np.clip(
                 x_acc[0] + KP_X * (N_TGT - n_r), -X_CAP * 10, X_CAP * 10))
@@ -117,8 +118,9 @@ def run(noser: bool) -> dict:
         yaw = max(yaw, abs(float(2 * np.arctan2(
             d.xquat[bid][3], d.xquat[bid][0])) * 57.2958))
         if f % 30 == 0 or f == 299:
-            n_r, n_l = W.pad_normal_forces(
-                type('E', (), {'model': m, 'data': d})())
+            fake = type('E', (), {'model': m, 'data': d})()
+            fake.obj_geom = int(m.geom('object_geom').id)
+            n_r, n_l = W.pad_normal_forces(fake)
             nlog.append({'f': f, 'clear_mm': round(c * 1e3, 2),
                          'N': [round(n_r, 2), round(n_l, 2)]})
     clears_arr = np.array(clears)
