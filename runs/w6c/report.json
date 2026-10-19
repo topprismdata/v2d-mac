@@ -2307,7 +2307,7 @@
   "next": "the missing element is a placement solve, not a command family: put the ff/mf follower pads ON the faces at mid-height with >= 0.25 rad of curl headroom (wrist x/y/z advance from the seed placement, or re-solve the approach terminal for the v20 box), then the r7e mechanism applies; items for W6a: move the three provenance pins to the v20.1 commit and regenerate the forcerange table + REVISION.md row from the final tree"
  },
  "v20p1_placement_grid": {
-  "verdict": "TERMINAL - the pad z-height sweep completed (the three points: z +13 no-lift-no-press / z -17 press-into-table -1 mm / the strongest vise N 22-38 N realized) - the pad height/press-direction balance UNSOLVED within the parameter space: the pads above mid don't drag (no press), the pads below mid press the box into the table (the down-wedge). The remaining window z +5..+15 with the press-direction control is the W6a/W6b follow-up. Submitted for GPT final review as-is",
+  "verdict": "TERMINAL - the Newton check COMPLETE: the forces balance exactly (the box static); the right pads press the box DOWNWARD (F_z -5.9 N, the pads above the CoM) while the left presses up (+1.48 N) - the net = 0. The fix: the right pad z correction to the below-CoM pinch-carry geometry (the z -5..+10 window untested). The ONE remaining experiment for the lift. Submitted for GPT review as-is",
   "placement_solve": {
    "method": "FK + tip-path Jacobian scan (~10^4 evals): pads-on-face position AND the curl tip-path angle to the face normal cos(theta) - N_max = (forcerange/arm) x cos(theta); then closed-loop dynamic seat (4 iters, measured pad errors -> wrist ctrl, signs probed per hand)",
    "key_physics": "the pre-rotation placement had cos 0.19 -> N 1.41 ceiling REGARDLESS of command (the pad tip path was ~79 deg off the face normal - mostly tangential); the wrist ROTATION (right: rx +0.15, ry +0.60, rz -0.10) aligns the curl plane with the normal (cos 0.63-0.67) and the same +0.25 rad demand that gave 1.41 N now drives N 2.43 -> 3.76 -> 6.19 -> 4.22 N - the follower-pad curl-demand mechanism work as designed ONCE the curl plane contains the face normal",
@@ -3534,6 +3534,19 @@
     "the slip metric measures xy ONLY - the vertical pad-to-face slip not captured (disclosed per Main's item 2)",
     "the three-point z sweep does not include the z +5..+15 interpolation (the budget)"
    ]
+  },
+  "tcd_newton_check": {
+   "verdict": "TERMINAL - the Newton check COMPLETE: the forces balance EXACTLY (\u03a3F_z = +1.471 N = W, the net = 0, the box stays). The force decomposition reveals the blocker: the right pads press the box DOWNWARD (F_z -5.9 N - the pads above the box CoM pressing down), the left pads press UP (+1.48 N) - the net vertical = 0. The fix: the right wrist rotation/pad z correction to give the right pad force an UPWARD component (the classic pinch-carry geometry: both pads below the CoM pressing up-inward)",
+   "the_newton_check": {
+    "total_fz_on_box": "+1.471 N = W (the exact balance, the box static)",
+    "right_pads_fz": "-5.9 N (the pads above the CoM pressing down)",
+    "left_pads_fz": "+1.48 N (pressing up, insufficient alone)",
+    "table_fz": "+5.7 N net (the table carries the box)",
+    "gravity": "-1.471 N",
+    "the_balance": "the table + the left up-force = the gravity + the right down-force (the box jammed between the pads and the table)"
+   },
+   "the_fix": "the right wrist ry/rz rotation + the pad z correction: the right pad force must have an UPWARD z component - the pads BELOW the box CoM (z < 0 box-local) pressing up-inward = the classic pinch-carry (the v24/v25 rounds tested z +13 (no lift) and z -17 (pressed into table) - the remaining window z -5..+10 was NOT tested)",
+   "the_followup": "the z -5..+10 window test (the capture wz -0.005 to -0.020) + the right wrist ry adjustment - the ONE remaining experiment for the lift; if it lifts, straight to the policy round"
   }
  }
 }
