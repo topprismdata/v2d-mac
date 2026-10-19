@@ -2307,7 +2307,7 @@
   "next": "the missing element is a placement solve, not a command family: put the ff/mf follower pads ON the faces at mid-height with >= 0.25 rad of curl headroom (wrist x/y/z advance from the seed placement, or re-solve the approach terminal for the v20 box), then the r7e mechanism applies; items for W6a: move the three provenance pins to the v20.1 commit and regenerate the forcerange table + REVISION.md row from the final tree"
  },
  "v20p1_placement_grid": {
-  "verdict": "TERMINAL - FINAL (r1mlp2, the centered config): the stasis attractor persists with EVERY lever combined (the 0.005-start annealing, the force servo, the perfect geometry, the fresh MLP) - the learning boundary is the COMPOSITE of the architecture/reward/physics; no single-point fix exists within this round's scope. The documented continuation: the memory policy + the potential-based reward + the budget. Submitted for GPT final review as-is",
+  "verdict": "TERMINAL - the bilateral vise at N 11-28 N confirmed on the r10.1/r12.8+ geometry; the stabilization PERFECT (slip 4.7 mm, yaw 2.5 deg - both gates); the LIFT NOT ACHIEVED through the 16 mm wrist climb - the friction-drag mechanism does not produce the predicted vertical drag and the contact-force sign convention could not be resolved this session. The diagnostic is archived (the per-frame contact vectors) for the MuJoCo contact-frame convention deep dive; the follow-up: the pad z-height correction (the pads below the mid-height pressing up - the classic pinch-carry geometry) or the deeper contact analysis. Submitted for GPT review as-is",
   "placement_solve": {
    "method": "FK + tip-path Jacobian scan (~10^4 evals): pads-on-face position AND the curl tip-path angle to the face normal cos(theta) - N_max = (forcerange/arm) x cos(theta); then closed-loop dynamic seat (4 iters, measured pad errors -> wrist ctrl, signs probed per hand)",
    "key_physics": "the pre-rotation placement had cos 0.19 -> N 1.41 ceiling REGARDLESS of command (the pad tip path was ~79 deg off the face normal - mostly tangential); the wrist ROTATION (right: rx +0.15, ry +0.60, rz -0.10) aligns the curl plane with the normal (cos 0.63-0.67) and the same +0.25 rad demand that gave 1.41 N now drives N 2.43 -> 3.76 -> 6.19 -> 4.22 N - the follower-pad curl-demand mechanism work as designed ONCE the curl plane contains the face normal",
@@ -3504,6 +3504,18 @@
     "architecture": "MLP (fresh + the v25 resume), GRU (the trainer instability - the separate finding)"
    },
    "the_documented_continuation": "the C-STABILITY closure needs the combination: the memory policy (GRU with a stable trainer - the R2D2-style stored-hidden), the potential-based reward (the drift penalty on the RELATIVE deviation from the carried trajectory, not the absolute xy), and the training budget - all documented for the next sanctioned effort"
+  },
+  "tcb_lift_retest": {
+   "verdict": "TERMINAL - the bilateral vise at N 11-28 N confirmed on the r10.1/r12.8+ geometry (the strongest grip of the chain); the stabilization PERFECT (slip 4.7 mm, yaw 2.5 deg - both inside the gates); the LIFT NOT ACHIEVED (peak clear -0.06 mm, the box stays on the table through the 16 mm wrist climb) - the friction-drag mechanism does not produce the predicted vertical drag, and the contact-force sign convention could not be resolved within this session - the diagnostic is archived with the measured contact vectors for the MuJoCo deep dive",
+   "the_state": "N_r 10.5-12.3, N_l 22.6-28.0 (the strongest bilateral grip); slip 0-4.7 mm (PASS); yaw 2.4-2.5 deg (PASS, the pins play); clear -0.21..+0.00 mm (FAIL - the box on the table)",
+   "the_prediction_vs_measured": "the prediction: mu 1.8 x N 11-28 = 20-50 N of vertical drag >> W 1.47 N -> the box should follow the 16 mm climb instantly. The measured: the box does not move vertically at all",
+   "the_diagnostic_data": "the per-frame contact-force vectors measured (the pad forces' z-components, the positions, the pins, the table - the raw data in this probe output and the earlier f40 measurement: the mf_tip F_z -0.87 N, the rf_distal -0.83 N reading DOWNWARD - either the pads press the box downward (the pad force direction) or the sign convention inverted (the force on the box vs on the finger) - the MuJoCo contact frame convention deep dive is the next diagnostic step",
+   "the_followup": "(1) the MuJoCo contact-force sign convention deep dive (the mj_contactForce frame semantics + the body1/body2 force direction - the MuJoCo forum/docs deep dive); (2) if the pads press downward: the pad z-height/wrist z correction to make the pad force upward (the pads BELOW the box's mid-height pressing up - the classic pinch-carry geometry); (3) the policy layer training on the corrected base",
+   "honesty_clauses": [
+    "the slip metric measures xy ONLY - the vertical 16 mm relative slip (the pads sliding up the faces) is NOT captured by the slip gate - the 4.7 mm pass number measures the horizontal component only; disclosed per Main's item 2",
+    "the contact-force sign convention unresolved - the reported force directions are provisional (the frame/body convention unverified)",
+    "the box-pin contacts were NOT separately measured (the r10.1 pins' friction contribution to the z-block unknown)"
+   ]
   }
  }
 }
