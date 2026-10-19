@@ -2852,5 +2852,41 @@
    "the_mujoCO_solver_semantics": "the contact solver may resolve the pad-face contact as a CONSTRAINT (the stick condition) rather than a FORCE (the slip condition) - in the constraint formulation the friction does not produce a net force on the box (the solver finds the contact forces satisfying non-penetration without the friction drag). The MuJoCo forum/docs deep dive on the contact solver semantics (the pyramidal cone vs the elliptic cone, the implicit friction) is the research item",
    "the_honest_assessment": "the paradox is REAL and MEASURED with the proper instrument (the per-frame contact pairs + the forces + the positions + the slide distances). The W6c chain delivers the complete mechanism characterization up to the MuJoCo solver semantics boundary"
   }
+ },
+ "honest_field_pad_slaving": {
+  "verdict": "LIFT ACHIEVED on honest physics: pad-z kinematic slaving (fl2 pattern) lifts the box +43.46mm peak, 120 consecutive frames >= 5mm (gate 20) - first lift in line history; slip clause needs Main arbitration (init transient vs climb drift)",
+  "excluded_in_honest_field": {
+   "pad_hinge_lock": "range[0,0]+damping5 gentle lock: no lift (-0.41mm); 1e6 damping exploded solver; hinge NOT the blocker",
+   "N_servo_alone": "honest bilateral vise N 8.9/7.6 + live climb servo: -0.31mm",
+   "finger_kp100_plus_servo": "-0.31mm; warm-start slides slammed range limit (wedge artifact)"
+  },
+  "winning_variant": {
+   "file": "grounding/assets/allegro_floating_lifttest.xml (shipping MJCF untouched)",
+   "mechanism": "4 pressing pads get z-slide joint + kp2000 position actuator; probe mirrors ctrl = wrist_z_qpos - seat (pads kinematically slaved to wrist z)",
+   "protocol": "direct engage (no pre-settle: settling breaks pad seating; init impulse is part of engagement), climb ramp 1/3 rate f0-30",
+   "results": [
+    {
+     "run": "flat climb",
+     "peak_mm": 18.03,
+     "window_f": 135,
+     "slip_mm": 17.1,
+     "yaw_deg": 5.5
+    },
+    {
+     "run": "ramped climb",
+     "peak_mm": 43.46,
+     "window_f": 120,
+     "slip_mm": 17.1,
+     "yaw_deg": 5.0
+    }
+   ]
+  },
+  "gate_scorecard": {
+   "peak_5mm": "PASS 43.46mm",
+   "window_20f": "PASS 120f",
+   "yaw_10deg": "PASS 5.0deg",
+   "slip_10mm": "DUAL REPORT: from-t0 17.1mm (FAIL, variant-model first-step init transient, QACC warning t=0.004 pre-control; no control input yet); post-init drift 0.1mm over 200f (PASS 100x margin); jolt itself is one-time state-reinit, excluded-config test: 10-step settle before measure kills lift entirely (the impulse is mechanically necessary for pad seating)"
+  },
+  "open": "f150 hold release (box walks 17mm offset -> pads reach face edge at apex); box-drop prevents stable carry beyond 6s; needs jolt elimination at source (variant init equilibrium) or pin-engagement redesign"
  }
 }
