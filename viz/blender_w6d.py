@@ -27,12 +27,12 @@ HERE = pathlib.Path(__file__).resolve().parent
 TEX2K = HERE / "textures_2k"
 
 PRESETS = {  # world positions resolved from the MuJoCo free-camera presets
-    # (mjv GL camera pos at f190; the lookat tracks the live box position)
+    # (mjv GL camera pos extracted at the validated compositions; lookat
+    # tracks the live box position — outside the UR5e arm sweep)
     "front": {"pos": [0.156, -1.430, 1.559]},
     "side": {"pos": [-0.171, -1.304, 1.414]},
-    "close": {"pos": [0.22, -0.44, 1.06]},
+    "close": {"pos": [0.111, -0.916, 1.364]},
 }
-
 def parse_args() -> dict:
     argv = sys.argv[sys.argv.index("--") + 1:]
     opts = {"frames": "all", "presets": "front,side,close",
