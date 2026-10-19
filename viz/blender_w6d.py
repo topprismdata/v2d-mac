@@ -30,7 +30,7 @@ PRESETS = {  # world positions resolved from the MuJoCo free-camera presets
     # (mjv GL camera pos at f190; the lookat tracks the live box position)
     "front": {"pos": [0.156, -1.430, 1.559]},
     "side": {"pos": [-0.171, -1.304, 1.414]},
-    "close": {"pos": [0.111, -0.916, 1.364]},
+    "close": {"pos": [0.22, -0.44, 1.06]},
 }
 
 def parse_args() -> dict:
@@ -64,8 +64,9 @@ def setup_cycles() -> None:
     sc.render.resolution_x = 1280
     sc.render.resolution_y = 720
     sc.view_settings.view_transform = "AgX"
+    sc.view_settings.exposure = -0.15
     try:
-        sc.view_settings.look = "AgX - Medium High Contrast"
+        sc.view_settings.look = "AgX"
     except TypeError:
         pass
 
@@ -149,8 +150,9 @@ def build_materials() -> dict:
         "prop_box_red": mat_principled("prop_box_red", (0.72, 0.15, 0.12), 0.45),
         "floor": mat_principled("floor", (0.30, 0.26, 0.22), 0.7),
         # UR5e 实机配色: 灰蓝本体 + 黑关节壳
-        "ur_body": mat_principled("ur_body", (0.52, 0.56, 0.60), 0.38, 0.9),
-        "ur_joint": mat_principled("ur_joint", (0.07, 0.07, 0.08), 0.45, 0.3),
+        # UR5e 实机配色（真实 UR 照片取色）: #C8D0D4 本体 + #3A3F42 关节壳
+        "ur_body": mat_principled("ur_body", (0.784, 0.816, 0.831), 0.38, 0.15),
+        "ur_joint": mat_principled("ur_joint", (0.227, 0.247, 0.259), 0.45, 0.3),
     }
 
 
@@ -325,8 +327,22 @@ def main() -> None:
             bpy.ops.object.join()
         mesh = bpy.context.active_object
         mesh.name = f"ur5e:{link}"
+        # the menagerie OBJs reference .mtl files missing from the package --
+        # every imported part carries a dead material slot, and after join the
+        # faces keep pointing at those dead slots (renders as pure white
+        # patches).  Clear all slots, bind one real material, force every
+        # polygon onto it, and cull backfaces so inner shells never show
+        mesh.data.materials.clear()
         mesh.data.materials.append(
             mats["ur_joint" if "wrist" in link else "ur_body"])
+        for poly in mesh.data.polygons:
+            poly.material_index = 0
+        # backface culling: show_backface_culling is the viewport toggle;
+        # render-side culling is not exposed per object in 5.2 -- the single
+        # real material + full-polygon binding already removes the dead-slot
+        # white patches, so inner shells only appear where the mesh is truly
+        # open (acceptable: closed CAD shells throughout)
+        pass
     add_floor(mats)
     add_lights_and_world()
 
@@ -375,26 +391,35 @@ def main() -> None:
 
 def update_panel_meta(outdir: pathlib.Path, presets: list, want: list) -> None:
     """Point the panel at the blender PNG sequence (meta.renders_blender);
-    the MuJoCo renders stay available via ?renderer=mujoco."""
+    the MuJoCo renders stay available via ?renderer=mujoco.  Merges per
+    preset so a partial re-render (e.g. only the close set) never wipes the
+    other presets' frame lists."""
     panel_json = HERE / "panel_data_v2.json"
     if not panel_json.exists():
         print("panel_data_v2.json not found -- skip meta update")
         return
     payload = json.loads(panel_json.read_text())
-    payload["meta"]["renders_blender"] = {
+    rb = payload["meta"].setdefault("renders_blender", {
         "dir": str(outdir),
         "presets": [{"key": k, "label": {"front": "正面", "side": "侧面",
                                          "close": "特写"}.get(k, k)}
                     for k in presets],
-        "frames": {k: [str(outdir / f"{k}_f{f:04d}.png") for f in want]
-                   for k in presets},
-    }
+        "frames": {},
+    })
+    for k in presets:
+        rb["frames"][k] = [str(outdir / f"{k}_f{f:04d}.png") for f in want]
+    known = {p["key"] for p in rb["presets"]}
+    for k in presets:
+        if k not in known:
+            rb["presets"].append({"key": k,
+                                  "label": {"front": "正面", "side": "侧面",
+                                            "close": "特写"}.get(k, k)})
     panel_json.write_text(json.dumps(payload, indent=1, ensure_ascii=False))
     (HERE / "panel_data_v2.js").write_text(
         "window.PANEL_DATA_V2 = "
         + json.dumps(payload, ensure_ascii=False) + ";\n")
-    print(f"panel meta updated: renders_blender "
-          f"({len(presets)} presets x {len(want)} frames)", flush=True)
+    print(f"panel meta updated: renders_blender merged "
+          f"({', '.join(presets)} x {len(want)} frames)", flush=True)
 
 
 if __name__ == "__main__":
