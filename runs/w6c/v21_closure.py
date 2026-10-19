@@ -104,7 +104,7 @@ def capture_engage() -> dict:
     clear[2] += 0.050
     transit = clear.copy()
     place_r = transit.copy()
-    place_r[0] += 0.040; place_r[1] += 0.060; place_r[2] += -0.030
+    place_r[0] += 0.040; place_r[1] += 0.060; place_r[2] += 0.050
     place_r[3] += 0.15; place_r[4] += 0.75; place_r[5] += -0.10
     place_r[11] = 0.45; place_r[12] = 0.35
     for a, b, n in ((start_ctrl, clear, 12), (clear, transit, 10),
@@ -118,12 +118,12 @@ def capture_engage() -> dict:
     place_l[24] += 0.020
     place_l[25] += 0.00; place_l[26] += 0.60; place_l[27] += 0.00
     place_l[37] = 0.40; place_l[38] = 0.30
-        # the placement overrides (the tuning without the file edits -
-        # the worktree race workaround)
-        for idx, key in ((0, 'V21_RWX'), (1, 'V21_RWY'), (2, 'V21_RWZ'),
-                         (22, 'V21_LWX'), (23, 'V21_LWY'), (24, 'V21_LWZ')):
-            if os.environ.get(key):
-                (place_r if idx < 22 else place_l)[idx] = float(os.environ[key])
+    # the placement overrides (the tuning without the file edits)
+    for _k, _idx in (("V21_RWX", 0), ("V21_RWY", 1), ("V21_RWZ", 2),
+                     ("V21_LWX", 22), ("V21_LWY", 23), ("V21_LWZ", 24)):
+        _v = os.environ.get(_k)
+        if _v:
+            (place_r if _idx < 22 else place_l)[_idx] = float(_v)
 
     for k in range(15):
         d.ctrl[:] = place_r + (place_l - place_r) * (k + 1) / 15
@@ -272,70 +272,6 @@ def closure_reward(env, info, prev=None, rate_w=2.0):
 
 # ------------------------------------------------------------------ ppo
 GRIP_FLOOR_ACTS = (7, 8, 11, 12, 37, 38)
-
-
-N_TARGET_PER_SIDE = 3.9   # the lift friction threshold 2.16 x 1.8
-                          # safety (Main r3 authorization)
-SERVO_KP = 0.05           # the action units per N of N-error
-SERVO_DEADBAND = 0.5      # N
-SERVO_MAX = 0.05          # the per-frame action cap
-
-
-def force_servo(env, a: np.ndarray) -> np.ndarray:
-    """r3 authorized: the normal-force inner loop on the curl channels -
-    the curl increment toward the target N per side (the lift friction
-    threshold 2.16 x 1.8 safety), +- deadband, capped per frame. Training
-    AND the deterministic eval share the servo (the deployment-gap fix:
-    the mean action + the servo = the vise never relaxes). The servo
-    holds the NORMAL force only - slip/yaw/window remain the policy's to
-    earn."""
-    n_r, n_l = env._pad_normals_obs()
-    for side, n_now in ((0, n_r), (1, n_l)):
-        err = N_TARGET_PER_SIDE - n_now
-        if abs(err) <= SERVO_DEADBAND:
-            continue
-        delta = float(np.clip(SERVO_KP * err, -SERVO_MAX, SERVO_MAX))
-        base = 11 + side * 22          # mfa1: ctrl 11 (right), 33 (left)
-        a[base] = max(a[base], 0.0) + delta
-        a[base + 1] = max(a[base + 1], 0.0) + delta
-    return a
-
-
-def inner_servo(env, st: dict) -> None:
-    """Track C: the 1 kHz-class low-level servo, called per substep.
-
-    (1) the normal-force N loop: the curl ctrl increments toward the
-    target N per side; (2) the box-pose damping: the tilt and the yaw
-    rate feed the wrist differential channels - the constructive
-    suppression of the carry drift."""
-    m, d = env.model, env.data
-
-    n_r, n_l = env._pad_normals_obs()
-    for lo_off in (11, 37):
-        n_now = n_r if lo_off == 11 else n_l
-        err = N_TARGET_PER_SIDE - n_now
-        if abs(err) > 0.3:
-            inc = float(np.clip(st["kp"] * err / 25.0, -0.002, 0.002))
-            d.ctrl[lo_off] = float(np.clip(d.ctrl[lo_off] + inc,
-                                           st["lo"][lo_off], st["hi"][lo_off]))
-            d.ctrl[lo_off + 1] = float(np.clip(
-                d.ctrl[lo_off + 1] + inc, st["lo"][lo_off + 1],
-                st["hi"][lo_off + 1]))
-
-    q = d.qpos[env.obj_qpos_adr + 3: env.obj_qpos_adr + 7]
-    roll = float(np.arctan2(2.0 * (q[0] * q[1] + q[2] * q[3]),
-                            1.0 - 2.0 * (q[1] ** 2 + q[2] ** 2)))
-    yaw = float(np.arctan2(2.0 * (q[0] * q[3] + q[1] * q[2]),
-                           1.0 - 2.0 * (q[2] ** 2 + q[3] ** 2)))
-    wz = float(d.qvel[env.obj_qvel_adr + 5])
-    d_ctrl = -st["k_tilt"] * roll - st["k_yaw"] * wz
-    d.ctrl[24] = float(np.clip(d.ctrl[24] + d_ctrl, st["lo"][24], st["hi"][24]))
-    d.ctrl[2] = float(np.clip(d.ctrl[2] - d_ctrl, st["lo"][2], st["hi"][2]))
-    st["roll"], st["yaw"] = roll, yaw
-
-
-def cr_hi(env):
-    return env.model.actuator_ctrlrange[:, 1]
 
 
 def grip_floor(a: np.ndarray) -> np.ndarray:
@@ -704,7 +640,6 @@ def main():
     ap.add_argument("--round-tag", default="r1mlp")
     ap.add_argument("--lift-cap-m", type=float, default=0.050)
     ap.add_argument("--pen-cap", type=float, default=3.0)
-    ap.add_argument("--anneal", action="store_true")
     args = ap.parse_args()
     if args.cmd == "capture":
         print(json.dumps(capture_engage(), indent=1, default=float))

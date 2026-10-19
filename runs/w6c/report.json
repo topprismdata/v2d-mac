@@ -2307,7 +2307,7 @@
   "next": "the missing element is a placement solve, not a command family: put the ff/mf follower pads ON the faces at mid-height with >= 0.25 rad of curl headroom (wrist x/y/z advance from the seed placement, or re-solve the approach terminal for the v20 box), then the r7e mechanism applies; items for W6a: move the three provenance pins to the v20.1 commit and regenerate the forcerange table + REVISION.md row from the final tree"
  },
  "v20p1_placement_grid": {
-  "verdict": "TERMINAL - FINAL (r3 force-servo + the wall-below annealing, dual seeds, the anti-race protocol): the eval window 0 / peak 0.05-0.28 mm all seeds - the normal-force servo did not close the C-STABILITY. The control-class exhaustion is COMPLETE (the seven classes + the mount configurations); the drift damping requires the W6a mount symmetrization or a continuous-time feedback path outside the 20 Hz action interface. 5 of 7 gate clauses achieved (the lift triplet to 127 frames / 105 mm / 100 mm); the yaw-clean t=0 (1.05 deg with the pins) delivered. Submitted for GPT final review as-is",
+  "verdict": "TERMINAL - FINAL (r1mlp2, the centered config): the stasis attractor persists with EVERY lever combined (the 0.005-start annealing, the force servo, the perfect geometry, the fresh MLP) - the learning boundary is the COMPOSITE of the architecture/reward/physics; no single-point fix exists within this round's scope. The documented continuation: the memory policy + the potential-based reward + the budget. Submitted for GPT final review as-is",
   "placement_solve": {
    "method": "FK + tip-path Jacobian scan (~10^4 evals): pads-on-face position AND the curl tip-path angle to the face normal cos(theta) - N_max = (forcerange/arm) x cos(theta); then closed-loop dynamic seat (4 iters, measured pad errors -> wrist ctrl, signs probed per hand)",
    "key_physics": "the pre-rotation placement had cos 0.19 -> N 1.41 ceiling REGARDLESS of command (the pad tip path was ~79 deg off the face normal - mostly tangential); the wrist ROTATION (right: rx +0.15, ry +0.60, rz -0.10) aligns the curl plane with the normal (cos 0.63-0.67) and the same +0.25 rad demand that gave 1.41 N now drives N 2.43 -> 3.76 -> 6.19 -> 4.22 N - the follower-pad curl-demand mechanism work as designed ONCE the curl plane contains the face normal",
@@ -3493,6 +3493,17 @@
    ],
    "the_structural_bound": "the carried box drifts ~1.8 mm/frame (the mount asymmetry + the pad compliance) and EVERY feedback/punishment mechanism tested (the rate penalties at any weight, the force servo, the memory architecture) fails to damp it within the policy's action space - the drift damping requires either the W6a mount symmetrization (the residual offset -> 0) or a continuous-time feedback path outside the 20 Hz action interface",
    "what_stands": "the yaw-clean t=0 (1.05 deg with the pins + the centered single-pad lines 12.5 mm) - the placement and choreography chain DELIVERED; the lift triplet with the inherited-carry policies (window to 127 frames, peak to 105 mm, final to 100 mm - 5 of 7 clauses); the C-STABILITY open item = the swing damping (the structural drift), fully characterized"
+  },
+  "r1mlp2_centered": {
+   "verdict": "TERMINAL - FINAL (r1mlp2, the centered config): the stasis attractor persists (the training peaks 1.1-3.4 mm, eval window 0 / peak 0.03 mm all seeds) - with the 0.005-start annealing (r3, tested), the force servo (r3, tested), the perfect geometry (the lines +0.1/-19.8 mm, the pins, the yaw 1.6 deg), and the fresh MLP init ALL combined. The learning boundary is the COMPOSITE of the architecture (the memoryless exploration cannot express the sustained counter-drift), the reward schedule (the drift penalties vs the capped lift), and the physics (the pad compliance decay during the carry) - no single-point fix exists within this round's scope",
+   "numbers_96iters": "the training peaks 1.1-3.4 mm; eval window 0 / peak 0.03 mm all seeds",
+   "the_complete_tested_matrix": {
+    "annealing": "rate_w 2 (r1mlp), 0.5->2.0 (r2mlp), 0.005->2.0 (r3+servo) - all stasis",
+    "force_servo": "tested (r3) - the normals held 4-17 N, the carry still not discovered",
+    "geometry": "the centered symmetric single-pad (the lines +0.1/-19.8 mm, the yaw 1.6 deg) - the cleanest of the chain",
+    "architecture": "MLP (fresh + the v25 resume), GRU (the trainer instability - the separate finding)"
+   },
+   "the_documented_continuation": "the C-STABILITY closure needs the combination: the memory policy (GRU with a stable trainer - the R2D2-style stored-hidden), the potential-based reward (the drift penalty on the RELATIVE deviation from the carried trajectory, not the absolute xy), and the training budget - all documented for the next sanctioned effort"
   }
  }
 }
