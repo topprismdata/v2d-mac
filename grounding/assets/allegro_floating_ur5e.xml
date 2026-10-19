@@ -212,6 +212,18 @@
       <geom name="object_chamfer_negx" type="box" size="0.00212132 0.12 0.0015" pos="-0.0595607 0 0.0395607" euler="0 45 0" mass="0.000198874" rgba="0.30 0.55 0.85 1" material="box" condim="4" friction="1.4 0.02 0.004" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" />
       <geom name="object_chamfer_posx" type="box" size="0.00212132 0.12 0.0015" pos="0.0595607 0 0.0395607" euler="0 -45 0" mass="0.000198874" rgba="0.30 0.55 0.85 1" material="box" condim="4" friction="1.4 0.02 0.004" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" />
     </body>
+    <body name="r22_vise_corner_px_py" pos="0.065 0.125 0.7075">
+      <geom name="r22_vise_corner_px_py_geom" type="box" size="0.004 0.004 0.0075" rgba="0.45 0.38 0.28 1" />
+    </body>
+    <body name="r22_vise_corner_px_ny" pos="0.065 -0.125 0.7075">
+      <geom name="r22_vise_corner_px_ny_geom" type="box" size="0.004 0.004 0.0075" rgba="0.45 0.38 0.28 1" />
+    </body>
+    <body name="r22_vise_corner_nx_py" pos="-0.065 0.125 0.7075">
+      <geom name="r22_vise_corner_nx_py_geom" type="box" size="0.004 0.004 0.0075" rgba="0.45 0.38 0.28 1" />
+    </body>
+    <body name="r22_vise_corner_nx_ny" pos="-0.065 -0.125 0.7075">
+      <geom name="r22_vise_corner_nx_ny_geom" type="box" size="0.004 0.004 0.0075" rgba="0.45 0.38 0.28 1" />
+    </body>
     <body name="ur5e_r_base" quat="1 0 0 0" childclass="ur5e" pos="0.235 0 1.000">
       <inertial mass="4.0" pos="0 0 0" diaginertia="0.00443333156 0.00443333156 0.0072" />
       <geom mesh="ur5e_base_0" material="ur5e_black" class="ur5e_visual" />

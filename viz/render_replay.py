@@ -53,13 +53,15 @@ def main() -> None:
     frames = payload["replay"]["frames"]
     OUT.mkdir(parents=True, exist_ok=True)
 
-    # rendering model = frozen XML + scene-fidelity visual layer (MjSpec,
+    # rendering model = scene XML + scene-fidelity visual layer (MjSpec,
     # physics-invariant: same nq/nv/nbody/njnt/qpos addresses -- see
-    # scene_fidelity.py).  The env/physics stack is NOT involved here.
+    # scene_fidelity.py).  The scene follows the replay qpos width
+    # (floating=65, ur5e=59).  The env/physics stack is NOT involved here.
     import sys
     if str(REPO / "viz") not in sys.path:
         sys.path.insert(0, str(REPO / "viz"))
-    m = scene_fidelity.build_fidelity_model()
+    scene_xml = scene_fidelity.scene_for_qpos_width(len(frames[0]["qpos"]))[1]
+    m = scene_fidelity.build_fidelity_model(scene_xml)
     d = mujoco.MjData(m)
     # lighting hierarchy: warm key + cool fill (the v17-era global shadow-off
     # is reverted -- no more dome spheres to burn black discs); mild ambient

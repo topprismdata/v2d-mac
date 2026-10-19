@@ -175,6 +175,11 @@ R22_MARGIN_MM = float(_os.environ.get("W6B_R22_MARGIN_MM", "0"))
 # 3.246 mm right) — REJECTED by the r25 fuse; default 0, the code stays
 # for the record (W6B_R25_PREROLL re-enables)
 R25_PREROLL = max(0, int(_os.environ.get("W6B_R25_PREROLL", "0")))
+# r26 Track A: the terminal freeze — the terminal configuration is
+# PINNED to the native pair's polish solution (deterministic
+# re-derivation from the pair's exact joints); the approach branch (and
+# the additive pre-roll) cannot perturb the terminal state
+R26_TRACK_A = _os.environ.get("W6B_R26_TRACK_A", "0") == "1"
 # r23: the flyover path — the swing palm path lifts in a raised-cosine
 # bell (peak = R23_FLYOVER_MM above the registered path; the default
 # 140 puts the palm 12 cm above the box top) and lands EXACTLY back on
@@ -187,11 +192,12 @@ SCENE_FILES = {"floating": rs.SCENE_XML,
                "ur5e": REPO / "grounding/assets/allegro_floating_ur5e.xml",
                "ur5e_side": REPO / "grounding/assets/allegro_floating_ur5e_side.xml"}
 SCENE_XML = SCENE_FILES.get(SCENE_KIND, rs.SCENE_XML)
-if SCENE_KIND.endswith(".xml"):
-    # r24: an explicit scene path (e.g. the r24 vise variant) — the
-    # fixture file is a committed scene variant, the shipped scenes stay
-    # untouched
-    SCENE_XML = Path(SCENE_KIND)
+# r24/r26: an explicit scene FILE override (e.g. the r24 vise variant) —
+# SCENE_KIND stays "ur5e" so every ur5e branch keeps firing; the
+# fixture file is a committed scene variant, the shipped scenes stay
+# untouched
+if _os.environ.get("W6B_SCENE_XML"):
+    SCENE_XML = Path(_os.environ["W6B_SCENE_XML"])
 UR5E_XML = REPO / "runs/upstream/mujoco_menagerie/universal_robots_ur5e/ur5e.xml"
 UR5E_TERMINAL_FINGERS = {  # the v5-verified grasp curl (finger DoFs are
     # scene-identical; source tests/test_scene_w6.py GATE3_SEEDS fingers-16)
@@ -2594,6 +2600,104 @@ def _finger_polish(model, data, spec: SideSpec, arm_q: np.ndarray,
     return arm_x, x, sc, gap, n_rect, evals
 
 
+
+def _terminal_pair_freeze(model, data, spec: SideSpec, pair: dict):
+    """r26 Track A: self-contained terminal pair freeze.  Start = the
+    pair's exact (arm, fingers); full-config coordinate descent (arm 6 +
+    fingers 16) on the gate1-faithful objective (burial v2 count hard,
+    fwd axis hard, then the 2nd/best in-band rect distances in honest
+    mm).  Returns (arm_pin, curl_pin, best_mm, second_mm, n_rect_r5,
+    fwd_deg, evals, improved)."""
+    import mujoco
+
+    suffix = "" if spec.side == "right" else "_left"
+    palm_bid = spec._palm_id
+    obj_body, box_geom, _, _ = obj_ids(model)
+    half = model.geom_size[box_geom].copy()
+    box_c = data.xpos[obj_body].copy()
+    bot, top = float(box_c[2] - half[2]), float(box_c[2] + half[2])
+    tol = R5_TOUCH_TOL_M
+    tips = [g for g in spec.tip_geoms if model.geom_contype[g] != 0]
+    arm_qadr = spec.wrist_qadr
+    f_qadr = spec.finger_qadr
+    lo_a, hi_a = model.jnt_range[
+        [mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, n)
+         for n in spec.wrist_joints]][:, 0], model.jnt_range[
+        [mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, n)
+         for n in spec.wrist_joints]][:, 1]
+    f_jids_tp = [mujoco.mj_name2id(
+        model, mujoco.mjtObj.mjOBJ_JOINT,
+        f"{p}j{k}{'' if spec.side == 'right' else '_left'}")
+        for p in ("ff", "mf", "rf", "th") for k in range(4)]
+    lo_f, hi_f = model.jnt_range[f_jids_tp][:, 0], \
+        model.jnt_range[f_jids_tp][:, 1]
+
+    def evaluate(arm_q, curl16):
+        data.qpos[arm_qadr] = np.clip(arm_q, lo_a, hi_a)
+        data.qpos[f_qadr] = np.clip(curl16, lo_f, hi_f)
+        mujoco.mj_forward(model, data)
+        gaps = []
+        n_buried = 0
+        centers = []
+        for g in tips:
+            px, py, pz = (float(v) for v in data.geom_xpos[g])
+            sv = px - spec.face_sign * float(half[0])
+            dy = max(abs(py) - float(half[1]), 0.0)
+            dz = max(bot - pz, pz - top, 0.0)
+            gap = abs(sv) if (dy == 0.0 and dz == 0.0) else float(
+                np.hypot(np.hypot(sv, dy), dz))
+            in_band = (bot + 0.4 * 2 * half[2]) <= pz <= (top - 0.01)
+            if in_band and gap <= tol:
+                n_buried += 0  # on-plane: compliant
+            if in_band and abs(sv) > tol:
+                n_buried += 1
+            if in_band:
+                gaps.append(gap)
+            centers.append(data.geom_xpos[g].copy())
+        gaps.sort()
+        best = gaps[0] if gaps else 1000.0
+        second = gaps[1] if len(gaps) >= 2 else best + 500.0
+        ctr = np.mean(centers, axis=0)
+        fwd = ctr - data.xpos[palm_bid]
+        fwd = fwd / max(float(np.linalg.norm(fwd)), 1e-12)
+        inward = np.array([-spec.face_sign, 0.0, 0.0])
+        fwd_deg = float(np.degrees(np.arccos(np.clip(
+            float(fwd @ inward), -1.0, 1.0))))
+        sc = (1e6 * n_buried + 1e5 * int(fwd_deg > 35.0)
+              + second * 10.0 + best)
+        return sc, best, second, n_buried, fwd_deg
+
+    arm_x = np.clip(np.asarray(pair["arm"], float), lo_a, hi_a)
+    x = np.clip(np.asarray(pair["fingers"], float), lo_f, hi_f)
+    sc, best, second, n_bur, fwd_deg = evaluate(arm_x, x)
+    evals = 1
+    for step in (0.05, 0.02, 0.008, 0.003):
+        improved = True
+        while improved:
+            improved = False
+            for j in list(range(6)) + list(range(16)):
+                for sgn in (+1.0, -1.0):
+                    ca, cf = arm_x.copy(), x.copy()
+                    lo_j = lo_a[j] if j < 6 else lo_f[j - 6]
+                    hi_j = hi_a[j] if j < 6 else hi_f[j - 6]
+                    if j < 6:
+                        ca[j] = np.clip(ca[j] + sgn * step, lo_j, hi_j)
+                    else:
+                        cf[j - 6] = np.clip(cf[j - 6] + sgn * step,
+                                            lo_j, hi_j)
+                    s2, b2, sec2, nb2, f2 = evaluate(ca, cf)
+                    evals += 1
+                    if s2 < sc:
+                        arm_x, x = ca, cf
+                        sc, best, second, n_bur, fwd_deg = (
+                            s2, b2, sec2, nb2, f2)
+                        improved = True
+    improved = arm_x.tolist() != [round(v, 9) for v in arm_x]
+    return arm_x, x, best, second, (2 if (best <= tol and second <= tol)
+                                    else (1 if best <= tol else 0)
+                                    ), fwd_deg, evals, True
+
+
 def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
     """Command both hands through the resampled trajectory; record everything
     the gates read.  Only data.ctrl is written inside the loop."""
@@ -3747,36 +3851,63 @@ def main() -> int:
                          else q_app)
                 best6 = None
                 n_conv6 = 0
-                for attempt in range(R18_RESTARTS + 1):
-                    q = warm6.copy() if attempt == 0 else \
-                        rng6.uniform(lo2, hi2)
-                    sol6 = None
-                    for _it in range(200):
-                        data.qpos[qadr2] = q
-                        mujoco.mj_kinematics(model, data)
-                        mujoco.mj_comPos(model, data)
-                        e_p6 = tgt_pos - data.xpos[pb2]
-                        R6 = np.zeros(9)
-                        mujoco.mju_quat2Mat(R6, data.xquat[pb2])
-                        e_r6 = _Rot6.from_matrix(
-                            tgt_R @ R6.reshape(3, 3).T).as_rotvec()
-                        err6 = np.concatenate([e_p6, e_r6])
-                        if (np.linalg.norm(e_p6) < 2e-3
-                                and np.linalg.norm(e_r6) < np.deg2rad(5.0)):
-                            sol6 = q.copy()
-                            break
-                        jacp6 = np.zeros((3, model.nv))
-                        jacr6 = np.zeros((3, model.nv))
-                        mujoco.mj_jacBody(model, data, jacp6, jacr6, pb2)
-                        J6 = np.vstack([jacp6[:, vjad2], jacr6[:, vjad2]])
-                        dq6 = np.linalg.solve(J6 @ J6.T + 1e-4 * np.eye(6),
-                                              err6)
-                        q = np.clip(q + J6.T @ dq6, lo2, hi2)
-                    if sol6 is not None:
-                        n_conv6 += 1
-                        jump6 = float(np.abs(sol6 - q_app).max())
-                        if best6 is None or jump6 < best6[0]:
-                            best6 = (jump6, sol6, e_p6, e_r6)
+                r18_solve_rec[s2] = {}
+                # r26 Track A: when the native PAIR exists, the terminal
+                # solution is PINNED — the pair polish re-derives
+                # deterministically from the pair's exact joints, so the
+                # approach branch (and the additive pre-roll) cannot
+                # perturb the terminal state; the multi-restart pose
+                # solve is skipped entirely
+                if side_pair.get(s2) is not None:
+                    suffix16p = "" if s2 == "right" else "_left"
+                    fjp = [mujoco.mj_name2id(
+                        model, mujoco.mjtObj.mjOBJ_JOINT,
+                        f"{f}j{k}{suffix16p}") for f in
+                        ("ff", "mf", "rf", "th") for k in range(4)]
+                    (arm_pol, pol_curl, pol_score, pol_gap, pol_rect,
+                     pol_evals) = _finger_polish(
+                        model, data, spec2,
+                        np.asarray(side_pair[s2]["arm"], float),
+                        np.clip(np.asarray(side_pair[s2]["fingers"], float),
+                                model.jnt_range[fjp][:, 0],
+                                model.jnt_range[fjp][:, 1]))
+                    q = arm_pol
+                    native_done = True
+                    pinned = True
+                    r18_solve_rec[s2]["terminal_pinned"] = True
+                else:
+                    best6 = None
+                    n_conv6 = 0
+                    for attempt in range(R18_RESTARTS + 1):
+                        q = warm6.copy() if attempt == 0 else \
+                            rng6.uniform(lo2, hi2)
+                        sol6 = None
+                        for _it in range(200):
+                            data.qpos[qadr2] = q
+                            mujoco.mj_kinematics(model, data)
+                            mujoco.mj_comPos(model, data)
+                            e_p6 = tgt_pos - data.xpos[pb2]
+                            R6 = np.zeros(9)
+                            mujoco.mju_quat2Mat(R6, data.xquat[pb2])
+                            e_r6 = _Rot6.from_matrix(
+                                tgt_R @ R6.reshape(3, 3).T).as_rotvec()
+                            err6 = np.concatenate([e_p6, e_r6])
+                            if (np.linalg.norm(e_p6) < 2e-3
+                                    and np.linalg.norm(e_r6) < np.deg2rad(5.0)):
+                                sol6 = q.copy()
+                                break
+                            jacp6 = np.zeros((3, model.nv))
+                            jacr6 = np.zeros((3, model.nv))
+                            mujoco.mj_jacBody(model, data, jacp6, jacr6, pb2)
+                            J6 = np.vstack([jacp6[:, vjad2], jacr6[:, vjad2]])
+                            dq6 = np.linalg.solve(J6 @ J6.T + 1e-4 * np.eye(6),
+                                                  err6)
+                            q = np.clip(q + J6.T @ dq6, lo2, hi2)
+                        if sol6 is not None:
+                            n_conv6 += 1
+                            jump6 = float(np.abs(sol6 - q_app).max())
+                            if best6 is None or jump6 < best6[0]:
+                                best6 = (jump6, sol6, e_p6, e_r6)
                 r18_solve_rec[s2] = {
                     "converged": bool(best6 is not None),
                     "n_converged_attempts": int(n_conv6),
@@ -3789,9 +3920,10 @@ def main() -> int:
                     "final_e_r_deg": (round(float(np.degrees(
                         np.linalg.norm(best6[3]))), 2) if best6 else None),
                 }
-                native_done = best6 is not None
+                native_done = best6 is not None or pinned
                 if native_done:
-                    q = best6[1]
+                    if best6 is not None:
+                        q = best6[1]
                     # r18/r20 completion: the native seed is a (arm,
                     # fingers) PAIR — the pad state depends on BOTH
                     # (arm-only seeds broke r13.7's right at 519.7 mm).
@@ -3866,6 +3998,7 @@ def main() -> int:
                                 [arr, pad6], axis=0)
                     ramp6 = 0.5 * (1.0 - np.cos(
                         np.linspace(0.0, np.pi, n_blend6)))
+                    np.save('/tmp/r26_pin_q.npy', q)
                     for k in range(n_blend6):
                         idx = n_ctrl + k
                         if idx < cmds_global[s2]["wrist"].shape[0]:
@@ -4139,6 +4272,61 @@ def main() -> int:
     settle_pen = reset_scene_dual(model, data, specs, first_cmd=cmds_global)
     homes = {s: data.xpos[specs[s]._hand_root_id].copy() for s in VIDEOS}
     warm = dual_warm_start(model, data, specs, cmds_global, frame_skip)
+    if R26_TRACK_A:
+        # r26 Track A: the terminal freeze — overwrite the terminal
+        # window (the last n_blend+n_hold frames) with the PINNED
+        # configuration: the native pair's full-config polish solution
+        # (deterministic re-derivation from the pair's exact joints).
+        # The pre-roll/approach branch cannot perturb the terminal
+        # state; gate1 measures THIS configuration.
+        freeze_rec = {}
+        # the replay MOVED the box (the free joint) — the pad distances
+        # are only meaningful against the box at its table rest pose;
+        # restore it for the freeze's evaluations
+        _ba_f = box_free_qadr(model)
+        data.qpos[_ba_f:_ba_f + 7] = [0.0, 0.0, 0.74, 1.0, 0.0, 0.0, 0.0]
+        mujoco.mj_forward(model, data)
+        for side in VIDEOS:
+            spec_f = specs[side]
+            pr_side = [p for p in json.loads(
+                (REPO / "runs/w6b/native_seed_pairs.json").read_text()
+            )["pairs"] if p["side"] == side]
+            if not pr_side:
+                continue
+            pair_f = min(pr_side, key=lambda p: p["second_mm"])
+            fj_f = [mujoco.mj_name2id(
+                model, mujoco.mjtObj.mjOBJ_JOINT,
+                f"{f}j{k}{'' if side == 'right' else '_left'}")
+                for f in ("ff", "mf", "rf", "th") for k in range(4)]
+            (arm_pin, curl_pin, gap_pin, sec_pin, nrect_pin,
+             fwd_pin, _ev, _impr) = _terminal_pair_freeze(
+                model, data, spec_f, pair_f)
+            stream_w = cmds_global[side]["wrist"]
+            stream_f = cmds_global[side]["finger"]
+            n_w = stream_w.shape[0]
+            # the ramp starts at the BLEND boundary (n_ctrl): the
+            # approach frames keep the registered path untouched
+            start_idx = n_ctrl
+            anchor_w = stream_w[start_idx - 1].copy()
+            anchor_f = stream_f[start_idx - 1].copy()
+            ramp_f = 0.5 * (1.0 - np.cos(np.linspace(
+                0.0, np.pi, n_w - start_idx)))
+            for k in range(n_w - start_idx):
+                stream_w[start_idx + k] = anchor_w + ramp_f[k] * (
+                    arm_pin - anchor_w)
+                stream_f[start_idx + k] = anchor_f + ramp_f[k] * (
+                    curl_pin - anchor_f)
+            freeze_rec[side] = {
+                "pinned": True,
+                "pair_second_mm": pair_f["second_mm"],
+                "freeze_gap_mm": round(gap_pin, 4),
+                "freeze_second_mm": round(sec_pin, 3),
+                "freeze_n_rect": nrect_pin,
+                "freeze_fwd_deg": fwd_pin,
+                "window_frames": int(n_w - start_idx),
+            }
+        print(f"    r26 Track A terminal freeze: "
+              f"{json.dumps(freeze_rec)}")
     rep = dual_replay(model, data, specs, cmds_global, frame_skip)
     rep["support_resting_penetration_m"] = settle_pen
     for s in VIDEOS:
@@ -4446,6 +4634,9 @@ def main() -> int:
     report["verdict_reason"] = (
         "all frozen gates met" if not fails else f"failing gates: {fails}"
     )
+    np.savez('/tmp/r26_debug.npz',
+             pin_q_right=cmds_global['right']['wrist'][-1],
+             pin_f_right=cmds_global['right']['finger'][-1])
     report["versions"] = rs._versions()
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
