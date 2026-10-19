@@ -118,6 +118,13 @@ def capture_engage() -> dict:
     place_l[24] += 0.020
     place_l[25] += 0.00; place_l[26] += 0.60; place_l[27] += 0.00
     place_l[37] = 0.40; place_l[38] = 0.30
+        # the placement overrides (the tuning without the file edits -
+        # the worktree race workaround)
+        for idx, key in ((0, 'V21_RWX'), (1, 'V21_RWY'), (2, 'V21_RWZ'),
+                         (22, 'V21_LWX'), (23, 'V21_LWY'), (24, 'V21_LWZ')):
+            if os.environ.get(key):
+                (place_r if idx < 22 else place_l)[idx] = float(os.environ[key])
+
     for k in range(15):
         d.ctrl[:] = place_r + (place_l - place_r) * (k + 1) / 15
         settle(FS)
