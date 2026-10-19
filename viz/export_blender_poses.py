@@ -101,8 +101,9 @@ def main() -> None:
     width = len(frames[0]["qpos"])
 
     # scene selection by qpos width: the replay carries the FULL qpos of the
-    # scene it was generated on (floating=65, ur5e=59)
-    scenes = {"floating": sf.SCENE_FLOATING, "ur5e": sf.SCENE_UR5E}
+    # scene it was generated on (ur5e_vise=59, floating=65)
+    scenes = {"ur5e_vise": sf.SCENE_UR5E_VISE,
+              "floating": sf.SCENE_FLOATING, "ur5e": sf.SCENE_UR5E}
     scene_kind = scene = None
     for kind, xml in scenes.items():
         import mujoco as _mj
@@ -112,7 +113,7 @@ def main() -> None:
             break
     if scene is None:
         raise SystemExit(f"replay qpos width {width} matches no known scene "
-                         f"(floating=65, ur5e=59)")
+                         f"(ur5e_vise=59, floating=65)")
     print(f"scene: {scene_kind} (nq {width})")
 
     m = sf.build_fidelity_model(scene)

@@ -26,15 +26,12 @@ from mathutils import Vector
 HERE = pathlib.Path(__file__).resolve().parent
 TEX2K = HERE / "textures_2k"
 
-PRESETS = {  # matched to the MuJoCo panel compositions (visual iteration)
-    # NB: the rail carries two large end-stop blocks (gantry_limit_*, y=±0.52,
-    # z up to 1.17, x ±0.55) -- cameras must sit INSIDE the rail span
-    # (|y| < 0.44) or off to the x sides, or the block fills the frame black
-    "front": {"pos": (-0.30, -0.40, 1.06), "look": (0.0, 0.0, 0.70)},
-    "side": {"pos": (0.72, -0.42, 0.88), "look": (0.02, 0.0, 0.74)},
-    "close": {"pos": (-0.28, -0.34, 0.94), "look": (0.0, 0.0, 0.76)},
+PRESETS = {  # world positions resolved from the MuJoCo free-camera presets
+    # (mjv GL camera pos at f190; the lookat tracks the live box position)
+    "front": {"pos": [0.156, -1.430, 1.559]},
+    "side": {"pos": [-0.171, -1.304, 1.414]},
+    "close": {"pos": [0.111, -0.916, 1.364]},
 }
-
 
 def parse_args() -> dict:
     argv = sys.argv[sys.argv.index("--") + 1:]
@@ -253,20 +250,19 @@ def add_lights_and_world():
     bpy.context.scene.collection.objects.link(wob)
 
 
-def make_camera(name, pos, look):
+def make_camera(name, pos):
     cam_data = bpy.data.cameras.new(name)
     cam_data.lens = 30
     cam = bpy.data.objects.new(name, cam_data)
     cam.location = pos
     bpy.context.scene.collection.objects.link(cam)
     target = bpy.data.objects.new(name + "_tgt", None)
-    target.location = look
     bpy.context.scene.collection.objects.link(target)
     con = cam.constraints.new(type="TRACK_TO")
     con.target = target
     con.track_axis = "TRACK_NEGATIVE_Z"
     con.up_axis = "UP_Y"
-    return cam
+    return cam, target
 
 
 def main() -> None:
@@ -334,8 +330,10 @@ def main() -> None:
     add_floor(mats)
     add_lights_and_world()
 
-    cams = {k: make_camera(k, v["pos"], v["look"]) for k, v in PRESETS.items()
-            if k in presets}
+    cams_raw = {k: make_camera(k, v["pos"]) for k, v in PRESETS.items()
+                if k in presets}
+    cams = {k: c for k, (c, t) in cams_raw.items()}
+    cam_targets = {k: t for k, (c, t) in cams_raw.items()}
 
     outdir = pathlib.Path(opts["outdir"])
     outdir.mkdir(parents=True, exist_ok=True)
@@ -359,7 +357,9 @@ def main() -> None:
             ob.location = (px, py, pz)
             ob.rotation_mode = "QUATERNION"
             ob.rotation_quaternion = (qw, qx, qy, qz)
+        box_loc = objs["skin_floral"].location  # cameras track the box
         for k in presets:
+            cam_targets[k].location = box_loc
             dst = outdir / f"{k}_f{f:04d}.png"
             # resume: skip frames already rendered by a previous pass
             if skip_existing and dst.exists() and dst.stat().st_size > 100_000:

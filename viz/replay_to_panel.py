@@ -59,7 +59,8 @@ NQ_MIN = 51               # frames must carry at least the base; v20.1 carries
                           # the full model nq (65 = base + arm/pad angles)
 
 
-SCENES = {"floating": REPO / "grounding/assets/allegro_floating.xml",
+SCENES = {"ur5e_vise": REPO / "grounding/assets/allegro_floating_ur5e_r24_vise.xml",
+          "floating": REPO / "grounding/assets/allegro_floating.xml",
           "ur5e": REPO / "grounding/assets/allegro_floating_ur5e.xml"}
 
 
@@ -258,11 +259,12 @@ def _w6b_gates() -> list[dict]:
          "scope": "接触物理执行下指垫贴住端面的控制帧数（按 report 逐侧实数）"},
         {"id": "w6b_gate3", "name": "门 3 接近段干净",
          "verdict": "pass" if checks["gate3_approach_clean"] else "fail",
-         "measured": (f"右压支撑 {len(g3r.get('support_contact_control_frames', []))} 帧 / "
-                      f"左 {len(g3l.get('support_contact_control_frames', []))} 帧"
+         "measured": (f"右压支撑 {g3r.get('support_contact_frames', 0)} 帧 / "
+                      f"左 {g3l.get('support_contact_frames', 0)} 帧"
                       + ("" if checks["gate3_approach_clean"]
                          else "（红=接近段支撑接触，如实入档）")),
-         "scope": "接近段手指不得触桌或支撑（r8 起支撑帧清零为过门条件）"},
+         "scope": "接近段手指不得触桌或支撑（r25 终局：中程倾斜过侧 ~95° 后回正，"
+                  "夹具域已尽——vise 锁漂移、pre-roll 触发保险丝被否）"},
         {"id": "w6b_gate4", "name": "门 4 关节限位",
          "verdict": "pass" if checks["gate4_joint_limits"] else "fail",
          "measured": f"右 {g4_txt(g4r)} / 左 {g4_txt(g4l)}",
@@ -358,6 +360,9 @@ def build() -> dict:
                          "rate_w<0.0067 量化 + 力伺服未闭合 + yaw-clean "
                          "t=0 1.05° + lift 三元组 127 帧/105mm/100mm"
                          "=5/7 条款。"),
+                # r25 渲染披露（Main 终渲令）：中程 toppling 如实标注
+                "触面": ("盒中程倾斜过侧 ~95° 后回正——终端面压自由盒 toppling "
+                         "力矩，夹具域已尽（vise 锁漂移、pre-roll 触发保险丝被否）"),
             },
             "video_fps": VIDEO_FPS,
             "total_source_frames": SOURCE_TOTAL_FRAMES,

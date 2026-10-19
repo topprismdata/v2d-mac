@@ -198,12 +198,18 @@ function segOf(file) {
   return m ? segOfN(parseInt(m[1], 10)) : "";
 }
 function segOfN(n) {
+  // range semantics: the phase of the most recent marker at or before n --
+  // every frame gets a phase (the markers are sparse samples of spans)
+  let name = "", best = -1;
   for (const s of (meta.video_segments || []))
     for (const f of s.files) {
       const m = /f_(\d+)\.jpg$/.exec(f);
-      if (m && parseInt(m[1], 10) === n) return s.name;
+      if (m) {
+        const mn = parseInt(m[1], 10);
+        if (mn <= n && mn > best) { best = mn; name = s.name; }
+      }
     }
-  return "";
+  return name;
 }
 function renderSrc(i) {
   const r = RENDERS;

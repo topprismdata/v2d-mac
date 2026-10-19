@@ -102,15 +102,24 @@ def _pegboard_texture(path: pathlib.Path, size: int = 512) -> None:
     img.save(path)
 
 
-def build_fidelity_spec():
-    """allegro_floating.xml + the visual fidelity layer, via MjSpec."""
+SCENE_FLOATING = REPO / "grounding/assets/allegro_floating.xml"
+SCENE_UR5E = REPO / "grounding/assets/allegro_floating_ur5e.xml"
+# r25 交付场景（vise 变体转正；与 ur5e 同 nq，宽度推断时优先生效）
+SCENE_UR5E_VISE = REPO / "grounding/assets/allegro_floating_ur5e_r24_vise.xml"
+
+
+def build_fidelity_spec(scene_xml: pathlib.Path = SCENE_FLOATING):
+    """scene_xml + the visual fidelity layer, via MjSpec.  All fidelity
+    additions are visual-only (mass 0, no collision) and every anchor lookup
+    is tolerant of scenes that lack the anchor (e.g. the ur5e scene has no
+    floating-era arm segments)."""
     import mujoco
 
     _floral_texture(_png("floral"))
     _wood_texture(_png("wood"))
     _pegboard_texture(_png("pegboard"))
 
-    spec = mujoco.MjSpec.from_file(str(REPO / "grounding/assets/allegro_floating.xml"))
+    spec = mujoco.MjSpec.from_file(str(scene_xml))
     tex2d = lambda name, path: spec.add_texture(
         name=name, type=mujoco.mjtTexture.mjTEXTURE_2D,
         height=512, width=512, file=str(path))
@@ -217,6 +226,8 @@ def build_fidelity_spec():
     for seg_body, seg_len in (("arm_upper_r", 0.08), ("arm_upper_l", 0.08),
                               ("arm_elbow_r", 0.08), ("arm_elbow_l", 0.08)):
         ab = spec.body(seg_body)
+        if ab is None:      # ur5e scene: no floating-era arm segments
+            continue
         n_seg = 4
         for k in range(n_seg):
             z = -seg_len + (2 * seg_len) * (k + 0.5) / n_seg
@@ -232,6 +243,8 @@ def build_fidelity_spec():
                                       ("arm_elbow_r", 0.020, 0.014),
                                       ("arm_elbow_l", 0.020, 0.014)):
         db = spec.body(disc_body)
+        if db is None:      # ur5e scene: no floating-era discs
+            continue
         for k in range(6):
             a = 2 * np.pi * k / 6
             bg = db.add_geom(name=f"{disc_body}_bolt{k}",
@@ -287,9 +300,19 @@ def build_fidelity_spec():
     return spec
 
 
-def build_fidelity_model():
+def scene_for_qpos_width(width: int):
+    """Return (scene_xml, kind) whose model nq matches a replay qpos width."""
+    import mujoco
+    for kind, xml in (("ur5e_vise", SCENE_UR5E_VISE),
+                      ("floating", SCENE_FLOATING), ("ur5e", SCENE_UR5E)):
+        if int(mujoco.MjModel.from_xml_path(str(xml)).nq) == width:
+            return xml, kind
+    raise SystemExit(f"replay qpos width {width} matches no known scene")
+
+
+def build_fidelity_model(scene_xml: pathlib.Path = SCENE_FLOATING):
     """Compile the fidelity spec; returns the MjModel for RENDERING only."""
-    m = build_fidelity_spec().compile()
+    m = build_fidelity_spec(scene_xml).compile()
     # MjSpec 3.16 bug: add_material(textures=[...]) writes the 2d texture id
     # into mat_texid slot 0, which the renderer never samples (the XML asset
     # path puts 2d textures in slot 1) -- materials then render as flat rgba.
