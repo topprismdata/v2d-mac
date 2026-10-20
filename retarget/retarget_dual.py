@@ -2766,6 +2766,8 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
     arm_qadr_l = [int(model.jnt_qposadr[mujoco.mj_name2id(
         model, mujoco.mjtObj.mjOBJ_JOINT, f"ur5e_l_{n}_joint")]) for n in _ARM]
     r36_acc = {"right": np.zeros(6), "left": np.zeros(6)}
+    r36_gs = _os_r28.environ.get("W6B_R36_GSTATIC", "0") == "1"
+    r36_gtau = {"right": np.zeros(6), "left": np.zeros(6)}
     dt_ctrl = frame_skip * float(model.opt.timestep)
     ctrl_lo = model.actuator_ctrlrange[:, 0]
     ctrl_hi = model.actuator_ctrlrange[:, 1]
@@ -2790,6 +2792,25 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
             spec = specs[side]
             w = np.clip(cmds[side]["wrist"][t], ctrl_lo[spec.wrist_act_id], ctrl_hi[spec.wrist_act_id])
             f = np.clip(cmds[side]["finger"][t], ctrl_lo[spec.finger_act_id], ctrl_hi[spec.finger_act_id])
+            if r36_gs and t == n_frames - r36_hold:
+                # r36 static gravity bias: mj_rne at the TARGET pose with zero
+                # velocity gives exactly the torque the P-servo must supply to
+                # hold it; applying it as a constant removes the tau_g/kp droop
+                # without feeding back through a discrete loop.
+                _save_q = data.qpos.copy()
+                _save_v = data.qvel.copy()
+                data.qpos[spec.wrist_qadr] = np.asarray(cmds[side]["wrist"][-1])
+                data.qvel[:] = 0.0
+                _tau = np.zeros(model.nv)
+                mujoco.mj_rne(model, data, 0, _tau)
+                data.qpos[:] = _save_q
+                data.qvel[:] = _save_v
+                _dofs = arm_dof_r if side == "right" else arm_dof_l
+                r36_gtau[side] = np.array([float(_tau[d]) for d in _dofs])
+                mujoco.mj_forward(model, data)
+            if r36_gs and t >= n_frames - r36_hold:
+                _dofs = arm_dof_r if side == "right" else arm_dof_l
+                data.qfrc_applied[_dofs] = -r36_gtau[side]
             if r36_i and t >= n_frames - r36_hold:
                 _qd = np.array([float(data.qpos[d]) for d in
                                 (arm_qadr_r if side == "right" else arm_qadr_l)])
@@ -2812,6 +2833,9 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
         for _ in range(frame_skip):
             mujoco.mj_step(model, data)
 
+        if _os.environ.get("W6B_DBG_FORCE", "0") == "1" and t in (n_frames - r36_hold, n_frames - 1):
+            print(f"    [dbg-force] t={t} r force={np.round(data.actuator_force[arm_act_r],1)} "
+                  f"qrtl_applied={np.round(np.asarray(data.qfrc_applied)[arm_dof_r],1)}")
         cls = classify_contacts(model, data, specs)
         contact_cls.append(cls)
         # r10.1 yaw-stop red line: hand-vs-stop contact must be ZERO over the
@@ -3079,13 +3103,6 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
         _mj.mj_forward(model, data)
         (dist_e, buried_e, fwd_deg_e, per_pad_e, ctr_e, pad_burial_e,
          buried_v2_e, band_pen_e) = measure(spec, coll)
-        if _os.environ.get("W6B_DBG_GATE", "0") == "1":
-            _ob = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "object")
-            _tips = [mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY, int(i))
-                     for i in spec._tip_body_ids]
-            print(f"    [dbg-gate] {side}: box={np.round(data.xpos[_ob],3)} "
-                  f"tips={[np.round(data.xpos[int(i)],3).tolist() for i in spec._tip_body_ids]} "
-                  f"ctr={np.round(np.asarray(ctr_e).ravel()[:3],3)} dist_e={dist_e*1e3:.1f}mm")
         # GPT round-3 upgrade: >= 2 pads per hand inside the rectangle
         n_in_rect = sum(1 for v in per_pad.values() if v <= tol * 1e3)
         out[side] = {

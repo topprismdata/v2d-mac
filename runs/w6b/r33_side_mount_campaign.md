@@ -137,3 +137,39 @@ The droop is real (proved by the cmd-swap: 0.20/0.01 mm) but static compensation
 the *orientation* worse and the integral oscillates at these gains. The terminal hold
 needs a resolved-rate (velocity-level) controller that closes the loop on the pad
 pose, not another static offset.
+
+## r37 two scene-construction defects fixed -> executed 43/173 -> 33.8/42.6 mm
+### (a) wrist-hand collision overlap (scene construction, not a command error)
+At the NEUTRAL pose (zero command, measured at qpos0) the Allegro hand's collision
+proxies overlap the UR5e wrist collision capsules by **4-10 mm**:
+`ur5e_{l,r}_wrist_2_link` vs `mf_base`/`mf_proximal`, `ur5e_{l,r}_wrist_3_link` vs
+`ff/mf/rf_proximal`.  The overlap is pose-independent, so the left arm permanently
+carried **+188 Nm** of constraint torque; its shoulder_lift servo saturated at
+-150 Nm and the arm sat 0.253 rad off the commanded pose (=> 155 mm at the tool).
+Fix: 10 `<exclude>` pairs in the scene (the hand mounts ON the wrist face, so the
+wrist capsules and the finger proxies are mounting artifacts).
+### (b) asymmetric base mounts
+Right base Rz180 / left base Rx180 is NOT a mirror pair, so the two arms solved to
+wildly different postures (shoulder_lift -4.37 vs -1.22) and the hands collided
+with each other.  Left base -> identity (the mirror of Rz180) makes the layout
+symmetric:
+| left base quat | right exec | left exec |
+|---|---|---|
+| identity "1 0 0 0" | **33.84 mm** | **42.55 mm** |
+| Rz180 "0 0 0 1" | 155.23 mm | 28.98 mm |
+| Ry180 "0 0 1 0" | 40.93 mm | 63.87 mm |
+| Rx180 "0 1 0 0" | 43.63 mm | 172.73 mm |
+New scene: `grounding/assets/allegro_floating_ur5e_side_r34.xml` (bases z 1.35,
+left quat identity, the 10 wrist-hand excludes).
+
+### control-law sweep on the r34 scene (all default-off)
+| variant | right | left |
+|---|---|---|
+| baseline | **33.84** | **42.55** |
+| kp 2000 -> 8000 (kv 1600) | 43.25 | 79.92 |
+| W6B_R36_GSTATIC=1 | 155.08 | 28.32 |
+| W6B_R36_CMD_FF=1 | 108.81 | 178.98 |
+| W6B_R22_SAFE_HAND=1 | 94.49 | 32.85 |
+Raising the gain makes it worse: at the face the pads press in and the contact
+reaction pushes the arm off.  The residual is the reaction of the contact, not
+servo droop alone.
