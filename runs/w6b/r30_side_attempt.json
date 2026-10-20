@@ -1,0 +1,23 @@
+{
+ "campaign": "r30 side-mount layout attempt",
+ "verdict": "THE SIDE-MOUNT SCENE REQUIRES A FULL PIPELINE REDESIGN \u2014 the retarget pipeline's world-coordinate targets (face anchor, flyover, margin, approach trajectory) are CEILING-MOUNT-SPECIFIC and cannot be reached from the side-mount bases (\u00b10.40, 0, 0.85 Rz \u00b190\u00b0).  The side-mount scene swap alone produces gate1 1044/685 mm (the targets are unreachable) \u2014 not a fix, a new campaign",
+ "result": {
+  "gate1_mm": [
+   1043.7,
+   684.8
+  ],
+  "gate3_support": [
+   0,
+   126
+  ],
+  "exec_dev_mm": [
+   3894.6,
+   7262.9
+  ],
+  "box_up_z_min": -0.101,
+  "verdict": "FAIL \u2014 all gates red, the targets unreachable"
+ },
+ "attribution": "the retarget pipeline's palm_task, face_anchor (\u00b10.11, 0, 0.76), flyover, margin, approach trajectory, and all the world-coordinate targets were designed for the ceiling mount where the arms point DOWN at the box from z 1.0.  The side mount has the arms reaching HORIZONTALLY from \u00b10.40 \u2014 the same world targets are unreachable from the different reach geometry",
+ "fix_domain": "a FULL retarget pipeline redesign for the side-mount geometry (new palm_task, new face_anchor, new flyover, new approach trajectory) \u2014 a new campaign, not a one-round fix",
+ "recommendation": "the r26 ceiling-mount + vise state (gate1 pad1 0.0002/0.0039 mm R5-class, g5reg 0.77/0.51 mm improved, the box upright 0.963 min with the vise, g3 left 0) REMAINS the best deliverable.  The side mount requires a new campaign after the GPT v5 review"
+}

@@ -2714,7 +2714,8 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
     # arm dofs get qfrc_applied = -qfrc_bias (the gravity+coriolis
     # cancel), so the position servos hold the commanded pose without
     # fighting gravity.  Env-gated (W6B_R28_GCOMP=1).
-    r28_gcomp = os.environ.get("W6B_R28_GCOMP", "0") == "1"
+    import os as _os_r28
+    r28_gcomp = _os_r28.environ.get("W6B_R28_GCOMP", "0") == "1"
     arm_dof_r = [model.jnt_dofadr[mujoco.mj_name2id(
         model, mujoco.mjtObj.mjOBJ_JOINT, f"ur5e_r_{n}_joint")]
         for n in ("shoulder_pan", "shoulder_lift", "elbow",
