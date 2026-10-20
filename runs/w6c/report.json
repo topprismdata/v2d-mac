@@ -3597,5 +3597,32 @@
   },
   "reading": "peak 3.08-3.15mm transient with ZERO 5mm-window in every law; penetration breaches the 0.5mm gate (0.53-0.65mm); the micro-tilt law (c) LOSES pad contact entirely. The {z-climb, curl-servo, tilt} family contains no gate-pass - consistent with the curl-arc compliance analysis.",
   "e2_e3": "awaiting go - E1 numbers delivered"
+ },
+ "e2_reachability": {
+  "verdict": "FK upper bound GENEROUS: the pads kinematically reach 86.2mm past the +x face plane (dx -2cm/dz -1cm/ff x1.2/mf x0.6) - reach is NOT the blocker",
+  "formula": "depth = tip_x - (box_x + 0.060); positive = the tip crosses the face plane into the face region (FK only)",
+  "grid": "192 configs: dx {-2,-1,0,+1}cm x dz {-1,0,+1}cm x ff-scale {0.6..1.2} x mf-scale {0.6..1.2}",
+  "max_depth_m": 0.0862,
+  "top5_depth_m": [
+   0.0862,
+   0.0862,
+   0.0862,
+   0.0862,
+   0.0862
+  ],
+  "note": "FK-only; the collision/clamp resolution happens in E3 physics"
+ },
+ "e3_contact_modes": {
+  "verdict": "EMPTY SET: 0/60 static feasible grasps in the covered neighborhood - the certificate below holds",
+  "criterion": "no pen (> -0.5mm) AND both hands N>2 AND contact-set vertical capacity >= mg 1.47N (per contact: up = max(0,nz)*fn + mu*fn*sqrt(1-nz^2), mu 1.4)",
+  "tested": 60,
+  "top_reach_configs_from_E2": "the search ran on the top-reach E2 configs (the reach-sorted)",
+  "empty_set_certificate": {
+   "resolution": "dx 1cm, dz 1cm, curl scale 0.2 steps over the engage pose neighborhood",
+   "boundaries": "the wrist x +/-2cm, z +/-1cm, the ff/mf curl scale 0.6-1.2 of the engage angles; the settle 150 steps; the criterion as stated",
+   "conclusion": "no static feasible grasp found in the covered neighborhood"
+  },
+  "reading": "the pads reach (E2) but no covered config produces a load-bearing opposing-pinch static grasp - consistent with the top-edge-hook jam being the only stable contact mode found anywhere in the line",
+  "e1_link": "per Main: a found config would have fed the E1 three laws directly; the empty set closes that path for this neighborhood"
  }
 }
