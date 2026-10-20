@@ -101,3 +101,26 @@ hand (not more sampling).
   compensation no-ops against the contact jam). Next: per-joint force-range check at the
   terminal pose and, if saturated, either a lighter hand assembly or a resolved-rate
   terminal hold.
+
+## r36 measurement-instrument defect: the 0.5 m band penalty was inside rect_dist_mm
+- `gate_final_touch.measure()` scored each pad as `gap + 0.5` when the pad sat
+  outside the mid-face band (above the box top) and `best` fed `rect_dist_mm`.
+  A pad 57 mm off the face but high therefore printed as **557 mm**.
+- Pass/fail never used that number (it scores raw per-pad gaps), so no verdict moves;
+  only the published "executed" evidence was inflated by exactly 500 mm per side.
+- Fixed: `out_of_band_penalty_mm` is now its own field, `rect_dist_mm` is the raw gap,
+  `rect_dist_legacy_mm` preserves the old print for lineage.
+- **Corrected r26 executed state** (same recipe, keyframe-aware reset):
+  right **140.77 mm** (+500 band), left **59.14 mm** (+500 band);
+  previously published as 640.77 / 122.04 mm.
+
+## r36 tracking root cause: P-servo gravity droop, not saturation
+- Terminal actuator forces peak at 34.7 / 86.3 / 69.4 Nm against a 150 Nm budget and
+  14.6 / 2.9 / 0.2 against 28 Nm -> **no axis saturates**.
+- The arm tracks its own ctrl to ~0.05 rad, but 0.05 rad at the 0.4 m shoulder lever is
+  ~50 mm at the tool: proof by swapping only `qpos[wrist_qadr] := cmd` into the
+  executed state, which snaps the pads from 57/155 mm to **0.20 / 0.01 mm**.
+- `W6B_R28_GCOMP=1` (qfrc_applied = -qfrc_bias) makes it worse (687 mm) and the new
+  `W6B_R36_CMD_FF=1` (target += qfrc_bias/kp) helps the height but wrecks the
+  orientation (fwd 26 -> 75 deg). Both stay default-off; the terminal hold needs an
+  integral term or a resolved-rate hold instead of static feed-forward.
