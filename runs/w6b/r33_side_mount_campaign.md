@@ -124,3 +124,16 @@ hand (not more sampling).
   `W6B_R36_CMD_FF=1` (target += qfrc_bias/kp) helps the height but wrecks the
   orientation (fwd 26 -> 75 deg). Both stay default-off; the terminal hold needs an
   integral term or a resolved-rate hold instead of static feed-forward.
+
+## r36 terminal-hold control laws: three negative results (all default-off)
+| law | env | side-cell executed (right/left) |
+|---|---|---|
+| baseline P-servo | - | **57.5 / 155.0 mm** |
+| gravity feed-forward on target | `W6B_R36_CMD_FF=1` | 108.8 / 179.0 (fwd 26 -> 75 deg) |
+| integral hold (ki 0.5 / 1.0 / 2.0) | `W6B_R36_I=1` | 96.7-228.8 / 154.6-185.2 |
+| qfrc_applied = -qfrc_bias | `W6B_R28_GCOMP=1` | 687.6 / 159.5 |
+
+The droop is real (proved by the cmd-swap: 0.20/0.01 mm) but static compensation makes
+the *orientation* worse and the integral oscillates at these gains. The terminal hold
+needs a resolved-rate (velocity-level) controller that closes the loop on the pad
+pose, not another static offset.

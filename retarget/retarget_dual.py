@@ -2754,6 +2754,18 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
     # qfrc_applied = -qfrc_bias (R28_GCOMP) caused.
     r36_ff = _os_r28.environ.get("W6B_R36_CMD_FF", "0") == "1"
     _kp = np.array([float(model.actuator_gainprm[i][0]) for i in range(model.nu)])
+    # r36 integral hold: a P-servo keeps tau_g/kp of steady droop; the terminal
+    # hold integrates the residual away.  Off by default (it must never touch
+    # the approach, only the last frames of the hold).
+    r36_i = _os_r28.environ.get("W6B_R36_I", "0") == "1"
+    r36_ki = float(_os_r28.environ.get("W6B_R36_KI", "1.0"))
+    r36_hold = int(_os_r28.environ.get("W6B_R36_HOLD", "60"))
+    r36_imax = float(_os_r28.environ.get("W6B_R36_IMAX", "0.30"))
+    arm_qadr_r = [int(model.jnt_qposadr[mujoco.mj_name2id(
+        model, mujoco.mjtObj.mjOBJ_JOINT, f"ur5e_r_{n}_joint")]) for n in _ARM]
+    arm_qadr_l = [int(model.jnt_qposadr[mujoco.mj_name2id(
+        model, mujoco.mjtObj.mjOBJ_JOINT, f"ur5e_l_{n}_joint")]) for n in _ARM]
+    r36_acc = {"right": np.zeros(6), "left": np.zeros(6)}
     dt_ctrl = frame_skip * float(model.opt.timestep)
     ctrl_lo = model.actuator_ctrlrange[:, 0]
     ctrl_hi = model.actuator_ctrlrange[:, 1]
@@ -2778,6 +2790,13 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
             spec = specs[side]
             w = np.clip(cmds[side]["wrist"][t], ctrl_lo[spec.wrist_act_id], ctrl_hi[spec.wrist_act_id])
             f = np.clip(cmds[side]["finger"][t], ctrl_lo[spec.finger_act_id], ctrl_hi[spec.finger_act_id])
+            if r36_i and t >= n_frames - r36_hold:
+                _qd = np.array([float(data.qpos[d]) for d in
+                                (arm_qadr_r if side == "right" else arm_qadr_l)])
+                r36_acc[side] = r36_acc[side] + (w - _qd) * dt_ctrl
+                r36_acc[side] = np.clip(r36_acc[side], -r36_imax, r36_imax)
+                w = w + r36_ki * r36_acc[side]
+                w = np.clip(w, ctrl_lo[spec.wrist_act_id], ctrl_hi[spec.wrist_act_id])
             if r36_ff:
                 _wb = np.array([float(data.qfrc_bias[d]) for d in
                                 (arm_dof_r if side == "right" else arm_dof_l)])
