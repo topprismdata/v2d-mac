@@ -106,7 +106,7 @@ def run_law(m, d, law: str):
                 dem[i] = float(np.clip(
                     dem[i] + 0.02 * (N_TGT - n_side) / N_TGT, -0.2, 0.8))
                 d.ctrl[i] = float(np.clip(
-                    d.qpos[jadr[jn]] + BASE_DEM[i] + dem[i], lo_c[i], hi_c[i]))
+                    d.qpos[jadr[i]] + BASE_DEM[i] + dem[i], lo_c[i], hi_c[i]))
         if law == 'c':
             tilt = TILT_RAD * min(1.0, (f + 1) / FRAMES)
             d.ctrl[3] = float(d.qpos[jwrx]) + tilt
