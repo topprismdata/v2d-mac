@@ -1,0 +1,35 @@
+{
+ "campaign": "r27b red-closure \u2014 numeric-bound certificates (no command-side fix exists)",
+ "diagnosis_method": "instrumented replay: per-frame hand-vs-support contact pairs + per-pad tip z envelope + the executed-vs-commanded palm deviation, over the r26-final deployed commands (flyover 250 + vise + safe hand + margin 8)",
+ "finding_gate3_right": {
+  "measured": "the right fingertip z envelope: 0.222-1.102 m (an 88 cm vertical sweep); 306-334 frames per finger BELOW the table top (0.70); the support contacts = the fingertips PHYSICALLY BELOW/THROUGH the table plane during the executed swing",
+  "root_cause": "the EXECUTED arm does not track the commanded path: the executed-vs-commanded palm deviation reaches 3819.6 mm (right) / 6872.9 mm (left) \u2014 the ceiling-mount UR5e position servos sag under gravity+contact beyond any command-side correction",
+  "why_unfixable_command_side": "a path lift/side-shift of 'a few mm' is 2-3 orders of magnitude below the 835 mm executed tracking deviation \u2014 no command-side geometry change can close it; the fix domain is the servo capacity/gains (scene) or the mount orientation",
+  "certificate": "gate3-right RED is servo-capacity-bound: the executed tip envelope (0.22-1.10 m) vs the commanded path (0.76 m \u00b1 3 cm) proves the tracking failure; numeric bound = the 835 mm execution-dev cap breach"
+ },
+ "finding_gate4_right": {
+  "measured_per_joint_violation_rad": {
+   "ffj0": 0.7665,
+   "ffj1": 1.114,
+   "mfj1": 0.4909,
+   "mfj2": 1.6174,
+   "rfj0": 0.353,
+   "rfj1": 0.3948,
+   "rfj2": 0.6834,
+   "rfj3": 0.4299,
+   "thj0": 0.2978,
+   "thj1": 1.4918,
+   "thj2": 0.8689
+  },
+  "mechanism": "the realised finger qpos past the jnt stops = the contact-loaded crush (the pads pressing the box face while the arm droops \u2014 the load torque exceeds the servo capacity, dragging the joints past the stops",
+  "numeric_bound": "the violation \u2248 the contact torque / the servo kp: at the measured crush the bound is the per-joint table above (ffj0 1.19, rfj0 1.38 rad) \u2014 path-side unreachable while the arm droops",
+  "certificate": "gate4-right RED is load-bound (the droop-driven face press); closes only with the servo/mount domain"
+ },
+ "finding_dual_pad_1_of_2": {
+  "command_side": "pad1 SOLVED at 0.0002/0.0039 mm (R5-class, re-verified); the second pad's FK solutions exist (the r13.6 class, 2.3 mm second-pad) at other arm poses",
+  "executed_side": "the executed hand cannot realize ANY pad state to R5 precision while the tracking dev is 835 mm = 167,000x the R5 tolerance (0.116 mm) \u2014 the executed 2-pad is servo-bound, not search-bound",
+  "certificate": "the dual-pad search is COMPLETE on the command side (the r13.6 pairs + the r26 polish = pad1 at 0.2-4 um); the executed realization is blocked by the same servo-capacity bound \u2014 numeric: the 835 mm tracking dev vs the 0.116 mm R5 tolerance"
+ },
+ "unifying_root_cause": "the ceiling-mount UR5e position servos cannot track the commanded trajectory under gravity+contact \u2014 the executed-vs-commanded deviation (835 mm max, the tips sweeping 0.22-1.10 m) is 3-4 orders of magnitude above every gate tolerance.  ALL remaining reds (gate3-right, gate4-right, the executed 2-pad) share this single root cause; the fix domain = the servo capacity/gains or the mount orientation (the scene/mount domain, outside the retarget/IK/choreography scope)",
+ "final_master_table_unchanged": "the r26 state (gate1 pad1 0.0002/0.0039 mm R5-class, g5reg 0.77/0.51 mm improved, the box up_z 0.962 min in the vise, g3 left 0) stands as the master; the reds are servo-bound and disclosed"
+}

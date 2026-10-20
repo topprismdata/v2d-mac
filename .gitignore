@@ -40,6 +40,7 @@ runs/**
 !runs/w6b/r24_vise.json
 !runs/w6b/r25_preroll.json
 !runs/w6b/r26_trackAB.json
+!runs/w6b/r27_red_closure.json
 !runs/w6b/r26_dual_pad_certificate.json
 !runs/w6b/evidence/*.png
 !runs/p0/**/SUMMARY.md
