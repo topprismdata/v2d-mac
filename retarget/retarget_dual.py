@@ -175,6 +175,7 @@ R22_MARGIN_MM = float(_os.environ.get("W6B_R22_MARGIN_MM", "0"))
 # 3.246 mm right) — REJECTED by the r25 fuse; default 0, the code stays
 # for the record (W6B_R25_PREROLL re-enables)
 R25_PREROLL = max(0, int(_os.environ.get("W6B_R25_PREROLL", "0")))
+W6B_R28_FORCE3 = _os.environ.get("W6B_R28_FORCE3", "0") == "1"
 # r26 Track A: the terminal freeze — the terminal configuration is
 # PINNED to the native pair's polish solution (deterministic
 # re-derivation from the pair's exact joints); the approach branch (and
@@ -3700,34 +3701,6 @@ def main() -> int:
     else:
         safe_rec = {}
 
-    if R25_PREROLL > 0:
-        # r25: the additive pre-roll — the arms ramp home -> path start
-        # (ease-in-out) and the fingers hold the safe half-grip, so the
-        # first video control frame no longer punches through the box
-        # volume (the r24 spawn-punch fix).  f1-f390 frame-exact
-        # semantics unchanged; f(-pre..0) is the additive pre-roll
-        # segment (the contract note in the report).
-        pre_rec = {}
-        for side in VIDEOS:
-            spec_p = specs[side]
-            home_arm = model.qpos0[spec_p.wrist_qadr]
-            stream = cmds_global[side]["wrist"]
-            start = stream[0:1]
-            rr = 0.5 * (1.0 - np.cos(np.linspace(0.0, np.pi, R25_PREROLL)))
-            pr = home_arm[None, :] + rr[:, None] * (start - home_arm[None, :])
-            cmds_global[side]["wrist"] = np.concatenate([pr, stream], axis=0)
-            fstream = cmds_global[side]["finger"]
-            f_home = np.full((1, fstream.shape[1]), 0.5)
-            f_pre = f_home + rr[:, None] * (fstream[0:1] - f_home)
-            cmds_global[side]["finger"] = np.concatenate([f_pre, fstream],
-                                                         axis=0)
-            pre_rec[side] = {"frames": int(R25_PREROLL),
-                             "arm_home": home_arm.round(3).tolist(),
-                             "finger_hold": 0.5}
-        print(f"    r25 pre-roll: {R25_PREROLL} additive control frames")
-    else:
-        pre_rec = {}
-
     # --- terminal blend: approach = video-driven; TERMINAL STATE = the v5
     # gate3 seed (the ticket's own definition: "已验证的门 3 抓握就绪构型作为
     # 终态").  The seed is an MJCF joint-space configuration, directly
@@ -4306,6 +4279,18 @@ def main() -> int:
                 model.actuator_biasprm[a, 2] *= 10.0
                 n10 += 1
         print(f"    r28 kp x10: {n10} UR5e arm actuators scaled")
+    if W6B_R28_FORCE3:
+        # r28: the UR5e arm actuator force range x3 — the measured
+        # gravity demand sits AT the ±150/±28 clamp on every joint (the
+        # 21.65 kg chain in permanent gravitational collapse); x3 gives
+        # the tracking headroom
+        n3 = 0
+        for a in range(model.nu):
+            nm = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_ACTUATOR, a) or ""
+            if "ur5e" in nm:
+                model.actuator_forcerange[a] *= 3.0
+                n3 += 1
+        print(f"    r28 force x3: {n3} UR5e arm actuators scaled")
     settle_pen = reset_scene_dual(model, data, specs, first_cmd=cmds_global)
     homes = {s: data.xpos[specs[s]._hand_root_id].copy() for s in VIDEOS}
     warm = dual_warm_start(model, data, specs, cmds_global, frame_skip)
@@ -4364,6 +4349,35 @@ def main() -> int:
             }
         print(f"    r26 Track A terminal freeze: "
               f"{json.dumps(freeze_rec)}")
+    if R25_PREROLL > 0:
+        # r25: the additive pre-roll — the arms ramp home -> path start
+        # (ease-in-out) and the fingers hold the safe half-grip, so the
+        # first video control frame no longer punches through the box
+        # volume (the r24 spawn-punch fix).  f1-f390 frame-exact
+        # semantics unchanged; f(-pre..0) is the additive pre-roll
+        # segment (the contract note in the report).
+        pre_rec = {}
+        for side in VIDEOS:
+            spec_p = specs[side]
+            home_arm = np.array(data.qpos)[spec_p.wrist_qadr]
+            stream = cmds_global[side]["wrist"]
+            start = stream[0:1]
+            rr = 0.5 * (1.0 - np.cos(np.linspace(0.0, np.pi, R25_PREROLL)))
+            pr = home_arm[None, :] + rr[:, None] * (start - home_arm[None, :])
+            cmds_global[side]["wrist"] = np.concatenate([pr, stream], axis=0)
+            fstream = cmds_global[side]["finger"]
+            f_home = np.full((1, fstream.shape[1]), 0.5)
+            f_pre = f_home + rr[:, None] * (fstream[0:1] - f_home)
+            cmds_global[side]["finger"] = np.concatenate([f_pre, fstream],
+                                                         axis=0)
+            pre_rec[side] = {"frames": int(R25_PREROLL),
+                             "arm_home": home_arm.round(3).tolist(),
+                             "finger_hold": 0.5}
+        print(f"    r25 pre-roll: {R25_PREROLL} additive control frames")
+    else:
+        pre_rec = {}
+
+
     rep = dual_replay(model, data, specs, cmds_global, frame_skip)
     rep["support_resting_penetration_m"] = settle_pen
     for s in VIDEOS:

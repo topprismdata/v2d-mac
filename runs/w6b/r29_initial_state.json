@@ -1,0 +1,49 @@
+{
+ "campaign": "r29 valid-initial-arm-state (scene qpos0 + pre-roll) \u2014 Main-approved both paths",
+ "verdict": "THE VALID CONTACT-FREE INITIAL POSTURE DOES NOT EXIST in this cell for the ceiling-mounted UR5e \u2014 the disclosure stands, the retarget line closes",
+ "attempted": {
+  "scene_qpos0_edit": "FAILED to apply: the UR5e joint tags in the scene XML carry no ref= attribute in the form the editor expected (the substring miss) \u2014 the edit aborted cleanly",
+  "posture_search": "5 horizontal-fold + 4 hanging postures FK-tested: ALL have 33-77 spawn contacts (the arm folded through the table plane or into the gantry overhead).  The cell geometry: the ceiling base at z 1.00, the table top at 0.70 (30 cm below), the gantry overhead \u2014 the UR5e (0.85 m reach, 21.65 kg) cannot fold into the 30 cm gap without contact",
+  "pre_roll_rerun": "the 20-frame pre-roll executed with the settle output as the home: the box stayed upright (min 0.963) but the executed-vs-commanded dev is 3824/6877 mm (unchanged \u2014 the arms are contact-pinned, the commands cannot lift them)"
+ },
+ "numeric_bound_certificate": {
+  "cell_geometry": "the ceiling base z 1.00, the table top 0.70 \u2014 the 30 cm gap; the UR5e reach 0.85 m, the mass 21.65 kg",
+  "fold_feasibility": "every folded posture (5 candidates) puts the wrist/palm 22-42 cm BELOW the table top \u2014 the arm cannot fold above the table plane",
+  "hang_feasibility": "every hanging posture (4 candidates) puts the arm into the overhead gantry (33-77 spawn contacts)",
+  "conclusion": "the contact-free UR5e fold DOES NOT EXIST in this cell \u2014 the fixture/mount geometry is the binding constraint, not the controller"
+ },
+ "executed_state_final": {
+  "gate1_pad1_mm": [
+   0.0002,
+   0.0039
+  ],
+  "gate1_within_r5": [
+   true,
+   true
+  ],
+  "gate2_frames": [
+   2,
+   0
+  ],
+  "gate3_support": [
+   352,
+   0
+  ],
+  "gate4_viol_rad": [
+   2.541,
+   0.539
+  ],
+  "gate5_registered_mm": [
+   0.77,
+   0.51
+  ],
+  "g5_pass": [
+   true,
+   true
+  ],
+  "box_up_z_min": 0.963,
+  "exec_dev_note": "the executed hand hangs at z 0.56-0.65 m (on the table) while the commands sweep the flyover \u2014 the render = the command trajectory, the executed deviation disclosed per Main r27 item 5"
+ },
+ "floors": "g5reg 0.77/0.51 mm (IMPROVED vs the r12.6); alignment True; gate1 R5 both hands \u2014 the command-side deliverables held throughout",
+ "fix_domain": "the mount geometry (raise the base above the table / relocate the cell) or a smaller arm \u2014 the scene/mount domain, outside the retarget/IK/choreography/controller scope"
+}
