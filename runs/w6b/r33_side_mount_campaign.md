@@ -60,3 +60,29 @@ A 49-start multi-restart DLS (installed this round) also fails to beat it,
 so the target pose is not reachable from the left base in any tested
 configuration — the next step is a mount/approach redesign for the left
 hand (not more sampling).
+
+## r34 terminal IK fix (this round) and the remaining blocker
+- **Fixed**: the terminal IK resolved the site name `"attachment_site"`, which does not
+  exist in the scene (the sites are `ur5e_r_/ur5e_l_attachment_site`), so `mj_name2id`
+  returned -1 and both arms drove the LAST site. It also tracked the attachment site with a
+  world-constant palm-minus-site offset, which is only valid when the terminal orientation
+  matches the approach one. The terminal now tracks the **palm body** directly
+  (`mj_jacBody`) with a tighter 2e-4 convergence.
+- **Result, command side**: ceiling master unchanged (0.000 / 0.004 mm with the full recipe
+  `R18_NATIVE_TARGET=1 R26_TRACK_A=1 R28_FORCE3=1`, flyover 250, margin 8);
+  side cell (**r33 scene: bases +-0.70, z 0.95-1.05, right Rz180, left Rx180**):
+  right 0.146 mm, **left 0.026 mm (gate1 PASS)**.
+- **Remaining blocker — right-arm execution**: the right arm never tracks its command in
+  either cell (executed 600-830 mm while the command is 0.15 mm), isolated from the left
+  arm (moving the left base 0.9 m away changes nothing), with ctrlrange == jnt_range
+  (+-6.28 rad) so nothing is clipped. The left arm does execute in the side cell
+  (17-50 mm). Next: trace the right arm's `data.ctrl` during `dual_replay` and compare the
+  commanded joint vector against the settled `qpos`.
+- **r34 trace**: with the palm-body fix the left terminal tracks to 0.11 rad and the right to
+  1.9-5.7 rad depending on the mount rotation; but "executed rect" also grows when the arm
+  *tracks* (left 0.11 rad yet 514 mm executed), which means the BOX is being displaced by
+  the approach, not just the arm missing the pose. Two distinct defects remain:
+  (i) right wrist steady-state error (j4 ~1.9 rad), (ii) the approach knocks the box off its
+  start pose.
+- **Best side results so far**: right executed 145 mm (right Rx180 / left Rz180 mounts,
+  z 0.95) and left executed 17 mm (right Rz180 / left Rx180, z 0.95) — never both at once.

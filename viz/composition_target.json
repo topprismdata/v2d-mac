@@ -1,0 +1,18 @@
+{
+  "source_frame": 252,
+  "frame_size": [1280, 720],
+  "box_center_uv": [0.50, 0.38],
+  "box_width_frac": 0.30,
+  "forearm_entry_left_uv": [0.00, 0.55],
+  "forearm_entry_right_uv": [1.00, 0.60],
+  "table_front_edge_in_frame": false,
+  "camera_constraints": {
+    "height_z_m": [0.85, 0.90],
+    "pitch_down_deg": [15, 20],
+    "distance_to_box_m": 0.9,
+    "fov_h_deg_start": 30.0
+  },
+  "tolerance_frac": 0.05,
+  "scene": "allegro_floating_ur5e_side_r27.xml (W6B_SCENE=ur5e, r27 侧入基座 ±0.40/0.85 水平内伸)",
+  "notes": "Main 实测（原片 f_0252）：前臂入画点左右边缘 55-60% 高度、盒中心 (50%,38%)、盒宽占画面 30%、桌面前沿不入画、相机略高于桌面 10-15cm（z≈0.85-0.90）、下俯 15-20°、盒宽 30% 对应距离 ~0.9m / FOV≈30° 起调"
+}
