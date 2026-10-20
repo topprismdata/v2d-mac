@@ -188,6 +188,12 @@ R26_TRACK_A = _os.environ.get("W6B_R26_TRACK_A", "0") == "1"
 # target — the r12.7 lift precedent, semantics verified r23).  The
 # fuse: g5reg > 40 mm or gate1 R5 degradation reverts to the r22 state.
 R23_FLYOVER_MM = float(_os.environ.get("W6B_R23_FLYOVER_MM", "0"))
+# r28 (Main r27 item 3): the UR5e arm servo kp x10 test — the position
+# servos (kp 2000/500) cannot lift the crumpled-settled arm to the
+# flyover path (the executed hand hangs at z 0.56-0.65, the executed-
+# vs-commanded dev 835 mm).  kp x10 (damping x10 for stability),
+# RUNTIME (model-injected before the settle), env-gated
+W6B_R28_KP10 = _os.environ.get("W6B_R28_KP10", "0") == "1"
 SCENE_FILES = {"floating": rs.SCENE_XML,
                "ur5e": REPO / "grounding/assets/allegro_floating_ur5e.xml",
                "ur5e_side": REPO / "grounding/assets/allegro_floating_ur5e_side.xml"}
@@ -2703,6 +2709,21 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
     the gates read.  Only data.ctrl is written inside the loop."""
     import mujoco
 
+    # r28 option 3 (Main item 3): per-joint gravity compensation — the
+    # arm dofs get qfrc_applied = -qfrc_bias (the gravity+coriolis
+    # cancel), so the position servos hold the commanded pose without
+    # fighting gravity.  Env-gated (W6B_R28_GCOMP=1).
+    r28_gcomp = os.environ.get("W6B_R28_GCOMP", "0") == "1"
+    arm_dof_r = [model.jnt_dofadr[mujoco.mj_name2id(
+        model, mujoco.mjtObj.mjOBJ_JOINT, f"ur5e_r_{n}_joint")]
+        for n in ("shoulder_pan", "shoulder_lift", "elbow",
+                  "wrist_1", "wrist_2", "wrist_3")]
+    arm_dof_l = [model.jnt_dofadr[mujoco.mj_name2id(
+        model, mujoco.mjtObj.mjOBJ_JOINT, f"ur5e_l_{n}_joint")]
+        for n in ("shoulder_pan", "shoulder_lift", "elbow",
+                  "wrist_1", "wrist_2", "wrist_3")]
+    arm_dofs = arm_dof_r + arm_dof_l
+
     dt_ctrl = frame_skip * float(model.opt.timestep)
     ctrl_lo = model.actuator_ctrlrange[:, 0]
     ctrl_hi = model.actuator_ctrlrange[:, 1]
@@ -2719,6 +2740,10 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
     obj_world, contact_cls, qpos_full, ctrl_full = [], [], [], []
 
     for t in range(n_frames):
+        if r28_gcomp:
+            # the gravity+coriolis cancel on the arm dofs (the
+            # compensation the position servos lack)
+            data.qfrc_applied[arm_dofs] = -data.qfrc_bias[arm_dofs]
         for side in VIDEOS:
             spec = specs[side]
             w = np.clip(cmds[side]["wrist"][t], ctrl_lo[spec.wrist_act_id], ctrl_hi[spec.wrist_act_id])
@@ -4269,6 +4294,18 @@ def main() -> int:
               f"frames { {s: clamp_rec['frames_clamped'][s] for s in VIDEOS} }")
 
     print(f"[5/7] dual warm start + replay ({n_ctrl} control frames @ {CTRL_HZ} Hz)")
+    if W6B_R28_KP10:
+        # r28: the UR5e arm actuator kp x10 (damping x10) — runtime
+        # model injection before the settle; the wrist servos x10 too
+        n10 = 0
+        for a in range(model.nu):
+            nm = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_ACTUATOR, a) or ""
+            if "ur5e" in nm:
+                model.actuator_gainprm[a, 0] *= 10.0
+                model.actuator_biasprm[a, 1] *= 10.0
+                model.actuator_biasprm[a, 2] *= 10.0
+                n10 += 1
+        print(f"    r28 kp x10: {n10} UR5e arm actuators scaled")
     settle_pen = reset_scene_dual(model, data, specs, first_cmd=cmds_global)
     homes = {s: data.xpos[specs[s]._hand_root_id].copy() for s in VIDEOS}
     warm = dual_warm_start(model, data, specs, cmds_global, frame_skip)

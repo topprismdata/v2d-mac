@@ -1,0 +1,89 @@
+{
+ "campaign": "r28 servo-sag root-cause (Main r27 item 3)",
+ "experiments": {
+  "base_kp": {
+   "gate1_pad1_mm": [
+    0.0002,
+    0.0039
+   ],
+   "gate3_support": [
+    246,
+    272
+   ],
+   "exec_dev_note": "the arms droop from the crumpled settle"
+  },
+  "kp_x10": {
+   "result": "VIOLENT THRASH \u2014 the executed-vs-commanded dev exploded to 3824/6877 mm; the stiffer servos against the crumpled-contact jam made the arms thrash",
+   "verdict": "rejected"
+  },
+  "gravity_comp_qfrc_applied": {
+   "result": "NO CHANGE vs kp_x10 \u2014 the arms are CONTACT-JAMMED at the crumpled spawn (the servo torque, gravity comp, and stiffness all lose to the jam)",
+   "verdict": "rejected \u2014 the jam is the binding constraint"
+  }
+ },
+ "root_cause": "the replay's INITIAL ARM STATE (model.qpos0 for the identity-quat ceiling mount) points the arms DOWN into the table/vise volume \u2014 the settle (400 steps) cannot unfold them against the contacts, and the executed trajectory runs from the CRUMPLED state: the executed hand hangs at z 0.56-0.65 m while the commands sweep a 25 cm flyover \u2014 the executed-vs-commanded dev 835 mm (base) / 3824 mm (kp10) \u2014 the pads sweep 0.22-1.10 m",
+ "the_real_fix_outside_domain": "the replay INITIAL STATE must be a valid raised arm posture (not qpos0-down) \u2014 either (a) the pre-roll ramp from a hand-authored raised q0 (the round-4 contract amendment, Main's domain) or (b) a home-pose scene edit (the UR5e trees' qpos0 set to an unfolded posture \u2014 the scene domain).  Both are one-line scene/contract changes once approved",
+ "disclosure_per_item5": "the render = the COMMAND trajectory; the EXECUTED trajectory deviates up to 835 mm (the arms lie crumpled on the table in physics) \u2014 the render is NOT a physically executable state; disclosed per Main item 5",
+ "final_frozen_table": {
+  "gate1_pad1_mm": [
+   0.0002,
+   0.0039
+  ],
+  "gate1_within_r5": [
+   true,
+   true
+  ],
+  "gate1_fwd_deg": [
+   15.8,
+   21.1
+  ],
+  "gate1_pads_in_rect": [
+   1,
+   1
+  ],
+  "gate2_frames": [
+   2,
+   0
+  ],
+  "gate3_support": [
+   352,
+   0
+  ],
+  "gate4_viol_rad": [
+   2.541,
+   0.539
+  ],
+  "gate5_registered_mm": [
+   0.77,
+   0.51
+  ],
+  "g5_pass": [
+   true,
+   true
+  ],
+  "box_up_z_min": 0.962,
+  "baseline_r12_6": {
+   "gate1_mm": [
+    15.891,
+    1.607
+   ],
+   "gate2_frames": [
+    5,
+    14
+   ],
+   "gate3_support": [
+    246,
+    272
+   ],
+   "gate4_viol_rad": [
+    1.377,
+    2.536
+   ],
+   "gate5_registered_mm": [
+    1.06,
+    0.98
+   ]
+  },
+  "floors": "g5reg 0.77/0.51 mm (IMPROVED vs the r12.6 1.06/0.98); frame_alignment True; the box upright throughout (up_z min 0.962) \u2014 the command-side deliverables all hold; the EXECUTED side is the disclosure"
+ }
+}
