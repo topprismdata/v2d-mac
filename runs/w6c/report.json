@@ -3140,6 +3140,15 @@
     "base_xml_sha256_16": "604ae7e09e4f7f7a",
     "engage_ckpt_sha256_16": "1aec5c140888b3a7"
    }
+  },
+  "n_summation_convention": {
+   "pinned": "约定一（W.pad_normal_forces 现行实现）：先列手-盒接触 geom 对清单，再对每对只取 d.contact 中首个匹配点求 |f[:3]| —— 每 geom 对首接触口径；约定二（全接触求和）：d.ncon 遍历全部手-盒接触点逐一 |f[:3]| 累加",
+   "side_by_side": {
+    "全接触和（约定二）": "静置态实测 rf 族=6.899 N（rf_distal 3.652 + rf_tip 3.247，多接触点全计）",
+    "每对首接触（约定一）": "静置态实测右手=5.106 N（多接触对只计一点，欠计）；mj_forward 瞬时态=16.37/7.75（未收敛 warmstart，另因）"
+   },
+   "difference_cause": "约定一每 geom 对只计首接触点——rf_distal 单对含 2-3 个接触点时只计 1 点 → 欠计；两口径之差=欠计部分。verifier 头条 9.72/6.53 与两者均不同（其协议含 1200 帧静置收敛，另一时间维度），已在前段标注",
+   "note": "E1 负结果不受影响：同一 qpos 同一力学，判据用同一口径贯穿"
   }
  },
  "wedge_mechanism_adjudication": {
