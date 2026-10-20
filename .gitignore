@@ -43,6 +43,8 @@ runs/**
 !runs/w6b/r27_red_closure.json
 !runs/w6b/r28_servo_root_cause.json
 !runs/w6b/r29_initial_state.json
+!runs/w6b/r29_side_mount.json
+!runs/w6b/r26_dual_pad_certificate.json
 !runs/w6b/r26_dual_pad_certificate.json
 !runs/w6b/evidence/*.png
 !runs/p0/**/SUMMARY.md

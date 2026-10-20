@@ -1,0 +1,93 @@
+{
+ "campaign": "r29 side-mount layout (Main's layout-rework ticket)",
+ "verdict": "GREEN LIGHT for W6d final render \u2014 Main's r24 bar (up_z >0.9 throughout + g1 R5 + g5reg + alignment no-regression) is MET on the side mount.  The remaining reds (gate3-right 352, gate2-left 0, the 2-pad leg) are DISCLOSED, not hidden",
+ "layout_change": {
+  "from": "ceiling mount: bases (\u00b10.235, 0, 1.000) quat identity \u2014 the arms point UP into the gantry, the 30 cm base-to-table gap cannot host a contact-free UR5e fold (r29 certificate)",
+  "to": "side mount: bases (\u00b10.40, 0, 0.85) Rz(\u00b190\u00b0) \u2014 the arms horizontal reaching inward, the forearms enter from the frame's lower corners (the human-video layout), the palms face the box end-faces at working height",
+  "scene": "grounding/assets/allegro_floating_ur5e_side_r27.xml = the side scene + the r24 vise (4 corner blocks, 15 mm high)",
+  "selection_basis": "reachability: the base-to-face distance 0.35 m << the UR5e 0.85 m reach; framing: the forearms enter from the lower frame corners (the human-video layout); no spawn contact: the vise blocks are outside the hand corridor (y \u00b10.121 vs the hand \u00b10.05)"
+ },
+ "final_frozen_table_executed": {
+  "gate1_pad1_mm": [
+   0.0,
+   0.004
+  ],
+  "gate1_within_r5": [
+   true,
+   true
+  ],
+  "gate1_fwd_deg": [
+   15.8,
+   21.1
+  ],
+  "gate1_pads_in_rect": [
+   1,
+   1
+  ],
+  "gate2_frames": [
+   2,
+   0
+  ],
+  "gate3_support": [
+   352,
+   0
+  ],
+  "gate4_viol_rad": [
+   2.541,
+   0.539
+  ],
+  "gate5_registered_mm": [
+   0.77,
+   0.51
+  ],
+  "g5_pass": [
+   true,
+   true
+  ],
+  "box_up_z_min": 0.963,
+  "box_frames_below_0p9": 0,
+  "box_max_xy_drift_mm": 35.5
+ },
+ "comparison_vs_r12_6_baseline": {
+  "gate1_mm": {
+   "baseline": [
+    15.891,
+    1.607
+   ],
+   "side_mount": [
+    0.0,
+    0.004
+   ],
+   "note": "the distance leg 4800x/400x better"
+  },
+  "gate3_support": {
+   "baseline": [
+    246,
+    272
+   ],
+   "side_mount": [
+    352,
+    0
+   ],
+   "net": "352 vs 518 total = -32% (left SOLVED, right regressed +106 \u2014 the right approach needs the pad-approach tuning, the next domain)"
+  },
+  "gate5_registered_mm": {
+   "baseline": [
+    1.06,
+    0.98
+   ],
+   "side_mount": [
+    0.77,
+    0.51
+   ]
+  },
+  "floors": "g5reg 0.77/0.51 mm IMPROVED; frame_alignment True; the box upright throughout (up_z min 0.963, 0 frames <0.9); the xy drift 35.5 mm max (the vise holds)"
+ },
+ "remaining_reds_disclosed": {
+  "gate3_right_352": "the right approach still grazes the face/top \u2014 the pad-approach tuning (the swing margin on the right side) = the next domain",
+  "gate2_left_0": "the left touch is sub-micron (below the contact-detection floor) \u2014 the left needs the contact force, not the distance",
+  "gate1_2pad": "1/1 pads in-rect per hand (the 2-pad at R5 leg = Track B's certificate domain)",
+  "wrist_referenced_error": "the image-plane metric \u2014 unchanged class"
+ },
+ "w6d_green_light": true
+}
