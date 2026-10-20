@@ -3150,5 +3150,443 @@
    "'solver warmstart basin effect'": "WITHDRAWN (GPT 判缺乏独立证据——此前定案过头，降为未验证工作假说)",
    "vise frame-0 static jam (9.72/6.53 N)": "VERIFIED (独立保留——静态解 bit-identical，双腕顶棱勾压几何实测)"
   }
+ },
+ "quasistatic_lift_E1": {
+  "verdict": "E1 NEGATIVE (cleanroom): all three control laws FAIL the gate from the repo-bit-reproducible start - the quasistatic path does not lift the box",
+  "foundation_note": "start replay = N (16.37, 7.75) - THIS repo's bit-reproducible frame-0 static; the verifier-cited 9.72/6.53 is NOT reproducible in-repo (no artifact in runs/verify_lift contains it) - all results START-CONDITIONAL on (16.37, 7.75)",
+  "protocol": {
+   "mujoco": "3.16.0",
+   "hashes": {
+    "base_xml": "604ae7e09e4f7f7a",
+    "engage": "1aec5c140888b3a7"
+   },
+   "ctrl_hz": 20,
+   "frames": 120,
+   "z_rate_m_per_frame": 0.0001,
+   "n_target": 10.5,
+   "tilt_rad": 0.175,
+   "start_replay": {
+    "n": [
+     16.37,
+     7.75
+    ],
+    "matches_verifier_citation": false
+   }
+  },
+  "laws": {
+   "a": {
+    "start": {
+     "n_r": 16.367,
+     "n_l": 7.746,
+     "clear_mm": 2.963,
+     "pen_mm": 0.64,
+     "pad_contacts": 6,
+     "slip_mm": 0.0,
+     "yaw_deg": 2.28
+    },
+    "peak_mm": 3.15,
+    "window_5mm_f": 0,
+    "max_pen_mm": 0.644,
+    "min_pad_contacts": 2,
+    "final_slip_mm": 1.11,
+    "final_yaw_deg": 2.0,
+    "gate_pass": false,
+    "frames": [
+     {
+      "n_r": 13.529,
+      "n_l": 7.663,
+      "clear_mm": 2.967,
+      "pen_mm": 0.642,
+      "pad_contacts": 6,
+      "slip_mm": 0.0,
+      "yaw_deg": 2.28
+     },
+     {
+      "n_r": 7.89,
+      "n_l": 6.683,
+      "clear_mm": 3.004,
+      "pen_mm": 0.583,
+      "pad_contacts": 6,
+      "slip_mm": 0.02,
+      "yaw_deg": 2.27
+     },
+     {
+      "n_r": 7.494,
+      "n_l": 6.481,
+      "clear_mm": 3.045,
+      "pen_mm": 0.56,
+      "pad_contacts": 6,
+      "slip_mm": 0.02,
+      "yaw_deg": 2.26
+     },
+     {
+      "n_r": 7.121,
+      "n_l": 7.22,
+      "clear_mm": 3.09,
+      "pen_mm": 0.495,
+      "pad_contacts": 7,
+      "slip_mm": 0.02,
+      "yaw_deg": 2.25
+     },
+     {
+      "n_r": 6.6,
+      "n_l": 7.623,
+      "clear_mm": 3.136,
+      "pen_mm": 0.549,
+      "pad_contacts": 8,
+      "slip_mm": 0.03,
+      "yaw_deg": 2.25
+     },
+     {
+      "n_r": 7.801,
+      "n_l": 0.0,
+      "clear_mm": 3.123,
+      "pen_mm": 0.283,
+      "pad_contacts": 3,
+      "slip_mm": 0.15,
+      "yaw_deg": 2.2
+     },
+     {
+      "n_r": 6.488,
+      "n_l": 0.0,
+      "clear_mm": 3.079,
+      "pen_mm": 0.239,
+      "pad_contacts": 3,
+      "slip_mm": 0.3,
+      "yaw_deg": 2.15
+     },
+     {
+      "n_r": 6.388,
+      "n_l": 0.0,
+      "clear_mm": 3.031,
+      "pen_mm": 0.226,
+      "pad_contacts": 3,
+      "slip_mm": 0.42,
+      "yaw_deg": 2.1
+     },
+     {
+      "n_r": 5.548,
+      "n_l": 0.0,
+      "clear_mm": 2.957,
+      "pen_mm": 0.213,
+      "pad_contacts": 3,
+      "slip_mm": 0.57,
+      "yaw_deg": 2.06
+     },
+     {
+      "n_r": 2.177,
+      "n_l": 0.0,
+      "clear_mm": 2.754,
+      "pen_mm": 0.192,
+      "pad_contacts": 2,
+      "slip_mm": 0.82,
+      "yaw_deg": 2.0
+     },
+     {
+      "n_r": 2.113,
+      "n_l": 0.978,
+      "clear_mm": 2.388,
+      "pen_mm": 0.14,
+      "pad_contacts": 3,
+      "slip_mm": 1.09,
+      "yaw_deg": 1.98
+     },
+     {
+      "n_r": 1.619,
+      "n_l": 1.932,
+      "clear_mm": 2.277,
+      "pen_mm": 0.224,
+      "pad_contacts": 3,
+      "slip_mm": 1.12,
+      "yaw_deg": 1.99
+     },
+     {
+      "n_r": 1.087,
+      "n_l": 1.393,
+      "clear_mm": 2.242,
+      "pen_mm": 0.261,
+      "pad_contacts": 3,
+      "slip_mm": 1.11,
+      "yaw_deg": 2.0
+     }
+    ]
+   },
+   "b": {
+    "start": {
+     "n_r": 16.367,
+     "n_l": 7.746,
+     "clear_mm": 2.963,
+     "pen_mm": 0.64,
+     "pad_contacts": 6,
+     "slip_mm": 0.0,
+     "yaw_deg": 2.28
+    },
+    "peak_mm": 3.13,
+    "window_5mm_f": 0,
+    "max_pen_mm": 0.648,
+    "min_pad_contacts": 2,
+    "final_slip_mm": 1.14,
+    "final_yaw_deg": 2.0,
+    "gate_pass": false,
+    "frames": [
+     {
+      "n_r": 13.569,
+      "n_l": 7.863,
+      "clear_mm": 2.966,
+      "pen_mm": 0.648,
+      "pad_contacts": 6,
+      "slip_mm": 0.0,
+      "yaw_deg": 2.28
+     },
+     {
+      "n_r": 8.615,
+      "n_l": 6.608,
+      "clear_mm": 2.995,
+      "pen_mm": 0.578,
+      "pad_contacts": 6,
+      "slip_mm": 0.03,
+      "yaw_deg": 2.27
+     },
+     {
+      "n_r": 7.745,
+      "n_l": 8.001,
+      "clear_mm": 3.033,
+      "pen_mm": 0.57,
+      "pad_contacts": 7,
+      "slip_mm": 0.03,
+      "yaw_deg": 2.26
+     },
+     {
+      "n_r": 7.142,
+      "n_l": 3.51,
+      "clear_mm": 3.078,
+      "pen_mm": 0.497,
+      "pad_contacts": 8,
+      "slip_mm": 0.02,
+      "yaw_deg": 2.25
+     },
+     {
+      "n_r": 6.483,
+      "n_l": 10.802,
+      "clear_mm": 3.124,
+      "pen_mm": 0.457,
+      "pad_contacts": 10,
+      "slip_mm": 0.03,
+      "yaw_deg": 2.25
+     },
+     {
+      "n_r": 7.508,
+      "n_l": 0.0,
+      "clear_mm": 3.105,
+      "pen_mm": 0.277,
+      "pad_contacts": 3,
+      "slip_mm": 0.17,
+      "yaw_deg": 2.2
+     },
+     {
+      "n_r": 6.522,
+      "n_l": 0.0,
+      "clear_mm": 3.06,
+      "pen_mm": 0.239,
+      "pad_contacts": 3,
+      "slip_mm": 0.32,
+      "yaw_deg": 2.14
+     },
+     {
+      "n_r": 6.228,
+      "n_l": 0.0,
+      "clear_mm": 3.011,
+      "pen_mm": 0.225,
+      "pad_contacts": 3,
+      "slip_mm": 0.44,
+      "yaw_deg": 2.1
+     },
+     {
+      "n_r": 5.017,
+      "n_l": 0.0,
+      "clear_mm": 2.922,
+      "pen_mm": 0.213,
+      "pad_contacts": 3,
+      "slip_mm": 0.61,
+      "yaw_deg": 2.05
+     },
+     {
+      "n_r": 2.003,
+      "n_l": 0.0,
+      "clear_mm": 2.676,
+      "pen_mm": 0.186,
+      "pad_contacts": 2,
+      "slip_mm": 0.89,
+      "yaw_deg": 1.99
+     },
+     {
+      "n_r": 2.025,
+      "n_l": 1.655,
+      "clear_mm": 2.295,
+      "pen_mm": 0.167,
+      "pad_contacts": 3,
+      "slip_mm": 1.14,
+      "yaw_deg": 1.98
+     },
+     {
+      "n_r": 1.531,
+      "n_l": 1.265,
+      "clear_mm": 2.2,
+      "pen_mm": 0.232,
+      "pad_contacts": 3,
+      "slip_mm": 1.16,
+      "yaw_deg": 1.99
+     },
+     {
+      "n_r": 1.014,
+      "n_l": 1.422,
+      "clear_mm": 2.17,
+      "pen_mm": 0.269,
+      "pad_contacts": 3,
+      "slip_mm": 1.14,
+      "yaw_deg": 2.0
+     }
+    ]
+   },
+   "c": {
+    "start": {
+     "n_r": 16.367,
+     "n_l": 7.746,
+     "clear_mm": 2.963,
+     "pen_mm": 0.64,
+     "pad_contacts": 6,
+     "slip_mm": 0.0,
+     "yaw_deg": 2.28
+    },
+    "peak_mm": 3.08,
+    "window_5mm_f": 0,
+    "max_pen_mm": 0.527,
+    "min_pad_contacts": 0,
+    "final_slip_mm": 0.14,
+    "final_yaw_deg": 2.22,
+    "gate_pass": false,
+    "frames": [
+     {
+      "n_r": 10.768,
+      "n_l": 6.325,
+      "clear_mm": 2.965,
+      "pen_mm": 0.527,
+      "pad_contacts": 5,
+      "slip_mm": 0.01,
+      "yaw_deg": 2.28
+     },
+     {
+      "n_r": 6.329,
+      "n_l": 5.389,
+      "clear_mm": 2.994,
+      "pen_mm": 0.446,
+      "pad_contacts": 5,
+      "slip_mm": 0.06,
+      "yaw_deg": 2.26
+     },
+     {
+      "n_r": 2.063,
+      "n_l": 6.952,
+      "clear_mm": 3.053,
+      "pen_mm": 0.442,
+      "pad_contacts": 7,
+      "slip_mm": 0.03,
+      "yaw_deg": 2.26
+     },
+     {
+      "n_r": 0.0,
+      "n_l": 0.0,
+      "clear_mm": 3.073,
+      "pen_mm": 0.284,
+      "pad_contacts": 0,
+      "slip_mm": 0.12,
+      "yaw_deg": 2.22
+     },
+     {
+      "n_r": 0.0,
+      "n_l": 1.462,
+      "clear_mm": 3.068,
+      "pen_mm": 0.248,
+      "pad_contacts": 1,
+      "slip_mm": 0.2,
+      "yaw_deg": 2.19
+     },
+     {
+      "n_r": 0.0,
+      "n_l": 2.621,
+      "clear_mm": 3.07,
+      "pen_mm": 0.341,
+      "pad_contacts": 3,
+      "slip_mm": 0.23,
+      "yaw_deg": 2.18
+     },
+     {
+      "n_r": 0.0,
+      "n_l": 5.893,
+      "clear_mm": 3.016,
+      "pen_mm": 0.417,
+      "pad_contacts": 3,
+      "slip_mm": 0.25,
+      "yaw_deg": 2.17
+     },
+     {
+      "n_r": 0.0,
+      "n_l": 7.571,
+      "clear_mm": 2.969,
+      "pen_mm": 0.423,
+      "pad_contacts": 5,
+      "slip_mm": 0.25,
+      "yaw_deg": 2.18
+     },
+     {
+      "n_r": 0.0,
+      "n_l": 5.617,
+      "clear_mm": 2.957,
+      "pen_mm": 0.322,
+      "pad_contacts": 6,
+      "slip_mm": 0.23,
+      "yaw_deg": 2.18
+     },
+     {
+      "n_r": 0.0,
+      "n_l": 5.873,
+      "clear_mm": 2.955,
+      "pen_mm": 0.404,
+      "pad_contacts": 5,
+      "slip_mm": 0.21,
+      "yaw_deg": 2.19
+     },
+     {
+      "n_r": 0.0,
+      "n_l": 6.385,
+      "clear_mm": 2.956,
+      "pen_mm": 0.455,
+      "pad_contacts": 5,
+      "slip_mm": 0.19,
+      "yaw_deg": 2.2
+     },
+     {
+      "n_r": 0.0,
+      "n_l": 6.906,
+      "clear_mm": 2.954,
+      "pen_mm": 0.487,
+      "pad_contacts": 5,
+      "slip_mm": 0.16,
+      "yaw_deg": 2.21
+     },
+     {
+      "n_r": 0.0,
+      "n_l": 7.097,
+      "clear_mm": 2.949,
+      "pen_mm": 0.493,
+      "pad_contacts": 5,
+      "slip_mm": 0.14,
+      "yaw_deg": 2.22
+     }
+    ]
+   }
+  },
+  "reading": "peak 3.08-3.15mm transient with ZERO 5mm-window in every law; penetration breaches the 0.5mm gate (0.53-0.65mm); the micro-tilt law (c) LOSES pad contact entirely. The {z-climb, curl-servo, tilt} family contains no gate-pass - consistent with the curl-arc compliance analysis.",
+  "e2_e3": "awaiting go - E1 numbers delivered"
  }
 }
