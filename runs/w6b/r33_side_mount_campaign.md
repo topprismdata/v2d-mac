@@ -173,3 +173,29 @@ left quat identity, the 10 wrist-hand excludes).
 Raising the gain makes it worse: at the face the pads press in and the contact
 reaction pushes the arm off.  The residual is the reaction of the contact, not
 servo droop alone.
+
+## r38-r41 the executed-state error, closed down to 4.02 / 11.72 mm
+Progression on the r34 side cell (bases z 1.35, left quat identity, flyover 250,
+margin 8, `W6B_R39_TGC=1 W6B_R39_HOLD=60`):
+
+| step | right | left | what changed |
+|---|---|---|---|
+| r37 start | 43.63 | 172.73 | mirrored bases + 10 wrist-hand excludes |
+| r38 | 26.49 | 31.90 | terminal pad set flattened (roll +0.12/+0.11 rad: pad x spread 7.7 -> 2.1 mm) - kept in code, default OFF (it costs the cmd gate: left cmd rect 0.013 -> 1.913 mm) |
+| r39 | 32.56 | 44.67 | terminal gravity compensation (see below) alone |
+| r40 | 18.52 | 20.68 | 362 same-hand finger-finger excludes (the Allegro's conservative phalanx capsules overlap 4-6 mm at rest and 14.7 mm in the retargeted grasp; the resulting constraint torques saturated the right shoulder_pan at -150 Nm and rotated the hand: forward axis 26 -> 77 deg) |
+| r41 | **4.02** | **11.72** | wrist collision proxies at the REAL UR5e radius (0.0225 instead of 0.040 - the 80 mm capsule was 4 mm too fat and pressed the wrist 3.6/3.9 mm into the table; the table reaction was saturating the arm servos) |
+
+### r39 terminal gravity compensation (default OFF, env-gated)
+The arm's P-servos carry a steady droop of tau_g/kp: 0.042 rad at the shoulder
+(0.425 m lever) plus elbow and wrist terms => ~30 mm at the tool, which IS the
+executed-state error.  `qfrc_applied = -qfrc_bias` cancels it exactly, but only
+safely during the terminal hold: over the whole approach qfrc_bias carries the
+Coriolis terms and injecting them destabilises the replay (r28 GCOMP: 687 mm).
+Restricted to the last 60 frames it gives right 32.6 -> 13.3 mm.
+
+### residual
+- right 4.02 mm (gate < 5 mm) with forward axis 20.2 deg (<= 35 deg) - PASS
+- left 11.72 mm with forward axis 38.4 deg (> 35 deg) - still failing; the left
+  wrist still grazes the table by 1.11 mm (right: 0.31 mm) and the hand ends
+  3 deg off the inward normal.

@@ -266,13 +266,13 @@
                 <geom mesh="ur5e_wrist2_0" material="ur5e_black" class="ur5e_visual" />
                 <geom mesh="ur5e_wrist2_1" material="ur5e_urblue" class="ur5e_visual" />
                 <geom mesh="ur5e_wrist2_2" material="ur5e_jointgray" class="ur5e_visual" />
-                <geom class="ur5e_collision" size="0.04 0.06" pos="0 0 0.04" />
-                <geom class="ur5e_collision" pos="0 0.02 0.1" quat="1 1 0 0" size="0.04 0.04" />
+                <geom class="ur5e_collision" size="0.0225 0.055" pos="0 0 0.04" />
+                <geom class="ur5e_collision" pos="0 0.02 0.1" quat="1 1 0 0" size="0.0225 0.02" />
                 <body name="ur5e_r_wrist_3_link" pos="0 0 0.1">
                   <inertial mass="0.1889" pos="0 0.0771683 0" quat="1 0 0 1" diaginertia="0.000132134 9.90863e-05 9.90863e-05" />
                   <joint name="ur5e_r_wrist_3_joint" class="ur5e_size1" />
                   <geom material="ur5e_linkgray" mesh="ur5e_wrist3" class="ur5e_visual" />
-                  <geom class="ur5e_eef_collision" pos="0 0.08 0" quat="1 1 0 0" size="0.04 0.02" />
+                  <geom class="ur5e_eef_collision" pos="0 0.08 0" quat="1 1 0 0" size="0.025 0.02" />
                   <site name="ur5e_r_attachment_site" pos="0 0.1 0" quat="-1 1 0 0" />
                   <body name="hand_root" pos="0 0.1 0" quat="-1 1 0 0">
                     <body name="wmount_right" pos="0 0 0">
@@ -447,13 +447,13 @@
                 <geom mesh="ur5e_wrist2_0" material="ur5e_black" class="ur5e_visual" />
                 <geom mesh="ur5e_wrist2_1" material="ur5e_urblue" class="ur5e_visual" />
                 <geom mesh="ur5e_wrist2_2" material="ur5e_jointgray" class="ur5e_visual" />
-                <geom class="ur5e_collision" size="0.04 0.06" pos="0 0 0.04" />
-                <geom class="ur5e_collision" pos="0 0.02 0.1" quat="1 1 0 0" size="0.04 0.04" />
+                <geom class="ur5e_collision" size="0.0225 0.055" pos="0 0 0.04" />
+                <geom class="ur5e_collision" pos="0 0.02 0.1" quat="1 1 0 0" size="0.0225 0.02" />
                 <body name="ur5e_l_wrist_3_link" pos="0 0 0.1">
                   <inertial mass="0.1889" pos="0 0.0771683 0" quat="1 0 0 1" diaginertia="0.000132134 9.90863e-05 9.90863e-05" />
                   <joint name="ur5e_l_wrist_3_joint" class="ur5e_size1" />
                   <geom material="ur5e_linkgray" mesh="ur5e_wrist3" class="ur5e_visual" />
-                  <geom class="ur5e_eef_collision" pos="0 0.08 0" quat="1 1 0 0" size="0.04 0.02" />
+                  <geom class="ur5e_eef_collision" pos="0 0.08 0" quat="1 1 0 0" size="0.025 0.02" />
                   <site name="ur5e_l_attachment_site" pos="0 0.1 0" quat="-1 1 0 0" />
                   <body name="hand_root_left" pos="0 0.1 0" quat="-1 1 0 0">
       <body name="wmount_left" pos="0 0 0">
@@ -587,7 +587,386 @@
       </body>
     </body>
   </worldbody>
+  <!-- r41: the UR5e wrist collision proxies were 4 mm too fat
+       (capsule radius 0.040 = 80 mm diameter; the real UR5e wrist is
+       ~45 mm).  The oversized capsule pressed the wrist into the
+       table (measured 3.6/3.9 mm penetration at the terminal) and
+       the table reaction saturated the arm servos.  At the real
+       radius (0.0225) the wrist clears the table and the executed
+       gap drops from 32.6/44.7 mm to 4.02/11.72 mm. -->
   <contact>
+    <!-- r40: same-hand finger-finger collision.  The Allegro collision
+         proxies of adjacent fingers overlap by 4-6 mm even in the rest
+         pose (the capsules are conservative around each phalanx), and
+         the retargeted grasp closes them further: measured 14.7 mm
+         (ff_proximal vs mf_proximal) on the right at the terminal.  The
+         resulting constraint torques saturated the right shoulder_pan
+         (-150 Nm) and rotated the hand (forward axis 26 -> 77 deg).
+         Same as the palm-vs-finger excludes already in this scene: the
+         fingers are allowed to touch each other.  The depth is still
+         measured and reported (see the r40 ledger entry). -->
+    <exclude body1="ff_base" body2="mf_base" />
+    <exclude body1="ff_base" body2="mf_proximal" />
+    <exclude body1="ff_base" body2="mf_medial" />
+    <exclude body1="ff_base" body2="mf_distal" />
+    <exclude body1="ff_base" body2="mf_tip" />
+    <exclude body1="ff_base" body2="mf_pad" />
+    <exclude body1="ff_proximal" body2="mf_base" />
+    <exclude body1="ff_proximal" body2="mf_proximal" />
+    <exclude body1="ff_proximal" body2="mf_medial" />
+    <exclude body1="ff_proximal" body2="mf_distal" />
+    <exclude body1="ff_proximal" body2="mf_tip" />
+    <exclude body1="ff_proximal" body2="mf_pad" />
+    <exclude body1="ff_medial" body2="mf_base" />
+    <exclude body1="ff_medial" body2="mf_proximal" />
+    <exclude body1="ff_medial" body2="mf_medial" />
+    <exclude body1="ff_medial" body2="mf_distal" />
+    <exclude body1="ff_medial" body2="mf_tip" />
+    <exclude body1="ff_medial" body2="mf_pad" />
+    <exclude body1="ff_distal" body2="mf_base" />
+    <exclude body1="ff_distal" body2="mf_proximal" />
+    <exclude body1="ff_distal" body2="mf_medial" />
+    <exclude body1="ff_distal" body2="mf_distal" />
+    <exclude body1="ff_distal" body2="mf_tip" />
+    <exclude body1="ff_distal" body2="mf_pad" />
+    <exclude body1="ff_tip" body2="mf_base" />
+    <exclude body1="ff_tip" body2="mf_proximal" />
+    <exclude body1="ff_tip" body2="mf_medial" />
+    <exclude body1="ff_tip" body2="mf_distal" />
+    <exclude body1="ff_tip" body2="mf_tip" />
+    <exclude body1="ff_tip" body2="mf_pad" />
+    <exclude body1="ff_pad" body2="mf_base" />
+    <exclude body1="ff_pad" body2="mf_proximal" />
+    <exclude body1="ff_pad" body2="mf_medial" />
+    <exclude body1="ff_pad" body2="mf_distal" />
+    <exclude body1="ff_pad" body2="mf_tip" />
+    <exclude body1="ff_pad" body2="mf_pad" />
+    <exclude body1="ff_base" body2="rf_base" />
+    <exclude body1="ff_base" body2="rf_proximal" />
+    <exclude body1="ff_base" body2="rf_medial" />
+    <exclude body1="ff_base" body2="rf_distal" />
+    <exclude body1="ff_base" body2="rf_tip" />
+    <exclude body1="ff_proximal" body2="rf_base" />
+    <exclude body1="ff_proximal" body2="rf_proximal" />
+    <exclude body1="ff_proximal" body2="rf_medial" />
+    <exclude body1="ff_proximal" body2="rf_distal" />
+    <exclude body1="ff_proximal" body2="rf_tip" />
+    <exclude body1="ff_medial" body2="rf_base" />
+    <exclude body1="ff_medial" body2="rf_proximal" />
+    <exclude body1="ff_medial" body2="rf_medial" />
+    <exclude body1="ff_medial" body2="rf_distal" />
+    <exclude body1="ff_medial" body2="rf_tip" />
+    <exclude body1="ff_distal" body2="rf_base" />
+    <exclude body1="ff_distal" body2="rf_proximal" />
+    <exclude body1="ff_distal" body2="rf_medial" />
+    <exclude body1="ff_distal" body2="rf_distal" />
+    <exclude body1="ff_distal" body2="rf_tip" />
+    <exclude body1="ff_tip" body2="rf_base" />
+    <exclude body1="ff_tip" body2="rf_proximal" />
+    <exclude body1="ff_tip" body2="rf_medial" />
+    <exclude body1="ff_tip" body2="rf_distal" />
+    <exclude body1="ff_tip" body2="rf_tip" />
+    <exclude body1="ff_pad" body2="rf_base" />
+    <exclude body1="ff_pad" body2="rf_proximal" />
+    <exclude body1="ff_pad" body2="rf_medial" />
+    <exclude body1="ff_pad" body2="rf_distal" />
+    <exclude body1="ff_pad" body2="rf_tip" />
+    <exclude body1="ff_base" body2="th_base" />
+    <exclude body1="ff_base" body2="th_proximal" />
+    <exclude body1="ff_base" body2="th_medial" />
+    <exclude body1="ff_base" body2="th_distal" />
+    <exclude body1="ff_base" body2="th_tip" />
+    <exclude body1="ff_proximal" body2="th_base" />
+    <exclude body1="ff_proximal" body2="th_proximal" />
+    <exclude body1="ff_proximal" body2="th_medial" />
+    <exclude body1="ff_proximal" body2="th_distal" />
+    <exclude body1="ff_proximal" body2="th_tip" />
+    <exclude body1="ff_medial" body2="th_base" />
+    <exclude body1="ff_medial" body2="th_proximal" />
+    <exclude body1="ff_medial" body2="th_medial" />
+    <exclude body1="ff_medial" body2="th_distal" />
+    <exclude body1="ff_medial" body2="th_tip" />
+    <exclude body1="ff_distal" body2="th_base" />
+    <exclude body1="ff_distal" body2="th_proximal" />
+    <exclude body1="ff_distal" body2="th_medial" />
+    <exclude body1="ff_distal" body2="th_distal" />
+    <exclude body1="ff_distal" body2="th_tip" />
+    <exclude body1="ff_tip" body2="th_base" />
+    <exclude body1="ff_tip" body2="th_proximal" />
+    <exclude body1="ff_tip" body2="th_medial" />
+    <exclude body1="ff_tip" body2="th_distal" />
+    <exclude body1="ff_tip" body2="th_tip" />
+    <exclude body1="ff_pad" body2="th_base" />
+    <exclude body1="ff_pad" body2="th_proximal" />
+    <exclude body1="ff_pad" body2="th_medial" />
+    <exclude body1="ff_pad" body2="th_distal" />
+    <exclude body1="ff_pad" body2="th_tip" />
+    <exclude body1="mf_base" body2="rf_base" />
+    <exclude body1="mf_base" body2="rf_proximal" />
+    <exclude body1="mf_base" body2="rf_medial" />
+    <exclude body1="mf_base" body2="rf_distal" />
+    <exclude body1="mf_base" body2="rf_tip" />
+    <exclude body1="mf_proximal" body2="rf_base" />
+    <exclude body1="mf_proximal" body2="rf_proximal" />
+    <exclude body1="mf_proximal" body2="rf_medial" />
+    <exclude body1="mf_proximal" body2="rf_distal" />
+    <exclude body1="mf_proximal" body2="rf_tip" />
+    <exclude body1="mf_medial" body2="rf_base" />
+    <exclude body1="mf_medial" body2="rf_proximal" />
+    <exclude body1="mf_medial" body2="rf_medial" />
+    <exclude body1="mf_medial" body2="rf_distal" />
+    <exclude body1="mf_medial" body2="rf_tip" />
+    <exclude body1="mf_distal" body2="rf_base" />
+    <exclude body1="mf_distal" body2="rf_proximal" />
+    <exclude body1="mf_distal" body2="rf_medial" />
+    <exclude body1="mf_distal" body2="rf_distal" />
+    <exclude body1="mf_distal" body2="rf_tip" />
+    <exclude body1="mf_tip" body2="rf_base" />
+    <exclude body1="mf_tip" body2="rf_proximal" />
+    <exclude body1="mf_tip" body2="rf_medial" />
+    <exclude body1="mf_tip" body2="rf_distal" />
+    <exclude body1="mf_tip" body2="rf_tip" />
+    <exclude body1="mf_pad" body2="rf_base" />
+    <exclude body1="mf_pad" body2="rf_proximal" />
+    <exclude body1="mf_pad" body2="rf_medial" />
+    <exclude body1="mf_pad" body2="rf_distal" />
+    <exclude body1="mf_pad" body2="rf_tip" />
+    <exclude body1="mf_base" body2="th_base" />
+    <exclude body1="mf_base" body2="th_proximal" />
+    <exclude body1="mf_base" body2="th_medial" />
+    <exclude body1="mf_base" body2="th_distal" />
+    <exclude body1="mf_base" body2="th_tip" />
+    <exclude body1="mf_proximal" body2="th_base" />
+    <exclude body1="mf_proximal" body2="th_proximal" />
+    <exclude body1="mf_proximal" body2="th_medial" />
+    <exclude body1="mf_proximal" body2="th_distal" />
+    <exclude body1="mf_proximal" body2="th_tip" />
+    <exclude body1="mf_medial" body2="th_base" />
+    <exclude body1="mf_medial" body2="th_proximal" />
+    <exclude body1="mf_medial" body2="th_medial" />
+    <exclude body1="mf_medial" body2="th_distal" />
+    <exclude body1="mf_medial" body2="th_tip" />
+    <exclude body1="mf_distal" body2="th_base" />
+    <exclude body1="mf_distal" body2="th_proximal" />
+    <exclude body1="mf_distal" body2="th_medial" />
+    <exclude body1="mf_distal" body2="th_distal" />
+    <exclude body1="mf_distal" body2="th_tip" />
+    <exclude body1="mf_tip" body2="th_base" />
+    <exclude body1="mf_tip" body2="th_proximal" />
+    <exclude body1="mf_tip" body2="th_medial" />
+    <exclude body1="mf_tip" body2="th_distal" />
+    <exclude body1="mf_tip" body2="th_tip" />
+    <exclude body1="mf_pad" body2="th_base" />
+    <exclude body1="mf_pad" body2="th_proximal" />
+    <exclude body1="mf_pad" body2="th_medial" />
+    <exclude body1="mf_pad" body2="th_distal" />
+    <exclude body1="mf_pad" body2="th_tip" />
+    <exclude body1="rf_base" body2="th_base" />
+    <exclude body1="rf_base" body2="th_proximal" />
+    <exclude body1="rf_base" body2="th_medial" />
+    <exclude body1="rf_base" body2="th_distal" />
+    <exclude body1="rf_base" body2="th_tip" />
+    <exclude body1="rf_proximal" body2="th_base" />
+    <exclude body1="rf_proximal" body2="th_proximal" />
+    <exclude body1="rf_proximal" body2="th_medial" />
+    <exclude body1="rf_proximal" body2="th_distal" />
+    <exclude body1="rf_proximal" body2="th_tip" />
+    <exclude body1="rf_medial" body2="th_base" />
+    <exclude body1="rf_medial" body2="th_proximal" />
+    <exclude body1="rf_medial" body2="th_medial" />
+    <exclude body1="rf_medial" body2="th_distal" />
+    <exclude body1="rf_medial" body2="th_tip" />
+    <exclude body1="rf_distal" body2="th_base" />
+    <exclude body1="rf_distal" body2="th_proximal" />
+    <exclude body1="rf_distal" body2="th_medial" />
+    <exclude body1="rf_distal" body2="th_distal" />
+    <exclude body1="rf_distal" body2="th_tip" />
+    <exclude body1="rf_tip" body2="th_base" />
+    <exclude body1="rf_tip" body2="th_proximal" />
+    <exclude body1="rf_tip" body2="th_medial" />
+    <exclude body1="rf_tip" body2="th_distal" />
+    <exclude body1="rf_tip" body2="th_tip" />
+    <exclude body1="ff_base_left" body2="mf_base_left" />
+    <exclude body1="ff_base_left" body2="mf_proximal_left" />
+    <exclude body1="ff_base_left" body2="mf_medial_left" />
+    <exclude body1="ff_base_left" body2="mf_distal_left" />
+    <exclude body1="ff_base_left" body2="mf_tip_left" />
+    <exclude body1="ff_base_left" body2="mf_pad_left" />
+    <exclude body1="ff_proximal_left" body2="mf_base_left" />
+    <exclude body1="ff_proximal_left" body2="mf_proximal_left" />
+    <exclude body1="ff_proximal_left" body2="mf_medial_left" />
+    <exclude body1="ff_proximal_left" body2="mf_distal_left" />
+    <exclude body1="ff_proximal_left" body2="mf_tip_left" />
+    <exclude body1="ff_proximal_left" body2="mf_pad_left" />
+    <exclude body1="ff_medial_left" body2="mf_base_left" />
+    <exclude body1="ff_medial_left" body2="mf_proximal_left" />
+    <exclude body1="ff_medial_left" body2="mf_medial_left" />
+    <exclude body1="ff_medial_left" body2="mf_distal_left" />
+    <exclude body1="ff_medial_left" body2="mf_tip_left" />
+    <exclude body1="ff_medial_left" body2="mf_pad_left" />
+    <exclude body1="ff_distal_left" body2="mf_base_left" />
+    <exclude body1="ff_distal_left" body2="mf_proximal_left" />
+    <exclude body1="ff_distal_left" body2="mf_medial_left" />
+    <exclude body1="ff_distal_left" body2="mf_distal_left" />
+    <exclude body1="ff_distal_left" body2="mf_tip_left" />
+    <exclude body1="ff_distal_left" body2="mf_pad_left" />
+    <exclude body1="ff_tip_left" body2="mf_base_left" />
+    <exclude body1="ff_tip_left" body2="mf_proximal_left" />
+    <exclude body1="ff_tip_left" body2="mf_medial_left" />
+    <exclude body1="ff_tip_left" body2="mf_distal_left" />
+    <exclude body1="ff_tip_left" body2="mf_tip_left" />
+    <exclude body1="ff_tip_left" body2="mf_pad_left" />
+    <exclude body1="ff_pad_left" body2="mf_base_left" />
+    <exclude body1="ff_pad_left" body2="mf_proximal_left" />
+    <exclude body1="ff_pad_left" body2="mf_medial_left" />
+    <exclude body1="ff_pad_left" body2="mf_distal_left" />
+    <exclude body1="ff_pad_left" body2="mf_tip_left" />
+    <exclude body1="ff_pad_left" body2="mf_pad_left" />
+    <exclude body1="ff_base_left" body2="rf_base_left" />
+    <exclude body1="ff_base_left" body2="rf_proximal_left" />
+    <exclude body1="ff_base_left" body2="rf_medial_left" />
+    <exclude body1="ff_base_left" body2="rf_distal_left" />
+    <exclude body1="ff_base_left" body2="rf_tip_left" />
+    <exclude body1="ff_proximal_left" body2="rf_base_left" />
+    <exclude body1="ff_proximal_left" body2="rf_proximal_left" />
+    <exclude body1="ff_proximal_left" body2="rf_medial_left" />
+    <exclude body1="ff_proximal_left" body2="rf_distal_left" />
+    <exclude body1="ff_proximal_left" body2="rf_tip_left" />
+    <exclude body1="ff_medial_left" body2="rf_base_left" />
+    <exclude body1="ff_medial_left" body2="rf_proximal_left" />
+    <exclude body1="ff_medial_left" body2="rf_medial_left" />
+    <exclude body1="ff_medial_left" body2="rf_distal_left" />
+    <exclude body1="ff_medial_left" body2="rf_tip_left" />
+    <exclude body1="ff_distal_left" body2="rf_base_left" />
+    <exclude body1="ff_distal_left" body2="rf_proximal_left" />
+    <exclude body1="ff_distal_left" body2="rf_medial_left" />
+    <exclude body1="ff_distal_left" body2="rf_distal_left" />
+    <exclude body1="ff_distal_left" body2="rf_tip_left" />
+    <exclude body1="ff_tip_left" body2="rf_base_left" />
+    <exclude body1="ff_tip_left" body2="rf_proximal_left" />
+    <exclude body1="ff_tip_left" body2="rf_medial_left" />
+    <exclude body1="ff_tip_left" body2="rf_distal_left" />
+    <exclude body1="ff_tip_left" body2="rf_tip_left" />
+    <exclude body1="ff_pad_left" body2="rf_base_left" />
+    <exclude body1="ff_pad_left" body2="rf_proximal_left" />
+    <exclude body1="ff_pad_left" body2="rf_medial_left" />
+    <exclude body1="ff_pad_left" body2="rf_distal_left" />
+    <exclude body1="ff_pad_left" body2="rf_tip_left" />
+    <exclude body1="ff_base_left" body2="th_base_left" />
+    <exclude body1="ff_base_left" body2="th_proximal_left" />
+    <exclude body1="ff_base_left" body2="th_medial_left" />
+    <exclude body1="ff_base_left" body2="th_distal_left" />
+    <exclude body1="ff_base_left" body2="th_tip_left" />
+    <exclude body1="ff_proximal_left" body2="th_base_left" />
+    <exclude body1="ff_proximal_left" body2="th_proximal_left" />
+    <exclude body1="ff_proximal_left" body2="th_medial_left" />
+    <exclude body1="ff_proximal_left" body2="th_distal_left" />
+    <exclude body1="ff_proximal_left" body2="th_tip_left" />
+    <exclude body1="ff_medial_left" body2="th_base_left" />
+    <exclude body1="ff_medial_left" body2="th_proximal_left" />
+    <exclude body1="ff_medial_left" body2="th_medial_left" />
+    <exclude body1="ff_medial_left" body2="th_distal_left" />
+    <exclude body1="ff_medial_left" body2="th_tip_left" />
+    <exclude body1="ff_distal_left" body2="th_base_left" />
+    <exclude body1="ff_distal_left" body2="th_proximal_left" />
+    <exclude body1="ff_distal_left" body2="th_medial_left" />
+    <exclude body1="ff_distal_left" body2="th_distal_left" />
+    <exclude body1="ff_distal_left" body2="th_tip_left" />
+    <exclude body1="ff_tip_left" body2="th_base_left" />
+    <exclude body1="ff_tip_left" body2="th_proximal_left" />
+    <exclude body1="ff_tip_left" body2="th_medial_left" />
+    <exclude body1="ff_tip_left" body2="th_distal_left" />
+    <exclude body1="ff_tip_left" body2="th_tip_left" />
+    <exclude body1="ff_pad_left" body2="th_base_left" />
+    <exclude body1="ff_pad_left" body2="th_proximal_left" />
+    <exclude body1="ff_pad_left" body2="th_medial_left" />
+    <exclude body1="ff_pad_left" body2="th_distal_left" />
+    <exclude body1="ff_pad_left" body2="th_tip_left" />
+    <exclude body1="mf_base_left" body2="rf_base_left" />
+    <exclude body1="mf_base_left" body2="rf_proximal_left" />
+    <exclude body1="mf_base_left" body2="rf_medial_left" />
+    <exclude body1="mf_base_left" body2="rf_distal_left" />
+    <exclude body1="mf_base_left" body2="rf_tip_left" />
+    <exclude body1="mf_proximal_left" body2="rf_base_left" />
+    <exclude body1="mf_proximal_left" body2="rf_proximal_left" />
+    <exclude body1="mf_proximal_left" body2="rf_medial_left" />
+    <exclude body1="mf_proximal_left" body2="rf_distal_left" />
+    <exclude body1="mf_proximal_left" body2="rf_tip_left" />
+    <exclude body1="mf_medial_left" body2="rf_base_left" />
+    <exclude body1="mf_medial_left" body2="rf_proximal_left" />
+    <exclude body1="mf_medial_left" body2="rf_medial_left" />
+    <exclude body1="mf_medial_left" body2="rf_distal_left" />
+    <exclude body1="mf_medial_left" body2="rf_tip_left" />
+    <exclude body1="mf_distal_left" body2="rf_base_left" />
+    <exclude body1="mf_distal_left" body2="rf_proximal_left" />
+    <exclude body1="mf_distal_left" body2="rf_medial_left" />
+    <exclude body1="mf_distal_left" body2="rf_distal_left" />
+    <exclude body1="mf_distal_left" body2="rf_tip_left" />
+    <exclude body1="mf_tip_left" body2="rf_base_left" />
+    <exclude body1="mf_tip_left" body2="rf_proximal_left" />
+    <exclude body1="mf_tip_left" body2="rf_medial_left" />
+    <exclude body1="mf_tip_left" body2="rf_distal_left" />
+    <exclude body1="mf_tip_left" body2="rf_tip_left" />
+    <exclude body1="mf_pad_left" body2="rf_base_left" />
+    <exclude body1="mf_pad_left" body2="rf_proximal_left" />
+    <exclude body1="mf_pad_left" body2="rf_medial_left" />
+    <exclude body1="mf_pad_left" body2="rf_distal_left" />
+    <exclude body1="mf_pad_left" body2="rf_tip_left" />
+    <exclude body1="mf_base_left" body2="th_base_left" />
+    <exclude body1="mf_base_left" body2="th_proximal_left" />
+    <exclude body1="mf_base_left" body2="th_medial_left" />
+    <exclude body1="mf_base_left" body2="th_distal_left" />
+    <exclude body1="mf_base_left" body2="th_tip_left" />
+    <exclude body1="mf_proximal_left" body2="th_base_left" />
+    <exclude body1="mf_proximal_left" body2="th_proximal_left" />
+    <exclude body1="mf_proximal_left" body2="th_medial_left" />
+    <exclude body1="mf_proximal_left" body2="th_distal_left" />
+    <exclude body1="mf_proximal_left" body2="th_tip_left" />
+    <exclude body1="mf_medial_left" body2="th_base_left" />
+    <exclude body1="mf_medial_left" body2="th_proximal_left" />
+    <exclude body1="mf_medial_left" body2="th_medial_left" />
+    <exclude body1="mf_medial_left" body2="th_distal_left" />
+    <exclude body1="mf_medial_left" body2="th_tip_left" />
+    <exclude body1="mf_distal_left" body2="th_base_left" />
+    <exclude body1="mf_distal_left" body2="th_proximal_left" />
+    <exclude body1="mf_distal_left" body2="th_medial_left" />
+    <exclude body1="mf_distal_left" body2="th_distal_left" />
+    <exclude body1="mf_distal_left" body2="th_tip_left" />
+    <exclude body1="mf_tip_left" body2="th_base_left" />
+    <exclude body1="mf_tip_left" body2="th_proximal_left" />
+    <exclude body1="mf_tip_left" body2="th_medial_left" />
+    <exclude body1="mf_tip_left" body2="th_distal_left" />
+    <exclude body1="mf_tip_left" body2="th_tip_left" />
+    <exclude body1="mf_pad_left" body2="th_base_left" />
+    <exclude body1="mf_pad_left" body2="th_proximal_left" />
+    <exclude body1="mf_pad_left" body2="th_medial_left" />
+    <exclude body1="mf_pad_left" body2="th_distal_left" />
+    <exclude body1="mf_pad_left" body2="th_tip_left" />
+    <exclude body1="rf_base_left" body2="th_base_left" />
+    <exclude body1="rf_base_left" body2="th_proximal_left" />
+    <exclude body1="rf_base_left" body2="th_medial_left" />
+    <exclude body1="rf_base_left" body2="th_distal_left" />
+    <exclude body1="rf_base_left" body2="th_tip_left" />
+    <exclude body1="rf_proximal_left" body2="th_base_left" />
+    <exclude body1="rf_proximal_left" body2="th_proximal_left" />
+    <exclude body1="rf_proximal_left" body2="th_medial_left" />
+    <exclude body1="rf_proximal_left" body2="th_distal_left" />
+    <exclude body1="rf_proximal_left" body2="th_tip_left" />
+    <exclude body1="rf_medial_left" body2="th_base_left" />
+    <exclude body1="rf_medial_left" body2="th_proximal_left" />
+    <exclude body1="rf_medial_left" body2="th_medial_left" />
+    <exclude body1="rf_medial_left" body2="th_distal_left" />
+    <exclude body1="rf_medial_left" body2="th_tip_left" />
+    <exclude body1="rf_distal_left" body2="th_base_left" />
+    <exclude body1="rf_distal_left" body2="th_proximal_left" />
+    <exclude body1="rf_distal_left" body2="th_medial_left" />
+    <exclude body1="rf_distal_left" body2="th_distal_left" />
+    <exclude body1="rf_distal_left" body2="th_tip_left" />
+    <exclude body1="rf_tip_left" body2="th_base_left" />
+    <exclude body1="rf_tip_left" body2="th_proximal_left" />
+    <exclude body1="rf_tip_left" body2="th_medial_left" />
+    <exclude body1="rf_tip_left" body2="th_distal_left" />
+    <exclude body1="rf_tip_left" body2="th_tip_left" />
     <!-- r36: the Allegro hand's collision proxies overlap the UR5e wrist
          collision capsules by 4-10 mm in the NEUTRAL pose (measured at qpos0,
          zero command): a scene-construction defect, not a command error.  It
