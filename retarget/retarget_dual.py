@@ -2705,10 +2705,26 @@ def _terminal_pair_freeze(model, data, spec: SideSpec, pair: dict):
                                     ), fwd_deg, evals, True
 
 
+def _reset_home(model, data):
+    """r34: reset to the scene's first keyframe when one exists.
+
+    The UR5e side-mount cells spawn with the arm joints at zero, which puts
+    both hands inside the box; the settle then kicks the box 0.36 m away
+    before the replay starts.  A keyframe gives the scene a valid home.
+    """
+    import mujoco as _mj
+    if int(getattr(model, "nkey", 0)) > 0:
+        _mj.mj_resetDataKeyframe(model, data, 0)
+    else:
+        _mj.mj_resetData(model, data)
+    _mj.mj_forward(model, data)
+
+
 def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
     """Command both hands through the resampled trajectory; record everything
     the gates read.  Only data.ctrl is written inside the loop."""
     import mujoco
+    _reset_home(model, data)
 
     # r28 option 3 (Main item 3): per-joint gravity compensation — the
     # arm dofs get qfrc_applied = -qfrc_bias (the gravity+coriolis

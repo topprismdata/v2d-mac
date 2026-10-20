@@ -86,3 +86,18 @@ hand (not more sampling).
   start pose.
 - **Best side results so far**: right executed 145 mm (right Rx180 / left Rz180 mounts,
   z 0.95) and left executed 17 mm (right Rz180 / left Rx180, z 0.95) — never both at once.
+
+## r35 box-displacement fix (this round)
+- **Symptom**: the box started the replay already displaced (-0.084, -0.043, 0.835) and
+  travelled 364 mm during the run; the left arm tracked to 0.11 rad yet showed 514 mm of
+  "executed" error because the box had been knocked away.
+- **Cause**: at base height 0.72-0.95 the two arms at their zero pose reach into the box
+  (spawn contacts), so the settle kicks it and the approach keeps pushing it.
+- **Fix**: raise both bases to z >= 1.25. Box now starts at (0, 0, 0.74) and moves only
+  10-17 mm over the whole 322-frame run.
+- **Remaining**: joint-space tracking. At z 1.35 the right terminal is 2.0 rad off and the
+  left 0.26 rad; a 0.26 rad shoulder error is ~0.5 m at the tool, which is the executed
+  gate failure. The position servos are the limiter (kp x10 thrashes per r28, gravity
+  compensation no-ops against the contact jam). Next: per-joint force-range check at the
+  terminal pose and, if saturated, either a lighter hand assembly or a resolved-rate
+  terminal hold.
