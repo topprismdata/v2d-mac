@@ -5330,7 +5330,20 @@ def main() -> int:
                                         for s in VIDEOS],
             },
         }
-    REPORT_PATH.write_text(json.dumps(_jsonable(report), indent=2))
+    # MERGE GUARD (r31): this report is shared by concurrent campaigns and
+    # r27 sections were once lost to a wholesale overwrite.  Merge into the
+    # existing document; never truncate sections we did not produce.
+    _existing = {}
+    if REPORT_PATH.exists():
+        try:
+            _prev = json.loads(REPORT_PATH.read_text())
+            if isinstance(_prev, dict):
+                _existing = _prev
+        except Exception:
+            _existing = {}
+    _merged = dict(_existing)
+    _merged.update(_jsonable(report))
+    REPORT_PATH.write_text(json.dumps(_merged, indent=2))
     print(f"wrote {REPORT_PATH}")
     print(f"wrote {REPLAY_PATH} ({rep['n_frames']} frames @ {CTRL_HZ} Hz)")
     print(f"wrote {COMPARISON_PNG}")
