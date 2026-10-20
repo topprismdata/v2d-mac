@@ -4047,17 +4047,22 @@ def main() -> int:
                         mujoco.mj_kinematics(model, data)
                         mujoco.mj_comPos(model, data)
                         # the site tracks (verified palm - off_world)
-                        site_tgt = tgt_pos - off_world
-                        e_p = site_tgt - data.site_xpos[_st]
+                        # r33: track the PALM BODY.  The world-constant
+                        # palm-minus-site offset is only valid when the
+                        # terminal orientation matches the approach one;
+                        # the side-mount left arm rotates ~180 deg, where
+                        # the offset points the wrong way (pinned 118 mm).
+                        e_p = tgt_pos - data.xpos[pb2]
+                        _R33 = np.zeros(9)
+                        mujoco.mju_quat2Mat(_R33, data.xquat[pb2])
                         e_r = _Rot.from_matrix(
-                            tgt_R @ data.site_xmat[_st].reshape(3, 3).T
-                        ).as_rotvec()
+                            tgt_R @ _R33.reshape(3, 3).T).as_rotvec()
                         err = np.concatenate([e_p, e_r])
-                        if np.linalg.norm(err) < 5e-4:
+                        if np.linalg.norm(err) < 2e-4:
                             break
                         jacp = np.zeros((3, model.nv))
                         jacr = np.zeros((3, model.nv))
-                        mujoco.mj_jacSite(model, data, jacp, jacr, _st)
+                        mujoco.mj_jacBody(model, data, jacp, jacr, pb2)
                         J = np.vstack([jacp[:, vjad2], jacr[:, vjad2]])
                         dq = np.linalg.solve(J @ J.T + 1e-4 * np.eye(6), err)
                         q = np.clip(q + J.T @ dq, lo2, hi2)
