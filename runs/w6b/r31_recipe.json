@@ -1,20 +1,57 @@
 {
-  "campaign": "r31 reproducibility recovery (the r26 master recipe was never recorded)",
-  "why": "every committed report carries verdict=fail at top level; the r26 'green' was a Main-judge subset. Re-running with defaults gave gate1 right 15.9 mm (vs 0.000 recorded) - the env recipe was missing from the repo.",
-  "recipe": {
-    "command": "W6B_SCENE=ur5e W6B_SCENE_XML=grounding/assets/allegro_floating_ur5e_r24_vise.xml W6B_R23_FLYOVER_MM=250 W6B_R22_MARGIN_MM=8 W6B_R18_NATIVE_TARGET=1 W6B_R26_TRACK_A=1 runs/.venv-retarget/bin/python retarget/retarget_dual.py",
-    "decisive_flags": ["W6B_R18_NATIVE_TARGET=1", "W6B_R26_TRACK_A=1"],
-    "neutral_flags": ["W6B_R16_CLAMP_UR5E", "W6B_R16_MANIP_GATE", "W6B_R21_POSE_KF", "W6B_R22_SAFE_HAND", "W6B_R28_FORCE3"],
-    "result_gate1_mm": {"right": 0.000, "left": 0.004},
-    "search": "7 binary flags x 128 combinations, 7 s per run; 8 combinations tie at the minimum - R18_NATIVE_TARGET and R26_TRACK_A are the two that matter"
+ "campaign": "r31 reproducibility recovery (the r26 master recipe was never recorded)",
+ "why": "every committed report carries verdict=fail at top level; the r26 'green' was a Main-judge subset. Re-running with defaults gave gate1 right 15.9 mm (vs 0.000 recorded) - the env recipe was missing from the repo.",
+ "recipe": {
+  "command": "W6B_SCENE=ur5e W6B_SCENE_XML=grounding/assets/allegro_floating_ur5e_r24_vise.xml W6B_R23_FLYOVER_MM=250 W6B_R22_MARGIN_MM=8 W6B_R18_NATIVE_TARGET=1 W6B_R26_TRACK_A=1 W6B_R28_FORCE3=1 runs/.venv-retarget/bin/python retarget/retarget_dual.py",
+  "decisive_flags": [
+   "W6B_R18_NATIVE_TARGET=1",
+   "W6B_R26_TRACK_A=1",
+   "W6B_R28_FORCE3=1 (or W6B_R22_SAFE_HAND=1)"
+  ],
+  "neutral_flags": [
+   "W6B_R16_CLAMP_UR5E",
+   "W6B_R16_MANIP_GATE",
+   "W6B_R21_POSE_KF",
+   "W6B_R22_SAFE_HAND",
+   "W6B_R28_FORCE3"
+  ],
+  "result_gate1_mm": {
+   "right": 0.0,
+   "left": 0.004
   },
-  "side_mount_status": {
-    "native_target_mode": "ceiling-geometry bound: with R18_NATIVE_TARGET=1 the side mount degrades to 1044/367 mm - the native path is a fixed pendown that assumes the ceiling base",
-    "default_mode_base_sweep": {
-      "grid": "x {0.40,0.55,0.70} x y {0,0.25} x z {0.85,0.70} x rz {0,+-45,+-90} (60 runs)",
-      "best": {"base": [0.70, 0.0, 0.70], "rz_deg": 0, "cmd_mm": [3.94, 27.42], "executed_mm": [18.42, 10.24]},
-      "note": "rz=0 (identity) beats the horizontal side mount: the sideways base rotates the wrist away from the target orientation"
-    }
-  },
-  "gap": "the r26 numbers are reproducible only with this recipe; it must be cited by any future claim that quotes them"
+  "search": "7 binary flags x 128 combinations, 7 s per run; 8 combinations tie at the minimum - R18_NATIVE_TARGET and R26_TRACK_A are the two that matter",
+  "verified_against": "committed scenes (pins 604ae7e0...) and the working tree with the uncommitted W6c corridor tweaks (76de50ef...) - identical 0.000/0.004 mm",
+  "note": "the sweep that recovered it identified R18_NATIVE_TARGET and R26_TRACK_A as the discriminating pair; R28_FORCE3/SAFE_HAND is required for the left 0.004 mm (without it the left sits at 0.668 mm)."
+ },
+ "side_mount_status": {
+  "native_target_mode": "ceiling-geometry bound: with R18_NATIVE_TARGET=1 the side mount degrades to 1044/367 mm - the native path is a fixed pendown that assumes the ceiling base",
+  "default_mode_base_sweep": {
+   "grid": "x {0.40,0.55,0.70} x y {0,0.25} x z {0.85,0.70} x rz {0,+-45,+-90} (60 runs)",
+   "best": {
+    "base": [
+     0.7,
+     0.0,
+     0.7
+    ],
+    "rz_deg": 0,
+    "cmd_mm": [
+     3.94,
+     27.42
+    ],
+    "executed_mm": [
+     18.42,
+     10.24
+    ]
+   },
+   "note": "rz=0 (identity) beats the horizontal side mount: the sideways base rotates the wrist away from the target orientation"
+  }
+ },
+ "gap": "the r26 numbers are reproducible only with this recipe; it must be cited by any future claim that quotes them",
+ "executed_state": {
+  "ceiling_cell_mm": [
+   640.77,
+   122.04
+  ],
+  "note": "command-side is the claim; the executed state never reaches it in the ceiling cell"
+ }
 }
