@@ -43,3 +43,20 @@ side-entry shape but was never wired into the pipeline.
    (measured: forearms enter at 0%/55% and 100%/60%, box centre (50%, 38%),
    box width 30% of frame, table edge not visible, camera 15-20 deg down).
 5. Only then re-render 1170 frames + panel badges.
+
+## Correction added after re-running the recovered recipe (same session)
+The r26 master's gate1 0.000/0.004 mm is a **command-side** measurement. The
+same run's *executed* gate1 is 566.4 / 155.7 mm — the ceiling cell jams the
+arms (r29 certificate), so the commanded pose is never physically reached.
+The side geometry fixes exactly that: right arm executed 2.47 mm.
+So the side mount is not only a composition change, it is the first
+geometrically honest execution of the retarget on this cell.
+
+## Left-arm terminal residual (evidence)
+`|e_p| = 0.1184 m` at the left terminal, invariant to 4 decimals across:
+base x 0.40-0.80, y -0.15..0.15, z 0.68-0.78, Rz 0..+-90, and hand-mount
+quats {-1 1 0 0, 0 0 1 0, 0 0 .7071 .7071, .7071 0 0 .7071, 1 0 0 0}.
+A 49-start multi-restart DLS (installed this round) also fails to beat it,
+so the target pose is not reachable from the left base in any tested
+configuration — the next step is a mount/approach redesign for the left
+hand (not more sampling).

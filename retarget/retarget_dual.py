@@ -1184,7 +1184,7 @@ def ur5e_ik_placement(model, data, spec: SideSpec,
     # (the left pad band centre vs the registered palm target -- constant
     # across both mounts, the Front B calibration semantics)
     if spec.side == "left":
-        palm_task[:, 1] += 0.027
+        palm_task[:, 1] += float(_os.environ.get("W6B_LEFT_YBIAS_MM", "27")) * 1e-3
 
     q = np.zeros(6)
     joints = np.empty((T, 6))
@@ -1454,7 +1454,7 @@ def mink_ik_placement(model, data, spec: SideSpec,
     if z_min < need:
         lift = need - z_min
     if spec.side == "left":
-        palm_task[:, 1] += 0.027
+        palm_task[:, 1] += float(_os.environ.get("W6B_LEFT_YBIAS_MM", "27")) * 1e-3
 
     side_key = "r" if spec.side == "right" else "l"
     jids = [mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, n)
@@ -4020,26 +4020,67 @@ def main() -> int:
             # DLS from the last approach pose toward the verified palm
             # (r18: skipped when the native multi-restart solved it)
             if not (R18_NATIVE_TARGET and native_done):
-                q = cmds_global[s2]["wrist"][n_ctrl - 1].copy()
-                for _it in range(200):
-                    data.qpos[qadr2] = q
-                    mujoco.mj_kinematics(model, data)
-                    mujoco.mj_comPos(model, data)
-                    # the site tracks (verified palm - off_world)
-                    site_tgt = tgt_pos - off_world
-                    e_p = site_tgt - data.site_xpos[_st]
-                    e_r = _Rot.from_matrix(
-                        tgt_R @ data.site_xmat[_st].reshape(3, 3).T
-                    ).as_rotvec()
-                    err = np.concatenate([e_p, e_r])
-                    if np.linalg.norm(err) < 5e-4:
-                        break
-                    jacp = np.zeros((3, model.nv))
-                    jacr = np.zeros((3, model.nv))
-                    mujoco.mj_jacSite(model, data, jacp, jacr, _st)
-                    J = np.vstack([jacp[:, vjad2], jacr[:, vjad2]])
-                    dq = np.linalg.solve(J @ J.T + 1e-4 * np.eye(6), err)
-                    q = np.clip(q + J.T @ dq, lo2, hi2)
+                # r33: multi-restart terminal DLS.  The single start from
+                # the approach pose lands on a mount-dependent branch (the
+                # side-mount left arm sat at a pinned 27 mm residual across
+                # every base pose tried).  Search the approach end, the
+                # native seed and random starts; keep the converged solution
+                # closest to the approach end, else the smallest residual.
+                _rng33 = np.random.default_rng(3331)
+                _q_app33 = cmds_global[s2]["wrist"][n_ctrl - 1].copy()
+                _starts33 = [_q_app33]
+                try:
+                    _starts33.append(np.clip(np.asarray(
+                        UR5E_NATIVE_SEED["r" if s2 == "right" else "l"],
+                        float), lo2, hi2))
+                except NameError:
+                    pass
+                _starts33 += [_rng33.uniform(lo2, hi2) for _ in range(48)]
+                _best33 = None
+                _nconv33 = 0
+                for _q0 in _starts33:
+                    q = _q0.copy()
+                    e_p = site_tgt = None
+                    e_r = None
+                    for _it in range(200):
+                        data.qpos[qadr2] = q
+                        mujoco.mj_kinematics(model, data)
+                        mujoco.mj_comPos(model, data)
+                        # the site tracks (verified palm - off_world)
+                        site_tgt = tgt_pos - off_world
+                        e_p = site_tgt - data.site_xpos[_st]
+                        e_r = _Rot.from_matrix(
+                            tgt_R @ data.site_xmat[_st].reshape(3, 3).T
+                        ).as_rotvec()
+                        err = np.concatenate([e_p, e_r])
+                        if np.linalg.norm(err) < 5e-4:
+                            break
+                        jacp = np.zeros((3, model.nv))
+                        jacr = np.zeros((3, model.nv))
+                        mujoco.mj_jacSite(model, data, jacp, jacr, _st)
+                        J = np.vstack([jacp[:, vjad2], jacr[:, vjad2]])
+                        dq = np.linalg.solve(J @ J.T + 1e-4 * np.eye(6), err)
+                        q = np.clip(q + J.T @ dq, lo2, hi2)
+                    _ep33 = float(np.linalg.norm(e_p))
+                    _er33 = float(np.linalg.norm(e_r))
+                    _conv33 = (_ep33 < 2e-3 and _er33 < np.deg2rad(5.0))
+                    if _conv33:
+                        _nconv33 += 1
+                    _jump33 = float(np.abs(q - _q_app33).max())
+                    # position dominates: the pads are placed by the palm
+                    # position; a tiny rotation residual with a 0.8 m
+                    # position error is a different (useless) branch
+                    _key33 = ((0, _jump33) if _conv33
+                              else (1, _ep33, _er33))
+                    if _best33 is None or _key33 < _best33[0]:
+                        _best33 = (_key33, q.copy(), _ep33, _er33)
+                _, q, _epf, _erf = _best33
+
+                e_p = np.zeros(3); e_r = np.zeros(3)
+                e_p[0] = _epf
+                e_r[0] = _erf
+                r18_solve_rec.setdefault(s2, {})["terminal_restarts"] = {
+                    "attempts": len(_starts33), "converged": int(_nconv33)}
                 # hold the terminal IK solution for the blend+hold window
                 for k in range(n_term):
                     idx = n_ctrl + k
