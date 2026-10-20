@@ -11,7 +11,8 @@ import numpy as np
 import mujoco
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-m = mujoco.MjModel.from_xml_path(os.path.join(REPO, 'grounding/assets/allegro_floating_ur5e.xml'))
+SCENE = os.environ.get('CURL_FREE_SCENE') or os.path.join(REPO, 'grounding/assets/allegro_floating_ur5e.xml')
+m = mujoco.MjModel.from_xml_path(SCENE)
 d = mujoco.MjData(m)
 mujoco.mj_forward(m, d)
 
@@ -112,7 +113,7 @@ for s in ('right','left'):
     k = 'r' if s=='right' else 'l'
     qs = str(np.round(best_q[k],3).tolist()) if best_q[k] is not None else 'none'
     print(f'{s}: best 2nd-pad {best[k]:.1f} mm | q = {qs}')
-out = os.path.join(REPO, 'runs/w6b/native_seed_pairs.json')
+out = os.environ.get('CURL_FREE_OUT') or os.path.join(REPO, 'runs/w6b/native_seed_pairs.json')
 with open(out, 'w') as fh:
     json.dump({'N': N, 'n_pairs': len(pairs), 'pairs': pairs}, fh)
 print(f'wrote {out} ({len(pairs)} pairs)')

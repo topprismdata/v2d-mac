@@ -3770,7 +3770,9 @@ def main() -> int:
         native_done = False
         # r19/r20: the native pairs (arm + fingers FULL pairs — arm-only
         # seeds broke r13.7) and the cut-10b mirror transfer
-        pairs_path = REPO / "runs/w6b/native_seed_pairs.json"
+        pairs_path = Path(_os.environ.get(
+            "W6B_NATIVE_PAIRS",
+            REPO / "runs/w6b/native_seed_pairs.json"))
         native_pairs = (json.loads(pairs_path.read_text())["pairs"]
                         if pairs_path.is_file() else [])
         side_pair = {s: min((p for p in native_pairs if p["side"] == s),
