@@ -588,6 +588,23 @@
     </body>
   </worldbody>
   <contact>
+    <!-- r36: the Allegro hand's collision proxies overlap the UR5e wrist
+         collision capsules by 4-10 mm in the NEUTRAL pose (measured at qpos0,
+         zero command): a scene-construction defect, not a command error.  It
+         puts ~188 Nm of constraint torque on the left arm permanently, the
+         shoulder_lift servo saturates at -150 Nm, and the arm cannot hold the
+         commanded pose (0.253 rad off => 155 mm at the tool).  These pairs
+         are pure mounting artifacts: the hand mounts on the wrist face. -->
+    <exclude body1="ur5e_r_wrist_2_link" body2="mf_base" />
+    <exclude body1="ur5e_r_wrist_2_link" body2="mf_proximal" />
+    <exclude body1="ur5e_r_wrist_3_link" body2="ff_proximal" />
+    <exclude body1="ur5e_r_wrist_3_link" body2="mf_proximal" />
+    <exclude body1="ur5e_r_wrist_3_link" body2="rf_proximal" />
+    <exclude body1="ur5e_l_wrist_2_link" body2="mf_base_left" />
+    <exclude body1="ur5e_l_wrist_2_link" body2="mf_proximal_left" />
+    <exclude body1="ur5e_l_wrist_3_link" body2="ff_proximal_left" />
+    <exclude body1="ur5e_l_wrist_3_link" body2="mf_proximal_left" />
+    <exclude body1="ur5e_l_wrist_3_link" body2="rf_proximal_left" />
     <exclude body1="palm" body2="ff_base" />
     <exclude body1="palm" body2="mf_base" />
     <exclude body1="palm" body2="rf_base" />
