@@ -3767,6 +3767,17 @@ def render_comparison(model, data, rep, out_png: Path) -> dict:
     cam.type = mujoco.mjtCamera.mjCAMERA_FREE
     # W6d standard presets (Main round-2): front/side/close, lookat (0,0,0.74)
     presets = [(105.0, -22.0, 0.80), (-20.0, -30.0, 0.72), (-20.0, -24.0, 0.46)]
+    # r44: the side-entry cell (bases mounted outboard at |x| ~ 0.7 m) is
+    # framed like the reference clip: from -y, the box's long axis running
+    # left-right, the forearms entering from the frame edges.  The ceiling
+    # cell's presets put the camera in front of a gantry-mounted cluster.
+    try:
+        _rb = model.body("ur5e_r_base").id
+        if abs(float(model.body_pos[_rb][0])) > 0.5:
+            presets = [(90.0, -19.0, 0.42), (0.0, -20.0, 0.55),
+                       (55.0, -20.0, 0.32)]
+    except Exception:
+        pass
     rows = []
     sim_cells = []
     for i, vf in enumerate(COMPARE_VIDEO_FRAMES):

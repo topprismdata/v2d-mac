@@ -104,6 +104,11 @@ def _pegboard_texture(path: pathlib.Path, size: int = 512) -> None:
 
 SCENE_FLOATING = REPO / "grounding/assets/allegro_floating.xml"
 SCENE_UR5E = REPO / "grounding/assets/allegro_floating_ur5e.xml"
+# r44: the side-entry cell (side-mounted UR5e arms, horizontal in-frame
+# forearm entries like the reference clip).  Selected for rendering with
+# V2D_RENDER_SCENE; both UR5e scenes share nq=59, so the choice cannot be
+# made from the replay qpos width alone.
+SCENE_UR5E_SIDE = REPO / "grounding/assets/allegro_floating_ur5e_side_r36.xml"
 # r25 交付场景（vise 变体转正；与 ur5e 同 nq，宽度推断时优先生效）
 SCENE_UR5E_VISE = REPO / "grounding/assets/allegro_floating_ur5e_r24_vise.xml"
 
@@ -303,6 +308,14 @@ def build_fidelity_spec(scene_xml: pathlib.Path = SCENE_FLOATING):
 def scene_for_qpos_width(width: int):
     """Return (scene_xml, kind) whose model nq matches a replay qpos width."""
     import mujoco
+    import os
+    _override = os.environ.get("V2D_RENDER_SCENE", "")
+    if _override:
+        _x = pathlib.Path(_override)
+        if int(mujoco.MjModel.from_xml_path(str(_x)).nq) == width:
+            return _x, "ur5e_override"
+        raise SystemExit(f"V2D_RENDER_SCENE {_x} has nq "
+                         f"{mujoco.MjModel.from_xml_path(str(_x)).nq} != {width}")
     for kind, xml in (("ur5e", SCENE_UR5E),
                       ("ur5e_vise", SCENE_UR5E_VISE),
                       ("floating", SCENE_FLOATING)):
@@ -311,9 +324,20 @@ def scene_for_qpos_width(width: int):
     raise SystemExit(f"replay qpos width {width} matches no known scene")
 
 
-def build_fidelity_model(scene_xml: pathlib.Path = SCENE_FLOATING):
+def build_fidelity_model(scene_xml: pathlib.Path = SCENE_FLOATING,
+                         hide_bodies=()):
     """Compile the fidelity spec; returns the MjModel for RENDERING only."""
-    m = build_fidelity_spec(scene_xml).compile()
+    spec = build_fidelity_spec(scene_xml)
+    for _bn in hide_bodies:
+        try:
+            _b = spec.body(_bn)
+        except Exception:
+            continue
+        # the render model is never stepped (it only displays replay qpos), so
+        # parking a fixture body far below the scene removes it from frame
+        # without touching the qpos layout the replay data relies on.
+        _b.pos[2] -= 5.0
+    m = spec.compile()
     # MjSpec 3.16 bug: add_material(textures=[...]) writes the 2d texture id
     # into mat_texid slot 0, which the renderer never samples (the XML asset
     # path puts 2d textures in slot 1) -- materials then render as flat rgba.

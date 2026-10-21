@@ -31,6 +31,15 @@ OUT = REPO / "docs/replay_frames"
 
 WIDTH, HEIGHT = 1280, 720  # match the source clip so both panes scale identically
 
+# r44: the side-entry cell is framed from -y (the box's long axis runs
+# left-right in frame, the forearms enter from the frame edges like the
+# reference clip).  The ceiling-cell presets stay for that cell.
+SIDE_PRESETS = [
+    ("front", "正面", 90.0, -19.0, 0.42),
+    ("side", "侧面", 0.0, -20.0, 0.55),
+    ("close", "特写", 55.0, -20.0, 0.32),
+]
+
 PRESETS = [
     # (key, 中文, azimuth deg, elevation deg, distance m)
     # v5 scene adds the gantry (rail runs along y at z~1.015): dead-on az 90
@@ -60,8 +69,17 @@ def main() -> None:
     import sys
     if str(REPO / "viz") not in sys.path:
         sys.path.insert(0, str(REPO / "viz"))
-    scene_xml = scene_fidelity.scene_for_qpos_width(len(frames[0]["qpos"]))[1]
-    m = scene_fidelity.build_fidelity_model(scene_xml)
+    # r44 fix: scene_for_qpos_width returns (scene_xml, kind); the committed
+    # script took [1] (the kind STRING) and handed it to MjSpec.from_file,
+    # so the render tool could not run at all ("could not find decoder for
+    # resource 'ur5e'").
+    scene_xml = scene_fidelity.scene_for_qpos_width(len(frames[0]["qpos"]))[0]
+    # r44: the yaw-stop fixture is a ceiling-cell artefact (it stops the box
+    # yawing) and it stands in front of the box in the side-entry camera; the
+    # reference clip has no such object.  It stays in the PHYSICS scene and is
+    # only parked out of frame for the render.
+    m = scene_fidelity.build_fidelity_model(
+        scene_xml, hide_bodies=("yaw_stop_posy", "yaw_stop_negy"))
     d = mujoco.MjData(m)
     # lighting hierarchy: warm key + cool fill (the v17-era global shadow-off
     # is reverted -- no more dome spheres to burn black discs); mild ambient
@@ -90,7 +108,10 @@ def main() -> None:
     renderer.scene.flags[mujoco.mjtRndFlag.mjRND_SHADOW] = 0
 
     renders: dict[str, list[str]] = {}
-    for key, _cn, az, el, dist in PRESETS:
+    import os
+    _side = "side_r36" in str(scene_xml)
+    presets = SIDE_PRESETS if _side else PRESETS
+    for key, _cn, az, el, dist in presets:
         outs = []
         for i, fr in enumerate(frames):
             d.qpos[:] = np.asarray(fr["qpos"])
@@ -110,7 +131,7 @@ def main() -> None:
 
     payload["meta"]["renders"] = {
         "dir": "docs/replay_frames",
-        "presets": [{"key": k, "label": cn} for k, cn, *_ in PRESETS],
+        "presets": [{"key": k, "label": cn} for k, cn, *_ in presets],
         "frames": renders,
     }
     DATA.write_text(json.dumps(payload, indent=1, ensure_ascii=False))
