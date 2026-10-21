@@ -545,3 +545,75 @@ principled fix is a PALM-PLATE contact (the reference clip grips with the palm
 flat on the face, fingers wrapping the edges) — a scene/task-level hypothesis,
 kept separate from the approach work. It must be validated as its own
 experiment; until then the shipped configuration remains the r53 baseline.
+
+## r60/r61 — the contact-geometry root cause (measured)
+
+**The executed finger joints do not hold their commanded positions.** Published
+per side (`executed_terminal_finger_qpos` vs `commanded_terminal_finger_qpos`),
+r53 baseline, side cell r37:
+
+| joint | right cmd | right exec | err | left cmd | left exec | err |
+|---|---|---|---|---|---|---|
+| mfj3 | 0.3639 | 1.0761 | **+0.712** | 0.3649 | 0.1470 | -0.218 |
+| rfj3 | 0.4550 | 0.8784 | **+0.423** | 0.4542 | 1.3221 | **+0.868** |
+| thj3 | 0.1754 | -0.2092 | **-0.385** | 0.1754 | -0.0611 | -0.237 |
+| thj2 | 0.5569 | 0.2230 | -0.334 | 0.5566 | 0.9626 | +0.406 |
+| mfj0 | 0.1065 | -0.2334 | -0.340 | 0.1115 | 0.5649 | +0.453 |
+
+The finger actuators are force-limited exactly as the real Allegro is
+(`grounding/assets/allegro_floating_ur5e_side_r37.xml`):
+
+| actuator | kp | forcerange (N.m) | jnt_range |
+|---|---|---|---|
+| ffa0 (ffj0) | 0.38 | +-0.015 | [-0.47, 0.47] |
+| ffa1 (ffj1) | 0.84 | +-0.179 | [-0.196, 1.61] |
+| ffa2 (ffj2) | 1.46 | +-0.159 | [-0.174, 1.709] |
+| ffa3 (ffj3) | 0.06 | **+-0.042** | [-0.227, 1.618] |
+| tha2 (thj2) | 0.42 | +-0.073 | [-0.189, 1.644] |
+
+A 5.5 N contact force at ~110 mm from the finger base is 0.6 N.m -- 3-4x the
+actuator's limit -- so the servos saturate and the fingers collapse. That is
+the same phenomenon as gate4's 1.63 rad joint-limit excursion (the finger
+joints are levered past their mechanical stops by the contact).
+
+**The commanded grasp is also geometrically wrong.** The fingertip pads are
+6 mm-radius DISCS (12 mm across, 3 mm thick). Seating their CENTRES on the
+face's plane commands the disc to be embedded by up to 6 mm. Measured on the
+r53 baseline:
+
+* the command state's pad-surface gaps: ff **-3.09 mm**, mf **-4.65 mm** (the
+  report's `pad_surface_signed_gap_mm`, negative = embedded);
+* the box's terminal offset: **[+3.06, -1.01, +1.02] mm** -- pushed straight
+  back along the face normal, matching the commanded embedding to 0.03 mm.
+
+The contact solver resolves that commanded interpenetration by shoving the box,
+which moves the face away from the pads: only the deepest pad keeps contact
+(1 pad per hand), the executed distance becomes 4.4 mm, and the arm then sags
+into the gap.
+
+**r60: seat the CONTACT SURFACE, not the centre** (`W6B_R60_SURFACE_SEAT=1`).
+The seat objective and the coplanarity search now use the pads' surface
+distance (the disc rim: r_eff = r * |axis . n_face|), so the command asks for
+a light touch instead of an interpenetration.
+
+| | r53 (centre seat) | r60 (surface seat) |
+|---|---|---|
+| cmd pad-surface gap ff / mf (right) | -3.09 / -4.65 mm | **+0.06 / +0.12 mm** |
+| box terminal offset | [3.06, -1.01, 1.02] mm | [2.83, -0.50, 0.03] mm |
+| box z lift | +1.02 mm | **+0.03 mm** |
+| executed rect (right) | 4.39 mm | **3.69 mm** |
+| executed contact force (right) | 2.70 N | **5.54 N** |
+| executed pads in contact | 1 | 1 |
+
+=> the surface seating removes the commanded embedding (the box no longer
+lifts and the push halves) and raises the contact force, but the finger servos
+still saturate (5.54 N is 4x what the distal joints can hold), so the fingers
+still collapse and the middle finger still misses the face by 12.6 mm.
+
+**Consequence for the criteria.** The v1 gate1 criterion measures the pad
+CENTRE's distance to the face's rectangle (R5 = 0.116 mm). With the surface
+seated, the centres sit ~5.4 mm outside the plane, so the v1 criterion can no
+longer be the contact criterion -- the physically meaningful quantity is the
+pad's surface. This needs a NEW criterion version (v3, surface-based) with
+v1/v2 kept published in parallel and unchanged, per the reviewer's rule that
+criteria must be versioned and never silently redefined.

@@ -2898,6 +2898,28 @@ def refine_terminal_seat(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
         mujoco.mj_forward(model, data)
         return np.array([float(data.geom_xpos[int(g)][0]) for g in tips])
 
+    # r60: the pads' SIGNED SURFACE distance to the face plane.
+    # The fingertip pads are 6 mm-radius DISCS (12 mm across, 3 mm thick),
+    # so their contact surface is the disc's rim: r_eff = r * |axis . n|
+    # behind the centre.  Seating the CENTRE on the face plane therefore
+    # commands the disc to be embedded by up to 6 mm -- and the physics
+    # resolves that by shoving the box.  Measured on the r53 baseline: the
+    # command state's pad-surface gaps were -3.09 mm (ff) / -4.65 mm (mf)
+    # and the box was displaced 3.06 mm along the face normal -- the
+    # commanded embedding and the box's push match to 0.03 mm.
+    # With the SURFACE seated at the pre-load the command state asks for a
+    # light touch instead of an interpenetration, so nothing has to be
+    # resolved by shoving the box.
+    _r60 = _os.environ.get("W6B_R60_SURFACE_SEAT", "0") == "1"
+
+    def fk_pad_sv(w_last):
+        _x = fk_pads(w_last)
+        _re = np.array([
+            float(model.geom_size[int(g)][0]) * abs(float(
+                np.array(data.geom_xmat[int(g)]).reshape(3, 3)[2, 0]))
+            for g in tips])
+        return spec.face_sign * (_x - face_x) - _re
+
     w_last = base_w[-1].copy()
     _x0 = fk_pads(w_last)
     _x1 = fk_pads(w_last, 1)
@@ -2905,7 +2927,8 @@ def refine_terminal_seat(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
     # search (r38) hits its +-0.45 rad window whenever the terminal approach
     # is not near the face normal, and a 2-D scan showed the true minimum is
     # at 1.85-1.94 mm, not at the window edge (measured r50).
-    _spread_of = lambda _w: float(np.ptp(fk_pads(_w)))
+    _spread_of = (lambda _w: float(np.ptp(fk_pad_sv(_w)))) if _r60 else \
+        (lambda _w: float(np.ptp(fk_pads(_w))))
     best = (np.inf, 0.0, 0.0)
     for d3 in np.linspace(-1.5, 1.5, 61):
         for d2 in np.linspace(-0.8, 0.8, 33):
@@ -2962,6 +2985,8 @@ def refine_terminal_seat(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
     # criterion fails whenever the spread exceeds 2*tol.  Centring the set
     # on the plane puts the worst pad at spread/2 + preload.
     def f_sv(q):
+        if _r60:
+            return float(np.mean(fk_pad_sv(q)))
         return float(np.mean(spec.face_sign * (fk_pads(q) - face_x)))
 
     target_sv = PRELOAD_M          # negative = a light pre-load into the face
@@ -3025,6 +3050,13 @@ def refine_terminal_seat(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
         "deepest_pad_after_mm": float(np.min(xs_final) * 1e3),
         "preload_signed_mm": sv_final * 1e3,
         "set_midpoint_signed_mm": sv_mid_final * 1e3,
+        # r60: the pad SURFACE's signed distance from the face plane (the
+        # physically meaningful contact quantity); negative = embedded
+        "pad_surface_signed_mm": (fk_pad_sv(w_new) * 1e3).tolist()
+        if _r60 else None,
+        "seat_basis": ("the pad CONTACT SURFACE (the disc rim) is seated at "
+                       "the pre-load" if _r60 else
+                       "the pad CENTRE is seated at the pre-load (legacy)"),
         "preload_residual_mm": resid_hist,
         "face_x_mm": face_x * 1e3,
     }
@@ -4058,6 +4090,22 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
             # r59: the EXECUTED palm path (the replay's per-frame palm
             # positions) -- the other half of the Cartesian feedback loop
             "executed_palm_path_m": np.asarray(h["palm"], float).tolist(),
+            # r61: the executed terminal's finger joint positions and tip
+            # positions next to the commanded ones -- the only way to tell
+            # an ARM tracking error from a FINGER tracking error
+            "executed_terminal_finger_qpos": [
+                round(float(x), 6) for x in
+                np.asarray(h["qpos"][-1])[list(spec.finger_qadr)]],
+            "executed_terminal_tip_positions_m": {
+                _nm: [round(float(v), 5) for v in np.asarray(h["tips"][-1])[_i]]
+                for _i, _nm in enumerate(
+                    [__import__("mujoco").mj_id2name(
+                        model, __import__("mujoco").mjtObj.mjOBJ_BODY,
+                        int(_b)) for _b in spec._tip_body_ids])
+            },
+            "commanded_terminal_finger_qpos": [
+                round(float(x), 6) for x in
+                np.asarray(cmds[side]["finger"][-1])],
             # r59: the executed-vs-commanded palm HEIGHT error, per frame,
             # on the task path's grid.  Published as a diagnostic: the
             # two-pass Cartesian feedback built on it was MEASURED AND
