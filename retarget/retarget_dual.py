@@ -1185,6 +1185,25 @@ def ur5e_ik_placement(model, data, spec: SideSpec,
     # across both mounts, the Front B calibration semantics)
     if spec.side == "left":
         palm_task[:, 1] += float(_os.environ.get("W6B_LEFT_YBIAS_MM", "27")) * 1e-3
+    # r57 (v9): the APPROACH RE-REGISTRATION.  The retargeted palm path
+    # descends onto the box from above (the video's hand enters the ego
+    # view from the upper corners); in the side cell that descent is what
+    # puts the fingers into the table and what shoves the box 44-55 mm
+    # before the grasp.  The re-registration keeps the task-space palm path
+    # (and its timing) but holds the palm at the box's level through the
+    # approach, so the hands enter horizontally like the reference clip.
+    # It is a TASK-SPACE re-registration: the human's joint path is not
+    # forced onto the UR5e (the v9 spec forbids that).
+    if _os.environ.get("W6B_R57_APPROACH", "") == "flat":
+        _z57 = 0.70 + 0.02 + float(hang)
+        # the flattening is applied to the EARLY path only, and decays to
+        # zero before the terminal: the approach-end pose and its velocity
+        # must stay as they were, or the terminal IK lands on a different
+        # branch (measured: the right's executed distance blew up to
+        # 110 mm when the whole path was flattened).
+        _u57 = np.linspace(0.0, 1.0, T)
+        _dec57 = np.clip((0.85 - _u57) / 0.45, 0.0, 1.0)
+        palm_task[:, 2] = _z57 + (palm_task[:, 2] - _z57) * _dec57
 
     q = np.zeros(6)
     joints = np.empty((T, 6))

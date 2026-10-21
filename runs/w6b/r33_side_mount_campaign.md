@@ -427,3 +427,36 @@ the terminal window is the last 60 control frames (262-321); the right has
 `table_slab`, both at frame 262 (the first frame of the window).  The report
 now carries `terminal_window_support_contact_detail` and
 `terminal_window_is_clean`.
+
+## r57 (v9) approach re-registration — partial, NOT shippable
+The v8 review's sole priority for the next round is the approach trajectory:
+"Side-Mount Approach Retarget — Collision-Free Contact Establishment", with
+gate3 = 0 support-contact frames, gate4 = 0 joint-limit frames and the box's
+pre-contact displacement ~0.
+
+First attempt (task-space re-registration, `W6B_R57_APPROACH=flat`): the palm
+path's z is held at the box's level through the early approach (the human's
+joint path is NOT forced onto the UR5e — the v9 spec forbids that) and the
+flattening decays to zero before the terminal so the approach-end pose and its
+velocity stay unchanged.
+
+| | video path (shipped) | flat (whole path) | flat (early only) |
+|---|---|---|---|
+| right executed mm | 4.39 | 110.17 | 6.92 |
+| left executed mm | 4.59 | 8.12 | 6.09 |
+| eligible contact pads R/L | 1/1 | 0/0 | 0/1 |
+| gate1 R/L | PASS/PASS | FAIL/PASS | PASS/PASS |
+| gate3 support frames R/L | 66/135 | 217/78 | 78/89 |
+| box max push mm | 55.46 | 16.87 | 55.46 |
+| box terminal residual mm | 3.38 | 15.22 | **1.42** |
+
+Reading: the flattening cuts the box's terminal residual 3.38 -> 1.42 mm ✓ and
+(the whole-path variant) the max push 55 -> 17 mm ✓, but it costs the terminal
+contact (eligible pads 1/1 -> 0/1) and does not clear gate3.  Flattening the
+whole path also moves the approach-end pose, which puts the terminal IK on a
+different branch (the right's executed distance blew up to 110 mm).
+
+=> **not shippable.**  A z-flattening alone is not the v9 re-registration: the
+path's x/y (the pre-grasp pose and the pre-contact timing) and the terminal
+continuity have to be re-registered together.  The failed variant is kept
+behind the env gate as the measured baseline for the next attempt.
