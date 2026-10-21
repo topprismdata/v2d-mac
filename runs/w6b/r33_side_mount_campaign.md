@@ -199,3 +199,22 @@ Restricted to the last 60 frames it gives right 32.6 -> 13.3 mm.
 - left 11.72 mm with forward axis 38.4 deg (> 35 deg) - still failing; the left
   wrist still grazes the table by 1.11 mm (right: 0.31 mm) and the hand ends
   3 deg off the inward normal.
+
+## r42 metric defect: the executed face plane ignored the box's own translation
+`gate_final_touch.measure()` computed the pad-to-face distance against the FIXED
+`+/-half_x` plane, while the box is a free body that the hand slides (measured
+16.7 mm during the run).  Every millimetre the box moved was booked as the pad's
+error.  The face plane now follows the box's current pose (`box_c[0] + side*half_x`,
+and the y centre for the band test).
+**Corrected executed numbers** (same runs, corrected metric):
+- ceiling master (r26 recipe): right 152.68 mm, left **16.77 mm** (was 59.14 mm)
+- side cell r34: right 7.69 mm, left 8.04 mm (was 4.02 / 11.72 mm)
+- side cell r35 (left base pitched +4 deg so its wrist clears the table):
+  right 10.78 mm (still out of band), **left 3.82 mm**, forward axes 10.6 / 9.1 deg
+Joint tracking is now exact on both sides (<= 0.019 rad), so what is left is contact
+coupling through the light box, not servo error.
+
+### r35 scene
+`grounding/assets/allegro_floating_ur5e_side_r35.xml` = r34 + the left base pitched
++4 deg (its wrist was grazing the table by 1.11 mm and the table reaction rotated
+the hand past the 35 deg forward-axis limit: 38.4 deg -> 9.1 deg).

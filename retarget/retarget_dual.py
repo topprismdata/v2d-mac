@@ -2985,7 +2985,9 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
                 print(f"    [dbg-force] {_sd}: af={np.round(data.actuator_force[_acts],1)} "
                       f"con={np.round(np.asarray(data.qfrc_constraint)[_dofs],1)} "
                       f"bias={np.round(np.asarray(data.qfrc_bias)[_dofs],1)} "
-                      f"qpos={np.round(data.qpos[specs[_sd].wrist_qadr],3)}")
+                      f"qpos={np.round(data.qpos[specs[_sd].wrist_qadr],3)} "
+                      f"cmd={np.round(np.asarray(cmds[_sd]['wrist'][-1]),3)} "
+                      f"err={np.round(np.asarray(cmds[_sd]['wrist'][-1])-data.qpos[specs[_sd].wrist_qadr],3)}")
             _pr = []
             for _c in data.contact:
                 _a = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, int(_c.geom1)) or "?"
@@ -3197,10 +3199,16 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
         per_pad = {}
         centers = []
         buried = False
+        # r42: the face plane must follow the box's CURRENT pose.  The old
+        # code used the fixed +/-half_x, so any x/y translation of the box
+        # (the hand presses a 150 g box and it slides) was booked as the
+        # executed pad error: the box moving 11.7 mm towards the left hand
+        # showed up as an 11.7 mm pad shortfall.
+        face_plane = box_c[0] + side * face_x
         for g in pad_geoms:
             px, py, pz = (float(v) for v in data.geom_xpos[g])
-            sv = px - side * face_x
-            dy = max(abs(py) - half_y, 0.0)
+            sv = px - face_plane
+            dy = max(abs(py - box_c[1]) - half_y, 0.0)
             dz = max(box_bot - pz, pz - box_top, 0.0)
             if dy == 0.0 and dz == 0.0:
                 if -sv * side < -tol:
@@ -3232,7 +3240,7 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
         for g in pad_geoms:
             n4 = _gname(model, g)
             px4 = float(data.geom_xpos[g][0])
-            sv4 = px4 - side * face_x
+            sv4 = px4 - face_plane
             pad_burial[n4] = {
                 "buried": bool(sv4 < -tol),
                 "through_mm": round(sv4 * 1e3, 3),
@@ -4683,8 +4691,13 @@ def main() -> int:
     # FINAL command (after the terminal blend and the terminal IK rewrites),
     # not on the raw chain: the chain's last row is not the pose the replay
     # executes.
+    _r38_sides = _os.environ.get("W6B_R38_SEAT", "0").split(",")
+    if _os.environ.get("W6B_R38_SEAT", "0") in ("1", "both"):
+        _r38_sides = list(VIDEOS)
     if _os.environ.get("W6B_R38_SEAT", "0") == "1":
-        for _side in VIDEOS:
+        _r38_sides = ["right"]
+    for _side in VIDEOS:
+        if _side in _r38_sides:
             try:
                 _w2, _rec = refine_terminal_seat(
                     model, data, specs[_side],
