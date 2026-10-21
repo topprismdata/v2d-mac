@@ -137,6 +137,14 @@ should be read:
   distances got worse (10.3 / 6.9 mm), so the branch was removed rather than
   shipped.
 
+The rendered deliverable: `docs/replay_frames/` (3 camera presets x 390
+frames, frame-exact with the source clip) plus
+`docs/replay_frames/terminal_{front,side,close}.png` — the **gate-1 terminal
+configuration**, which lies beyond the frame-exact video grid by contract and
+therefore has no place in the 390-frame sequence.  Measured on the delivered
+PNG: box width 0.331 (reference 0.315), centre u 0.502 / v 0.356 (reference
+0.464 / 0.335).
+
 **Both hands are inside the 5 mm bar on the executed state too.**
 
 1. **The terminal command is seated, not overlapped** (r38/r48/r49).  The
