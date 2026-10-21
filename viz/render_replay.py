@@ -35,7 +35,7 @@ WIDTH, HEIGHT = 1280, 720  # match the source clip so both panes scale identical
 # left-right in frame, the forearms enter from the frame edges like the
 # reference clip).  The ceiling-cell presets stay for that cell.
 SIDE_PRESETS = [
-    ("front", "正面", 90.0, -19.0, 0.42),
+    ("front", "正面", 90.0, -14.0, 0.40),
     ("side", "侧面", 0.0, -20.0, 0.55),
     ("close", "特写", 55.0, -20.0, 0.32),
 ]
@@ -111,19 +111,29 @@ def main() -> None:
     import os
     _side = "side_r36" in str(scene_xml)
     presets = SIDE_PRESETS if _side else PRESETS
+    _one = __import__("os").environ.get("V2D_RENDER_ONE", "")
+    # the reference clip puts the box slightly ABOVE the frame centre
+    # (measured v 0.335-0.38); the side-entry camera therefore looks 60 mm
+    # below the box's centre.  Verified by measuring the rendered PNG.
+    _off = float(__import__("os").environ.get(
+        "V2D_LOOKAT_OFF", "0.06" if "side_r36" in str(scene_xml) else "0"))
     for key, _cn, az, el, dist in presets:
         outs = []
         for i, fr in enumerate(frames):
+            if _one and i != int(_one):
+                continue
             d.qpos[:] = np.asarray(fr["qpos"])
             # --- the trap: object comes from obj, never from qpos -------
             d.qpos[obj_adr:obj_adr + 7] = np.asarray(fr["obj"])
             mujoco.mj_forward(m, d)
 
             cam.lookat[:] = d.xpos[obj_body]
+            cam.lookat[2] -= _off
             cam.azimuth, cam.elevation, cam.distance = az, el, dist
             renderer.update_scene(d, camera=cam)
             img = renderer.render()
-            dst = OUT / f"{key}_r{i:04d}.png"
+            dst = (pathlib.Path("/tmp") / f"{key}_probe.png" if _one
+                   else OUT / f"{key}_r{i:04d}.png")
             Image.fromarray(img).save(dst)
             outs.append(str(dst.relative_to(REPO)))
         renders[key] = outs

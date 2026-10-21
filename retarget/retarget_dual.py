@@ -1909,7 +1909,14 @@ def retarget_chain_side(joints: np.ndarray, model, data, spec: SideSpec,
         if len(lat) >= 5:
             lat = np.stack([_medfilt(np.asarray(lat, float)[:, c], 5)
                             for c in range(3)], axis=1)
-        face_anchor = np.array([spec.face_sign * 0.11, 0.0, 0.76])
+        # r45: the palm anchor follows the box's own half-width (a 50 mm
+        # standoff from the end face) instead of a hard-coded 0.11 that only
+        # matches the 0.06-wide box.  The ceiling cell keeps its 0.11.
+        try:
+            _bh = float(model.geom_size[obj_ids(model)[1]][0])
+        except Exception:
+            _bh = 0.06
+        face_anchor = np.array([spec.face_sign * (_bh + 0.05), 0.0, 0.76])
         palm_task = face_anchor[None, :] + np.asarray(lat, float)
         if R22_MARGIN_MM > 0.0:
             # r22 fix 2: the swing path walks face-normal-out (away from
@@ -3724,8 +3731,11 @@ def gpt_triptych(model, data, rep, specs) -> dict:
         data.qpos[:] = rep["qpos_full"][k]
         data.qpos[ba:ba + 7] = rep["obj_world"][k]
         mujoco.mj_forward(model, data)
-        cam.lookat[:] = [0.0, 0.0, 0.74]
-        cam.azimuth, cam.elevation, cam.distance = 105.0, -22.0, 0.80
+        _sc = _is_side_cell(model)
+        cam.lookat[:] = [0.0, 0.0, 0.74 - (0.06 if _sc else 0.0)]
+        cam.azimuth, cam.elevation, cam.distance = ((90.0, -14.0, 0.40)
+                                                    if _sc else
+                                                    (105.0, -22.0, 0.80))
         renderer.update_scene(data, camera=cam)
         dst = EVIDENCE_DIR / f"gpt_triptych_{tag}.png"
         Image.fromarray(renderer.render()).save(dst)
@@ -3751,6 +3761,15 @@ def gpt_triptych(model, data, rep, specs) -> dict:
     }
 
 
+def _is_side_cell(model) -> bool:
+    """True for the side-entry cell (the arm bases are mounted outboard)."""
+    try:
+        rb = model.body("ur5e_r_base").id
+        return abs(float(model.body_pos[rb][0])) > 0.5
+    except Exception:
+        return False
+
+
 def render_comparison(model, data, rep, out_png: Path) -> dict:
     """Human clip (top) vs executed sim (bottom) at three matched phases.
 
@@ -3762,7 +3781,43 @@ def render_comparison(model, data, rep, out_png: Path) -> dict:
 
     ba = box_free_qadr(model)
     W, H = 640, 360
-    renderer = mujoco.Renderer(model, height=H, width=W)
+    # r46: render the comparison with the FIDELITY visual layer (the same
+    # model the delivered frames use) so the bottom row shows what the
+    # reviewer will see, not the bare physics scene.  Falls back to the
+    # physics model when the viz layer is unavailable.
+    render_model = model
+    try:
+        import sys as _sys
+        if str(REPO / "viz") not in _sys.path:
+            _sys.path.insert(0, str(REPO / "viz"))
+        import scene_fidelity as _sf
+        _side_xml = None
+        for _cand in (SCENE_XML,):
+            if "side" in str(_cand):
+                _side_xml = _cand
+        if _side_xml is not None:
+            import pathlib as _pl
+            render_model = _sf.build_fidelity_model(
+                _pl.Path(_side_xml),
+                hide_bodies=("yaw_stop_posy", "yaw_stop_negy"))
+    except Exception as _e:
+        print(f"    [cmp-render] fidelity model unavailable ({_e!r}); "
+              f"using the physics model")
+        render_model = model
+    # the offscreen framebuffer must match the render aspect or MuJoCo's
+    # fov mapping scales the image (the box then reads ~2x too large)
+    render_model.vis.global_.offwidth = W
+    render_model.vis.global_.offheight = H
+    # the same lighting hierarchy the delivered frames use (warm key + cool
+    # fill + lifted ambient), otherwise the comparison panes read harsher
+    # than the render they are meant to preview
+    render_model.light_ambient[:] = 0.38
+    render_model.light_diffuse[0] = 0.46 * np.array([1.00, 0.93, 0.82])
+    render_model.light_diffuse[1] = 0.30 * np.array([0.88, 0.93, 1.05])
+    render_model.light_specular[0] = 0.22
+    render_model.light_specular[1] = 0.10
+    renderer = mujoco.Renderer(render_model, height=H, width=W)
+    renderer.scene.flags[mujoco.mjtRndFlag.mjRND_SHADOW] = 0
     cam = mujoco.MjvCamera()
     cam.type = mujoco.mjtCamera.mjCAMERA_FREE
     # W6d standard presets (Main round-2): front/side/close, lookat (0,0,0.74)
@@ -3771,13 +3826,10 @@ def render_comparison(model, data, rep, out_png: Path) -> dict:
     # framed like the reference clip: from -y, the box's long axis running
     # left-right, the forearms entering from the frame edges.  The ceiling
     # cell's presets put the camera in front of a gantry-mounted cluster.
-    try:
-        _rb = model.body("ur5e_r_base").id
-        if abs(float(model.body_pos[_rb][0])) > 0.5:
-            presets = [(90.0, -19.0, 0.42), (0.0, -20.0, 0.55),
-                       (55.0, -20.0, 0.32)]
-    except Exception:
-        pass
+    _side_cell = _is_side_cell(model)
+    if _side_cell:
+        presets = [(90.0, -14.0, 0.40), (0.0, -20.0, 0.55),
+                   (55.0, -20.0, 0.32)]
     rows = []
     sim_cells = []
     for i, vf in enumerate(COMPARE_VIDEO_FRAMES):
@@ -3788,9 +3840,18 @@ def render_comparison(model, data, rep, out_png: Path) -> dict:
         data.qpos[:] = rep["qpos_full"][k]
         data.qpos[ba:ba + 7] = rep["obj_world"][k]
         mujoco.mj_forward(model, data)
-        cam.lookat[:] = [0.0, 0.0, 0.74]
+        _rm = render_model
+        _rd = data
+        if _rm is not model:
+            _rd = mujoco.MjData(_rm)
+            _rd.qpos[:] = data.qpos[:]
+            _ra = int(_rm.jnt_qposadr[mujoco.mj_name2id(
+                _rm, mujoco.mjtObj.mjOBJ_JOINT, "object_free")])
+            _rd.qpos[_ra:_ra + 7] = data.qpos[ba:ba + 7]
+            mujoco.mj_forward(_rm, _rd)
+        cam.lookat[:] = [0.0, 0.0, 0.74 - (0.06 if _side_cell else 0.0)]
         cam.azimuth, cam.elevation, cam.distance = presets[i]
-        renderer.update_scene(data, camera=cam)
+        renderer.update_scene(_rd, camera=cam)
         sim_cells.append(renderer.render())
     renderer.close()
 
@@ -4072,6 +4133,16 @@ def main() -> int:
             hi2 = model.jnt_range[jids2][:, 1]
             tgt_pos = np.asarray(vg[s2]["pos"], float)
             tgt_R = np.asarray(vg[s2]["R"], float)
+            # r45: the verified grasp pose was measured against the 0.06-half
+            # wide box; when the cell's box is turned (its long axis
+            # left-right, the hands on the END faces) the palm has to move
+            # out by the same amount or the terminal IK aims INTO the box.
+            try:
+                _bhx = float(model.geom_size[obj_ids(model)[1]][0])
+            except Exception:
+                _bhx = 0.06
+            if abs(_bhx - 0.06) > 1e-6:
+                tgt_pos = tgt_pos + spec2.face_sign * (_bhx - 0.06) * np.array([1.0, 0.0, 0.0])
             if R18_NATIVE_TARGET:
                 # r18 cut 6: the floating verified-grasp pose extrapolated
                 # to the UR5e flange frame is unreachable (measured r17:

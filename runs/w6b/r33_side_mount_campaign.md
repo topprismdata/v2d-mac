@@ -218,3 +218,40 @@ coupling through the light box, not servo error.
 `grounding/assets/allegro_floating_ur5e_side_r35.xml` = r34 + the left base pitched
 +4 deg (its wrist was grazing the table by 1.11 mm and the table reaction rotated
 the hand past the 35 deg forward-axis limit: 38.4 deg -> 9.1 deg).
+
+## r44-r46 the side-entry render (composition matched to the reference)
+The reference frame `runs/w6b/frames_full/f_0252.jpg` was measured directly (the
+purple tissue box's pixel extent): box width **0.315** of the frame, centre
+**u 0.464 / v 0.335**.  The camera was then calibrated by RENDERING and MEASURING
+(`viz/calibrate_render_camera.py`), not by projection arithmetic — MuJoCo's free
+camera uses the model's `fovy` as the *horizontal* scale, so a first-principles
+projection is wrong by the aspect ratio (predicted 0.267, measured 0.481 for the same
+frame).  Final preset: azimuth 90, elevation -14, distance 0.40, look-at 60 mm below
+the box.
+
+| quantity | reference | sim (frames 8 / 251 / 340) |
+|---|---|---|
+| box width | 0.315 | 0.331 / 0.331 / 0.330 |
+| box centre u | 0.464 | 0.499 / 0.495 / 0.504 |
+| box centre v | 0.335 | 0.356 / 0.357 / 0.339 |
+
+Delivered: 1170 frames (3 presets x 390) in `docs/replay_frames/`, plus
+`docs/human_vs_sim_w6b.png` (human row vs the same fidelity model and camera).
+The previous ceiling-layout render is retained at `docs/replay_frames/blender/` and is
+superseded.
+
+### tool bugs fixed on the way
+* `viz/render_replay.py` took `scene_for_qpos_width(...)[1]` — the *kind string*, not
+  the scene path — so the render tool could not run at all ("could not find decoder
+  for resource 'ur5e'").
+* `viz/render_replay.py` and the pipeline's comparison renderer did not set the
+  offscreen framebuffer to the render aspect, so MuJoCo's fov mapping scaled the
+  image (the box read ~2x too large).
+* the pipeline's comparison renderer drew the bare physics scene; it now draws the
+  same fidelity model, with the same lighting hierarchy, as the delivered frames.
+
+### r38 negative result: turning the box 90 deg
+`grounding/assets/allegro_floating_ur5e_side_r38.xml` turns the box so its long axis
+runs left-right (as in the reference).  The command side converges (0.145 / 0.038 mm)
+but the hands drag the box 280 mm across the table and the executed state degrades to
+183 / 199 mm.  Kept in the tree, not shipped.
