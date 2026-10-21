@@ -1,6 +1,6 @@
 # GPT review package v7 — side-entry layout, corrected metrics, closed execution gap
 
-Base: `v2d-mac` @ r50 (curl 1.25, midpoint seat, 2-D flattening) (branch `main`, remote `https://github.com/topprismdata/v2d-mac.git`).
+Base: `v2d-mac` @ r53 (curl 1.25, midpoint seat, 2-D flattening, finger gravity cancel) (branch `main`, remote `https://github.com/topprismdata/v2d-mac.git`).
 Everything below is reproducible from committed files; the command lines are given so a
 reviewer can re-derive every number in a clean process.
 
@@ -89,11 +89,8 @@ W6B_SCENE_XML=grounding/assets/allegro_floating_ur5e_side_r37.xml \
 W6B_R23_FLYOVER_MM=250 W6B_R22_MARGIN_MM=8 \
 W6B_R38_SEAT=both W6B_R39_TGC=1 W6B_R39_HOLD=60 \
 W6B_R50_CURL=1.25 W6B_R50_PRELOAD_MM=0.03 \
+W6B_R52_FINGER_TGC=1 \
 runs/.venv-retarget/bin/python retarget/retarget_dual.py
-```
-
-```
-W6B_R52_FINGER_TGC=1                 (added)
 ```
 
 | quantity | right | left |
@@ -170,7 +167,8 @@ PNG: box width 0.331 (reference 0.315), centre u 0.502 / v 0.356 (reference
    P-servo pressed with the force clamp (150 Nm at the joint, kilonewtons at the pad)
    and that shove is what sent the 150 g box across the table.  The refinement
    flattens the pad set against the face (roll search: the pad x spread 7.7 → 2.1 mm)
-   and then **iterates the shift until the measured pre-load is 0.2 mm** — the
+   and then **iterates the shift until the measured pre-load is met** (0.03 mm in the
+   shipped recipe) — the
    iteration is on the signed face distance, with a *numerical* Jacobian of the
    objective (the palm Jacobian is the wrong proxy: a wrist rotation barely moves
    the palm x while it swings the pads by centimetres) and a locality guard (the
@@ -195,7 +193,9 @@ Journey of that number (all in `runs/w6b/r33_side_mount_campaign.md`):
 | r41 (real-size wrist proxies) | 4.02 mm | 11.72 mm |
 | r42 (face plane follows the box) | 7.69 mm | 8.04 mm |
 | r43 (per-side servo gains, left kp 4000) | 6.56 mm | 6.26 mm |
-| r49 (seated terminal + 0.4 kg object + asymmetric gains) | **4.68 mm** | **4.07 mm** |
+| r49 (seated terminal + 0.4 kg object + asymmetric gains) | 4.68 mm | 4.07 mm |
+| r50 (curl ×1.25 + midpoint seat + 2-D flattening) — gate1 PASSES | 5.96 mm | 5.02 mm |
+| r52 (finger gravity cancel) | **4.39 mm** | **4.59 mm** |
 
 **The four remaining red gates are pre-existing and cell-independent** — the
 ceiling master fails the same four (gate3 approach-clean, gate5 palm deviation,
@@ -239,7 +239,11 @@ Control-law results, all negative and all logged:
 | integral hold (ki 0.5 / 1.0 / 2.0) | 96.7–228.8 / 154.6–185.2 mm |
 | `qfrc_applied = −qfrc_bias` over the whole run | 687.6 / 159.5 mm |
 | static gravity bias from `mj_rne` | no-op: `mj_rne` excludes gravity |
-| terminal seat refinement (roll so the pad set is coplanar) | works (pad x spread 7.7 → 2.1 mm) but costs the command gate; kept in code, default OFF |
+| terminal seat refinement (roll so the pad set is coplanar) | 1-D version left 6–7 mm of spread (it hit its ±0.45 rad window); the 2-D version + the midpoint target + curl ×1.25 is what makes gate1 pass — shipped in the side recipe, default OFF elsewhere |
+| stiffer wrist servo (kp 550 → 1500/3000/6000) | the ±28 N m torque limit binds: the executed distance blows up to 180–300 mm |
+| stiffer finger servo (kp ×3/×10/×30) | 45–117 mm executed |
+| gravity cancel over 150/322 frames instead of 60 | 8–27 mm executed |
+| grip height (anchor z 0.78/0.80/0.82) | the approach clearance and the executed distance trade off chaotically; z = 0.76 stays the best |
 
 ---
 
@@ -269,17 +273,28 @@ the left's 0.004 mm; without it the left sits at 0.668 mm.
 
 ## 4. What is still open (no spin)
 
-1. **gate1 on the side cell**: 6.56 / 6.26 mm against a `< 5 mm` bar.  The two hands
-   trade error through the light box; every mount-angle / gain perturbation moves the
-   error from one side to the other rather than removing it.
-2. **The command state still has one pad through the face** (right ring finger 7.5 mm).
-   The r38 seat refinement removes it but costs the command gate (left cmd rect
-   0.001 → 1.913 mm), so the hand cannot be both coplanar and on the face at the
-   commanded 26.5° approach angle.  The physically right fix is a perpendicular
-   approach, i.e. the terminal orientation target, not another mount tweak.
-3. **The forearm entry angle** (35–45° down vs the human's ~5–10°): a hardware
+1. **Four gates are still red** (gate3 approach-clean, gate5 palm deviation,
+   gate4 joint limits, wrist-referenced error) — the same four the ceiling
+   master fails, so they are cell-independent and pre-existing.  They are now
+   measured and attributed (see §2): the approach's table contacts (the fingers
+   wrap around the box's underside, which sits on the table; the left thumb
+   rests on the table from frame 6 because the video-driven approach carries
+   that hand low), the finger joint-limit overshoot in the approach segment,
+   and the palm-deviation legs that compare the side cell against a path
+   registered for the floating cell.  **The gated terminal window is clean** on
+   all of them.
+2. **The forearm entry angle** (35–45° down vs the human's ~5–10°): a hardware
    geometry limit of side-mounted UR5es over a table (see §1).
-4. **The box is not lifted**; the reference holds it ~30 mm above the table.
+3. **The box is not lifted**; the reference holds it ~30 mm above the table.
+4. **The box's mass is a modelling choice** (0.4 kg): a 150 g box slides under
+   the squeeze (16.7 mm measured) and every millimetre of that travel is
+   booked against the pad that did not follow it.  0.4 kg is still a light box,
+   but it is a parameter, not a measurement of the reference object.
+5. **The ring finger does not reach the face on the right** (14 mm outside the
+   face rectangle in the command state): the three-finger set + the thumb is
+   what gate1 measures, and the criterion needs ≥ 2 pads in the rectangle, so
+   this passes — but a four-finger wrap on the face is not what the command
+   asks for.
 
 ---
 
@@ -305,11 +320,12 @@ only (fresh processes, no session state):
 runs/.venv-retarget/bin/python tools/w6b/verify_v7.py
 ```
 
-It re-runs both recipes, compares against the values quoted here, and measures the
-delivered render's composition against the reference frame.  Last run: **PASS**
-(side cell 0.214/0.001 mm cmd, 6.56/6.26 mm executed, 21.4/14.9 deg; ceiling master
-0.000/0.004 mm cmd, 152.68/16.77 mm executed; composition width 0.331 vs 0.315,
-u 0.495 vs 0.464, v 0.357 vs 0.335).
+It re-runs both recipes, compares against the values quoted here (including the
+gate1 verdict per side), and measures the delivered render's composition
+against the reference frame.  Last run: **PASS**
+(side cell 0.023/0.000 mm cmd, gate1 PASS/PASS, 4.39/4.59 mm executed,
+33.6/29.2 deg; ceiling master 0.000/0.004 mm cmd, 152.68/16.77 mm executed;
+composition width 0.331 vs 0.315, u 0.502 vs 0.464, v 0.356 vs 0.335).
 
 Test state: `runs/.venv-mj/bin/python -m pytest tests/test_mjcf_provenance_pins.py
 tests/test_scene_w6.py -q` → **16 passed** on the committed tree.  (A working-tree edit
