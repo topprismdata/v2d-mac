@@ -1,5 +1,14 @@
 # GPT review package v7 — side-entry layout, corrected metrics, closed execution gap
 
+> **ERRATUM (added after the v7 review, `docs/gpt_v7_review.md`):** the v7 review
+> (9.1/10) caught a false statement in this document — it said the gated terminal
+> window was "clean" while the report carried one hand-table contact per side
+> inside that window.  **That claim is withdrawn** (the exact frames and bodies
+> are in `docs/gpt_v8_package.md` §4 and in the report's
+> `gate3_approach_clean.terminal_window_support_contact_detail`).  Everything
+> else in this package stands as written; the v8 package answers the review's six
+> deductions point by point.
+
 Base: `v2d-mac` @ r53 (curl 1.25, midpoint seat, 2-D flattening, finger gravity cancel) (branch `main`, remote `https://github.com/topprismdata/v2d-mac.git`).
 Everything below is reproducible from committed files; the command lines are given so a
 reviewer can re-derive every number in a clean process.

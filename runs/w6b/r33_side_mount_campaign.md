@@ -373,3 +373,57 @@ The +-50 mm base-y corridor is a FLOATING-cell criterion (it bounds the
 sliding base); the ur5e cells have no slide, so it is applied in the floating
 cell and reported as context elsewhere (the side cell's mounts sit at 74 mm and
 89 mm).
+
+## r54 contact semantics (the v7 review's top deduction)
+The reviewer was right: the pad centre-to-face distance is not a contact
+measure.  The report now publishes, per pad: `pad_center_to_face_mm`,
+`pad_surface_signed_gap_mm` (MuJoCo's own contact distance when in contact,
+otherwise the cylinder surface gap along the face normal), `contact_normal_force_N`
+(mj_contactForce along the face normal), `in_contact`, `in_face_rectangle`,
+`in_plane_offset_yz_mm` and `eligible_contact_pad`.
+
+**Result (side cell, terminal):**
+| | right | left |
+|---|---|---|
+| pads in contact | 1 (ff) | 1 (ff) |
+| surface signed gap | -0.266 mm | -0.150 mm |
+| contact normal force | 2.696 N | 1.664 N |
+| end-face contact frames | 148 | 93 |
+| second pad (mf) surface gap | +11.452 mm (no contact) | +0.706 mm (no contact) |
+
+=> only ONE fingertip per hand really presses the end face.  The command state
+has two pads on the face (ff + mf); in the executed state the middle finger
+leaves it by 11.9 mm.  Reported as measured; the "four-finger grasp" claim was
+never made and is now quantified against.
+
+## r55 mass sensitivity
+`tools/w6b/mass_sensitivity.py` (same controller, object mass 0.15/0.25/0.4 kg):
+
+| mass | exec mm R/L | eligible pads R/L | F_n N R/L | box max slip mm | box final mm | gate1 R/L |
+|---|---|---|---|---|---|---|
+| 0.15 kg | 3.19/9.11 | 1/0 | 0.83/-- | 44.09 | 0.71 | PASS/PASS |
+| 0.25 kg | 11.28/8.76 | 0/0 | 0.54/-- | 51.59 | 4.59 | PASS/PASS |
+| 0.40 kg | 4.39/4.59 | 1/1 | 2.70/1.66 | 55.46 | 3.38 | PASS/PASS |
+
+* the COMMAND state (gate1's basis) is mass-independent: 0.023/0.000 mm and
+  PASS/PASS at every mass;
+* the EXECUTED state is not: at 0.15 kg the left hand loses every contact
+  (gaps 7.9-12.4 mm), at 0.25 kg both hands do.  "Stable grasp at 0.4 kg" is
+  therefore NOT demonstrated;
+* the box is pushed 44-55 mm during the video-driven APPROACH at every mass
+  (the terminal residual is 0.7-4.6 mm).
+
+**Negative result**: making the terminal aim follow the box's measured
+displacement (fixed-point iteration, `tools/w6b/box_follow.py`) does not
+converge - the box's displacement is a chaotic function of the aim; after two
+iterations the contact pads drop from 1/1 to 0/1 and the left's gate1 starts
+failing.  Not in the shipped recipe.
+
+## r53 correction: the terminal window is NOT clean
+The v7 package claimed the terminal window was clean while the report carried
+one hand-table contact per side inside it.  **Withdrawn.**  The exact facts:
+the terminal window is the last 60 control frames (262-321); the right has
+`ff_base` + `ff_proximal` on `table_slab` and the left has `ff_distal_left` on
+`table_slab`, both at frame 262 (the first frame of the window).  The report
+now carries `terminal_window_support_contact_detail` and
+`terminal_window_is_clean`.

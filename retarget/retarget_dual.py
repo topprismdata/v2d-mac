@@ -3373,8 +3373,67 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
             if abs(sv4) > tol:
                 buried_v2 = True
         _band = 0.0 if best_in_band else 0.5
+        # r54: the CONTACT EVIDENCE per pad.  The centre-to-face distance is
+        # a geometric locator, not a contact measure: the pad is a 6 mm
+        # cylinder, so the honest surface gap and the normal force have to
+        # be reported next to it (the reviewer asked for the surface gap,
+        # the normal force and the persistence to agree).  The surface gap
+        # is MuJoCo's own contact distance (signed: negative = overlap),
+        # taken against the box's end face; the normal force is the contact
+        # force component along the face normal.
+        _obj_body, _box_g, _cham_p, _cham_n = obj_ids(model)
+        _pad_contact = {}
+        for _g in pad_geoms:
+            _gi = int(_g)
+            _pn = _gname(model, _gi)
+            _best_con = None
+            _best_con_id = -1
+            for _ci in range(data.ncon):
+                _con = data.contact[_ci]
+                _g1, _g2 = int(_con.geom1), int(_con.geom2)
+                if _gi not in (_g1, _g2):
+                    continue
+                _o = _g2 if _gi == _g1 else _g1
+                if _o not in (_box_g, _cham_p, _cham_n):
+                    continue
+                if _best_con is None or float(_con.dist) < float(_best_con.dist):
+                    _best_con = _con
+                    _best_con_id = _ci
+            _px, _py, _pz = (float(v) for v in data.geom_xpos[_gi])
+            _in_plane = (abs(_py - box_c[1]) <= half[1] + 1e-9 and
+                         abs(_pz - box_c[2]) <= half[2] - 0.01 + 1e-9)
+            if _best_con is not None:
+                _cf = np.zeros(6)
+                mujoco.mj_contactForce(model, data, _best_con_id, _cf)
+                _f = np.asarray(_cf[:3], float)
+                _n = np.array([-side, 0.0, 0.0])
+                _fn = float(abs(_f @ _n))
+                _gap = float(_best_con.dist)
+                _contact = True
+            else:
+                _fn = 0.0
+                # no contact: the geometric surface gap of the cylinder
+                # (centre depth minus the radius, signed the same way)
+                # the pad is a cylinder (radius 6 mm) whose axis is the
+                # geom's local z: the surface offset along the face normal
+                # is the radius projected on that normal
+                _bid = int(model.geom_bodyid[_gi])
+                _ax = np.asarray(data.xmat[_bid], float).reshape(3, 3)[:, 2]
+                _proj = abs(float(_ax @ np.array([-side, 0.0, 0.0]))) * 0.006
+                _gap = float(side * (_px - face_plane)) - _proj
+                _contact = False
+            _pad_contact[_pn] = {
+                "pad_center_to_face_mm": round(float(side * (_px - face_plane)) * 1e3, 4),
+                "pad_surface_signed_gap_mm": round(_gap * 1e3, 4),
+                "contact_normal_force_N": round(_fn, 4),
+                "in_contact": bool(_contact),
+                "in_face_rectangle": bool(_in_plane),
+                "in_plane_offset_yz_mm": [round((_py - box_c[1]) * 1e3, 3),
+                                          round((_pz - box_c[2]) * 1e3, 3)],
+                "eligible_contact_pad": bool(_contact and _in_plane),
+            }
         return (best, buried, fwd_deg, per_pad, ctr.tolist(), pad_burial,
-                buried_v2, _band)
+                buried_v2, _band, _pad_contact)
 
     out = {}
     for side, spec in specs.items():
@@ -3386,14 +3445,14 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
         data.qpos[spec.finger_qadr] = cmds[side]["finger"][-1]
         _mj.mj_forward(model, data)
         (dist, buried, fwd_deg, per_pad, ctr, pad_burial, buried_v2,
-         band_pen) = measure(spec, coll)
+         band_pen, pad_contact) = measure(spec, coll)
         # executed final state: contact-physics evidence
         data.qpos[:] = cmds[side]["exec_qpos"][-1]
         _ba = box_free_qadr(model)
         data.qpos[_ba:_ba + 7] = cmds[side]["exec_obj"][-1]
         _mj.mj_forward(model, data)
         (dist_e, buried_e, fwd_deg_e, per_pad_e, ctr_e, pad_burial_e,
-         buried_v2_e, band_pen_e) = measure(spec, coll)
+         buried_v2_e, band_pen_e, pad_contact_e) = measure(spec, coll)
         # GPT round-3 upgrade: >= 2 pads per hand inside the rectangle
         n_in_rect = sum(1 for v in per_pad.values() if v <= tol * 1e3)
         out[side] = {
@@ -3431,6 +3490,12 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
             "per_pad_rect_mm": per_pad,
             "per_pad_burial": pad_burial,
             "pad_centroid_m": ctr,
+            "command_state_pad_evidence": {
+                "note": ("the command state has no contacts; the surface gap "
+                         "there is the geometric cylinder gap (centre depth "
+                         "minus the 6 mm radius)"),
+                "pads": pad_contact,
+            },
             "executed_state_evidence": {
                 "note": ("post-contact-physics final state, identical metric: "
                          "the solver keeps pad SURFACES on the face so pad "
@@ -3443,6 +3508,18 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
                 "pad_center_buried_v2": bool(buried_v2_e),
                 "forward_axis_deg": fwd_deg_e,
                 "pad_centroid_m": ctr_e,
+                # r54: the contact evidence, per pad
+                "pad_contact_evidence": pad_contact_e,
+                "eligible_contact_pads": sorted(
+                    k for k, v in pad_contact_e.items()
+                    if v.get("eligible_contact_pad")),
+                "n_eligible_contact_pads": sum(
+                    1 for v in pad_contact_e.values()
+                    if v.get("eligible_contact_pad")),
+                "contact_persistence_note": (
+                    "the end-face contact frame count is in "
+                    "gate2_contact.endface_contact_frames; the per-pad "
+                    "evidence above is the terminal frame"),
             },
         }
     return out
@@ -3455,8 +3532,30 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
         k: {kk: vv for kk, vv in v.items() if kk != "full_chain"}
         for k, v in chains["left"]["convention_sweep"].items()
     }
+    # r55: the box's motion during the replay (the reviewer asked for the
+    # slip as part of the mass-sensitivity audit): the displacement of the
+    # box's free joint from its table-rest pose.
+    _objw = np.asarray(rep.get("obj_world", []), float)
+    _box_motion = None
+    if _objw.size:
+        _rest = np.array([0.0, 0.0, 0.74])
+        _d = np.linalg.norm(_objw[:, :3] - _rest[None, :], axis=1)
+        _box_motion = {
+            "rest_pose_m": _rest.tolist(),
+            "max_displacement_mm": round(float(_d.max()) * 1e3, 3),
+            "final_displacement_mm": round(float(_d[-1]) * 1e3, 3),
+            "slip_over_5mm": bool(float(_d.max()) > 5e-3),
+            "note": ("the box's free-joint displacement from the table rest "
+                     "pose over the whole replay"),
+        }
     report = {
         "work_package": "W6b dual-hand MANO retarget",
+        "box_motion": _box_motion,
+        # r55: the box's terminal displacement VECTOR (the aim offset the
+        # terminal IK should use)
+        "box_terminal_offset_m": (
+            [round(float(v), 6) for v in _objw[-1][:3] - np.array([0.0, 0.0, 0.74])]
+            if _objw.size else None),
         "scene": {
             "xml": str(SCENE_XML),
             "sha256_1kb": _sha256_1kb(SCENE_XML),
@@ -3603,9 +3702,14 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
             for _pr in rep_support_pairs[_t].get(side, []):
                 support_contact_bodies[_pr] = support_contact_bodies.get(_pr, 0) + 1
         _term_lo = max(0, len(cls) - int(rep.get("terminal_window_frames", 60)))
-        terminal_support_contacts = int(sum(
-            1 for _t in range(_term_lo, len(cls))
-            if cls[_t][side]["support"] > 0))
+        _term_hits = []
+        for _t in range(_term_lo, len(cls)):
+            if cls[_t][side]["support"] <= 0:
+                continue
+            _bodies = sorted(set(rep_support_pairs[_t].get(side, [])))
+            _term_hits.append({"control_frame": int(_t),
+                               "bodies": _bodies})
+        terminal_support_contacts = int(len(_term_hits))
         other_frames = [t for t, c in enumerate(cls) if c[side]["box_other"] > 0]
         first_endface = endface_frames[0] if endface_frames else None
         import mujoco as _mj
@@ -3773,6 +3877,8 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
                     "is reported as context and the mount y is given"),
                 "support_contact_bodies": support_contact_bodies,
                 "terminal_window_support_contacts": terminal_support_contacts,
+                "terminal_window_support_contact_detail": _term_hits,
+                "terminal_window_is_clean": bool(terminal_support_contacts == 0),
                 "pass": bool(len(support_frames) == 0 and base_y_in_corridor),
             },
             "gate4_joint_limits": {
@@ -4345,6 +4451,18 @@ def main() -> int:
                 _bhx = 0.06
             if abs(_bhx - 0.06) > 1e-6:
                 tgt_pos = tgt_pos + spec2.face_sign * (_bhx - 0.06) * np.array([1.0, 0.0, 0.0])
+            # r55: the terminal aim follows the box.  The approach pushes the
+            # box (measured: 44-55 mm of travel at 0.15-0.4 kg, of which a
+            # few mm survive to the terminal), and the terminal IK targets an
+            # ABSOLUTE palm pose computed from the box's table-rest pose, so
+            # the hands aim at where the box WAS.  The offset is the box's
+            # measured terminal displacement (tools/w6b/box_follow.py
+            # iterates it to a fixed point).
+            _boff = _os.environ.get("W6B_R55_TGT_OFFSET", "")
+            if _boff:
+                _bv = [float(x) for x in _boff.split(",")]
+                if len(_bv) == 3:
+                    tgt_pos = tgt_pos + np.array(_bv, float)
             if R18_NATIVE_TARGET:
                 # r18 cut 6: the floating verified-grasp pose extrapolated
                 # to the UR5e flange frame is unreachable (measured r17:

@@ -1,0 +1,154 @@
+[
+  {
+    "mass_kg": 0.15,
+    "right": {
+      "cmd_mm": 0.023,
+      "cmd_fwd": 18.7,
+      "exec_mm": 3.19,
+      "exec_fwd": 6.7,
+      "eligible_pads": [
+        "ff_tip_collision"
+      ],
+      "n_eligible": 1,
+      "normal_forces_N": {
+        "ff_tip_collision": 0.8327
+      },
+      "surface_gaps_mm": {
+        "ff_tip_collision": -0.0352,
+        "mf_tip_collision": 3.8288,
+        "rf_tip_collision": 13.7663,
+        "th_tip_collision": 104.9469
+      },
+      "gate1_pass": true
+    },
+    "left": {
+      "cmd_mm": 0.0,
+      "cmd_fwd": 19.1,
+      "exec_mm": 9.11,
+      "exec_fwd": 24.5,
+      "eligible_pads": [],
+      "n_eligible": 0,
+      "normal_forces_N": {},
+      "surface_gaps_mm": {
+        "ff_tip_left_collision": 9.6848,
+        "mf_tip_left_collision": 12.3648,
+        "rf_tip_left_collision": 7.9313,
+        "th_tip_left_collision": 90.2184
+      },
+      "gate1_pass": true
+    },
+    "box_motion": {
+      "rest_pose_m": [
+        0.0,
+        0.0,
+        0.74
+      ],
+      "max_displacement_mm": 44.094,
+      "final_displacement_mm": 0.71,
+      "slip_over_5mm": true,
+      "note": "the box's free-joint displacement from the table rest pose over the whole replay"
+    }
+  },
+  {
+    "mass_kg": 0.25,
+    "right": {
+      "cmd_mm": 0.023,
+      "cmd_fwd": 18.7,
+      "exec_mm": 11.28,
+      "exec_fwd": 21.0,
+      "eligible_pads": [],
+      "n_eligible": 0,
+      "normal_forces_N": {
+        "ff_tip_collision": 0.5363
+      },
+      "surface_gaps_mm": {
+        "ff_tip_collision": -0.012,
+        "mf_tip_collision": 13.5935,
+        "rf_tip_collision": 18.019,
+        "th_tip_collision": 100.7182
+      },
+      "gate1_pass": true
+    },
+    "left": {
+      "cmd_mm": 0.0,
+      "cmd_fwd": 19.1,
+      "exec_mm": 8.76,
+      "exec_fwd": 20.0,
+      "eligible_pads": [],
+      "n_eligible": 0,
+      "normal_forces_N": {},
+      "surface_gaps_mm": {
+        "ff_tip_left_collision": 4.6205,
+        "mf_tip_left_collision": 16.9937,
+        "rf_tip_left_collision": 16.651,
+        "th_tip_left_collision": 107.271
+      },
+      "gate1_pass": true
+    },
+    "box_motion": {
+      "rest_pose_m": [
+        0.0,
+        0.0,
+        0.74
+      ],
+      "max_displacement_mm": 51.589,
+      "final_displacement_mm": 4.588,
+      "slip_over_5mm": true,
+      "note": "the box's free-joint displacement from the table rest pose over the whole replay"
+    }
+  },
+  {
+    "mass_kg": 0.4,
+    "right": {
+      "cmd_mm": 0.023,
+      "cmd_fwd": 18.7,
+      "exec_mm": 4.39,
+      "exec_fwd": 33.6,
+      "eligible_pads": [
+        "ff_tip_collision"
+      ],
+      "n_eligible": 1,
+      "normal_forces_N": {
+        "ff_tip_collision": 2.696
+      },
+      "surface_gaps_mm": {
+        "ff_tip_collision": -0.2655,
+        "mf_tip_collision": 11.4522,
+        "rf_tip_collision": 14.0637,
+        "th_tip_collision": 143.9782
+      },
+      "gate1_pass": true
+    },
+    "left": {
+      "cmd_mm": 0.0,
+      "cmd_fwd": 19.1,
+      "exec_mm": 4.59,
+      "exec_fwd": 29.2,
+      "eligible_pads": [
+        "ff_tip_left_collision"
+      ],
+      "n_eligible": 1,
+      "normal_forces_N": {
+        "ff_tip_left_collision": 1.6636
+      },
+      "surface_gaps_mm": {
+        "ff_tip_left_collision": -0.1497,
+        "mf_tip_left_collision": 0.7057,
+        "rf_tip_left_collision": 19.4714,
+        "th_tip_left_collision": 93.0148
+      },
+      "gate1_pass": true
+    },
+    "box_motion": {
+      "rest_pose_m": [
+        0.0,
+        0.0,
+        0.74
+      ],
+      "max_displacement_mm": 55.456,
+      "final_displacement_mm": 3.375,
+      "slip_over_5mm": true,
+      "note": "the box's free-joint displacement from the table rest pose over the whole replay"
+    }
+  }
+]

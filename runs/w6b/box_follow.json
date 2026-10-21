@@ -1,0 +1,146 @@
+[
+  {
+    "iteration": 0,
+    "offset": null,
+    "right": {
+      "cmd_mm": 0.023,
+      "cmd_fwd": 18.7,
+      "exec_mm": 4.39,
+      "exec_fwd": 33.6,
+      "n_eligible": 1,
+      "F_n": {
+        "ff_tip_collision": 2.696
+      },
+      "gate1_pass": true
+    },
+    "left": {
+      "cmd_mm": 0.0,
+      "cmd_fwd": 19.1,
+      "exec_mm": 4.59,
+      "exec_fwd": 29.2,
+      "n_eligible": 1,
+      "F_n": {
+        "ff_tip_left_collision": 1.6636
+      },
+      "gate1_pass": true
+    },
+    "box_final_mm": 3.375,
+    "box_max_mm": 55.456,
+    "box_offset_m": [
+      0.003055,
+      -0.001009,
+      0.00102
+    ]
+  },
+  {
+    "iteration": 1,
+    "offset": [
+      0.003055,
+      -0.001009,
+      0.00102
+    ],
+    "right": {
+      "cmd_mm": 0.04,
+      "cmd_fwd": 18.8,
+      "exec_mm": 12.47,
+      "exec_fwd": 23.8,
+      "n_eligible": 0,
+      "F_n": {
+        "ff_tip_collision": 0.3929
+      },
+      "gate1_pass": true
+    },
+    "left": {
+      "cmd_mm": 0.008,
+      "cmd_fwd": 18.9,
+      "exec_mm": 5.82,
+      "exec_fwd": 33.5,
+      "n_eligible": 1,
+      "F_n": {
+        "ff_tip_left_collision": 2.6264
+      },
+      "gate1_pass": false
+    },
+    "box_final_mm": 3.755,
+    "box_max_mm": 55.456,
+    "box_offset_m": [
+      0.000561,
+      -0.000683,
+      0.003649
+    ]
+  },
+  {
+    "iteration": 2,
+    "offset": [
+      0.000561,
+      -0.000683,
+      0.003649
+    ],
+    "right": {
+      "cmd_mm": 0.033,
+      "cmd_fwd": 18.7,
+      "exec_mm": 8.81,
+      "exec_fwd": 21.3,
+      "n_eligible": 0,
+      "F_n": {
+        "ff_tip_collision": 3.7311
+      },
+      "gate1_pass": true
+    },
+    "left": {
+      "cmd_mm": 0.004,
+      "cmd_fwd": 19.0,
+      "exec_mm": 4.84,
+      "exec_fwd": 24.6,
+      "n_eligible": 1,
+      "F_n": {
+        "mf_tip_left_collision": 0.2829
+      },
+      "gate1_pass": true
+    },
+    "box_final_mm": 2.985,
+    "box_max_mm": 55.456,
+    "box_offset_m": [
+      0.002333,
+      -0.000161,
+      0.001855
+    ]
+  },
+  {
+    "iteration": 3,
+    "offset": [
+      0.002333,
+      -0.000161,
+      0.001855
+    ],
+    "right": {
+      "cmd_mm": 0.027,
+      "cmd_fwd": 18.7,
+      "exec_mm": 8.89,
+      "exec_fwd": 21.9,
+      "n_eligible": 0,
+      "F_n": {
+        "ff_tip_collision": 3.5483
+      },
+      "gate1_pass": true
+    },
+    "left": {
+      "cmd_mm": 0.002,
+      "cmd_fwd": 18.9,
+      "exec_mm": 5.6,
+      "exec_fwd": 31.6,
+      "n_eligible": 1,
+      "F_n": {
+        "ff_tip_left_collision": 3.0845
+      },
+      "gate1_pass": false
+    },
+    "box_final_mm": 1.844,
+    "box_max_mm": 55.456,
+    "box_offset_m": [
+      0.000876,
+      -0.000226,
+      0.001607
+    ]
+  }
+]
