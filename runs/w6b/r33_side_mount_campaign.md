@@ -334,3 +334,42 @@ does not appear in them.  r50 therefore adds a dedicated still:
 `docs/replay_frames/terminal_{front,side,close}.png` (the gate-1 configuration,
 rendered with the same camera presets).  The pipeline writes that state into
 `runs/w6b/replay_frames.json` under "terminal"; the panel passes it through.
+
+## r52/r53 the executed state meets both criteria on both hands
+Recipe adds `W6B_R52_FINGER_TGC=1` to the r50 recipe.
+
+| | right | left |
+|---|---|---|
+| command rect distance | 0.023 mm | 0.000 mm |
+| gate1 (command state) | PASS | PASS |
+| **executed rect distance** | **4.39 mm** | **4.59 mm** |
+| **executed forward axis** | **33.6 deg** | **29.2 deg** |
+
+**The finger gravity cancel** (`W6B_R52_FINGER_TGC=1`): the arm's gravity cancel
+(r39) compensated the ARM dofs only, so the fingers hung.  With kp 0.3-1.5
+N m/rad the thumb drooped 33 mm out of its commanded pose under its own weight;
+the 4-tip pad centroid (the forward-axis metric includes the thumb) swung with
+it and the executed forward axis drifted from the commanded 18.7 deg to 35.8
+deg.  Cancelling the finger dofs over the same terminal window: the executed
+distance 5.96 -> 4.39 mm (right), 5.02 -> 4.59 mm (left), the forward axis
+33.6 / 29.2 deg.
+
+Measured and rejected in the same round:
+* **stiffer wrist servo** (kp 550 -> 1500/3000/6000): the +-28 N m torque limit
+  is the binding constraint, so a stiffer servo saturates and the executed
+  distance blows up to 180-300 mm.
+* **stiffer finger servo** (kp x3/x10/x30): same story, 45-117 mm.
+* **longer gravity-compensation window** (60 -> 150/322 frames): 8-27 mm.
+* **grip height** (anchor z 0.78/0.80/0.82): the approach clearance and the
+  executed distance trade off chaotically; z=0.76 remains the best.
+
+**r53 gate3 forensics**: the report now carries which hand body touched which
+support geom (per side) and how many of those frames fall inside the gated
+terminal window (1 per side).  The contacts are the fingers wrapping around the
+box's underside (the box rests on the table - there is no room under it) and
+the left thumb, which rests on the table from frame 6 because the video-driven
+approach carries that hand low.  The terminal window itself is clean.
+The +-50 mm base-y corridor is a FLOATING-cell criterion (it bounds the
+sliding base); the ur5e cells have no slide, so it is applied in the floating
+cell and reported as context elsewhere (the side cell's mounts sit at 74 mm and
+89 mm).

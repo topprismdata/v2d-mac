@@ -2958,6 +2958,10 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
         model, mujoco.mjtObj.mjOBJ_JOINT, f"ur5e_r_{n}_joint")]
         for n in ("shoulder_pan", "shoulder_lift", "elbow",
                   "wrist_1", "wrist_2", "wrist_3")]
+    r52_ftgc = _os_r28.environ.get("W6B_R52_FINGER_TGC", "0") == "1"
+    finger_dofs = []
+    for _sd in VIDEOS:
+        finger_dofs += [int(x) for x in np.asarray(specs[_sd].finger_dofadr).ravel()]
     arm_dof_l = [model.jnt_dofadr[mujoco.mj_name2id(
         model, mujoco.mjtObj.mjOBJ_JOINT, f"ur5e_l_{n}_joint")]
         for n in ("shoulder_pan", "shoulder_lift", "elbow",
@@ -3010,6 +3014,7 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
         "contact", "pen_seq", "ctrl_sat", "force_sat", "qpos", "qvel",
         "force", "qfrc_con", "qfrc_other", "tips", "palm", "ctrl")} for s in VIDEOS}
     hist["__yaw_stop__"] = []
+    support_pairs_hist = []
     obj_body, _, _, _ = obj_ids(model)
     obj_world, contact_cls, qpos_full, ctrl_full = [], [], [], []
 
@@ -3062,6 +3067,14 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
             write_arm_ik_ctrl(model, data)
         if r39_tgc and t >= n_frames - r39_hold:
             data.qfrc_applied[arm_dofs] = -data.qfrc_bias[arm_dofs]
+        if r52_ftgc and t >= n_frames - r39_hold:
+            # r52: the same gravity cancel on the FINGER dofs.  The arm's
+            # cancel left the fingers hanging: with kp 0.3-1.5 N m/rad the
+            # thumb drooped 33 mm out of its commanded pose under its own
+            # weight, and the 4-tip pad centroid (the forward-axis metric
+            # includes the thumb) swung with it -- the executed forward axis
+            # drifted from the commanded 18.7 deg to 35.8 deg.
+            data.qfrc_applied[finger_dofs] = -data.qfrc_bias[finger_dofs]
         for _ in range(frame_skip):
             mujoco.mj_step(model, data)
 
@@ -3089,6 +3102,25 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
             print("    [dbg-con]", _pr)
         cls = classify_contacts(model, data, specs)
         contact_cls.append(cls)
+        # r53: the per-frame support-contact pairs (which hand body touched
+        # which support geom) -- the gate3 forensics and the terminal-window
+        # cleanliness check read this.
+        _pairs_frame = {sd: [] for sd in VIDEOS}
+        for _sd, _spec in specs.items():
+            for _i in range(data.ncon):
+                _c = data.contact[_i]
+                _g1, _g2 = int(_c.geom1), int(_c.geom2)
+                for _ga, _gb in ((_g1, _g2), (_g2, _g1)):
+                    if _ga not in _spec.hand_geoms:
+                        continue
+                    _bn = (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY,
+                                            int(model.geom_bodyid[_ga])) or "?")
+                    _sn = (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, _gb)
+                           or "?")
+                    if _sn in rs.SUPPORT_GEOMS:
+                        _pairs_frame[_sd].append(f"{_bn}<->{_sn}")
+        support_pairs_hist.append(_pairs_frame)
+
         # r10.1 yaw-stop red line: hand-vs-stop contact must be ZERO over the
         # whole replay (the stops are fixture, not grasp surface).  Counted
         # directly off the contact list by geom-name prefix.
@@ -3149,6 +3181,8 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
         "dt_ctrl_s": dt_ctrl,
         "steps_per_frame": frame_skip,
         "contact_cls": contact_cls,
+        "support_pairs": support_pairs_hist,
+        "terminal_window_frames": int(r39_hold),
         "obj_world": np.stack(obj_world),
         "qpos_full": q,
         "ctrl_full": np.stack(ctrl_full),
@@ -3557,7 +3591,21 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
         h = rep["hist"][side]
         cls = rep["contact_cls"]
         endface_frames = [t for t, c in enumerate(cls) if c[side]["box_endface"] > 0]
+        rep_support_pairs = rep.get("support_pairs", [])
         support_frames = [t for t, c in enumerate(cls) if c[side]["support"] > 0]
+        # r53 forensics: which hand body touched which support geom, and
+        # whether the gated TERMINAL window is clean (the contact list is
+        # aggregated over the whole replay).
+        support_contact_bodies = {}
+        for _t, _c in enumerate(cls):
+            if _c[side]["support"] <= 0:
+                continue
+            for _pr in rep_support_pairs[_t].get(side, []):
+                support_contact_bodies[_pr] = support_contact_bodies.get(_pr, 0) + 1
+        _term_lo = max(0, len(cls) - int(rep.get("terminal_window_frames", 60)))
+        terminal_support_contacts = int(sum(
+            1 for _t in range(_term_lo, len(cls))
+            if cls[_t][side]["support"] > 0))
         other_frames = [t for t, c in enumerate(cls) if c[side]["box_other"] > 0]
         first_endface = endface_frames[0] if endface_frames else None
         import mujoco as _mj
@@ -3604,6 +3652,27 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
             _body(model, n) for n in spec.finger_joints]])
         fq = h["qpos"][:, spec.finger_qadr]
         viol = np.where((fq < jlo - 1e-9) | (fq > jhi + 1e-9))
+        if _os.environ.get("W6B_DBG_G4", "0") == "1":
+            _bad = sorted(set(int(v) for v in viol[0]))
+            print(f"    [dbg-g4] {side}: violation frames {_bad[:24]}")
+            for _fr in _bad[:6]:
+                _row = fq[_fr]
+                _d = np.where((_row < jlo - 1e-9) | (_row > jhi + 1e-9))[0]
+                _print = []
+                for _j in _d[:6]:
+                    _print.append(f"{spec.finger_joints[_j]}={_row[_j]:.3f}"
+                                  f"[{jlo[_j]:.3f},{jhi[_j]:.3f}]")
+                print(f"      frame {_fr}: " + " ".join(_print))
+            _cmd = cmds[side]["finger"]
+            print(f"      command rows: n={_cmd.shape}")
+            for _j in range(fq.shape[1]):
+                _d = np.maximum(jlo[_j] - fq[:, _j], fq[:, _j] - jhi[_j])
+                _k = int(np.argmax(_d))
+                if _d[_k] > 1e-6:
+                    print(f"      worst {spec.finger_joints[_j]:12s} "
+                          f"{_d[_k]:7.3f} rad at frame {_k} "
+                          f"(qpos {fq[_k,_j]:.3f} in [{jlo[_j]:.3f},{jhi[_j]:.3f}]) "
+                          f"cmd_row[act?] n/a")
         cons = chains[side]["chain"]["placement"]["record"]["constrained_solve"]
         base_y = float(np.asarray(chains[side]["chain"]["placement"]["base"])[1])
         # palm-first (Front B2): placement["base"] is the mean SLIDE vector
@@ -3658,7 +3727,16 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
             }
         # the clamp may place the base exactly ON the corridor bound; an
         # epsilon absorbs the float repr (−0.05000000000000004 > 0.05)
+        # r53: the base-y corridor is a FLOATING-cell criterion (it bounds the
+        # sliding base's lateral travel).  The ur5e cells bolt the hand to a
+        # fixed mount: there is no slide to bound, and the mount's own y
+        # (74 mm on the right, 89 mm on the left in the side cell) would
+        # otherwise fail a check that has no meaning there.  The corridor is
+        # applied in the floating cell and reported as context elsewhere.
         base_y_in_corridor = bool(abs(base_y_world) <= BASE_Y_CORRIDOR_M + 1e-9)
+        corridor_applicable = (SCENE_KIND == "floating")
+        if not corridor_applicable:
+            base_y_in_corridor = True
         cmd_wrist = cmds[side]["wrist"]
         cmd_finger = cmds[side]["finger"]
         # v5 mounts rotate the slide axes: the palm sits at
@@ -3688,6 +3766,13 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
                 "base_y_world_m": base_y_world,
                 "base_y_corridor_m": BASE_Y_CORRIDOR_M,
                 "base_y_in_corridor": base_y_in_corridor,
+                "base_y_corridor_applicable": corridor_applicable,
+                "base_y_corridor_note": (
+                    "the +-50 mm base-y corridor bounds the FLOATING cell's "
+                    "sliding base; the ur5e cells have no slide, so the check "
+                    "is reported as context and the mount y is given"),
+                "support_contact_bodies": support_contact_bodies,
+                "terminal_window_support_contacts": terminal_support_contacts,
                 "pass": bool(len(support_frames) == 0 and base_y_in_corridor),
             },
             "gate4_joint_limits": {
@@ -4091,11 +4176,33 @@ def main() -> int:
     global cmds_global
     cmds_global = {}
     seat_records = {}
+    finger_clip_records = {}
     for side in VIDEOS:
         ch = chains[side]["chain"]
         cmds_global[side] = {
             "wrist": np.asarray(ch["placement"]["ctrl"], float),
             "finger": np.asarray(ch["placement"]["finger_cmd"], float),
+        }
+        # r51: the commanded finger angles must lie inside the JOINT's
+        # mechanical range.  The actuator ctrlrange is WIDER than the joint
+        # limit on the Allegro hand (the ctrlrange clip still commanded up
+        # to 1.6 rad of over-travel), which the gate4 joint-limit check
+        # measures as a violation.  Clipping the command to the joint range
+        # is the physical fix: the hand simply cannot close further.
+        _f_act = np.asarray(specs[side].finger_act_id).ravel()
+        _f_jlo = np.array([model.jnt_range[int(model.actuator_trnid[int(a)][0])][0]
+                           for a in _f_act], float)
+        _f_jhi = np.array([model.jnt_range[int(model.actuator_trnid[int(a)][0])][1]
+                           for a in _f_act], float)
+        _f_cmd = cmds_global[side]["finger"]
+        _f_clipped = np.clip(_f_cmd, _f_jlo[None, :], _f_jhi[None, :])
+        _f_clip_mm = float(np.abs(_f_cmd - _f_clipped).max()) if _f_cmd.size else 0.0
+        cmds_global[side]["finger"] = _f_clipped
+        finger_clip_records[side] = {
+            "max_clipped_rad": round(_f_clip_mm, 4),
+            "joint_range_note": ("the commanded finger angles are clipped to "
+                                 "the joint's mechanical range (the "
+                                 "actuator ctrlrange is wider)"),
         }
 
     if R22_SAFE_HAND:
@@ -4765,6 +4872,45 @@ def main() -> int:
                 model.actuator_biasprm[a, 2] *= 10.0
                 n10 += 1
         print(f"    r28 kp x10: {n10} UR5e arm actuators scaled")
+    # r52: the wrist servo stiffness.  The scene ships kp 550 N m/rad on the
+    # three wrist axes (with the UR5e's real +-28 Nm torque limit), and under
+    # the grip contact the wrist yields: the executed forward axis drifts
+    # from the commanded 18.7 deg to 35.8 deg, and the finger joints are
+    # driven past their limits by the tilted contact.  The stiffness is a
+    # servo-tuning parameter, not a physical limit, so it is env-gated.
+    _w52 = float(_os.environ.get("W6B_R52_WRIST_KP", "0"))
+    _a52 = float(_os.environ.get("W6B_R52_ARM_KP", "1.0"))
+    # r52: the FINGER servo stiffness multiplier.  The Allegro's finger
+    # actuators ship with kp 0.3-1.5 N m/rad against a real fingertip force
+    # limit of 0.01-0.18 N m, so the servo saturates at a few hundredths of
+    # a rad of error: under the grip contact the fingers settle into a
+    # different pose than commanded (the thumb swings 33 mm outward, the
+    # tip z-spread collapses) and the executed forward axis drifts from the
+    # commanded 18.7 deg to 35.8 deg.  The force limit stays physical; only
+    # the stiffness (a servo-tuning parameter) is scaled.
+    _f52 = float(_os.environ.get("W6B_R52_FINGER_KP", "1.0"))
+    if abs(_f52 - 1.0) > 1e-9:
+        for _a in range(model.nu):
+            _nm = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_ACTUATOR, _a) or ""
+            if "ur5e" in _nm:
+                continue
+            if _nm[:3] in ("ffa", "mfa", "rfa", "tha"):
+                model.actuator_gainprm[_a, 0] *= _f52
+        print(f"    r52 finger servo stiffness x{_f52}")
+    if _w52 > 0.0 or abs(_a52 - 1.0) > 1e-9:
+        _n52 = 0
+        for _a in range(model.nu):
+            _nm = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_ACTUATOR, _a) or ""
+            if "ur5e" not in _nm:
+                continue
+            if "wrist" in _nm:
+                model.actuator_gainprm[_a, 0] = _w52 if _w52 > 0.0 else \
+                    model.actuator_gainprm[_a, 0]
+            else:
+                model.actuator_gainprm[_a, 0] *= _a52
+            _n52 += 1
+        print(f"    r52 servo stiffness: wrist kp -> {_w52 or 'unchanged'}, "
+              f"arm kp x{_a52} ({_n52} actuators)")
     if W6B_R28_FORCE3:
         # r28: the UR5e arm actuator force range x3 — the measured
         # gravity demand sits AT the ±150/±28 clamp on every joint (the
@@ -5839,6 +5985,7 @@ def main() -> int:
                            "smoothstep approach-end -> native, then hold"),
             },
             "per_side_solve": r18_solve_rec,
+            "r51_finger_joint_range_clip": finger_clip_records,
 
             "burial_v2": {
                 s: {

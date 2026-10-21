@@ -31,10 +31,11 @@ SIDE = {
         "W6B_R39_HOLD": "60",
         "W6B_R50_CURL": "1.25",
         "W6B_R50_PRELOAD_MM": "0.03",
+        "W6B_R52_FINGER_TGC": "1",
     },
     "expect_cmd_mm": {"right": 0.023, "left": 0.000},
-    "expect_exec_mm": {"right": 5.96, "left": 5.02},
-    "expect_fwd_deg": {"right": 35.8, "left": 27.4},
+    "expect_exec_mm": {"right": 4.39, "left": 4.59},
+    "expect_fwd_deg": {"right": 33.6, "left": 29.2},
     "expect_cmd_fwd_deg": {"right": 18.7, "left": 19.1},
     "expect_gate1_pass": {"right": True, "left": True},
 }

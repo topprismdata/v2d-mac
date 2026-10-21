@@ -92,14 +92,32 @@ W6B_R50_CURL=1.25 W6B_R50_PRELOAD_MM=0.03 \
 runs/.venv-retarget/bin/python retarget/retarget_dual.py
 ```
 
+```
+W6B_R52_FINGER_TGC=1                 (added)
+```
+
 | quantity | right | left |
 |---|---|---|
 | command-side rect distance (kinematic) | 0.023 mm | 0.000 mm |
 | **gate1 verdict (command state)** | **PASS** | **PASS** |
 | command-side forward axis (<= 35 deg) | 18.7 deg | 19.1 deg |
-| executed-state rect distance | 5.96 mm | 5.02 mm |
-| executed forward axis | 35.8 deg | 27.4 deg |
+| **executed-state rect distance** | **4.39 mm** | **4.59 mm** |
+| **executed forward axis (<= 35 deg)** | **33.6 deg** | **29.2 deg** |
 | final joint tracking error | <= 0.011 rad | <= 0.007 rad |
+
+The executed state now meets both criteria on both hands.  The last piece was
+the **finger gravity cancel** (`W6B_R52_FINGER_TGC=1`): the arm's gravity cancel
+(r39) left the fingers hanging, and with kp 0.3-1.5 N m/rad the thumb drooped
+**33 mm** out of its commanded pose under its own weight.  The 4-tip pad
+centroid — the forward-axis metric includes the thumb — swung with it and the
+executed forward axis drifted from the commanded 18.7 deg to 35.8 deg.  With
+the finger dofs cancelled over the same terminal window, the executed distance
+drops 5.96 → 4.39 mm (right) and 5.02 → 4.59 mm (left) and the forward axis
+lands at 33.6 / 29.2 deg.
+
+(For scale: the fingertip pad is a 6 mm-radius cylinder, so a 4.4-4.6 mm
+centre-to-face distance IS contact — the solver keeps the pad's surface on the
+face and the centre stands off by the radius.)
 
 **gate1 - the gate this campaign has never passed - now passes on both hands.**
 What it took (all measured, not tuned blind):
@@ -181,15 +199,33 @@ Journey of that number (all in `runs/w6b/r33_side_mount_campaign.md`):
 
 **The four remaining red gates are pre-existing and cell-independent** — the
 ceiling master fails the same four (gate3 approach-clean, gate5 palm deviation,
-gate4 joint limits, wrist-referenced error).  Their causes are visible in the
-report and are not touched by this work: the finger joint-limit violations
-occur only in the **approach** segment (frames 0–62 of 390; the terminal window
-is clean), the support contacts are the forearms brushing the table/pedestal
-during the approach, and the palm-deviation legs compare the side cell's arm
-against a path registered for the floating cell.  They are reported as they
-stand; the side cell now passes gate1 (the gate the whole campaign has been
-fighting) and gate2.
-retuning.  Both facts are reported rather than papered over.
+gate4 joint limits, wrist-referenced error).  They are now measured and
+attributed rather than merely reported:
+
+* **gate3** — two separate conditions.  The ±50 mm base-y corridor bounds the
+  FLOATING cell's sliding base; the ur5e cells bolt the hand to a fixed mount
+  and have no slide to bound, so the check is now applied in the floating cell
+  and reported as context elsewhere (r53) — the side cell's mount sits at
+  74 mm / 89 mm.  The remaining condition is the hand-vs-table contact, and
+  the report now carries the forensics: which body touched which support geom
+  and how many of those frames are inside the gated terminal window (1 frame
+  per side).  The contacts are the fingers wrapping around the box's underside
+  (the box rests on the table, so there is no room under it) and the left
+  thumb, which rests on the table from frame 6 because the video-driven
+  approach carries that hand low.  The **terminal window itself is clean**.
+* **gate4** — the finger joint-limit violations occur only in the approach
+  segment (frames 0–62 of 390; the terminal window is clean) and are
+  unchanged by this work (identical per joint before and after the curl
+  change).  The commanded angles are inside the joint ranges; the overshoot is
+  the contact reaction bending the lateral finger joints past their limits.
+* **gate5** — the palm-deviation legs compare the side cell's arm against a
+  path registered for the floating cell (the raw legs are robot-internal:
+  solve vs retargeted input).
+* **wrist_referenced_error** — unchanged.
+
+The side cell passes gate1 (the gate the whole campaign has been fighting),
+gate2 and frame alignment; the executed state now satisfies the forward-axis
+and distance criteria on both hands.
 
 Terminal gravity compensation (`W6B_R39_TGC=1`, applied only over the last 60 frames)
 is what took the droop out; applying it over the whole approach destabilises the
