@@ -1,6 +1,6 @@
 # GPT review package v7 — side-entry layout, corrected metrics, closed execution gap
 
-Base: `v2d-mac` @ `d97d22a` (branch `main`, remote `https://github.com/topprismdata/v2d-mac.git`).
+Base: `v2d-mac` @ `6b8e8a01` (branch `main`, remote `https://github.com/topprismdata/v2d-mac.git`).
 Everything below is reproducible from committed files; the command lines are given so a
 reviewer can re-derive every number in a clean process.
 
@@ -179,6 +179,21 @@ the left's 0.004 mm; without it the left sits at 0.668 mm.
 | side scenes (r34 → r37, each step a separate file) | `grounding/assets/allegro_floating_ur5e_side_r*.xml` |
 | new render | `docs/replay_frames/`, `docs/human_vs_sim_w6b.png` |
 | v6 review + this package's evidence appendix | `docs/gpt_v6_review.md`, `docs/gpt_v6_package.md` |
+
+### Clean-room verification
+
+Every headline number above is reproduced by one command, from the committed files
+only (fresh processes, no session state):
+
+```
+runs/.venv-retarget/bin/python tools/w6b/verify_v7.py
+```
+
+It re-runs both recipes, compares against the values quoted here, and measures the
+delivered render's composition against the reference frame.  Last run: **PASS**
+(side cell 0.214/0.001 mm cmd, 6.56/6.26 mm executed, 21.4/14.9 deg; ceiling master
+0.000/0.004 mm cmd, 152.68/16.77 mm executed; composition width 0.331 vs 0.315,
+u 0.495 vs 0.464, v 0.357 vs 0.335).
 
 Test state: `runs/.venv-mj/bin/python -m pytest tests/test_mjcf_provenance_pins.py
 tests/test_scene_w6.py -q` → **16 passed** on the committed tree.  (A working-tree edit
