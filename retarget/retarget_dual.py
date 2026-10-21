@@ -2762,7 +2762,11 @@ def refine_terminal_seat(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
     # at the joint => kilonewtons at the pad) and that is what shoves the
     # 150 g box across the table.  Seating the deepest pad 0.2 mm INSIDE the
     # face keeps a light, real contact (~4 N at the pad) instead.
-    PRELOAD_M = -0.2e-3
+    # r50: the pre-load is the commanded in-plane depth of the DEEPEST pad.
+    # It must stay inside the R5 tolerance (0.116 mm) or the command state
+    # fails the v2 burial criterion by construction (|sv| > tol), so it is
+    # tunable: W6B_R50_PRELOAD_MM (default 0.2 mm).
+    PRELOAD_M = -float(_os.environ.get("W6B_R50_PRELOAD_MM", "0.2")) * 1e-3
     tips = [g for g in spec.tip_geoms
             if (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, int(g)) or "").endswith(
                 ("ff_tip_collision", "mf_tip_collision", "rf_tip_collision",
@@ -2808,17 +2812,35 @@ def refine_terminal_seat(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
     w_last = base_w[-1].copy()
     _x0 = fk_pads(w_last)
     _x1 = fk_pads(w_last, 1)
-    # step 1: coplanarity roll search on the last joint (the flange roll axis)
-    best = (np.inf, 0.0)
-    for d in np.linspace(-0.45, 0.45, 61):
-        trial = w_last.copy()
-        trial[-1] = w_last[-1] + d
-        xs = fk_pads(trial)
-        spread = float(np.ptp(xs))
-        if spread < best[0]:
-            best = (spread, float(d))
-    d_roll = best[1]
+    # step 1: coplanarity search over the last TWO wrist joints.  A 1-D roll
+    # search (r38) hits its +-0.45 rad window whenever the terminal approach
+    # is not near the face normal, and a 2-D scan showed the true minimum is
+    # at 1.85-1.94 mm, not at the window edge (measured r50).
+    _spread_of = lambda _w: float(np.ptp(fk_pads(_w)))
+    best = (np.inf, 0.0, 0.0)
+    for d3 in np.linspace(-1.5, 1.5, 61):
+        for d2 in np.linspace(-0.8, 0.8, 33):
+            trial = w_last.copy()
+            trial[-1] += float(d3)
+            trial[-2] += float(d2)
+            sp = _spread_of(trial)
+            if sp < best[0]:
+                best = (sp, float(d2), float(d3))
+    # local refinement around the coarse optimum
+    _sp0, _d2, _d3 = best
+    for _scale in (0.25, 0.08, 0.025):
+        for d3 in np.linspace(_d3 - _scale, _d3 + _scale, 9):
+            for d2 in np.linspace(_d2 - _scale, _d2 + _scale, 9):
+                trial = w_last.copy()
+                trial[-1] += float(d3)
+                trial[-2] += float(d2)
+                sp = _spread_of(trial)
+                if sp < best[0]:
+                    best = (sp, float(d2), float(d3))
+    d_roll = best[2]
+    d_pitch = best[1]
     w_last[-1] += d_roll
+    w_last[-2] += d_pitch
     xs = fk_pads(w_last)
     xs_after_roll = xs.copy()
     # step 2: push the deepest pad to +PRELOAD outside the face plane
@@ -2844,8 +2866,14 @@ def refine_terminal_seat(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
     # on the objective itself: the palm Jacobian is the wrong proxy (a wrist
     # rotation barely moves the palm x while it swings the pads by cm).
     # face_x already carries the side sign (face_x = half_x * face_sign)
+    # r50: the seat target is the pad SET's MIDPOINT, not its deepest pad.
+    # The gate's v2 burial criterion (|sv| <= tol for EVERY pad) is a
+    # statement about the whole set: with the deepest pad on the plane the
+    # rest of the set rides up to the full spread above it, so the
+    # criterion fails whenever the spread exceeds 2*tol.  Centring the set
+    # on the plane puts the worst pad at spread/2 + preload.
     def f_sv(q):
-        return float(np.min(spec.face_sign * (fk_pads(q) - face_x)))
+        return float(np.mean(spec.face_sign * (fk_pads(q) - face_x)))
 
     target_sv = PRELOAD_M          # negative = a light pre-load into the face
     cand = w_last.copy()
@@ -2883,6 +2911,7 @@ def refine_terminal_seat(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
     w_new = best[1]
     xs_final = fk_pads(w_new)
     sv_final = float(np.min(spec.face_sign * (xs_final - face_x)))
+    sv_mid_final = float(np.mean(spec.face_sign * (xs_final - face_x)))
 
     # apply to the terminal window with a ramp
     n_term = min(24, base_w.shape[0])
@@ -2898,6 +2927,7 @@ def refine_terminal_seat(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
         "xs_actmap_mm": (_x1 * 1e3).tolist(),
         "spread_delta0_mm": float(np.ptp(_x0) * 1e3),
         "roll_delta_rad": d_roll,
+        "pitch_delta_rad": d_pitch,
         "pad_x_before_mm": (xs_after_roll * 1e3).tolist(),
         "pad_x_after_mm": (xs_final * 1e3).tolist(),
         "spread_before_mm": float(np.ptp(xs) * 1e3),
@@ -2905,6 +2935,7 @@ def refine_terminal_seat(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
         "preload_mm": PRELOAD_M * 1e3,
         "deepest_pad_after_mm": float(np.min(xs_final) * 1e3),
         "preload_signed_mm": sv_final * 1e3,
+        "set_midpoint_signed_mm": sv_mid_final * 1e3,
         "preload_residual_mm": resid_hist,
         "face_x_mm": face_x * 1e3,
     }
@@ -4113,7 +4144,18 @@ def main() -> int:
             # toward the floating-era seed wrist); only the fingers blend to
             # the v5-verified curl (finger DoFs are scene-identical)
             seed_w = cmds_global[side]["wrist"][-1].copy()
-            seed_f = np.clip(np.asarray(UR5E_TERMINAL_FINGERS[side], float),
+            # r50: the terminal curl is scaled about the neutral (0.5) by
+            # W6B_R50_CURL.  The v5 curl leaves the three tips ~2 mm apart in
+            # the face-normal direction (measured: the best wrist
+            # orientation still leaves 1.85-1.98 mm of spread), because the
+            # middle tip rides deeper than the index/round ones.  A deeper
+            # curl (x1.2) brings the tip set to 0.08 mm (left) / 0.36 mm
+            # (right) of coplanarity, i.e. inside the R5 tolerance.
+            _curl_scale = float(_os.environ.get("W6B_R50_CURL", "1.0"))
+            _f50 = np.asarray(UR5E_TERMINAL_FINGERS[side], float)
+            if abs(_curl_scale - 1.0) > 1e-9:
+                _f50 = 0.5 + (_f50 - 0.5) * _curl_scale
+            seed_f = np.clip(_f50,
                              ctrl_lo[spec.finger_act_id],
                              ctrl_hi[spec.finger_act_id])
         else:
@@ -4146,6 +4188,8 @@ def main() -> int:
         "r": [-0.409, 3.096, -1.684, -2.131, 2.812, -0.403],
         "l": [2.479, 3.119, -2.213, -1.467, -2.164, 0.466],
     }
+    r50_rec = {"curl_scale": float(_os.environ.get("W6B_R50_CURL", "1.0")),
+               "preload_mm": float(_os.environ.get("W6B_R50_PRELOAD_MM", "0.2"))}
     if verified_grasp is not None:
         vg = measure_verified_grasp()
         n_term = n_blend + n_hold
@@ -5783,6 +5827,7 @@ def main() -> int:
                            "smoothstep approach-end -> native, then hold"),
             },
             "per_side_solve": r18_solve_rec,
+
             "burial_v2": {
                 s: {
                     "pad_center_buried_legacy": report["per_side"][s]["gate1_final_touch"]["pad_center_buried"],

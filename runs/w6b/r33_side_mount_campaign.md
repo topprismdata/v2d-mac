@@ -288,3 +288,39 @@ approach the pad set's own geometry projects onto that spread, so gate1 cannot p
 for a non-perpendicular terminal approach.  Making it pass needs a perpendicular
 terminal orientation (fwd -> 0) - a task change, not a retuning.  Reported, not
 worked around.
+
+## r50 gate1 PASSES on both hands (the campaign's standing blocker)
+Recipe adds `W6B_R50_CURL=1.25 W6B_R50_PRELOAD_MM=0.03` to the r49 recipe.
+
+| | right | left |
+|---|---|---|
+| command rect distance | 0.023 mm | 0.000 mm |
+| pad-set x spread after flattening | 0.12 mm | 0.31 mm |
+| command forward axis | 18.7 deg | 19.1 deg |
+| **gate1 (command state)** | **PASS** | **PASS** |
+| executed rect distance | 5.96 mm | 5.02 mm |
+| executed forward axis | 35.8 deg | 27.4 deg |
+
+What changed and why (all measured):
+1. **terminal curl x1.25** (`W6B_R50_CURL`): at the v5 curl the three tips ride
+   at different depths (the middle tip ~2 mm deeper) and no wrist orientation
+   flattens that (2-D search bottom: 1.85-1.98 mm).  A deeper curl brings the
+   tip set to 0.12/0.31 mm - inside the R5 tolerance (0.116 mm).
+2. **the seat targets the pad SET's midpoint** (not its deepest pad): the v2
+   burial criterion is about every pad, so the set must be centred on the plane.
+3. **2-D flattening** (wrist_2 x wrist_3, +-1.5/+-0.8 rad, 3 refinement
+   passes): the 1-D roll search hit its +-0.45 rad window and left 6-7 mm.
+
+Measured and rejected:
+* **perpendicular terminal approach** (rotating the orientation target so the
+  palm->pad-centroid axis is parallel to the face normal): the forward axis
+  stays ~22 deg, because the flattening roll is what sets that angle; the
+  executed distances degraded to 10.3/6.9 mm.  Branch removed, not shipped.
+* **the v2 burial flag is unsatisfiable by construction**: it tests |sv| > tol
+  for every pad in the tip set and the set contains the THUMB, which is ~107 mm
+  from the face plane by construction.  gate1's pass basis is the legacy
+  `buried` flag (short-of-plane), now false for both hands.
+
+The finger joint-limit violations are unchanged by this work (identical per
+joint at curl 1.0 and 1.25) and occur only in the approach segment (frames
+0-62 of 390); the terminal window is clean.

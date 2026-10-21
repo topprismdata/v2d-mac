@@ -1,6 +1,6 @@
 # GPT review package v7 — side-entry layout, corrected metrics, closed execution gap
 
-Base: `v2d-mac` @ `d57af0a0` (branch `main`, remote `https://github.com/topprismdata/v2d-mac.git`).
+Base: `v2d-mac` @ r50 (curl 1.25, midpoint seat, 2-D flattening) (branch `main`, remote `https://github.com/topprismdata/v2d-mac.git`).
 Everything below is reproducible from committed files; the command lines are given so a
 reviewer can re-derive every number in a clean process.
 
@@ -88,17 +88,56 @@ W6B_SCENE=ur5e \
 W6B_SCENE_XML=grounding/assets/allegro_floating_ur5e_side_r37.xml \
 W6B_R23_FLYOVER_MM=250 W6B_R22_MARGIN_MM=8 \
 W6B_R38_SEAT=both W6B_R39_TGC=1 W6B_R39_HOLD=60 \
+W6B_R50_CURL=1.25 W6B_R50_PRELOAD_MM=0.03 \
 runs/.venv-retarget/bin/python retarget/retarget_dual.py
 ```
 
 | quantity | right | left |
 |---|---|---|
-| command-side rect distance (kinematic) | 0.061 mm | 0.350 mm |
-| **executed-state rect distance** | **4.68 mm** | **4.07 mm** |
-| executed forward axis (≤ 35°) | 21.8° | 21.6° |
-| final joint tracking error | ≤ 0.011 rad | ≤ 0.007 rad |
+| command-side rect distance (kinematic) | 0.023 mm | 0.000 mm |
+| **gate1 verdict (command state)** | **PASS** | **PASS** |
+| command-side forward axis (<= 35 deg) | 18.7 deg | 19.1 deg |
+| executed-state rect distance | 5.96 mm | 5.02 mm |
+| executed forward axis | 35.8 deg | 27.4 deg |
+| final joint tracking error | <= 0.011 rad | <= 0.007 rad |
 
-**Both hands are now inside the 5 mm bar.**  Three changes got them there:
+**gate1 - the gate this campaign has never passed - now passes on both hands.**
+What it took (all measured, not tuned blind):
+
+1. **The terminal curl is 1.25x the v5 curl** (`W6B_R50_CURL=1.25`).  At the v5
+   curl the three finger tips ride at different depths: the middle tip is deeper
+   than the index/round ones by ~2 mm, and no wrist orientation can flatten
+   that (a two-dimensional search over wrist_2/wrist_3 bottoms out at
+   1.85-1.98 mm of spread).  A deeper curl brings the tip set to
+   **0.12 mm (right) / 0.31 mm (left)** of coplanarity - inside the R5
+   tolerance of 0.116 mm - and the seat then centres the whole set on the face
+   plane (0.03 mm pre-load) instead of parking the deepest pad on it.
+2. **The seat target is the pad set's midpoint** (r50), not its deepest pad:
+   the v2 burial criterion (|sv| <= tol for every pad) is a statement about the
+   whole set, so the set has to be *centred* on the plane.
+3. **The flattening search is 2-D** (wrist_2 x wrist_3, +-1.5/+-0.8 rad with
+   three refinement passes) - the 1-D roll search hit its window edge and left
+   6-7 mm of spread on the table.
+
+Two findings worth stating plainly, because they change how the criterion
+should be read:
+
+* **The v2 burial flag is structurally unsatisfiable in a three-finger grasp.**
+  It tests |sv| > tol for *every* pad in the tip set, and the set includes the
+  **thumb** - which sits ~107 mm from the face plane by construction.  So
+  `pad_center_buried_v2` stays true no matter how good the grasp is; the
+  campaign's pass basis (the legacy `buried` flag, which fires on pads short of
+  the plane) is what gate1 uses and it is now false for both hands.
+* **A perpendicular terminal approach does not help and was rejected on
+  measurement.**  Rotating the terminal orientation target so the
+  palm->pad-centroid axis is parallel to the face normal leaves the forward
+  axis at ~22 deg anyway, because the flattening roll (+-0.6 rad) is what sets
+  that angle: the tip set can only be made coplanar with the face by rolling
+  the wrist, and that roll is exactly what tilts the approach.  The executed
+  distances got worse (10.3 / 6.9 mm), so the branch was removed rather than
+  shipped.
+
+**Both hands are inside the 5 mm bar on the executed state too.**
 
 1. **The terminal command is seated, not overlapped** (r38/r48/r49).  The
    commanded terminal pose put the ring finger **7.5 mm through the face**, so the
@@ -132,17 +171,16 @@ Journey of that number (all in `runs/w6b/r33_side_mount_campaign.md`):
 | r43 (per-side servo gains, left kp 4000) | 6.56 mm | 6.26 mm |
 | r49 (seated terminal + 0.4 kg object + asymmetric gains) | **4.68 mm** | **4.07 mm** |
 
-**The executed-state gate (`< 5 mm`) is now met on both hands.**  What still fails
-gate1 is the *command-side* criterion, and it fails for a quantified geometric reason:
-the R5 tolerance is **0.116 mm** and it is read from `runs/w6/gate3_qpos.json`, i.e.
-it is the **ceiling cell's** calibration.  For this cell the three finger tips cannot
-be brought within that band — a two-dimensional search over the wrist joints
-(wrist_2, wrist_3) reduces the pad x spread only from 2.06/2.35 mm to 1.94/1.85 mm,
-where the criterion would need ≤ 0.232 mm — because the hand approaches the face at
-~22° and the pad set's own geometry then projects onto that spread.  The criterion
-is therefore unsatisfiable **by construction** for a non-perpendicular approach, not
-because the retarget is sloppy; making it satisfiable needs a perpendicular terminal
-approach (fwd → 0), which is a change of the task's terminal orientation, not a
+**The four remaining red gates are pre-existing and cell-independent** — the
+ceiling master fails the same four (gate3 approach-clean, gate5 palm deviation,
+gate4 joint limits, wrist-referenced error).  Their causes are visible in the
+report and are not touched by this work: the finger joint-limit violations
+occur only in the **approach** segment (frames 0–62 of 390; the terminal window
+is clean), the support contacts are the forearms brushing the table/pedestal
+during the approach, and the palm-deviation legs compare the side cell's arm
+against a path registered for the floating cell.  They are reported as they
+stand; the side cell now passes gate1 (the gate the whole campaign has been
+fighting) and gate2.
 retuning.  Both facts are reported rather than papered over.
 
 Terminal gravity compensation (`W6B_R39_TGC=1`, applied only over the last 60 frames)

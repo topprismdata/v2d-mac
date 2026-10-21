@@ -29,10 +29,14 @@ SIDE = {
         "W6B_R38_SEAT": "both",
         "W6B_R39_TGC": "1",
         "W6B_R39_HOLD": "60",
+        "W6B_R50_CURL": "1.25",
+        "W6B_R50_PRELOAD_MM": "0.03",
     },
-    "expect_cmd_mm": {"right": 0.061, "left": 0.350},
-    "expect_exec_mm": {"right": 4.68, "left": 4.07},
-    "expect_fwd_deg": {"right": 21.8, "left": 21.6},
+    "expect_cmd_mm": {"right": 0.023, "left": 0.000},
+    "expect_exec_mm": {"right": 5.96, "left": 5.02},
+    "expect_fwd_deg": {"right": 35.8, "left": 27.4},
+    "expect_cmd_fwd_deg": {"right": 18.7, "left": 19.1},
+    "expect_gate1_pass": {"right": True, "left": True},
 }
 
 CEILING = {
@@ -53,7 +57,8 @@ CEILING = {
 }
 
 RX = re.compile(
-    r"^\s*(right|left): cmd rect ([0-9.]+) mm fwd ([0-9.]+) deg .*?"
+    r"^\s*(right|left): cmd rect ([0-9.]+) mm fwd ([0-9.]+) deg "
+    r"buried=(\w+) pass=(\w+) .*?"
     r"executed rect ([0-9.]+) mm.*?fwd ([0-9.]+) deg")
 
 
@@ -71,8 +76,10 @@ def run(cell):
             side = m.group(1)
             res[side] = {"cmd_mm": float(m.group(2)),
                          "cmd_fwd": float(m.group(3)),
-                         "exec_mm": float(m.group(4)),
-                         "exec_fwd": float(m.group(5))}
+                         "buried": m.group(4) == "True",
+                         "gate1_pass": m.group(5) == "True",
+                         "exec_mm": float(m.group(6)),
+                         "exec_fwd": float(m.group(7))}
     return res
 
 
@@ -93,6 +100,20 @@ def check(cell, res):
             ok = ok and good
             print(f"   {side:5s} {key:8s} got {got:9.3f} expect {exp:9.3f} "
                   f"{'OK' if good else 'MISMATCH'}")
+        if "expect_cmd_fwd_deg" in cell:
+            got = r["cmd_fwd"]
+            exp = cell["expect_cmd_fwd_deg"][side]
+            good = abs(got - exp) <= max(0.01, abs(exp) * 0.02)
+            ok = ok and good
+            print(f"   {side:5s} cmd_fwd  got {got:9.3f} expect {exp:9.3f} "
+                  f"{'OK' if good else 'MISMATCH'}")
+        if "expect_gate1_pass" in cell:
+            got = r["gate1_pass"]
+            exp = cell["expect_gate1_pass"][side]
+            good = got == exp
+            ok = ok and good
+            print(f"   {side:5s} gate1    got {str(got):>9s} expect "
+                  f"{str(exp):>9s} {'OK' if good else 'MISMATCH'}")
     return ok
 
 
