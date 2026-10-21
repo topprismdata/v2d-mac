@@ -1,0 +1,1079 @@
+<mujoco model="allegro_floating">
+  <compiler angle="radian" meshdir="../../runs/upstream/menagerie/wonik_allegro/assets" autolimits="true" />
+  <option cone="elliptic" impratio="10" timestep="0.002" integrator="implicitfast" />
+  <default>
+    <default class="allegro_right">
+      <joint axis="0 1 0" damping="0.5" />
+      <position kp="1" />
+      <geom density="800" />
+      <default class="visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2" material="black" />
+        <default class="palm_visual">
+          <geom mesh="base_link" />
+        </default>
+        <default class="base_visual">
+          <geom mesh="link_0.0" />
+        </default>
+        <default class="proximal_visual">
+          <geom mesh="link_1.0" />
+        </default>
+        <default class="medial_visual">
+          <geom mesh="link_2.0" />
+        </default>
+        <default class="distal_visual">
+          <geom mesh="link_3.0" />
+        </default>
+        <default class="fingertip_visual">
+          <geom pos="0 0 0.0267" material="white" mesh="link_3.0_tip" />
+        </default>
+        <default class="thumbtip_visual">
+          <geom pos="0 0 0.0423" material="white" mesh="link_15.0_tip" />
+        </default>
+      </default>
+      <default class="collision">
+        <geom group="3" type="box" mass="0" />
+        <default class="palm_collision">
+          <geom size="0.0204 0.0565 0.0475" pos="-0.0093 0 -0.0475" />
+        </default>
+        <default class="base_collision">
+          <geom size="0.0098 0.01375 0.0082" pos="0 0 0.0082" />
+          <default class="thumb_base_collision">
+            <geom size="0.0179 0.017 0.02275" pos="-0.0179 0.009 0.0145" />
+          </default>
+        </default>
+        <default class="proximal_collision">
+          <geom size="0.0098 0.01375 0.027" pos="0 0 0.027" />
+          <default class="thumb_proximal_collision">
+            <geom size="0.0098 0.01375 0.00885" pos="0 0 0.00885" />
+          </default>
+        </default>
+        <default class="medial_collision">
+          <geom size="0.0098 0.01375 0.0192" pos="0 0 0.0192" />
+          <default class="thumb_medial_collision">
+            <geom size="0.0098 0.01375 0.0257" pos="0 0 0.0257" />
+          </default>
+        </default>
+        <default class="distal_collision">
+          <geom size="0.0098 0.01375 0.008" pos="0 0 0.008" />
+          <default class="thumb_distal_collision">
+            <geom size="0.0098 0.01375 0.0157" pos="0 0 0.0157" />
+          </default>
+        </default>
+        <default class="fingertip_collision">
+          <geom type="capsule" size="0.012 0.01" pos="0 0 0.019" />
+          <default class="thumbtip_collision">
+            <geom type="capsule" size="0.012 0.008" pos="0 0 0.035" />
+          </default>
+        </default>
+      </default>
+      <default class="base">
+        <joint axis="0 0 1" range="-0.47 0.47" />
+        <position ctrlrange="-0.47 0.47" />
+      </default>
+      <default class="proximal">
+        <joint range="-0.196 1.61" />
+        <position ctrlrange="-0.196 1.61" />
+      </default>
+      <default class="medial">
+        <joint range="-0.174 1.709" />
+        <position ctrlrange="-0.174 1.709" />
+      </default>
+      <default class="distal">
+        <joint range="-0.227 1.618" />
+        <position ctrlrange="-0.227 1.618" />
+      </default>
+      <default class="thumb_base">
+        <joint axis="-1 0 0" range="0.263 1.396" />
+        <position ctrlrange="0.263 1.396" />
+      </default>
+      <default class="thumb_proximal">
+        <joint axis="0 0 1" range="-0.105 1.163" />
+        <position ctrlrange="-0.105 1.163" />
+      </default>
+      <default class="thumb_medial">
+        <joint range="-0.189 1.644" />
+        <position ctrlrange="-0.189 1.644" />
+      </default>
+      <default class="thumb_distal">
+        <joint range="-0.162 1.719" />
+        <position ctrlrange="-0.162 1.719" />
+      </default>
+    </default>
+    <default class="ur5e">
+      <material specular="0.5" shininess="0.25" />
+      <joint axis="0 1 0" range="-6.28319 6.28319" armature="0.1" />
+      <general gaintype="fixed" biastype="affine" ctrlrange="-6.2831 6.2831" gainprm="2000" biasprm="0 -2000 -400" forcerange="-150 150" />
+      <default class="ur5e_size3">
+        <default class="ur5e_size3_limited">
+          <joint range="-3.1415 3.1415" />
+          <general ctrlrange="-3.1415 3.1415" />
+        </default>
+      </default>
+      <default class="ur5e_size1">
+        <general gainprm="500" biasprm="0 -500 -100" forcerange="-28 28" />
+      </default>
+      <default class="ur5e_visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2" />
+      </default>
+      <default class="ur5e_collision">
+        <geom type="capsule" group="3" />
+        <default class="ur5e_eef_collision">
+          <geom type="cylinder" />
+        </default>
+      </default>
+      <site size="0.001" rgba="0.5 0.5 0.5 0.3" group="4" />
+    </default>
+  </default>
+  <asset>
+    <material name="black" rgba="0.2 0.2 0.2 1" />
+    <material name="white" rgba="0.9 0.9 0.9 1" />
+    <material name="table" rgba="0.42 0.36 0.30 1" />
+    <material name="box" rgba="0.30 0.55 0.85 1" />
+    <mesh file="base_link.stl" />
+    <mesh file="link_0.0.stl" />
+    <mesh file="link_1.0.stl" />
+    <mesh file="link_2.0.stl" />
+    <mesh file="link_3.0.stl" />
+    <mesh file="link_3.0_tip.stl" />
+    <mesh file="link_12.0_right.stl" />
+    <mesh file="link_13.0.stl" />
+    <mesh file="link_14.0.stl" />
+    <mesh file="link_15.0.stl" />
+    <mesh file="link_15.0_tip.stl" />
+    <material class="ur5e" name="ur5e_black" rgba="0.033 0.033 0.033 1" />
+    <material class="ur5e" name="ur5e_jointgray" rgba="0.278 0.278 0.278 1" />
+    <material class="ur5e" name="ur5e_linkgray" rgba="0.82 0.82 0.82 1" />
+    <material class="ur5e" name="ur5e_urblue" rgba="0.49 0.678 0.8 1" />
+    <mesh file="base_0.obj" name="ur5e_base_0" />
+    <mesh file="base_1.obj" name="ur5e_base_1" />
+    <mesh file="shoulder_0.obj" name="ur5e_shoulder_0" />
+    <mesh file="shoulder_1.obj" name="ur5e_shoulder_1" />
+    <mesh file="shoulder_2.obj" name="ur5e_shoulder_2" />
+    <mesh file="upperarm_0.obj" name="ur5e_upperarm_0" />
+    <mesh file="upperarm_1.obj" name="ur5e_upperarm_1" />
+    <mesh file="upperarm_2.obj" name="ur5e_upperarm_2" />
+    <mesh file="upperarm_3.obj" name="ur5e_upperarm_3" />
+    <mesh file="forearm_0.obj" name="ur5e_forearm_0" />
+    <mesh file="forearm_1.obj" name="ur5e_forearm_1" />
+    <mesh file="forearm_2.obj" name="ur5e_forearm_2" />
+    <mesh file="forearm_3.obj" name="ur5e_forearm_3" />
+    <mesh file="wrist1_0.obj" name="ur5e_wrist1_0" />
+    <mesh file="wrist1_1.obj" name="ur5e_wrist1_1" />
+    <mesh file="wrist1_2.obj" name="ur5e_wrist1_2" />
+    <mesh file="wrist2_0.obj" name="ur5e_wrist2_0" />
+    <mesh file="wrist2_1.obj" name="ur5e_wrist2_1" />
+    <mesh file="wrist2_2.obj" name="ur5e_wrist2_2" />
+    <mesh file="wrist3.obj" name="ur5e_wrist3" />
+  </asset>
+  <worldbody>
+    <light pos="0 0 1.6" dir="0 0 -1" directional="true" />
+    <light pos="0.3 -0.4 1.4" dir="0 0 -1" directional="true" />
+    <geom name="floor" type="plane" size="0 0 0.05" rgba="0.25 0.25 0.28 1" friction="0.8 0.02 0.002" />
+    <body name="gantry" pos="0 0 0">
+      <geom name="gantry_pillar_negx" type="box" size="0.03 0.03 0.525" pos="0.5 0 0.525" mass="0" contype="0" conaffinity="0" rgba="0.3 0.3 0.33 1" />
+      <geom name="gantry_pillar_posx" type="box" size="0.03 0.03 0.525" pos="-0.5 0 0.525" mass="0" contype="0" conaffinity="0" rgba="0.3 0.3 0.33 1" />
+      <geom name="gantry_base_negx" type="box" size="0.12 0.12 0.04" pos="0.5 0 0.04" mass="0" contype="0" conaffinity="0" rgba="0.24 0.24 0.27 1" />
+      <geom name="gantry_base_posx" type="box" size="0.12 0.12 0.04" pos="-0.5 0 0.04" mass="0" contype="0" conaffinity="0" rgba="0.24 0.24 0.27 1" />
+      <geom name="gantry_beam_x" type="box" size="0.5 0.03 0.03" pos="0 0 1.05" mass="0" contype="0" conaffinity="0" rgba="0.34 0.34 0.37 1" />
+      <geom name="gantry_rail_y" type="box" size="0.03 0.55 0.03" pos="0 0 1.015" mass="0" contype="0" conaffinity="0" rgba="0.4 0.4 0.44 1" />
+      <geom name="gantry_carriage" type="box" size="0.03 0.05 0.04" pos="0.20 0 0.965" mass="0" contype="0" conaffinity="0" rgba="0.5 0.35 0.2 1" />
+      <geom name="gantry_zstage" type="box" size="0.05 0.05 0.047" pos="0.20 0 0.898" mass="0" contype="0" conaffinity="0" rgba="0.42 0.42 0.46 1" />
+      <geom name="gantry_drag0" type="box" size="0.016 0.02 0.016" pos="0.22 0 0.955" mass="0" contype="0" conaffinity="0" rgba="0.2 0.2 0.22 1" />
+      <geom name="gantry_drag1" type="box" size="0.016 0.02 0.016" pos="0.245 0 0.985" mass="0" contype="0" conaffinity="0" rgba="0.2 0.2 0.22 1" />
+      <geom name="gantry_drag2" type="box" size="0.016 0.02 0.016" pos="0.265 0 1.01" mass="0" contype="0" conaffinity="0" rgba="0.2 0.2 0.22 1" />
+      <geom name="gantry_drag3" type="box" size="0.016 0.02 0.016" pos="0.28 0 1.035" mass="0" contype="0" conaffinity="0" rgba="0.2 0.2 0.22 1" />
+      <geom name="gantry_limit_negy" type="box" size="0.05 0.02 0.05" pos="0  0.52 1.015" mass="0" contype="0" conaffinity="0" rgba="0.55 0.3 0.15 1" />
+      <geom name="gantry_limit_posy" type="box" size="0.05 0.02 0.05" pos="0 -0.52 1.015" mass="0" contype="0" conaffinity="0" rgba="0.55 0.3 0.15 1" />
+      <geom name="gantry_carriage_left" type="box" size="0.03 0.05 0.04" pos="-0.20 0 0.965" mass="0" contype="0" conaffinity="0" rgba="0.5 0.35 0.2 1" />
+      <geom name="gantry_carriage_cap_r" type="box" size="0.02 0.05 0.04" pos="0.235 0 0.965" mass="0" contype="0" conaffinity="0" rgba="0.3 0.3 0.33 1" />
+      <geom name="gantry_carriage_cap_l" type="box" size="0.02 0.05 0.04" pos="-0.235 0 0.965" mass="0" contype="0" conaffinity="0" rgba="0.3 0.3 0.33 1" />
+      <geom name="gantry_zstage_left" type="box" size="0.05 0.05 0.047" pos="-0.20 0 0.898" mass="0" contype="0" conaffinity="0" rgba="0.42 0.42 0.46 1" />
+      <geom name="gantry_bridge_right" type="capsule" fromto="0.20 0 0.90 0.30 0 0.855" size="0.022" mass="0" contype="0" conaffinity="0" rgba="0.38 0.38 0.42 1" />
+      <geom name="gantry_bridge_left" type="capsule" fromto="-0.20 0 0.90 -0.30 0 0.855" size="0.022" mass="0" contype="0" conaffinity="0" rgba="0.38 0.38 0.42 1" />
+      <geom name="gantry_drag_l0" type="box" size="0.016 0.02 0.016" pos="-0.22 0 0.955" mass="0" contype="0" conaffinity="0" rgba="0.2 0.2 0.22 1" />
+      <geom name="gantry_drag_l1" type="box" size="0.016 0.02 0.016" pos="-0.245 0 0.985" mass="0" contype="0" conaffinity="0" rgba="0.2 0.2 0.22 1" />
+    </body>
+    <geom name="table_slab" type="box" size="0.45 0.45 0.02" pos="0 0 0.6800" material="table" friction="0.9 0.02 0.002" />
+    <body name="yaw_stop_posy" pos="0 0.126 0.73">
+      <geom name="yaw_stop_posy_bar" type="box" size="0.07 0.004 0.03" rgba="0.30 0.32 0.35 1" friction="0.9 0.02 0.002" />
+      <geom name="yaw_stop_bolt_0" type="cylinder" size="0.006 0.006" pos="-0.075 0 -0.024" rgba="0.18 0.18 0.20 1" />
+      <geom name="yaw_stop_bolt_1" type="cylinder" size="0.006 0.006" pos="0.075 0 -0.024" rgba="0.18 0.18 0.20 1" />
+    </body>
+    <body name="yaw_stop_negy" pos="0 -0.126 0.73">
+      <geom name="yaw_stop_negy_bar" type="box" size="0.07 0.004 0.03" rgba="0.30 0.32 0.35 1" friction="0.9 0.02 0.002" />
+      <geom name="yaw_stop_bolt_2" type="cylinder" size="0.006 0.006" pos="-0.075 0 -0.024" rgba="0.18 0.18 0.20 1" />
+      <geom name="yaw_stop_bolt_3" type="cylinder" size="0.006 0.006" pos="0.075 0 -0.024" rgba="0.18 0.18 0.20 1" />
+    </body>
+    <camera name="cam_overhead" mode="fixed" pos="0 0 1.55" xyaxes="1 0 0 0 1 0" fovy="45" />
+    <camera name="cam_wrist" mode="fixed" pos="0 0.16 0.10" xyaxes="1 0 0 0 0 -1" fovy="70" />
+    <body name="object" pos="0 0 0.7400">
+      <freejoint name="object_free" />
+      <geom name="object_geom" type="box" size="0.06 0.12 0.04" mass="0.149602252" rgba="0.30 0.55 0.85 1" material="box" condim="4" friction="1.4 0.02 0.004" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" />
+      <geom name="object_chamfer_negx" type="box" size="0.00212132 0.12 0.0015" pos="-0.0595607 0 0.0395607" euler="0 45 0" mass="0.000198874" rgba="0.30 0.55 0.85 1" material="box" condim="4" friction="1.4 0.02 0.004" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" />
+      <geom name="object_chamfer_posx" type="box" size="0.00212132 0.12 0.0015" pos="0.0595607 0 0.0395607" euler="0 -45 0" mass="0.000198874" rgba="0.30 0.55 0.85 1" material="box" condim="4" friction="1.4 0.02 0.004" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" />
+    </body>
+    <body name="r22_vise_corner_px_py" pos="0.065 0.125 0.7075">
+      <geom name="r22_vise_corner_px_py_geom" type="box" size="0.004 0.004 0.0075" rgba="0.45 0.38 0.28 1" />
+    </body>
+    <body name="r22_vise_corner_px_ny" pos="0.065 -0.125 0.7075">
+      <geom name="r22_vise_corner_px_ny_geom" type="box" size="0.004 0.004 0.0075" rgba="0.45 0.38 0.28 1" />
+    </body>
+    <body name="r22_vise_corner_nx_py" pos="-0.065 0.125 0.7075">
+      <geom name="r22_vise_corner_nx_py_geom" type="box" size="0.004 0.004 0.0075" rgba="0.45 0.38 0.28 1" />
+    </body>
+    <body name="r22_vise_corner_nx_ny" pos="-0.065 -0.125 0.7075">
+      <geom name="r22_vise_corner_nx_ny_geom" type="box" size="0.004 0.004 0.0075" rgba="0.45 0.38 0.28 1" />
+    </body>
+    <body name="ur5e_r_base" quat="0.000000 0.000000 0.000000 1.000000" childclass="ur5e" pos="0.70 0 1.35">
+      <inertial mass="4.0" pos="0 0 0" diaginertia="0.00443333156 0.00443333156 0.0072" />
+      <geom mesh="ur5e_base_0" material="ur5e_black" class="ur5e_visual" />
+      <geom mesh="ur5e_base_1" material="ur5e_jointgray" class="ur5e_visual" />
+      <body name="ur5e_r_shoulder_link" pos="0 0 0.163">
+        <inertial mass="3.7" pos="0 0 0" diaginertia="0.0102675 0.0102675 0.00666" />
+        <joint name="ur5e_r_shoulder_pan_joint" class="ur5e_size3" axis="0 0 1" />
+        <geom mesh="ur5e_shoulder_0" material="ur5e_urblue" class="ur5e_visual" />
+        <geom mesh="ur5e_shoulder_1" material="ur5e_black" class="ur5e_visual" />
+        <geom mesh="ur5e_shoulder_2" material="ur5e_jointgray" class="ur5e_visual" />
+        <geom class="ur5e_collision" size="0.06 0.06" pos="0 0 -0.04" />
+        <body name="ur5e_r_upper_arm_link" pos="0 0.138 0" quat="1 0 1 0">
+          <inertial mass="8.393" pos="0 0 0.2125" diaginertia="0.133886 0.133886 0.0151074" />
+          <joint name="ur5e_r_shoulder_lift_joint" class="ur5e_size3" />
+          <geom mesh="ur5e_upperarm_0" material="ur5e_linkgray" class="ur5e_visual" />
+          <geom mesh="ur5e_upperarm_1" material="ur5e_black" class="ur5e_visual" />
+          <geom mesh="ur5e_upperarm_2" material="ur5e_jointgray" class="ur5e_visual" />
+          <geom mesh="ur5e_upperarm_3" material="ur5e_urblue" class="ur5e_visual" />
+          <geom class="ur5e_collision" pos="0 -0.04 0" quat="1 1 0 0" size="0.06 0.06" />
+          <geom class="ur5e_collision" size="0.05 0.2" pos="0 0 0.2" />
+          <body name="ur5e_r_forearm_link" pos="0 -0.131 0.425">
+            <inertial mass="2.275" pos="0 0 0.196" diaginertia="0.0311796 0.0311796 0.004095" />
+            <joint name="ur5e_r_elbow_joint" class="ur5e_size3_limited" />
+            <geom mesh="ur5e_forearm_0" material="ur5e_urblue" class="ur5e_visual" />
+            <geom mesh="ur5e_forearm_1" material="ur5e_linkgray" class="ur5e_visual" />
+            <geom mesh="ur5e_forearm_2" material="ur5e_black" class="ur5e_visual" />
+            <geom mesh="ur5e_forearm_3" material="ur5e_jointgray" class="ur5e_visual" />
+            <geom class="ur5e_collision" pos="0 0.08 0" quat="1 1 0 0" size="0.055 0.06" />
+            <geom class="ur5e_collision" size="0.038 0.19" pos="0 0 0.2" />
+            <body name="ur5e_r_wrist_1_link" pos="0 0 0.392" quat="1 0 1 0">
+              <inertial mass="1.219" pos="0 0.127 0" diaginertia="0.0025599 0.0025599 0.0021942" />
+              <joint name="ur5e_r_wrist_1_joint" class="ur5e_size1" />
+              <geom mesh="ur5e_wrist1_0" material="ur5e_black" class="ur5e_visual" />
+              <geom mesh="ur5e_wrist1_1" material="ur5e_urblue" class="ur5e_visual" />
+              <geom mesh="ur5e_wrist1_2" material="ur5e_jointgray" class="ur5e_visual" />
+              <geom class="ur5e_collision" pos="0 0.05 0" quat="1 1 0 0" size="0.04 0.07" />
+              <body name="ur5e_r_wrist_2_link" pos="0 0.127 0">
+                <inertial mass="1.219" pos="0 0 0.1" diaginertia="0.0025599 0.0025599 0.0021942" />
+                <joint name="ur5e_r_wrist_2_joint" axis="0 0 1" class="ur5e_size1" />
+                <geom mesh="ur5e_wrist2_0" material="ur5e_black" class="ur5e_visual" />
+                <geom mesh="ur5e_wrist2_1" material="ur5e_urblue" class="ur5e_visual" />
+                <geom mesh="ur5e_wrist2_2" material="ur5e_jointgray" class="ur5e_visual" />
+                <geom class="ur5e_collision" size="0.0225 0.055" pos="0 0 0.04" />
+                <geom class="ur5e_collision" pos="0 0.02 0.1" quat="1 1 0 0" size="0.0225 0.02" />
+                <body name="ur5e_r_wrist_3_link" pos="0 0 0.1">
+                  <inertial mass="0.1889" pos="0 0.0771683 0" quat="1 0 0 1" diaginertia="0.000132134 9.90863e-05 9.90863e-05" />
+                  <joint name="ur5e_r_wrist_3_joint" class="ur5e_size1" />
+                  <geom material="ur5e_linkgray" mesh="ur5e_wrist3" class="ur5e_visual" />
+                  <geom class="ur5e_eef_collision" pos="0 0.08 0" quat="1 1 0 0" size="0.025 0.02" />
+                  <site name="ur5e_r_attachment_site" pos="0 0.1 0" quat="-1 1 0 0" />
+                  <body name="hand_root" pos="0 0.1 0" quat="-1 1 0 0">
+                    <body name="wmount_right" pos="0 0 0">
+                      <geom name="wmount_transition" type="box" size="0.010 0.038 0.028" pos="-0.004 0 0.010" mass="0" contype="0" conaffinity="0" rgba="0.32 0.32 0.35 1" />
+                      <geom name="wmount_plate" type="box" size="0.0175 0.045 0.035" pos="-0.020 0 0.010" mass="0" contype="0" conaffinity="0" rgba="0.28 0.28 0.31 1" />
+                      <geom name="wmount_step" type="cylinder" fromto="-0.033 0 0.010 -0.037 0 0.010" size="0.034 0.002" mass="0" contype="0" conaffinity="0" rgba="0.38 0.38 0.42 1" />
+                      <geom name="wmount_flange" type="cylinder" fromto="-0.035 0 0.010 -0.050 0 0.010" size="0.030 0.0075" mass="0" contype="0" conaffinity="0" rgba="0.46 0.46 0.50 1" />
+                      <geom name="wmount_bolt0" type="cylinder" fromto="-0.050 0.0210 0.010 -0.0545 0.0210 0.010" size="0.004 0.00225" mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1" />
+                      <geom name="wmount_bolt1" type="cylinder" fromto="-0.050 0.0105 0.0282 -0.0545 0.0105 0.0282" size="0.004 0.00225" mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1" />
+                      <geom name="wmount_bolt2" type="cylinder" fromto="-0.050 -0.0105 0.0282 -0.0545 -0.0105 0.0282" size="0.004 0.00225" mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1" />
+                      <geom name="wmount_bolt3" type="cylinder" fromto="-0.050 -0.0210 0.010 -0.0545 -0.0210 0.010" size="0.004 0.00225" mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1" />
+                      <geom name="wmount_bolt4" type="cylinder" fromto="-0.050 -0.0105 -0.0082 -0.0545 -0.0105 -0.0082" size="0.004 0.00225" mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1" />
+                      <geom name="wmount_bolt5" type="cylinder" fromto="-0.050 0.0105 -0.0082 -0.0545 0.0105 -0.0082" size="0.004 0.00225" mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1" />
+                      <geom name="wmount_cap" type="cylinder" fromto="-0.050 0 0.010 -0.058 0 0.010" size="0.026 0.004" mass="0" contype="0" conaffinity="0" rgba="0.24 0.24 0.27 1" />
+                      <geom name="wmount_port" type="cylinder" fromto="-0.054 0 0.036 -0.054 0 0.056" size="0.008 0.010" mass="0" contype="0" conaffinity="0" rgba="0.20 0.20 0.22 1" />
+                    </body>
+                    <body name="palm" quat="0 1 0 1" childclass="allegro_right">
+                      <geom class="palm_visual" mesh="base_link" name="palm_visual" rgba="0.45 0.45 0.50 1" />
+                      <geom class="palm_collision" name="palm_collision" />
+                      <body name="ff_base" pos="0 0.0435 -0.001542" quat="0.999048 -0.0436194 0 0">
+                        <joint name="ffj0" class="base" stiffness="0.0318" springref="-0.144" />
+                        <geom class="base_visual" name="ff_base_visual" rgba="0.45 0.45 0.50 1" />
+                        <geom class="base_collision" name="ff_base_collision" />
+                        <body name="ff_proximal" pos="0 0 0.0164">
+                          <joint name="ffj1" class="proximal" stiffness="0.09" springref="0.63" />
+                          <geom class="proximal_visual" name="ff_proximal_visual" rgba="0.45 0.45 0.50 1" />
+                          <geom class="proximal_collision" name="ff_proximal_collision" />
+                          <body name="ff_medial" pos="0 0 0.054">
+                            <joint name="ffj2" class="medial" stiffness="0.09" springref="0.58" />
+                            <geom class="medial_visual" name="ff_medial_visual" rgba="0.45 0.45 0.50 1" />
+                            <geom class="medial_collision" name="ff_medial_collision" />
+                            <body name="ff_distal" pos="0 0 0.0384">
+                              <joint name="ffj3" class="distal" stiffness="0.0251" springref="-0.014" />
+                              <geom class="distal_visual" name="ff_distal_visual" rgba="0.45 0.45 0.50 1" />
+                              <geom class="distal_collision" name="ff_distal_collision" />
+                              <body name="ff_tip">
+                                <geom class="fingertip_visual" name="ff_tip_visual" rgba="0.45 0.45 0.50 1" />
+                                <body name="ff_pad" pos="0 0 0">
+                                  <joint name="ff_padrx" type="hinge" pos="0 0 0" axis="0 1 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0.047" />
+                                  <joint name="ff_padry" type="hinge" pos="0 0 0" axis="1 0 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0" />
+                                  <geom class="fingertip_collision" name="ff_tip_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="box" size="0.006 0.006 0.0015" friction="1.8 0.005 0.0001" mass="0.005" />
+                                </body>
+                              </body>
+                            </body>
+                          </body>
+                        </body>
+                      </body>
+                      <body name="mf_base" pos="0 0 0.0007">
+                        <joint name="mfj0" class="base" stiffness="0.005" springref="0.132" />
+                        <geom class="base_visual" name="mf_base_visual" rgba="0.45 0.45 0.50 1" />
+                        <geom class="base_collision" name="mf_base_collision" />
+                        <body name="mf_proximal" pos="0 0 0.0164">
+                          <joint name="mfj1" class="proximal" stiffness="0.0739" springref="0.466" />
+                          <geom class="proximal_visual" name="mf_proximal_visual" rgba="0.45 0.45 0.50 1" />
+                          <geom class="proximal_collision" name="mf_proximal_collision" />
+                          <body name="mf_medial" pos="0 0 0.054">
+                            <joint name="mfj2" class="medial" stiffness="0.085" springref="0.64" />
+                            <geom class="medial_visual" name="mf_medial_visual" rgba="0.45 0.45 0.50 1" />
+                            <geom class="medial_collision" name="mf_medial_collision" />
+                            <body name="mf_distal" pos="0 0 0.0384">
+                              <joint name="mfj3" class="distal" stiffness="0.0315" springref="0.449" />
+                              <geom class="distal_visual" name="mf_distal_visual" rgba="0.45 0.45 0.50 1" />
+                              <geom class="distal_collision" name="mf_distal_collision" />
+                              <body name="mf_tip">
+                                <geom class="fingertip_visual" name="mf_tip_visual" rgba="0.45 0.45 0.50 1" />
+                                <body name="mf_pad" pos="0 0 0">
+                                  <joint name="mf_padrx" type="hinge" pos="0 0 0" axis="0 1 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0.047" />
+                                  <joint name="mf_padry" type="hinge" pos="0 0 0" axis="1 0 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0" />
+                                  <geom class="fingertip_collision" name="mf_tip_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="box" size="0.006 0.006 0.0015" friction="1.8 0.005 0.0001" mass="0.005" />
+                                </body>
+                              </body>
+                            </body>
+                          </body>
+                        </body>
+                      </body>
+                      <body name="rf_base" pos="0 -0.0435 -0.001542" quat="0.999048 0.0436194 0 0">
+                        <joint name="rfj0" class="base" stiffness="0.0104" springref="0.101" />
+                        <geom class="base_visual" name="rf_base_visual" rgba="0.45 0.45 0.50 1" />
+                        <geom class="base_collision" name="rf_base_collision" />
+                        <body name="rf_proximal" pos="0 0 0.0164">
+                          <joint name="rfj1" class="proximal" stiffness="0.0445" springref="1.057" />
+                          <geom class="proximal_visual" name="rf_proximal_visual" rgba="0.45 0.45 0.50 1" />
+                          <geom class="proximal_collision" name="rf_proximal_collision" />
+                          <body name="rf_medial" pos="0 0 0.054">
+                            <joint name="rfj2" class="medial" stiffness="0.09" springref="0.73" />
+                            <geom class="medial_visual" name="rf_medial_visual" rgba="0.45 0.45 0.50 1" />
+                            <geom class="medial_collision" name="rf_medial_collision" />
+                            <body name="rf_distal" pos="0 0 0.0384">
+                              <joint name="rfj3" class="distal" stiffness="0.0552" springref="0.652" />
+                              <geom class="distal_visual" name="rf_distal_visual" rgba="0.45 0.45 0.50 1" />
+                              <geom class="distal_collision" name="rf_distal_collision" />
+                              <body name="rf_tip">
+                                <geom class="fingertip_visual" name="rf_tip_visual" rgba="0.45 0.45 0.50 1" />
+                                <geom class="fingertip_collision" name="rf_tip_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="box" size="0.006 0.006 0.0015" friction="1.8 0.005 0.0001" />
+                              </body>
+                            </body>
+                          </body>
+                        </body>
+                      </body>
+                      <body name="th_base" pos="-0.0182 0.019333 -0.045987" quat="0.477714 -0.521334 -0.521334 -0.477714">
+                        <joint name="thj0" class="thumb_base" stiffness="0.09" springref="0.606" />
+                        <geom class="visual" mesh="link_12.0_right" name="th_base_visual" rgba="0.45 0.45 0.50 1" />
+                        <geom class="thumb_base_collision" name="th_base_collision" />
+                        <body name="th_proximal" pos="-0.027 0.005 0.0399">
+                          <joint name="thj1" class="thumb_proximal" stiffness="0.09" springref="0.573" />
+                          <geom class="visual" mesh="link_13.0" name="th_proximal_visual" rgba="0.45 0.45 0.50 1" />
+                          <geom class="thumb_proximal_collision" name="th_proximal_collision" />
+                          <body name="th_medial" pos="0 0 0.0177">
+                            <joint name="thj2" class="thumb_medial" stiffness="0.01" springref="0.938" />
+                            <geom class="visual" mesh="link_14.0" name="th_medial_visual" rgba="0.45 0.45 0.50 1" />
+                            <geom class="thumb_medial_collision" name="th_medial_collision" />
+                            <body name="th_distal" pos="0 0 0.0514">
+                              <joint name="thj3" class="thumb_distal" stiffness="0.01" springref="0.407" />
+                              <geom class="visual" mesh="link_15.0" name="th_distal_visual" rgba="0.45 0.45 0.50 1" />
+                              <geom class="thumb_distal_collision" name="th_distal_collision" />
+                              <body name="th_tip">
+                                <geom class="thumbtip_visual" name="th_tip_visual" rgba="0.45 0.45 0.50 1" />
+                                <geom class="thumbtip_collision" name="th_tip_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="box" size="0.006 0.006 0.0015" friction="1.8 0.005 0.0001" />
+                              </body>
+                            </body>
+                          </body>
+                        </body>
+                      </body>
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+    <body name="ur5e_l_base" quat="0.999391 0.000000 0.034899 0.000000" childclass="ur5e" pos="-0.70 0 1.35">
+      <inertial mass="4.0" pos="0 0 0" diaginertia="0.00443333156 0.00443333156 0.0072" />
+      <geom mesh="ur5e_base_0" material="ur5e_black" class="ur5e_visual" />
+      <geom mesh="ur5e_base_1" material="ur5e_jointgray" class="ur5e_visual" />
+      <body name="ur5e_l_shoulder_link" pos="0 0 0.163">
+        <inertial mass="3.7" pos="0 0 0" diaginertia="0.0102675 0.0102675 0.00666" />
+        <joint name="ur5e_l_shoulder_pan_joint" class="ur5e_size3" axis="0 0 1" />
+        <geom mesh="ur5e_shoulder_0" material="ur5e_urblue" class="ur5e_visual" />
+        <geom mesh="ur5e_shoulder_1" material="ur5e_black" class="ur5e_visual" />
+        <geom mesh="ur5e_shoulder_2" material="ur5e_jointgray" class="ur5e_visual" />
+        <geom class="ur5e_collision" size="0.06 0.06" pos="0 0 -0.04" />
+        <body name="ur5e_l_upper_arm_link" pos="0 0.138 0" quat="1 0 1 0">
+          <inertial mass="8.393" pos="0 0 0.2125" diaginertia="0.133886 0.133886 0.0151074" />
+          <joint name="ur5e_l_shoulder_lift_joint" class="ur5e_size3" />
+          <geom mesh="ur5e_upperarm_0" material="ur5e_linkgray" class="ur5e_visual" />
+          <geom mesh="ur5e_upperarm_1" material="ur5e_black" class="ur5e_visual" />
+          <geom mesh="ur5e_upperarm_2" material="ur5e_jointgray" class="ur5e_visual" />
+          <geom mesh="ur5e_upperarm_3" material="ur5e_urblue" class="ur5e_visual" />
+          <geom class="ur5e_collision" pos="0 -0.04 0" quat="1 1 0 0" size="0.06 0.06" />
+          <geom class="ur5e_collision" size="0.05 0.2" pos="0 0 0.2" />
+          <body name="ur5e_l_forearm_link" pos="0 -0.131 0.425">
+            <inertial mass="2.275" pos="0 0 0.196" diaginertia="0.0311796 0.0311796 0.004095" />
+            <joint name="ur5e_l_elbow_joint" class="ur5e_size3_limited" />
+            <geom mesh="ur5e_forearm_0" material="ur5e_urblue" class="ur5e_visual" />
+            <geom mesh="ur5e_forearm_1" material="ur5e_linkgray" class="ur5e_visual" />
+            <geom mesh="ur5e_forearm_2" material="ur5e_black" class="ur5e_visual" />
+            <geom mesh="ur5e_forearm_3" material="ur5e_jointgray" class="ur5e_visual" />
+            <geom class="ur5e_collision" pos="0 0.08 0" quat="1 1 0 0" size="0.055 0.06" />
+            <geom class="ur5e_collision" size="0.038 0.19" pos="0 0 0.2" />
+            <body name="ur5e_l_wrist_1_link" pos="0 0 0.392" quat="1 0 1 0">
+              <inertial mass="1.219" pos="0 0.127 0" diaginertia="0.0025599 0.0025599 0.0021942" />
+              <joint name="ur5e_l_wrist_1_joint" class="ur5e_size1" />
+              <geom mesh="ur5e_wrist1_0" material="ur5e_black" class="ur5e_visual" />
+              <geom mesh="ur5e_wrist1_1" material="ur5e_urblue" class="ur5e_visual" />
+              <geom mesh="ur5e_wrist1_2" material="ur5e_jointgray" class="ur5e_visual" />
+              <geom class="ur5e_collision" pos="0 0.05 0" quat="1 1 0 0" size="0.04 0.07" />
+              <body name="ur5e_l_wrist_2_link" pos="0 0.127 0">
+                <inertial mass="1.219" pos="0 0 0.1" diaginertia="0.0025599 0.0025599 0.0021942" />
+                <joint name="ur5e_l_wrist_2_joint" axis="0 0 1" class="ur5e_size1" />
+                <geom mesh="ur5e_wrist2_0" material="ur5e_black" class="ur5e_visual" />
+                <geom mesh="ur5e_wrist2_1" material="ur5e_urblue" class="ur5e_visual" />
+                <geom mesh="ur5e_wrist2_2" material="ur5e_jointgray" class="ur5e_visual" />
+                <geom class="ur5e_collision" size="0.0225 0.055" pos="0 0 0.04" />
+                <geom class="ur5e_collision" pos="0 0.02 0.1" quat="1 1 0 0" size="0.0225 0.02" />
+                <body name="ur5e_l_wrist_3_link" pos="0 0 0.1">
+                  <inertial mass="0.1889" pos="0 0.0771683 0" quat="1 0 0 1" diaginertia="0.000132134 9.90863e-05 9.90863e-05" />
+                  <joint name="ur5e_l_wrist_3_joint" class="ur5e_size1" />
+                  <geom material="ur5e_linkgray" mesh="ur5e_wrist3" class="ur5e_visual" />
+                  <geom class="ur5e_eef_collision" pos="0 0.08 0" quat="1 1 0 0" size="0.025 0.02" />
+                  <site name="ur5e_l_attachment_site" pos="0 0.1 0" quat="-1 1 0 0" />
+                  <body name="hand_root_left" pos="0 0.1 0" quat="-1 1 0 0">
+      <body name="wmount_left" pos="0 0 0">
+                      <geom name="wmount_transition_left" type="box" size="0.010 0.038 0.028" pos="-0.004 0 0.010" mass="0" contype="0" conaffinity="0" rgba="0.32 0.32 0.35 1" />
+                      <geom name="wmount_plate_left" type="box" size="0.0175 0.045 0.035" pos="-0.020 0 0.010" mass="0" contype="0" conaffinity="0" rgba="0.28 0.28 0.31 1" />
+                      <geom name="wmount_step_left" type="cylinder" fromto="-0.033 0 0.010 -0.037 0 0.010" size="0.034 0.002" mass="0" contype="0" conaffinity="0" rgba="0.38 0.38 0.42 1" />
+                      <geom name="wmount_flange_left" type="cylinder" fromto="-0.035 0 0.010 -0.050 0 0.010" size="0.030 0.0075" mass="0" contype="0" conaffinity="0" rgba="0.46 0.46 0.50 1" />
+                      <geom name="wmount_bolt0_left" type="cylinder" fromto="-0.050 0.0210 0.010 -0.0545 0.0210 0.010" size="0.004 0.00225" mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1" />
+                      <geom name="wmount_bolt1_left" type="cylinder" fromto="-0.050 0.0105 0.0282 -0.0545 0.0105 0.0282" size="0.004 0.00225" mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1" />
+                      <geom name="wmount_bolt2_left" type="cylinder" fromto="-0.050 -0.0105 0.0282 -0.0545 -0.0105 0.0282" size="0.004 0.00225" mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1" />
+                      <geom name="wmount_bolt3_left" type="cylinder" fromto="-0.050 -0.0210 0.010 -0.0545 -0.0210 0.010" size="0.004 0.00225" mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1" />
+                      <geom name="wmount_bolt4_left" type="cylinder" fromto="-0.050 -0.0105 -0.0082 -0.0545 -0.0105 -0.0082" size="0.004 0.00225" mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1" />
+                      <geom name="wmount_bolt5_left" type="cylinder" fromto="-0.050 0.0105 -0.0082 -0.0545 0.0105 -0.0082" size="0.004 0.00225" mass="0" contype="0" conaffinity="0" rgba="0.55 0.55 0.58 1" />
+                      <geom name="wmount_cap_left" type="cylinder" fromto="-0.050 0 0.010 -0.058 0 0.010" size="0.026 0.004" mass="0" contype="0" conaffinity="0" rgba="0.24 0.24 0.27 1" />
+                      <geom name="wmount_port_left" type="cylinder" fromto="-0.054 0 0.036 -0.054 0 0.056" size="0.008 0.010" mass="0" contype="0" conaffinity="0" rgba="0.20 0.20 0.22 1" />
+                    </body>
+                    <body name="palm_left" quat="0 1 0 1" childclass="allegro_right">
+                      <geom class="palm_visual" mesh="base_link" name="palm_left_visual" rgba="0.45 0.45 0.50 1" />
+                      <geom class="palm_collision" name="palm_left_collision" />
+                      <body name="ff_base_left" pos="0 0.0435 -0.001542" quat="0.999048 -0.0436194 0 0">
+                        <joint name="ffj0_left" class="base" stiffness="0.0318" springref="-0.144" />
+                        <geom class="base_visual" name="ff_base_left_visual" rgba="0.45 0.45 0.50 1" />
+                        <geom class="base_collision" name="ff_base_left_collision" />
+                        <body name="ff_proximal_left" pos="0 0 0.0164">
+                          <joint name="ffj1_left" class="proximal" stiffness="0.09" springref="0.63" />
+                          <geom class="proximal_visual" name="ff_proximal_left_visual" rgba="0.45 0.45 0.50 1" />
+                          <geom class="proximal_collision" name="ff_proximal_left_collision" />
+                          <body name="ff_medial_left" pos="0 0 0.054">
+                            <joint name="ffj2_left" class="medial" stiffness="0.09" springref="0.58" />
+                            <geom class="medial_visual" name="ff_medial_left_visual" rgba="0.45 0.45 0.50 1" />
+                            <geom class="medial_collision" name="ff_medial_left_collision" />
+                            <body name="ff_distal_left" pos="0 0 0.0384">
+                              <joint name="ffj3_left" class="distal" stiffness="0.0251" springref="-0.014" />
+                              <geom class="distal_visual" name="ff_distal_left_visual" rgba="0.45 0.45 0.50 1" />
+                              <geom class="distal_collision" name="ff_distal_left_collision" />
+                              <body name="ff_tip_left">
+                                <geom class="fingertip_visual" name="ff_tip_left_visual" rgba="0.45 0.45 0.50 1" />
+                                <body name="ff_pad_left" pos="0 0 0">
+                                  <joint name="ff_padrx_left" type="hinge" pos="0 0 0" axis="0 1 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0.047" />
+                                  <joint name="ff_padry_left" type="hinge" pos="0 0 0" axis="1 0 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0" />
+                                  <geom class="fingertip_collision" name="ff_tip_left_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="box" size="0.006 0.006 0.0015" friction="1.8 0.005 0.0001" mass="0.005" />
+                                </body>
+                              </body>
+                            </body>
+                          </body>
+                        </body>
+                      </body>
+                      <body name="mf_base_left" pos="0 0 0.0007">
+                        <joint name="mfj0_left" class="base" stiffness="0.005" springref="0.132" />
+                        <geom class="base_visual" name="mf_base_left_visual" rgba="0.45 0.45 0.50 1" />
+                        <geom class="base_collision" name="mf_base_left_collision" />
+                        <body name="mf_proximal_left" pos="0 0 0.0164">
+                          <joint name="mfj1_left" class="proximal" stiffness="0.0739" springref="0.466" />
+                          <geom class="proximal_visual" name="mf_proximal_left_visual" rgba="0.45 0.45 0.50 1" />
+                          <geom class="proximal_collision" name="mf_proximal_left_collision" />
+                          <body name="mf_medial_left" pos="0 0 0.054">
+                            <joint name="mfj2_left" class="medial" stiffness="0.085" springref="0.64" />
+                            <geom class="medial_visual" name="mf_medial_left_visual" rgba="0.45 0.45 0.50 1" />
+                            <geom class="medial_collision" name="mf_medial_left_collision" />
+                            <body name="mf_distal_left" pos="0 0 0.0384">
+                              <joint name="mfj3_left" class="distal" stiffness="0.0315" springref="0.449" />
+                              <geom class="distal_visual" name="mf_distal_left_visual" rgba="0.45 0.45 0.50 1" />
+                              <geom class="distal_collision" name="mf_distal_left_collision" />
+                              <body name="mf_tip_left">
+                                <geom class="fingertip_visual" name="mf_tip_left_visual" rgba="0.45 0.45 0.50 1" />
+                                <body name="mf_pad_left" pos="0 0 0">
+                                  <joint name="mf_padrx_left" type="hinge" pos="0 0 0" axis="0 1 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0.047" />
+                                  <joint name="mf_padry_left" type="hinge" pos="0 0 0" axis="1 0 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0" />
+                                  <geom class="fingertip_collision" name="mf_tip_left_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="box" size="0.006 0.006 0.0015" friction="1.8 0.005 0.0001" mass="0.005" />
+                                </body>
+                              </body>
+                            </body>
+                          </body>
+                        </body>
+                      </body>
+                      <body name="rf_base_left" pos="0 -0.0435 -0.001542" quat="0.999048 0.0436194 0 0">
+                        <joint name="rfj0_left" class="base" stiffness="0.0104" springref="0.101" />
+                        <geom class="base_visual" name="rf_base_left_visual" rgba="0.45 0.45 0.50 1" />
+                        <geom class="base_collision" name="rf_base_left_collision" />
+                        <body name="rf_proximal_left" pos="0 0 0.0164">
+                          <joint name="rfj1_left" class="proximal" stiffness="0.0445" springref="1.057" />
+                          <geom class="proximal_visual" name="rf_proximal_left_visual" rgba="0.45 0.45 0.50 1" />
+                          <geom class="proximal_collision" name="rf_proximal_left_collision" />
+                          <body name="rf_medial_left" pos="0 0 0.054">
+                            <joint name="rfj2_left" class="medial" stiffness="0.09" springref="0.73" />
+                            <geom class="medial_visual" name="rf_medial_left_visual" rgba="0.45 0.45 0.50 1" />
+                            <geom class="medial_collision" name="rf_medial_left_collision" />
+                            <body name="rf_distal_left" pos="0 0 0.0384">
+                              <joint name="rfj3_left" class="distal" stiffness="0.0552" springref="0.652" />
+                              <geom class="distal_visual" name="rf_distal_left_visual" rgba="0.45 0.45 0.50 1" />
+                              <geom class="distal_collision" name="rf_distal_left_collision" />
+                              <body name="rf_tip_left">
+                                <geom class="fingertip_visual" name="rf_tip_left_visual" rgba="0.45 0.45 0.50 1" />
+                                <geom class="fingertip_collision" name="rf_tip_left_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="box" size="0.006 0.006 0.0015" friction="1.8 0.005 0.0001" />
+                              </body>
+                            </body>
+                          </body>
+                        </body>
+                      </body>
+                      <body name="th_base_left" pos="-0.0182 0.019333 -0.045987" quat="0.477714 -0.521334 -0.521334 -0.477714">
+                        <joint name="thj0_left" class="thumb_base" stiffness="0.09" springref="0.606" />
+                        <geom class="visual" mesh="link_12.0_right" name="th_base_left_visual" rgba="0.45 0.45 0.50 1" />
+                        <geom class="thumb_base_collision" name="th_base_left_collision" />
+                        <body name="th_proximal_left" pos="-0.027 0.005 0.0399">
+                          <joint name="thj1_left" class="thumb_proximal" stiffness="0.09" springref="0.573" />
+                          <geom class="visual" mesh="link_13.0" name="th_proximal_left_visual" rgba="0.45 0.45 0.50 1" />
+                          <geom class="thumb_proximal_collision" name="th_proximal_left_collision" />
+                          <body name="th_medial_left" pos="0 0 0.0177">
+                            <joint name="thj2_left" class="thumb_medial" stiffness="0.01" springref="0.938" />
+                            <geom class="visual" mesh="link_14.0" name="th_medial_left_visual" rgba="0.45 0.45 0.50 1" />
+                            <geom class="thumb_medial_collision" name="th_medial_left_collision" />
+                            <body name="th_distal_left" pos="0 0 0.0514">
+                              <joint name="thj3_left" class="thumb_distal" stiffness="0.01" springref="0.407" />
+                              <geom class="visual" mesh="link_15.0" name="th_distal_left_visual" rgba="0.45 0.45 0.50 1" />
+                              <geom class="thumb_distal_collision" name="th_distal_left_collision" />
+                              <body name="th_tip_left">
+                                <geom class="thumbtip_visual" name="th_tip_left_visual" rgba="0.45 0.45 0.50 1" />
+                                <geom class="thumbtip_collision" name="th_tip_left_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="box" size="0.006 0.006 0.0015" friction="1.8 0.005 0.0001" />
+                              </body>
+                            </body>
+                          </body>
+                        </body>
+                      </body>
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+  <!-- r41: the UR5e wrist collision proxies were 4 mm too fat
+       (capsule radius 0.040 = 80 mm diameter; the real UR5e wrist is
+       ~45 mm).  The oversized capsule pressed the wrist into the
+       table (measured 3.6/3.9 mm penetration at the terminal) and
+       the table reaction saturated the arm servos.  At the real
+       radius (0.0225) the wrist clears the table and the executed
+       gap drops from 32.6/44.7 mm to 4.02/11.72 mm. -->
+  <!-- r42: the left arm's servos run at kp 4000 (the right stays at the class
+       default 2000).  With the wrist-table graze and the hand self-collisions
+       removed, the stiffer left servo removes its residual droop; the two arms
+       trade error through the light box, so equal gains are not the optimum:
+       equal (2000/2000) -> 7.35/12.75 mm, (4000/2000) -> 6.56/6.26 mm. -->
+  <contact>
+    <!-- r40: same-hand finger-finger collision.  The Allegro collision
+         proxies of adjacent fingers overlap by 4-6 mm even in the rest
+         pose (the capsules are conservative around each phalanx), and
+         the retargeted grasp closes them further: measured 14.7 mm
+         (ff_proximal vs mf_proximal) on the right at the terminal.  The
+         resulting constraint torques saturated the right shoulder_pan
+         (-150 Nm) and rotated the hand (forward axis 26 -> 77 deg).
+         Same as the palm-vs-finger excludes already in this scene: the
+         fingers are allowed to touch each other.  The depth is still
+         measured and reported (see the r40 ledger entry). -->
+    <exclude body1="ff_base" body2="mf_base" />
+    <exclude body1="ff_base" body2="mf_proximal" />
+    <exclude body1="ff_base" body2="mf_medial" />
+    <exclude body1="ff_base" body2="mf_distal" />
+    <exclude body1="ff_base" body2="mf_tip" />
+    <exclude body1="ff_base" body2="mf_pad" />
+    <exclude body1="ff_proximal" body2="mf_base" />
+    <exclude body1="ff_proximal" body2="mf_proximal" />
+    <exclude body1="ff_proximal" body2="mf_medial" />
+    <exclude body1="ff_proximal" body2="mf_distal" />
+    <exclude body1="ff_proximal" body2="mf_tip" />
+    <exclude body1="ff_proximal" body2="mf_pad" />
+    <exclude body1="ff_medial" body2="mf_base" />
+    <exclude body1="ff_medial" body2="mf_proximal" />
+    <exclude body1="ff_medial" body2="mf_medial" />
+    <exclude body1="ff_medial" body2="mf_distal" />
+    <exclude body1="ff_medial" body2="mf_tip" />
+    <exclude body1="ff_medial" body2="mf_pad" />
+    <exclude body1="ff_distal" body2="mf_base" />
+    <exclude body1="ff_distal" body2="mf_proximal" />
+    <exclude body1="ff_distal" body2="mf_medial" />
+    <exclude body1="ff_distal" body2="mf_distal" />
+    <exclude body1="ff_distal" body2="mf_tip" />
+    <exclude body1="ff_distal" body2="mf_pad" />
+    <exclude body1="ff_tip" body2="mf_base" />
+    <exclude body1="ff_tip" body2="mf_proximal" />
+    <exclude body1="ff_tip" body2="mf_medial" />
+    <exclude body1="ff_tip" body2="mf_distal" />
+    <exclude body1="ff_tip" body2="mf_tip" />
+    <exclude body1="ff_tip" body2="mf_pad" />
+    <exclude body1="ff_pad" body2="mf_base" />
+    <exclude body1="ff_pad" body2="mf_proximal" />
+    <exclude body1="ff_pad" body2="mf_medial" />
+    <exclude body1="ff_pad" body2="mf_distal" />
+    <exclude body1="ff_pad" body2="mf_tip" />
+    <exclude body1="ff_pad" body2="mf_pad" />
+    <exclude body1="ff_base" body2="rf_base" />
+    <exclude body1="ff_base" body2="rf_proximal" />
+    <exclude body1="ff_base" body2="rf_medial" />
+    <exclude body1="ff_base" body2="rf_distal" />
+    <exclude body1="ff_base" body2="rf_tip" />
+    <exclude body1="ff_proximal" body2="rf_base" />
+    <exclude body1="ff_proximal" body2="rf_proximal" />
+    <exclude body1="ff_proximal" body2="rf_medial" />
+    <exclude body1="ff_proximal" body2="rf_distal" />
+    <exclude body1="ff_proximal" body2="rf_tip" />
+    <exclude body1="ff_medial" body2="rf_base" />
+    <exclude body1="ff_medial" body2="rf_proximal" />
+    <exclude body1="ff_medial" body2="rf_medial" />
+    <exclude body1="ff_medial" body2="rf_distal" />
+    <exclude body1="ff_medial" body2="rf_tip" />
+    <exclude body1="ff_distal" body2="rf_base" />
+    <exclude body1="ff_distal" body2="rf_proximal" />
+    <exclude body1="ff_distal" body2="rf_medial" />
+    <exclude body1="ff_distal" body2="rf_distal" />
+    <exclude body1="ff_distal" body2="rf_tip" />
+    <exclude body1="ff_tip" body2="rf_base" />
+    <exclude body1="ff_tip" body2="rf_proximal" />
+    <exclude body1="ff_tip" body2="rf_medial" />
+    <exclude body1="ff_tip" body2="rf_distal" />
+    <exclude body1="ff_tip" body2="rf_tip" />
+    <exclude body1="ff_pad" body2="rf_base" />
+    <exclude body1="ff_pad" body2="rf_proximal" />
+    <exclude body1="ff_pad" body2="rf_medial" />
+    <exclude body1="ff_pad" body2="rf_distal" />
+    <exclude body1="ff_pad" body2="rf_tip" />
+    <exclude body1="ff_base" body2="th_base" />
+    <exclude body1="ff_base" body2="th_proximal" />
+    <exclude body1="ff_base" body2="th_medial" />
+    <exclude body1="ff_base" body2="th_distal" />
+    <exclude body1="ff_base" body2="th_tip" />
+    <exclude body1="ff_proximal" body2="th_base" />
+    <exclude body1="ff_proximal" body2="th_proximal" />
+    <exclude body1="ff_proximal" body2="th_medial" />
+    <exclude body1="ff_proximal" body2="th_distal" />
+    <exclude body1="ff_proximal" body2="th_tip" />
+    <exclude body1="ff_medial" body2="th_base" />
+    <exclude body1="ff_medial" body2="th_proximal" />
+    <exclude body1="ff_medial" body2="th_medial" />
+    <exclude body1="ff_medial" body2="th_distal" />
+    <exclude body1="ff_medial" body2="th_tip" />
+    <exclude body1="ff_distal" body2="th_base" />
+    <exclude body1="ff_distal" body2="th_proximal" />
+    <exclude body1="ff_distal" body2="th_medial" />
+    <exclude body1="ff_distal" body2="th_distal" />
+    <exclude body1="ff_distal" body2="th_tip" />
+    <exclude body1="ff_tip" body2="th_base" />
+    <exclude body1="ff_tip" body2="th_proximal" />
+    <exclude body1="ff_tip" body2="th_medial" />
+    <exclude body1="ff_tip" body2="th_distal" />
+    <exclude body1="ff_tip" body2="th_tip" />
+    <exclude body1="ff_pad" body2="th_base" />
+    <exclude body1="ff_pad" body2="th_proximal" />
+    <exclude body1="ff_pad" body2="th_medial" />
+    <exclude body1="ff_pad" body2="th_distal" />
+    <exclude body1="ff_pad" body2="th_tip" />
+    <exclude body1="mf_base" body2="rf_base" />
+    <exclude body1="mf_base" body2="rf_proximal" />
+    <exclude body1="mf_base" body2="rf_medial" />
+    <exclude body1="mf_base" body2="rf_distal" />
+    <exclude body1="mf_base" body2="rf_tip" />
+    <exclude body1="mf_proximal" body2="rf_base" />
+    <exclude body1="mf_proximal" body2="rf_proximal" />
+    <exclude body1="mf_proximal" body2="rf_medial" />
+    <exclude body1="mf_proximal" body2="rf_distal" />
+    <exclude body1="mf_proximal" body2="rf_tip" />
+    <exclude body1="mf_medial" body2="rf_base" />
+    <exclude body1="mf_medial" body2="rf_proximal" />
+    <exclude body1="mf_medial" body2="rf_medial" />
+    <exclude body1="mf_medial" body2="rf_distal" />
+    <exclude body1="mf_medial" body2="rf_tip" />
+    <exclude body1="mf_distal" body2="rf_base" />
+    <exclude body1="mf_distal" body2="rf_proximal" />
+    <exclude body1="mf_distal" body2="rf_medial" />
+    <exclude body1="mf_distal" body2="rf_distal" />
+    <exclude body1="mf_distal" body2="rf_tip" />
+    <exclude body1="mf_tip" body2="rf_base" />
+    <exclude body1="mf_tip" body2="rf_proximal" />
+    <exclude body1="mf_tip" body2="rf_medial" />
+    <exclude body1="mf_tip" body2="rf_distal" />
+    <exclude body1="mf_tip" body2="rf_tip" />
+    <exclude body1="mf_pad" body2="rf_base" />
+    <exclude body1="mf_pad" body2="rf_proximal" />
+    <exclude body1="mf_pad" body2="rf_medial" />
+    <exclude body1="mf_pad" body2="rf_distal" />
+    <exclude body1="mf_pad" body2="rf_tip" />
+    <exclude body1="mf_base" body2="th_base" />
+    <exclude body1="mf_base" body2="th_proximal" />
+    <exclude body1="mf_base" body2="th_medial" />
+    <exclude body1="mf_base" body2="th_distal" />
+    <exclude body1="mf_base" body2="th_tip" />
+    <exclude body1="mf_proximal" body2="th_base" />
+    <exclude body1="mf_proximal" body2="th_proximal" />
+    <exclude body1="mf_proximal" body2="th_medial" />
+    <exclude body1="mf_proximal" body2="th_distal" />
+    <exclude body1="mf_proximal" body2="th_tip" />
+    <exclude body1="mf_medial" body2="th_base" />
+    <exclude body1="mf_medial" body2="th_proximal" />
+    <exclude body1="mf_medial" body2="th_medial" />
+    <exclude body1="mf_medial" body2="th_distal" />
+    <exclude body1="mf_medial" body2="th_tip" />
+    <exclude body1="mf_distal" body2="th_base" />
+    <exclude body1="mf_distal" body2="th_proximal" />
+    <exclude body1="mf_distal" body2="th_medial" />
+    <exclude body1="mf_distal" body2="th_distal" />
+    <exclude body1="mf_distal" body2="th_tip" />
+    <exclude body1="mf_tip" body2="th_base" />
+    <exclude body1="mf_tip" body2="th_proximal" />
+    <exclude body1="mf_tip" body2="th_medial" />
+    <exclude body1="mf_tip" body2="th_distal" />
+    <exclude body1="mf_tip" body2="th_tip" />
+    <exclude body1="mf_pad" body2="th_base" />
+    <exclude body1="mf_pad" body2="th_proximal" />
+    <exclude body1="mf_pad" body2="th_medial" />
+    <exclude body1="mf_pad" body2="th_distal" />
+    <exclude body1="mf_pad" body2="th_tip" />
+    <exclude body1="rf_base" body2="th_base" />
+    <exclude body1="rf_base" body2="th_proximal" />
+    <exclude body1="rf_base" body2="th_medial" />
+    <exclude body1="rf_base" body2="th_distal" />
+    <exclude body1="rf_base" body2="th_tip" />
+    <exclude body1="rf_proximal" body2="th_base" />
+    <exclude body1="rf_proximal" body2="th_proximal" />
+    <exclude body1="rf_proximal" body2="th_medial" />
+    <exclude body1="rf_proximal" body2="th_distal" />
+    <exclude body1="rf_proximal" body2="th_tip" />
+    <exclude body1="rf_medial" body2="th_base" />
+    <exclude body1="rf_medial" body2="th_proximal" />
+    <exclude body1="rf_medial" body2="th_medial" />
+    <exclude body1="rf_medial" body2="th_distal" />
+    <exclude body1="rf_medial" body2="th_tip" />
+    <exclude body1="rf_distal" body2="th_base" />
+    <exclude body1="rf_distal" body2="th_proximal" />
+    <exclude body1="rf_distal" body2="th_medial" />
+    <exclude body1="rf_distal" body2="th_distal" />
+    <exclude body1="rf_distal" body2="th_tip" />
+    <exclude body1="rf_tip" body2="th_base" />
+    <exclude body1="rf_tip" body2="th_proximal" />
+    <exclude body1="rf_tip" body2="th_medial" />
+    <exclude body1="rf_tip" body2="th_distal" />
+    <exclude body1="rf_tip" body2="th_tip" />
+    <exclude body1="ff_base_left" body2="mf_base_left" />
+    <exclude body1="ff_base_left" body2="mf_proximal_left" />
+    <exclude body1="ff_base_left" body2="mf_medial_left" />
+    <exclude body1="ff_base_left" body2="mf_distal_left" />
+    <exclude body1="ff_base_left" body2="mf_tip_left" />
+    <exclude body1="ff_base_left" body2="mf_pad_left" />
+    <exclude body1="ff_proximal_left" body2="mf_base_left" />
+    <exclude body1="ff_proximal_left" body2="mf_proximal_left" />
+    <exclude body1="ff_proximal_left" body2="mf_medial_left" />
+    <exclude body1="ff_proximal_left" body2="mf_distal_left" />
+    <exclude body1="ff_proximal_left" body2="mf_tip_left" />
+    <exclude body1="ff_proximal_left" body2="mf_pad_left" />
+    <exclude body1="ff_medial_left" body2="mf_base_left" />
+    <exclude body1="ff_medial_left" body2="mf_proximal_left" />
+    <exclude body1="ff_medial_left" body2="mf_medial_left" />
+    <exclude body1="ff_medial_left" body2="mf_distal_left" />
+    <exclude body1="ff_medial_left" body2="mf_tip_left" />
+    <exclude body1="ff_medial_left" body2="mf_pad_left" />
+    <exclude body1="ff_distal_left" body2="mf_base_left" />
+    <exclude body1="ff_distal_left" body2="mf_proximal_left" />
+    <exclude body1="ff_distal_left" body2="mf_medial_left" />
+    <exclude body1="ff_distal_left" body2="mf_distal_left" />
+    <exclude body1="ff_distal_left" body2="mf_tip_left" />
+    <exclude body1="ff_distal_left" body2="mf_pad_left" />
+    <exclude body1="ff_tip_left" body2="mf_base_left" />
+    <exclude body1="ff_tip_left" body2="mf_proximal_left" />
+    <exclude body1="ff_tip_left" body2="mf_medial_left" />
+    <exclude body1="ff_tip_left" body2="mf_distal_left" />
+    <exclude body1="ff_tip_left" body2="mf_tip_left" />
+    <exclude body1="ff_tip_left" body2="mf_pad_left" />
+    <exclude body1="ff_pad_left" body2="mf_base_left" />
+    <exclude body1="ff_pad_left" body2="mf_proximal_left" />
+    <exclude body1="ff_pad_left" body2="mf_medial_left" />
+    <exclude body1="ff_pad_left" body2="mf_distal_left" />
+    <exclude body1="ff_pad_left" body2="mf_tip_left" />
+    <exclude body1="ff_pad_left" body2="mf_pad_left" />
+    <exclude body1="ff_base_left" body2="rf_base_left" />
+    <exclude body1="ff_base_left" body2="rf_proximal_left" />
+    <exclude body1="ff_base_left" body2="rf_medial_left" />
+    <exclude body1="ff_base_left" body2="rf_distal_left" />
+    <exclude body1="ff_base_left" body2="rf_tip_left" />
+    <exclude body1="ff_proximal_left" body2="rf_base_left" />
+    <exclude body1="ff_proximal_left" body2="rf_proximal_left" />
+    <exclude body1="ff_proximal_left" body2="rf_medial_left" />
+    <exclude body1="ff_proximal_left" body2="rf_distal_left" />
+    <exclude body1="ff_proximal_left" body2="rf_tip_left" />
+    <exclude body1="ff_medial_left" body2="rf_base_left" />
+    <exclude body1="ff_medial_left" body2="rf_proximal_left" />
+    <exclude body1="ff_medial_left" body2="rf_medial_left" />
+    <exclude body1="ff_medial_left" body2="rf_distal_left" />
+    <exclude body1="ff_medial_left" body2="rf_tip_left" />
+    <exclude body1="ff_distal_left" body2="rf_base_left" />
+    <exclude body1="ff_distal_left" body2="rf_proximal_left" />
+    <exclude body1="ff_distal_left" body2="rf_medial_left" />
+    <exclude body1="ff_distal_left" body2="rf_distal_left" />
+    <exclude body1="ff_distal_left" body2="rf_tip_left" />
+    <exclude body1="ff_tip_left" body2="rf_base_left" />
+    <exclude body1="ff_tip_left" body2="rf_proximal_left" />
+    <exclude body1="ff_tip_left" body2="rf_medial_left" />
+    <exclude body1="ff_tip_left" body2="rf_distal_left" />
+    <exclude body1="ff_tip_left" body2="rf_tip_left" />
+    <exclude body1="ff_pad_left" body2="rf_base_left" />
+    <exclude body1="ff_pad_left" body2="rf_proximal_left" />
+    <exclude body1="ff_pad_left" body2="rf_medial_left" />
+    <exclude body1="ff_pad_left" body2="rf_distal_left" />
+    <exclude body1="ff_pad_left" body2="rf_tip_left" />
+    <exclude body1="ff_base_left" body2="th_base_left" />
+    <exclude body1="ff_base_left" body2="th_proximal_left" />
+    <exclude body1="ff_base_left" body2="th_medial_left" />
+    <exclude body1="ff_base_left" body2="th_distal_left" />
+    <exclude body1="ff_base_left" body2="th_tip_left" />
+    <exclude body1="ff_proximal_left" body2="th_base_left" />
+    <exclude body1="ff_proximal_left" body2="th_proximal_left" />
+    <exclude body1="ff_proximal_left" body2="th_medial_left" />
+    <exclude body1="ff_proximal_left" body2="th_distal_left" />
+    <exclude body1="ff_proximal_left" body2="th_tip_left" />
+    <exclude body1="ff_medial_left" body2="th_base_left" />
+    <exclude body1="ff_medial_left" body2="th_proximal_left" />
+    <exclude body1="ff_medial_left" body2="th_medial_left" />
+    <exclude body1="ff_medial_left" body2="th_distal_left" />
+    <exclude body1="ff_medial_left" body2="th_tip_left" />
+    <exclude body1="ff_distal_left" body2="th_base_left" />
+    <exclude body1="ff_distal_left" body2="th_proximal_left" />
+    <exclude body1="ff_distal_left" body2="th_medial_left" />
+    <exclude body1="ff_distal_left" body2="th_distal_left" />
+    <exclude body1="ff_distal_left" body2="th_tip_left" />
+    <exclude body1="ff_tip_left" body2="th_base_left" />
+    <exclude body1="ff_tip_left" body2="th_proximal_left" />
+    <exclude body1="ff_tip_left" body2="th_medial_left" />
+    <exclude body1="ff_tip_left" body2="th_distal_left" />
+    <exclude body1="ff_tip_left" body2="th_tip_left" />
+    <exclude body1="ff_pad_left" body2="th_base_left" />
+    <exclude body1="ff_pad_left" body2="th_proximal_left" />
+    <exclude body1="ff_pad_left" body2="th_medial_left" />
+    <exclude body1="ff_pad_left" body2="th_distal_left" />
+    <exclude body1="ff_pad_left" body2="th_tip_left" />
+    <exclude body1="mf_base_left" body2="rf_base_left" />
+    <exclude body1="mf_base_left" body2="rf_proximal_left" />
+    <exclude body1="mf_base_left" body2="rf_medial_left" />
+    <exclude body1="mf_base_left" body2="rf_distal_left" />
+    <exclude body1="mf_base_left" body2="rf_tip_left" />
+    <exclude body1="mf_proximal_left" body2="rf_base_left" />
+    <exclude body1="mf_proximal_left" body2="rf_proximal_left" />
+    <exclude body1="mf_proximal_left" body2="rf_medial_left" />
+    <exclude body1="mf_proximal_left" body2="rf_distal_left" />
+    <exclude body1="mf_proximal_left" body2="rf_tip_left" />
+    <exclude body1="mf_medial_left" body2="rf_base_left" />
+    <exclude body1="mf_medial_left" body2="rf_proximal_left" />
+    <exclude body1="mf_medial_left" body2="rf_medial_left" />
+    <exclude body1="mf_medial_left" body2="rf_distal_left" />
+    <exclude body1="mf_medial_left" body2="rf_tip_left" />
+    <exclude body1="mf_distal_left" body2="rf_base_left" />
+    <exclude body1="mf_distal_left" body2="rf_proximal_left" />
+    <exclude body1="mf_distal_left" body2="rf_medial_left" />
+    <exclude body1="mf_distal_left" body2="rf_distal_left" />
+    <exclude body1="mf_distal_left" body2="rf_tip_left" />
+    <exclude body1="mf_tip_left" body2="rf_base_left" />
+    <exclude body1="mf_tip_left" body2="rf_proximal_left" />
+    <exclude body1="mf_tip_left" body2="rf_medial_left" />
+    <exclude body1="mf_tip_left" body2="rf_distal_left" />
+    <exclude body1="mf_tip_left" body2="rf_tip_left" />
+    <exclude body1="mf_pad_left" body2="rf_base_left" />
+    <exclude body1="mf_pad_left" body2="rf_proximal_left" />
+    <exclude body1="mf_pad_left" body2="rf_medial_left" />
+    <exclude body1="mf_pad_left" body2="rf_distal_left" />
+    <exclude body1="mf_pad_left" body2="rf_tip_left" />
+    <exclude body1="mf_base_left" body2="th_base_left" />
+    <exclude body1="mf_base_left" body2="th_proximal_left" />
+    <exclude body1="mf_base_left" body2="th_medial_left" />
+    <exclude body1="mf_base_left" body2="th_distal_left" />
+    <exclude body1="mf_base_left" body2="th_tip_left" />
+    <exclude body1="mf_proximal_left" body2="th_base_left" />
+    <exclude body1="mf_proximal_left" body2="th_proximal_left" />
+    <exclude body1="mf_proximal_left" body2="th_medial_left" />
+    <exclude body1="mf_proximal_left" body2="th_distal_left" />
+    <exclude body1="mf_proximal_left" body2="th_tip_left" />
+    <exclude body1="mf_medial_left" body2="th_base_left" />
+    <exclude body1="mf_medial_left" body2="th_proximal_left" />
+    <exclude body1="mf_medial_left" body2="th_medial_left" />
+    <exclude body1="mf_medial_left" body2="th_distal_left" />
+    <exclude body1="mf_medial_left" body2="th_tip_left" />
+    <exclude body1="mf_distal_left" body2="th_base_left" />
+    <exclude body1="mf_distal_left" body2="th_proximal_left" />
+    <exclude body1="mf_distal_left" body2="th_medial_left" />
+    <exclude body1="mf_distal_left" body2="th_distal_left" />
+    <exclude body1="mf_distal_left" body2="th_tip_left" />
+    <exclude body1="mf_tip_left" body2="th_base_left" />
+    <exclude body1="mf_tip_left" body2="th_proximal_left" />
+    <exclude body1="mf_tip_left" body2="th_medial_left" />
+    <exclude body1="mf_tip_left" body2="th_distal_left" />
+    <exclude body1="mf_tip_left" body2="th_tip_left" />
+    <exclude body1="mf_pad_left" body2="th_base_left" />
+    <exclude body1="mf_pad_left" body2="th_proximal_left" />
+    <exclude body1="mf_pad_left" body2="th_medial_left" />
+    <exclude body1="mf_pad_left" body2="th_distal_left" />
+    <exclude body1="mf_pad_left" body2="th_tip_left" />
+    <exclude body1="rf_base_left" body2="th_base_left" />
+    <exclude body1="rf_base_left" body2="th_proximal_left" />
+    <exclude body1="rf_base_left" body2="th_medial_left" />
+    <exclude body1="rf_base_left" body2="th_distal_left" />
+    <exclude body1="rf_base_left" body2="th_tip_left" />
+    <exclude body1="rf_proximal_left" body2="th_base_left" />
+    <exclude body1="rf_proximal_left" body2="th_proximal_left" />
+    <exclude body1="rf_proximal_left" body2="th_medial_left" />
+    <exclude body1="rf_proximal_left" body2="th_distal_left" />
+    <exclude body1="rf_proximal_left" body2="th_tip_left" />
+    <exclude body1="rf_medial_left" body2="th_base_left" />
+    <exclude body1="rf_medial_left" body2="th_proximal_left" />
+    <exclude body1="rf_medial_left" body2="th_medial_left" />
+    <exclude body1="rf_medial_left" body2="th_distal_left" />
+    <exclude body1="rf_medial_left" body2="th_tip_left" />
+    <exclude body1="rf_distal_left" body2="th_base_left" />
+    <exclude body1="rf_distal_left" body2="th_proximal_left" />
+    <exclude body1="rf_distal_left" body2="th_medial_left" />
+    <exclude body1="rf_distal_left" body2="th_distal_left" />
+    <exclude body1="rf_distal_left" body2="th_tip_left" />
+    <exclude body1="rf_tip_left" body2="th_base_left" />
+    <exclude body1="rf_tip_left" body2="th_proximal_left" />
+    <exclude body1="rf_tip_left" body2="th_medial_left" />
+    <exclude body1="rf_tip_left" body2="th_distal_left" />
+    <exclude body1="rf_tip_left" body2="th_tip_left" />
+    <!-- r36: the Allegro hand's collision proxies overlap the UR5e wrist
+         collision capsules by 4-10 mm in the NEUTRAL pose (measured at qpos0,
+         zero command): a scene-construction defect, not a command error.  It
+         puts ~188 Nm of constraint torque on the left arm permanently, the
+         shoulder_lift servo saturates at -150 Nm, and the arm cannot hold the
+         commanded pose (0.253 rad off => 155 mm at the tool).  These pairs
+         are pure mounting artifacts: the hand mounts on the wrist face. -->
+    <exclude body1="ur5e_r_wrist_2_link" body2="mf_base" />
+    <exclude body1="ur5e_r_wrist_2_link" body2="mf_proximal" />
+    <exclude body1="ur5e_r_wrist_3_link" body2="ff_proximal" />
+    <exclude body1="ur5e_r_wrist_3_link" body2="mf_proximal" />
+    <exclude body1="ur5e_r_wrist_3_link" body2="rf_proximal" />
+    <exclude body1="ur5e_l_wrist_2_link" body2="mf_base_left" />
+    <exclude body1="ur5e_l_wrist_2_link" body2="mf_proximal_left" />
+    <exclude body1="ur5e_l_wrist_3_link" body2="ff_proximal_left" />
+    <exclude body1="ur5e_l_wrist_3_link" body2="mf_proximal_left" />
+    <exclude body1="ur5e_l_wrist_3_link" body2="rf_proximal_left" />
+    <exclude body1="palm" body2="ff_base" />
+    <exclude body1="palm" body2="mf_base" />
+    <exclude body1="palm" body2="rf_base" />
+    <exclude body1="palm" body2="th_base" />
+    <exclude body1="palm" body2="th_proximal" />
+    <exclude body1="palm_left" body2="ff_base_left" />
+    <exclude body1="palm_left" body2="mf_base_left" />
+    <exclude body1="palm_left" body2="rf_base_left" />
+    <exclude body1="palm_left" body2="th_base_left" />
+    <exclude body1="palm_left" body2="th_proximal_left" />
+    <pair geom1="palm_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="palm_collision" geom2="object_chamfer_negx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="palm_collision" geom2="object_chamfer_posx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="ff_proximal_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="ff_proximal_collision" geom2="object_chamfer_negx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="ff_proximal_collision" geom2="object_chamfer_posx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="mf_proximal_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="mf_proximal_collision" geom2="object_chamfer_negx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="mf_proximal_collision" geom2="object_chamfer_posx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="rf_proximal_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="rf_proximal_collision" geom2="object_chamfer_negx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="rf_proximal_collision" geom2="object_chamfer_posx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="th_proximal_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="th_proximal_collision" geom2="object_chamfer_negx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="th_proximal_collision" geom2="object_chamfer_posx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="palm_left_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="palm_left_collision" geom2="object_chamfer_negx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="palm_left_collision" geom2="object_chamfer_posx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="ff_proximal_left_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="ff_proximal_left_collision" geom2="object_chamfer_negx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="ff_proximal_left_collision" geom2="object_chamfer_posx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="mf_proximal_left_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="mf_proximal_left_collision" geom2="object_chamfer_negx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="mf_proximal_left_collision" geom2="object_chamfer_posx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="rf_proximal_left_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="rf_proximal_left_collision" geom2="object_chamfer_negx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="rf_proximal_left_collision" geom2="object_chamfer_posx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="th_proximal_left_collision" geom2="object_geom" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="th_proximal_left_collision" geom2="object_chamfer_negx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+    <pair geom1="th_proximal_left_collision" geom2="object_chamfer_posx" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" condim="4" />
+  </contact>
+  <actuator>
+    <position name="ffa0" joint="ffj0" class="base" kp="0.3753" forcerange="-0.01501 0.01501" />
+    <position name="ffa1" joint="ffj1" class="proximal" kp="0.8361" forcerange="-0.17919 0.17919" />
+    <position name="ffa2" joint="ffj2" class="medial" kp="1.4555" forcerange="-0.15927 0.15927" />
+    <position name="ffa3" joint="ffj3" class="distal" kp="0.0635" forcerange="-0.04219 0.04219" />
+    <position name="mfa0" joint="mfj0" class="base" kp="0.377" forcerange="-0.01501 0.01501" />
+    <position name="mfa1" joint="mfj1" class="proximal" kp="0.8362" forcerange="-0.17660 0.17660" />
+    <position name="mfa2" joint="mfj2" class="medial" kp="1.4555" forcerange="-0.15981 0.15981" />
+    <position name="mfa3" joint="mfj3" class="distal" kp="0.0635" forcerange="-0.04235 0.04235" />
+    <position name="rfa0" joint="rfj0" class="base" kp="0.3285" forcerange="-0.01500 0.01500" />
+    <position name="rfa1" joint="rfj1" class="proximal" kp="0.7266" forcerange="-0.17997 0.17997" />
+    <position name="rfa2" joint="rfj2" class="medial" kp="0.2348" forcerange="-0.15949 0.15949" />
+    <position name="rfa3" joint="rfj3" class="distal" kp="0.0449" forcerange="-0.04219 0.04219" />
+    <position name="tha0" joint="thj0" class="thumb_base" kp="1.0423" forcerange="-0.08311 0.08311" />
+    <position name="tha1" joint="thj1" class="thumb_proximal" kp="0.4073" forcerange="-0.02942 0.02942" />
+    <position name="tha2" joint="thj2" class="thumb_medial" kp="0.4186" forcerange="-0.07284 0.07284" />
+    <position name="tha3" joint="thj3" class="thumb_distal" kp="0.0968" forcerange="-0.01633 0.01633" />
+    <position name="ffa0_left" joint="ffj0_left" class="base" kp="0.3753" forcerange="-0.01501 0.01501" />
+    <position name="ffa1_left" joint="ffj1_left" class="proximal" kp="0.8361" forcerange="-0.17919 0.17919" />
+    <position name="ffa2_left" joint="ffj2_left" class="medial" kp="1.4555" forcerange="-0.15927 0.15927" />
+    <position name="ffa3_left" joint="ffj3_left" class="distal" kp="0.0635" forcerange="-0.04219 0.04219" />
+    <position name="mfa0_left" joint="mfj0_left" class="base" kp="0.377" forcerange="-0.01501 0.01501" />
+    <position name="mfa1_left" joint="mfj1_left" class="proximal" kp="0.8362" forcerange="-0.17660 0.17660" />
+    <position name="mfa2_left" joint="mfj2_left" class="medial" kp="1.4555" forcerange="-0.15981 0.15981" />
+    <position name="mfa3_left" joint="mfj3_left" class="distal" kp="0.0635" forcerange="-0.04235 0.04235" />
+    <position name="rfa0_left" joint="rfj0_left" class="base" kp="0.3285" forcerange="-0.01500 0.01500" />
+    <position name="rfa1_left" joint="rfj1_left" class="proximal" kp="0.7266" forcerange="-0.17997 0.17997" />
+    <position name="rfa2_left" joint="rfj2_left" class="medial" kp="0.2348" forcerange="-0.15949 0.15949" />
+    <position name="rfa3_left" joint="rfj3_left" class="distal" kp="0.0449" forcerange="-0.04219 0.04219" />
+    <position name="tha0_left" joint="thj0_left" class="thumb_base" kp="1.0423" forcerange="-0.08311 0.08311" />
+    <position name="tha1_left" joint="thj1_left" class="thumb_proximal" kp="0.4073" forcerange="-0.02942 0.02942" />
+    <position name="tha2_left" joint="thj2_left" class="thumb_medial" kp="0.4186" forcerange="-0.07284 0.07284" />
+    <position name="tha3_left" joint="thj3_left" class="thumb_distal" kp="0.0968" forcerange="-0.01633 0.01633" />
+    <general class="ur5e_size3" name="ur5e_r_shoulder_pan" joint="ur5e_r_shoulder_pan_joint" />
+    <general class="ur5e_size3" name="ur5e_r_shoulder_lift" joint="ur5e_r_shoulder_lift_joint" />
+    <general class="ur5e_size3_limited" name="ur5e_r_elbow" joint="ur5e_r_elbow_joint" />
+    <general class="ur5e_size1" name="ur5e_r_wrist_1" joint="ur5e_r_wrist_1_joint" />
+    <general class="ur5e_size1" name="ur5e_r_wrist_2" joint="ur5e_r_wrist_2_joint" />
+    <general class="ur5e_size1" name="ur5e_r_wrist_3" joint="ur5e_r_wrist_3_joint" />
+    <general name="ur5e_l_shoulder_pan" class="ur5e_size3" joint="ur5e_l_shoulder_pan_joint" gainprm="4000" biasprm="0 -4000 -800" />
+    <general name="ur5e_l_shoulder_lift" class="ur5e_size3" joint="ur5e_l_shoulder_lift_joint" gainprm="4000" biasprm="0 -4000 -800" />
+    <general class="ur5e_size3_limited" name="ur5e_l_elbow" joint="ur5e_l_elbow_joint" />
+    <general name="ur5e_l_wrist_1" class="ur5e_size1" joint="ur5e_l_wrist_1_joint" gainprm="1000" biasprm="0 -1000 -200" />
+    <general name="ur5e_l_wrist_2" class="ur5e_size1" joint="ur5e_l_wrist_2_joint" gainprm="1000" biasprm="0 -1000 -200" />
+    <general name="ur5e_l_wrist_3" class="ur5e_size1" joint="ur5e_l_wrist_3_joint" gainprm="1000" biasprm="0 -1000 -200" />
+  </actuator>
+</mujoco>
