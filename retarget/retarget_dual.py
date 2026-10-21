@@ -3015,6 +3015,7 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
         "force", "qfrc_con", "qfrc_other", "tips", "palm", "ctrl")} for s in VIDEOS}
     hist["__yaw_stop__"] = []
     support_pairs_hist = []
+    endface_frames_by_pad = {sd: {} for sd in VIDEOS}
     obj_body, _, _, _ = obj_ids(model)
     obj_world, contact_cls, qpos_full, ctrl_full = [], [], [], []
 
@@ -3102,6 +3103,23 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
             print("    [dbg-con]", _pr)
         cls = classify_contacts(model, data, specs)
         contact_cls.append(cls)
+        # r56: the end-face contact frames, DECOMPOSED per pad (the review
+        # asked whether endface_contact_frames meant "any contact on the
+        # face" or "the eligible pad in contact").
+        for _sd, _spec in specs.items():
+            for _i in range(data.ncon):
+                _c = data.contact[_i]
+                _g1, _g2 = int(_c.geom1), int(_c.geom2)
+                for _ga, _gb in ((_g1, _g2), (_g2, _g1)):
+                    if _ga not in _spec.hand_geoms:
+                        continue
+                    _on = (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, _gb)
+                           or "")
+                    if _on.startswith("object_") and cls[_sd]["endface_min_dist"] < 1e9:
+                        _pn2 = _gname(model, _ga)
+                        if _pn2 not in endface_frames_by_pad[_sd]:
+                            endface_frames_by_pad[_sd][_pn2] = 0
+                        endface_frames_by_pad[_sd][_pn2] += 1
         # r53: the per-frame support-contact pairs (which hand body touched
         # which support geom) -- the gate3 forensics and the terminal-window
         # cleanliness check read this.
@@ -3182,6 +3200,7 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
         "steps_per_frame": frame_skip,
         "contact_cls": contact_cls,
         "support_pairs": support_pairs_hist,
+        "endface_frames_by_pad": endface_frames_by_pad,
         "terminal_window_frames": int(r39_hold),
         "obj_world": np.stack(obj_world),
         "qpos_full": q,
@@ -3423,6 +3442,7 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
                 _gap = float(side * (_px - face_plane)) - _proj
                 _contact = False
             _pad_contact[_pn] = {
+                "rect_gap_mm": round(float(per_pad.get(_pn, 0.0)), 4),
                 "pad_center_to_face_mm": round(float(side * (_px - face_plane)) * 1e3, 4),
                 "pad_surface_signed_gap_mm": round(_gap * 1e3, 4),
                 "contact_normal_force_N": round(_fn, 4),
@@ -3446,6 +3466,7 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
         _mj.mj_forward(model, data)
         (dist, buried, fwd_deg, per_pad, ctr, pad_burial, buried_v2,
          band_pen, pad_contact) = measure(spec, coll)
+        cmd_pad_contact = pad_contact
         # executed final state: contact-physics evidence
         data.qpos[:] = cmds[side]["exec_qpos"][-1]
         _ba = box_free_qadr(model)
@@ -3485,6 +3506,12 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
             "pass_basis": "v5.1 on the command-terminal configuration "
                           "(>=2 pads in rect + forward axis); palm free by "
                           "ruling",
+            # r56: the pass basis is named with its version (the review
+            # warned against reusing an unversioned gate1_pass).  The legacy
+            # criterion stays frozen; the v2 criterion is published in
+            # parallel with an explicit pad set.
+            "gate1_legacy_command_pass": bool(n_in_rect >= 2 and not buried
+                                              and fwd_deg <= FORWARD_AXIS_MAX_DEG),
             "pass": bool(n_in_rect >= 2 and not buried
                          and fwd_deg <= FORWARD_AXIS_MAX_DEG),
             "per_pad_rect_mm": per_pad,
@@ -3495,6 +3522,23 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
                          "there is the geometric cylinder gap (centre depth "
                          "minus the 6 mm radius)"),
                 "pads": pad_contact,
+            },
+            "gate1_v2_command_state": {
+                "version": "v2 (parallel publication; the legacy criterion is "
+                           "frozen and unchanged)",
+                "pad_set_definition": (
+                    "eligible_contact_pads = the pads whose centre lies "
+                    "within R5 of the end-face rectangle; the thumb is "
+                    "included only if it takes that face's contact role "
+                    "(it does not: it is ~100 mm off the face)"),
+                "pads": {k: v for k, v in cmd_pad_contact.items()},
+                "n_eligible": int(sum(1 for v in cmd_pad_contact.values()
+                                       if v["rect_gap_mm"] <= tol * 1e3)),
+                "eligible_pads": sorted(
+                    k for k, v in cmd_pad_contact.items()
+                    if v["rect_gap_mm"] <= tol * 1e3),
+                "pass_basis": (">= 2 eligible pads with the rect gap inside "
+                               "R5 and the surface gap inside the tol"),
             },
             "executed_state_evidence": {
                 "note": ("post-contact-physics final state, identical metric: "
@@ -3859,6 +3903,11 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
                     (c[side]["endface_min_dist"] for c in cls if np.isfinite(c[side]["endface_min_dist"])),
                     default=np.inf)),
                 "box_other_contact_frames": len(other_frames),
+                "endface_contact_frames_by_pad": rep.get(
+                    "endface_frames_by_pad", {}).get(side, {}),
+                "endface_contact_frames_note": (
+                    "decomposed per pad; endface_contact_frames counts the "
+                    "frames with ANY end-face contact"),
                 "pass": bool(len(endface_frames) >= 1),
             },
             "gate3_approach_clean": {
