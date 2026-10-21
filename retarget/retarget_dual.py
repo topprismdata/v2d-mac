@@ -1185,25 +1185,6 @@ def ur5e_ik_placement(model, data, spec: SideSpec,
     # across both mounts, the Front B calibration semantics)
     if spec.side == "left":
         palm_task[:, 1] += float(_os.environ.get("W6B_LEFT_YBIAS_MM", "27")) * 1e-3
-    # r57 (v9): the APPROACH RE-REGISTRATION.  The retargeted palm path
-    # descends onto the box from above (the video's hand enters the ego
-    # view from the upper corners); in the side cell that descent is what
-    # puts the fingers into the table and what shoves the box 44-55 mm
-    # before the grasp.  The re-registration keeps the task-space palm path
-    # (and its timing) but holds the palm at the box's level through the
-    # approach, so the hands enter horizontally like the reference clip.
-    # It is a TASK-SPACE re-registration: the human's joint path is not
-    # forced onto the UR5e (the v9 spec forbids that).
-    if _os.environ.get("W6B_R57_APPROACH", "") == "flat":
-        _z57 = 0.70 + 0.02 + float(hang)
-        # the flattening is applied to the EARLY path only, and decays to
-        # zero before the terminal: the approach-end pose and its velocity
-        # must stay as they were, or the terminal IK lands on a different
-        # branch (measured: the right's executed distance blew up to
-        # 110 mm when the whole path was flattened).
-        _u57 = np.linspace(0.0, 1.0, T)
-        _dec57 = np.clip((0.85 - _u57) / 0.45, 0.0, 1.0)
-        palm_task[:, 2] = _z57 + (palm_task[:, 2] - _z57) * _dec57
 
     q = np.zeros(6)
     joints = np.empty((T, 6))
@@ -1434,6 +1415,10 @@ def ur5e_ik_placement(model, data, spec: SideSpec,
         "finger_cmd": fingers,
         "base": palm_ach.mean(axis=0),
         "palm_achieved": palm_ach,
+        # r59: the commanded task-space path (the registration the v9
+        # approach re-registration edits); published so the executed-vs-
+        # commanded error can be fed back into it
+        "palm_task": np.asarray(palm_task, float).tolist(),
         "record": record,
     }
 
@@ -1966,6 +1951,91 @@ def retarget_chain_side(joints: np.ndarray, model, data, spec: SideSpec,
             bell = 0.5 * (1.0 - np.cos(
                 2.0 * np.pi * np.arange(span_f) / max(span_f - 1, 1)))
             palm_task[:span_f, 2] += fly_m * bell
+        # r59 (v9): the SIDE-CELL APPROACH RE-REGISTRATION.  The retargeted
+        # clip's approach (the human's wrist descends onto the box from the
+        # upper corners of the ego view) maps into the side cell as a palm
+        # that starts high, CROSSES the box's mid-plane and descends into
+        # the table -- measured on the r53 baseline: the left thumb touches
+        # the table in 228 contact frames, the right's fingers in 66, and
+        # the box is shoved 55 mm before the grasp.
+        # The v9 spec asks for a TASK-SPACE re-registration: the clip's
+        # TIMING (how the standoff shrinks over the clip) is kept, the
+        # APPROACH GEOMETRY is re-registered for the side cell -- the palm
+        # enters along the end face's normal at the box's height and never
+        # crosses the mid-plane.  The human's joint path is NOT copied (the
+        # spec forbids it) and the failing side cell stays the A/B baseline.
+        if _os.environ.get("W6B_R59_APPROACH", "") == "side":
+            n_term59 = min(62, palm_task.shape[0])
+            span59 = palm_task.shape[0] - n_term59
+            start59 = float(_os.environ.get("W6B_R59_STANDOFF_MM", "140")) * 1e-3
+            # the clip's approach PROFILE: how far the hand still is from
+            # the grasp, in the clip's own terms.  The registered wrist
+            # path is too noisy to carry it (its per-side registration
+            # freezes the early frames and saturates the distance), so the
+            # progress variable is the GRASP CLOSURE -- the hand's curl
+            # closing over the clip is the human's approach phase, and it
+            # is monotone by construction.
+            _fprog = np.asarray(qpos22[:, 6:22], float).mean(axis=1)
+            _fprog = np.interp(np.linspace(0.0, 1.0, palm_task.shape[0]),
+                               np.linspace(0.0, 1.0, _fprog.shape[0]), _fprog)
+            _d0 = float(_fprog[0])
+            _d1 = float(_fprog[-1])
+            _prof59 = ((_fprog - _d0) / (_d1 - _d0)) if abs(_d1 - _d0) > 1e-9 \
+                else np.linspace(1.0, 0.0, palm_task.shape[0])
+            _prof59 = np.clip(_prof59, 0.0, 1.0)
+            # the side-cell geometry: the palm on its own side, at the box's
+            # height, at the standoff the clip's profile asks for
+            _x59 = spec.face_sign * (_bh + 0.05 + start59 * (1.0 - _prof59))
+            # the palm's HEIGHT is driven by the hand's measured hang below
+            # the palm at each frame's own finger posture: the retargeted
+            # curl closes over the clip, so the hand's hang shrinks as the
+            # grasp closes and the palm can descend with it -- the hand
+            # closes onto the face instead of dropping onto the table.
+            # The hang is a rigid-hand property, so it is measured by FK at
+            # each frame's finger command (the arm's pose does not enter).
+            import mujoco as _mj59
+            _f59 = np.asarray(qpos22[:, 6:22])[:, rs.URDF_TO_MJCF_ACTUATOR_ORDER]
+            _f59 = np.clip(_f59,
+                           model.actuator_ctrlrange[spec.finger_act_id, 0][None, :],
+                           model.actuator_ctrlrange[spec.finger_act_id, 1][None, :])
+            _q59 = data.qpos.copy()
+            _hang59 = np.zeros(palm_task.shape[0])
+            _hg59 = sorted(spec.hand_geoms)
+            for _t59 in range(palm_task.shape[0]):
+                data.qpos[spec.finger_qadr] = _f59[min(_t59, _f59.shape[0] - 1)]
+                _mj59.mj_kinematics(model, data)
+                _mj59.mj_comPos(model, data)
+                _pz59 = float(data.xpos[spec._palm_id][2])
+                _mz59 = min(float(data.geom_xpos[_g][2]) for _g in _hg59)
+                _hang59[_t59] = _pz59 - _mz59
+            data.qpos[:] = _q59
+            _mj59.mj_kinematics(model, data)
+            _mj59.mj_comPos(model, data)
+            # the table's top (the support surface the fingers must clear)
+            _tbl59 = 0.70
+            for _g59 in range(model.ngeom):
+                if _mj59.mj_id2name(model, _mj59.mjtObj.mjOBJ_GEOM, _g59) == "table_slab":
+                    _tbl59 = float(model.geom_pos[_g59][2] + model.geom_size[_g59][2])
+            _clr59 = float(_os.environ.get("W6B_R59_CLEAR_MM", "25")) * 1e-3
+            _z59 = _tbl59 + _clr59 + _hang59
+            # the palm stays on its own side: the clip's 228 mm lateral
+            # sweep is not a grasp motion in the side cell
+            _y59 = np.full(palm_task.shape[0], float(palm_task[-1, 1]))
+            _new59 = np.stack([_x59, _y59, _z59], axis=1)
+            # blend into the original path over the last frames of the swing
+            # span so the terminal window itself is untouched
+            _k59 = min(12, span59)
+            if _k59 > 0:
+                _w59 = 0.5 * (1.0 - np.cos(np.linspace(0.0, np.pi, _k59)))
+                _new59[-_k59:] = (_new59[-_k59:] * (1.0 - _w59)[:, None]
+                                  + palm_task[-_k59:] * _w59[:, None])
+            palm_task = _new59
+            if _os.environ.get("W6B_DBG_GEOM", "0") == "1":
+                print(f"    [dbg-geom] {spec.side} palm_task: n={palm_task.shape[0]} "
+                      f"first={np.round(palm_task[0], 4).tolist()} "
+                      f"mid={np.round(palm_task[palm_task.shape[0] // 2], 4).tolist()} "
+                      f"last={np.round(palm_task[-1], 4).tolist()} "
+                      f"profile0..4={np.round(_prof59[:5], 3).tolist()}")
         # r12.1 verdict: the 6D terminal solve (position + ramped
         # orientation) DIVERGES at this workspace boundary twice (the wrist
         # singularity at the ceiling mount); the shipped configuration is
@@ -3033,6 +3103,11 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
         "contact", "pen_seq", "ctrl_sat", "force_sat", "qpos", "qvel",
         "force", "qfrc_con", "qfrc_other", "tips", "palm", "ctrl")} for s in VIDEOS}
     hist["__yaw_stop__"] = []
+    # r59: the terminal hand-geometry probe.  It reports the palm frame,
+    # the tip positions and the lowest hand geom relative to the table at
+    # the END of the replay, so the approach registration can be reasoned
+    # about in geometry instead of guessed from the gate counters.
+    _dbg_geom = _os_r28.environ.get("W6B_DBG_GEOM", "0") == "1"
     support_pairs_hist = []
     endface_frames_by_pad = {sd: {} for sd in VIDEOS}
     obj_body, _, _, _ = obj_ids(model)
@@ -3212,6 +3287,24 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
             h[k] = np.stack(v) if len(v) and isinstance(v[0], np.ndarray) else np.asarray(v)
     q = np.stack(qpos_full)
     joint_v = np.diff(q, axis=0) / dt_ctrl
+    if _dbg_geom:
+        import mujoco as _mj
+        _tbl = None
+        for _g in range(model.ngeom):
+            if _mj.mj_id2name(model, _mj.mjtObj.mjOBJ_GEOM, _g) == "table_slab":
+                _tbl = model.geom_pos[_g][2] + model.geom_size[_g][2]
+        print("    [dbg-geom] table_slab top z =", _tbl)
+        for _sd in VIDEOS:
+            _sp = specs[_sd]
+            _pb = _sp._palm_id
+            _R = np.array(data.xmat[_pb]).reshape(3, 3)
+            print(f"    [dbg-geom] {_sd} palm pos {np.round(data.xpos[_pb], 4).tolist()}")
+            print(f"      palm x-axis(world) {np.round(_R[:, 0], 3).tolist()}"
+                  f" y {np.round(_R[:, 1], 3).tolist()}"
+                  f" z {np.round(_R[:, 2], 3).tolist()}")
+            for _i, _b in enumerate(_sp._tip_body_ids):
+                _nm = _mj.mj_id2name(model, _mj.mjtObj.mjOBJ_BODY, int(_b))
+                print(f"      tip {_nm:28s} {np.round(data.xpos[_b], 4).tolist()}")
     return {
         "n_frames": n_frames,
         "support_pair_examples": support_pair_names(model, data, specs),
@@ -3840,6 +3933,16 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
                           f"{_d[_k]:7.3f} rad at frame {_k} "
                           f"(qpos {fq[_k,_j]:.3f} in [{jlo[_j]:.3f},{jhi[_j]:.3f}]) "
                           f"cmd_row[act?] n/a")
+        _cmd59 = np.asarray(
+            chains[side]["chain"]["placement"].get("palm_task", []), float)
+        _ex59 = np.asarray(h["palm"], float)
+        if _cmd59.ndim == 2 and len(_ex59):
+            _n59 = min(len(_cmd59), len(_ex59))
+            _zi59 = np.interp(np.linspace(0.0, 1.0, _n59),
+                              np.linspace(0.0, 1.0, len(_ex59)), _ex59[:, 2])
+            _h59 = (_cmd59[:_n59, 2] - _zi59) * 1000.0
+        else:
+            _h59 = np.zeros(0)
         cons = chains[side]["chain"]["placement"]["record"]["constrained_solve"]
         base_y = float(np.asarray(chains[side]["chain"]["placement"]["base"])[1])
         # palm-first (Front B2): placement["base"] is the mean SLIDE vector
@@ -3948,6 +4051,45 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
                 "terminal_window_support_contact_detail": _term_hits,
                 "terminal_window_is_clean": bool(terminal_support_contacts == 0),
                 "pass": bool(len(support_frames) == 0 and base_y_in_corridor),
+            },
+            # r59: the terminal's commanded state, published so the
+            # terminal can be PINNED (the r26 Track A mechanism) and so the
+            # approach registration can be A/B'd without moving it
+            # r59: the EXECUTED palm path (the replay's per-frame palm
+            # positions) -- the other half of the Cartesian feedback loop
+            "executed_palm_path_m": np.asarray(h["palm"], float).tolist(),
+            # r59: the executed-vs-commanded palm HEIGHT error, per frame,
+            # on the task path's grid.  Published as a diagnostic: the
+            # two-pass Cartesian feedback built on it was MEASURED AND
+            # REFUTED (the height error carries the IK's tracking
+            # excursions, not a clean droop -- feeding it back cost 4.5 mm
+            # of executed terminal accuracy).
+            "executed_vs_commanded_height_mm": [
+                round(float(x), 4) for x in _h59
+            ],
+            # r59: the COMMANDED task-space palm path (the registration
+            # that the approach re-registration edits) -- published so the
+            # executed-vs-commanded height error can be measured per frame
+            # and fed back into the registration (the two-pass Cartesian
+            # re-registration)
+            "commanded_palm_path": {
+                "n": int(np.asarray(
+                    chains[side]["chain"]["placement"]["palm_task"]).shape[0])
+                if "palm_task" in chains[side]["chain"]["placement"] else 0,
+                "path_m": chains[side]["chain"]["placement"].get(
+                    "palm_task", []),
+                "note": ("the palm task path that the ur5e placement solved "
+                         "against (the registration the v9 approach "
+                         "re-registration edits)"),
+            },
+            "terminal_commands": {
+                "wrist_rad": [round(float(x), 9) for x in
+                              np.asarray(cmds[side]["wrist"][-1])],
+                "finger_rad": [round(float(x), 9) for x in
+                               np.asarray(cmds[side]["finger"][-1])],
+                "note": ("the last commanded frame of this side's terminal "
+                         "hold (the arm joints in rad, the finger actuators "
+                         "in their ctrlrange units)"),
             },
             "gate4_joint_limits": {
                 "finger_qpos_violation_frames": sorted(set(int(v) for v in viol[0]))[:40],
@@ -4580,6 +4722,19 @@ def main() -> int:
                 warm6 = (mirror_left if (s2 == "left"
                                          and mirror_left is not None)
                          else q_app)
+                # r59: the terminal's warm start can be PINNED to the
+                # native seed so that the approach registration cannot
+                # perturb the terminal state -- without it the multi-restart
+                # picks the solution closest to the APPROACH END, so any
+                # change to the approach silently moves the terminal (the
+                # measured regression: the executed terminal 4.4 -> 6.6 mm
+                # and the contact pads 1 -> 0 with the approach re-registered
+                # but the command state unchanged).
+                _r59_fixed = _os.environ.get("W6B_R59_FIXED_TERMINAL", "0") == "1"
+                if _r59_fixed:
+                    warm6 = np.asarray(
+                        UR5E_NATIVE_SEED["r" if s2 == "right" else "l"], float)
+                jump_ref6 = warm6 if _r59_fixed else q_app
                 best6 = None
                 n_conv6 = 0
                 r18_solve_rec[s2] = {}
@@ -4636,7 +4791,7 @@ def main() -> int:
                             q = np.clip(q + J6.T @ dq6, lo2, hi2)
                         if sol6 is not None:
                             n_conv6 += 1
-                            jump6 = float(np.abs(sol6 - q_app).max())
+                            jump6 = float(np.abs(sol6 - jump_ref6).max())
                             if best6 is None or jump6 < best6[0]:
                                 best6 = (jump6, sol6, e_p6, e_r6)
                 r18_solve_rec[s2] = {

@@ -460,3 +460,88 @@ different branch (the right's executed distance blew up to 110 mm).
 path's x/y (the pre-grasp pose and the pre-contact timing) and the terminal
 continuity have to be re-registered together.  The failed variant is kept
 behind the env gate as the measured baseline for the next attempt.
+
+## r59 (v9) — the side-cell approach re-registration: MEASURED, NOT SHIPPABLE
+
+The v8 review's sole priority for the next round is the approach trajectory
+("Side-Mount Approach Retarget — Collision-Free Contact Establishment"), with
+gate3 = 0 support-contact frames, gate4 = 0 joint-limit frames, the box's
+pre-contact displacement ~ 0, and the failing side cell kept as the fixed
+A/B baseline.
+
+**Diagnosis (baseline, r53 configuration, side cell r37).** The retargeted
+clip's approach maps into the side cell as a palm that starts high, CROSSES the
+box's mid-plane and descends into the table:
+
+| symptom | measurement (baseline) |
+|---|---|
+| right palm, first frame | x = -0.158 m (across the box), z = 1.398 m |
+| left palm, first frame | x = +0.123 m (across the box), z = 1.278 m |
+| left thumb vs table | 228 contact frames (whole clip) |
+| right fingers vs table | 66 contact frames (from frame 166) |
+| box displacement before the grasp | 55.5 mm max, 3.4 mm residual |
+| finger joint-limit violations | 1.63 rad (thj2), 1.52 rad (ffj0) |
+
+The realised qpos excursions are real (every finger joint name resolves in the
+scene; the ctrlrange is inside the joint range), i.e. the contacts lever the
+fingers past their mechanical limits.
+
+**The re-registration (task space, `W6B_R59_APPROACH=side`).** The human's
+joint path is NOT copied onto the UR5e (the v9 spec forbids that). What is kept
+is the clip's TIMING; what is re-registered is the APPROACH GEOMETRY:
+
+1. the palm enters along the end face's normal — the standoff shrinks with the
+   clip's GRASP CLOSURE (the hand's curl closing over the clip is the human's
+   approach phase, and it is monotone by construction; the registered wrist
+   path was too noisy to carry the profile — its per-side registration freezes
+   the early frames and saturates the distance);
+2. the palm's height is driven by the hand's MEASURED hang below the palm at
+   each frame's own finger posture (a rigid-hand property, measured by FK), so
+   the hand closes onto the face instead of dropping onto the table;
+3. the palm stays on its own side (the clip's 228 mm lateral sweep is not a
+   grasp motion in the side cell);
+4. the terminal window is untouched (the command state is bit-identical to the
+   baseline in every configuration below — the A/B isolates the approach).
+
+**Measured A/B (same scene, same controller, same contact parameters):**
+
+| configuration | gate3 R/L | g4 max viol R/L | box push max / final (mm) | executed rect R/L (mm) | pads in contact R/L |
+|---|---|---|---|---|---|
+| baseline (r53, shipped) | 66 / 135 | 1.634 / 1.518 | 55.46 / 3.38 | **4.39 / 4.59** | **1 / 1** |
+| v9, clearance 25 mm | 6 / 7 | 0.250 / 1.003 | 9.12 / 3.99 | 6.64 / 9.16 | 0 / 0 |
+| v9, clearance 45 mm | 3 / 7 | 0.706 / 1.196 | 7.55 / 4.24 | 7.03 / 6.07 | 1 / 0 |
+| v9, clearance 60 mm | 3 / 6 | 0.252 / 1.193 | 5.54 / 5.12 | 12.82 / 6.93 | 0 / 0 |
+| v9, clearance 75 mm | 3 / 4 | 0.170 / 1.073 | 5.24 / 4.41 | 16.78 / 7.10 | 0 / 0 |
+| v9 + z-flatten (r57, superseded) | 78 / 89 | 1.652 / 1.322 | 55.46 / 1.42 | 6.92 / 6.09 | 0 / 1 |
+| v9 + Cartesian feedback (refuted) | 4 / 7 | 0.271 / 1.192 | 10.33 / 3.39 | 11.58 / 8.24 | 0 / 0 |
+
+**What the re-registration buys.** gate3 66/135 -> 3-7 support-contact frames
+(the thumb's 228 table contacts are gone), the box's pre-grasp push 55.5 -> 5.2-9.1
+mm, and the worst finger joint-limit violation 1.63 -> 0.25 rad. The approach is
+now collision-free in the sense the review asked for.
+
+**Why it is NOT shipped.** The terminal contact degrades: the baseline holds
+one fingertip per hand (2.70 N / 1.66 N), the v9 configurations hold 0-1, and
+the executed terminal distance grows 4.4 -> 6.1-7.0 mm. The mechanism is
+measured: the residual 3-7 table contacts (the index finger's pad) shift the
+box by ~4 mm, the pads then stand 1.5 mm off the (moved) face, and the arm
+sags into the gap. Pinning the terminal to the baseline's commanded state
+(`W6B_NATIVE_PAIRS=runs/w6b/side_seed_pairs.json`, the r26 Track A mechanism)
+does not change it — the terminal's arm joints are already identical; the
+difference is the box's residual pose.
+
+**Refuted sub-hypothesis.** A two-pass Cartesian feedback (measure the
+executed-vs-commanded palm height per frame, add it back into the
+registration) was implemented and MEASURED: it cost 4.5 mm of executed
+terminal accuracy (7.03 -> 11.58 mm). The per-frame height error carries the
+IK's tracking excursions, not a clean droop. The measurement is kept in the
+report (`executed_vs_commanded_height_mm`); the feedback application is removed.
+
+**Next lever (not started).** The remaining push comes from the contact
+geometry itself: the Allegro's fingertips are 6 mm-radius cylinders whose axes
+stand ~58 deg off the face normal, so pressing them against a flat face
+necessarily interpenetrates it by millimetres and shoves the box. The
+principled fix is a PALM-PLATE contact (the reference clip grips with the palm
+flat on the face, fingers wrapping the edges) — a scene/task-level hypothesis,
+kept separate from the approach work. It must be validated as its own
+experiment; until then the shipped configuration remains the r53 baseline.
