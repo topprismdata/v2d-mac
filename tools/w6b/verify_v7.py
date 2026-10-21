@@ -19,19 +19,20 @@ PIPE = REPO / "runs/.venv-retarget/bin/python"
 SCRIPT = REPO / "retarget/retarget_dual.py"
 
 SIDE = {
-    "name": "side cell (r36 scene)",
-    "scene": "grounding/assets/allegro_floating_ur5e_side_r36.xml",
+    "name": "side cell (r37 scene)",
+    "scene": "grounding/assets/allegro_floating_ur5e_side_r37.xml",
     "env": {
         "W6B_SCENE": "ur5e",
-        "W6B_SCENE_XML": "grounding/assets/allegro_floating_ur5e_side_r36.xml",
+        "W6B_SCENE_XML": "grounding/assets/allegro_floating_ur5e_side_r37.xml",
         "W6B_R23_FLYOVER_MM": "250",
         "W6B_R22_MARGIN_MM": "8",
+        "W6B_R38_SEAT": "both",
         "W6B_R39_TGC": "1",
         "W6B_R39_HOLD": "60",
     },
-    "expect_cmd_mm": {"right": 0.214, "left": 0.001},
-    "expect_exec_mm": {"right": 6.56, "left": 6.26},
-    "expect_fwd_deg": {"right": 21.4, "left": 14.9},
+    "expect_cmd_mm": {"right": 0.061, "left": 0.350},
+    "expect_exec_mm": {"right": 4.68, "left": 4.07},
+    "expect_fwd_deg": {"right": 21.8, "left": 21.6},
 }
 
 CEILING = {
