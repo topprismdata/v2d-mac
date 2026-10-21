@@ -617,3 +617,47 @@ longer be the contact criterion -- the physically meaningful quantity is the
 pad's surface. This needs a NEW criterion version (v3, surface-based) with
 v1/v2 kept published in parallel and unchanged, per the reviewer's rule that
 criteria must be versioned and never silently redefined.
+
+## r62 — the palm-PLATE grasp is geometrically FEASIBLE (tools/w6b/palm_plate_search.py)
+
+The r60/r61 diagnosis says the fingertip discs cannot carry the grasp: the
+servo is force-limited (0.04-0.18 N.m) and a 5.5 N contact at 110 mm is
+0.6 N.m, so the fingers collapse by up to 0.87 rad and only the deepest pad
+stays on the face. The palm's plate can carry the load instead: it is a flat
+41 x 113 x 95 mm box whose normal is the palm's x axis, and the reference
+clip grips exactly that way (the palm flat on the face, the fingers wrapping
+the edge).
+
+Measured with FK + a closed-form pose search (3456 poses: the curl, the roll
+about the face normal, and the tangential offset), **24 poses are feasible**:
+
+| curl | roll | tangential | plate surface gap | nearest tip vs box | vs table | palm origin |
+|---|---|---|---|---|---|---|
+| 0.0 | 45 deg | +20 mm | **-0.00 mm** | rf_tip +9.19 mm | +89.2 mm | [0.0711, 0.0195, 0.7877] |
+| 0.2 | 45 deg | +20 mm | -0.00 mm | rf_tip +6.44 mm | +86.4 mm | [0.0711, 0.0195, 0.7877] |
+| 0.4 | 45 deg | +20 mm | -0.00 mm | rf_tip +3.70 mm | +83.7 mm | [0.0711, 0.0195, 0.7877] |
+
+(the feasible set is narrow: the plate tangent AND every fingertip clear of
+both the box and the table -- 24 of 3456.)
+
+For comparison, the shipped terminal's palm origin is [0.1706, -0.0633,
+0.7861] and the palm plate's normal is 137.6 deg off the end face's normal
+(measured) -- i.e. the plate is NOT facing the face today, which is why the
+fingertips are the only contact.
+
+=> the palm-plate grasp is a real, reachable option: the arm carries the
+grasp force (the UR5e's servos are strong), the contact is face-on (no
+shear, so the box is not shoved), and the contact is the plate plus the
+thumb -- two contact regions per hand, like the reference clip.
+
+What it needs (not started, and NOT claimed):
+  1. the terminal's palm orientation target re-registered to the measured
+     plate-tangent frame (the current target is the floating scene's grasp
+     orientation, 137.6 deg off);
+  2. the terminal IK re-solved for that frame (the palm origin moves ~100 mm
+     closer to the face);
+  3. gate1 v3: a surface-based contact criterion (the v1 criterion measures
+     the pad CENTRE, which cannot be the contact quantity when the contact
+     surface is the plate) -- v1/v2 stay published unchanged, per the
+     reviewer's rule that criteria are versioned, never silently redefined;
+  4. the mass scan and the lift re-run on the new grasp.
