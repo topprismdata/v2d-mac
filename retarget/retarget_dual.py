@@ -1916,7 +1916,13 @@ def retarget_chain_side(joints: np.ndarray, model, data, spec: SideSpec,
             _bh = float(model.geom_size[obj_ids(model)[1]][0])
         except Exception:
             _bh = 0.06
-        face_anchor = np.array([spec.face_sign * (_bh + 0.05), 0.0, 0.76])
+        # per-side anchor height: the pad centroid sits ~25 mm above the palm
+        # target, so the two hands need their own height to land inside the
+        # mid-face band (z 0.730-0.768)
+        _azr = float(_os.environ.get("W6B_ANCHOR_Z", "0.76"))
+        _azl = float(_os.environ.get("W6B_ANCHOR_Z_LEFT", _azr))
+        _az = _azr if spec.face_sign > 0 else _azl
+        face_anchor = np.array([spec.face_sign * (_bh + 0.05), 0.0, _az])
         palm_task = face_anchor[None, :] + np.asarray(lat, float)
         if R22_MARGIN_MM > 0.0:
             # r22 fix 2: the swing path walks face-normal-out (away from
@@ -2751,7 +2757,12 @@ def refine_terminal_seat(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
     _, box_geom, _, _ = obj_ids(model)
     half = model.geom_size[box_geom]
     face_x = float(half[0]) * spec.face_sign
-    PRELOAD_M = 0.5e-3
+    # r47: the pre-load is the point of contact.  A pad commanded 7.5 mm
+    # THROUGH the face makes the P-servo press with the force clamp (150 Nm
+    # at the joint => kilonewtons at the pad) and that is what shoves the
+    # 150 g box across the table.  Seating the deepest pad 0.2 mm INSIDE the
+    # face keeps a light, real contact (~4 N at the pad) instead.
+    PRELOAD_M = -0.2e-3
     tips = [g for g in spec.tip_geoms
             if (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, int(g)) or "").endswith(
                 ("ff_tip_collision", "mf_tip_collision", "rf_tip_collision",
@@ -2809,6 +2820,7 @@ def refine_terminal_seat(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
     d_roll = best[1]
     w_last[-1] += d_roll
     xs = fk_pads(w_last)
+    xs_after_roll = xs.copy()
     # step 2: push the deepest pad to +PRELOAD outside the face plane
     s = (face_x * spec.face_sign + PRELOAD_M) - float(np.min(xs))
     palm_bid = spec._palm_id
@@ -2824,16 +2836,53 @@ def refine_terminal_seat(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
                               rcond=None)[0]
     except np.linalg.LinAlgError:
         dq = np.zeros(3)
-    # the arm joints are the last 6 of the wrist command?  no: the wrist
-    # command IS the 6 arm joints, in order.
+    # r48/r49: iterate the shift until the MEASURED pre-load is met, in the
+    # SIGNED face-distance frame (sv = side * (x - x_face); positive = the
+    # pad is outside the face, negative = inside).  For the left hand the
+    # deepest pad is the one with the LARGEST x, so a plain min(x) objective
+    # drove the iteration across the box.  The Jacobian is numerical, taken
+    # on the objective itself: the palm Jacobian is the wrong proxy (a wrist
+    # rotation barely moves the palm x while it swings the pads by cm).
+    # face_x already carries the side sign (face_x = half_x * face_sign)
+    def f_sv(q):
+        return float(np.min(spec.face_sign * (fk_pads(q) - face_x)))
+
+    target_sv = PRELOAD_M          # negative = a light pre-load into the face
     cand = w_last.copy()
-    cand[:3] = cand[:3] + dq
-    xs2 = fk_pads(cand)
-    if float(np.min(xs2)) < float(np.min(xs)) - 1e-6:
-        cand = w_last.copy()  # the shift made it worse; keep the roll only
-        xs2 = xs
-    w_new = cand
+    resid_hist = []
+    best = (np.inf, cand.copy())
+    for _it in range(14):
+        f_now = f_sv(cand)
+        resid = target_sv - f_now
+        resid_hist.append(round(resid * 1e3, 4))
+        if abs(resid) < abs(best[0]):
+            best = (resid, cand.copy())
+        if abs(resid) < 5e-5:
+            break
+        eps = 1e-4
+        jnum = np.zeros(6)
+        for _k in range(6):
+            _qq = cand.copy()
+            _qq[_k] += eps
+            jnum[_k] = (f_sv(_qq) - f_now) / eps
+        denom = float(jnum @ jnum)
+        if denom < 1e-9:
+            break
+        # df = jnum.dq and we need df = resid  =>  dq = resid * jnum/|jnum|^2
+        step = (resid / denom) * jnum
+        nrm = float(np.linalg.norm(step))
+        if nrm > 0.05:
+            step = step * (0.05 / nrm)
+        _trial = cand + step
+        # the objective (min signed face distance) is ambiguous: the same
+        # value is reachable from the OTHER side of the box, and the left
+        # hand duly walked across.  Keep the iteration local.
+        if float(np.max(np.abs(fk_pads(_trial) - xs_after_roll))) > 0.010:
+            break
+        cand = _trial
+    w_new = best[1]
     xs_final = fk_pads(w_new)
+    sv_final = float(np.min(spec.face_sign * (xs_final - face_x)))
 
     # apply to the terminal window with a ramp
     n_term = min(24, base_w.shape[0])
@@ -2849,12 +2898,14 @@ def refine_terminal_seat(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
         "xs_actmap_mm": (_x1 * 1e3).tolist(),
         "spread_delta0_mm": float(np.ptp(_x0) * 1e3),
         "roll_delta_rad": d_roll,
-        "pad_x_before_mm": (xs * 1e3).tolist(),
+        "pad_x_before_mm": (xs_after_roll * 1e3).tolist(),
         "pad_x_after_mm": (xs_final * 1e3).tolist(),
         "spread_before_mm": float(np.ptp(xs) * 1e3),
         "spread_after_mm": float(np.ptp(xs_final) * 1e3),
         "preload_mm": PRELOAD_M * 1e3,
         "deepest_pad_after_mm": float(np.min(xs_final) * 1e3),
+        "preload_signed_mm": sv_final * 1e3,
+        "preload_residual_mm": resid_hist,
         "face_x_mm": face_x * 1e3,
     }
     return out, rec
@@ -4787,7 +4838,10 @@ def main() -> int:
                     np.asarray(cmds_global[_side]["finger"], float))
                 cmds_global[_side]["wrist"] = _w2
                 seat_records[_side] = _rec
-                print(f"    [r38-seat] {_side}: xs0={np.round(_rec.get('xs_delta0_mm',[0]),2)} "
+                print(f"    [r38-seat] {_side}: after_roll={np.round(_rec.get('pad_x_before_mm',[0]),2)} "
+                      f"resid={_rec.get('preload_residual_mm')} "
+                      f"sv={_rec.get('preload_signed_mm')} "
+                      f"xs0={np.round(_rec.get('xs_delta0_mm',[0]),2)} "
                       f"spread0={_rec.get('spread_delta0_mm'):.2f} -> {_rec.get('spread_after_mm'):.2f} mm "
                       f"roll={_rec.get('roll_delta_rad',0):+.3f} rad "
                       f"deepest_after={_rec.get('deepest_pad_after_mm',0):.2f} mm")
