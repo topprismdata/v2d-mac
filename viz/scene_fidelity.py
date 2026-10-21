@@ -108,7 +108,7 @@ SCENE_UR5E = REPO / "grounding/assets/allegro_floating_ur5e.xml"
 # forearm entries like the reference clip).  Selected for rendering with
 # V2D_RENDER_SCENE; both UR5e scenes share nq=59, so the choice cannot be
 # made from the replay qpos width alone.
-SCENE_UR5E_SIDE = REPO / "grounding/assets/allegro_floating_ur5e_side_r36.xml"
+SCENE_UR5E_SIDE = REPO / "grounding/assets/allegro_floating_ur5e_side_r37.xml"
 # r25 交付场景（vise 变体转正；与 ur5e 同 nq，宽度推断时优先生效）
 SCENE_UR5E_VISE = REPO / "grounding/assets/allegro_floating_ur5e_r24_vise.xml"
 

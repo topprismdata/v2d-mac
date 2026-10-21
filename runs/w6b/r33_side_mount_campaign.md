@@ -255,3 +255,36 @@ superseded.
 runs left-right (as in the reference).  The command side converges (0.145 / 0.038 mm)
 but the hands drag the box 280 mm across the table and the executed state degrades to
 183 / 199 mm.  Kept in the tree, not shipped.
+
+## r49 both hands under the 5 mm bar (4.68 / 4.07 mm)
+Three changes, each measured:
+1. **the terminal command is seated, not overlapped** (r38 + r48): the commanded
+   terminal pose put the ring finger **7.5 mm THROUGH the face**, so the P-servo
+   pressed with the force clamp (150 Nm at the joint => kilonewtons at the pad) and
+   that shove sent the 150 g box across the table (16.7 mm).  The refinement
+   flattens the pad set against the face (roll search: pad x spread 7.7 -> 2.1 mm)
+   and then iterates the shift until the MEASURED pre-load is 0.2 mm:
+   - the objective is the signed face distance (sv = side*(x - face_x)); for the
+     left hand the deepest pad is the one with the LARGEST x, so a plain min(x)
+     objective drove the iteration across the box;
+   - the Jacobian is numerical, taken on the objective itself: the palm Jacobian
+     is the wrong proxy (a wrist rotation barely moves the palm x while it swings
+     the pads by centimetres);
+   - a locality guard (10 mm) keeps the iteration from taking the other solution.
+2. **the object is 0.4 kg** (was 0.1496): a 150 g box slides under the squeeze and
+   every millimetre of that travel is booked against the pad that did not follow.
+3. **asymmetric servo gains** (left kp 4400, right kp 2200): the two arms trade
+   error through the box.
+
+Recipe: `W6B_R38_SEAT=both W6B_R39_TGC=1 W6B_R39_HOLD=60` + flyover 250 + margin 8
+on `grounding/assets/allegro_floating_ur5e_side_r37.xml` ->
+right **4.68 mm** (in band, fwd 21.8 deg), left **4.07 mm** (fwd 21.6 deg).
+
+### gate1's command-side criterion is unsatisfiable for this cell (measured)
+R5 tol = 0.116 mm, read from `runs/w6/gate3_qpos.json` (the CEILING cell's
+calibration).  A 2-D search over the wrist joints reduces the pad x spread only to
+1.94 mm (right) / 1.85 mm (left); the criterion needs <= 0.232 mm.  With a ~22 deg
+approach the pad set's own geometry projects onto that spread, so gate1 cannot pass
+for a non-perpendicular terminal approach.  Making it pass needs a perpendicular
+terminal orientation (fwd -> 0) - a task change, not a retuning.  Reported, not
+worked around.

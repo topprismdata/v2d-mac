@@ -109,14 +109,20 @@ def main() -> None:
 
     renders: dict[str, list[str]] = {}
     import os
-    _side = "side_r36" in str(scene_xml)
+    # the side cell is recognised from the scene's geometry (the arm bases
+    # are mounted outboard), not from the file name
+    try:
+        _rb = int(m.body("ur5e_r_base").id)
+        _side = abs(float(m.body_pos[_rb][0])) > 0.5
+    except Exception:
+        _side = False
     presets = SIDE_PRESETS if _side else PRESETS
     _one = __import__("os").environ.get("V2D_RENDER_ONE", "")
     # the reference clip puts the box slightly ABOVE the frame centre
     # (measured v 0.335-0.38); the side-entry camera therefore looks 60 mm
     # below the box's centre.  Verified by measuring the rendered PNG.
     _off = float(__import__("os").environ.get(
-        "V2D_LOOKAT_OFF", "0.06" if "side_r36" in str(scene_xml) else "0"))
+        "V2D_LOOKAT_OFF", "0.06" if _side else "0"))
     for key, _cn, az, el, dist in presets:
         outs = []
         for i, fr in enumerate(frames):

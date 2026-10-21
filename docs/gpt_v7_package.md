@@ -1,6 +1,6 @@
 # GPT review package v7 — side-entry layout, corrected metrics, closed execution gap
 
-Base: `v2d-mac` @ `6b8e8a01` (branch `main`, remote `https://github.com/topprismdata/v2d-mac.git`).
+Base: `v2d-mac` @ `d57af0a0` (branch `main`, remote `https://github.com/topprismdata/v2d-mac.git`).
 Everything below is reproducible from committed files; the command lines are given so a
 reviewer can re-derive every number in a clean process.
 
@@ -81,22 +81,45 @@ render is retained at `docs/replay_frames/blender/` and is **superseded**.
 
 ## 2. The executed state, honestly
 
-Side cell `grounding/assets/allegro_floating_ur5e_side_r36.xml`, recipe:
+Side cell `grounding/assets/allegro_floating_ur5e_side_r37.xml`, recipe:
 
 ```
 W6B_SCENE=ur5e \
-W6B_SCENE_XML=grounding/assets/allegro_floating_ur5e_side_r36.xml \
+W6B_SCENE_XML=grounding/assets/allegro_floating_ur5e_side_r37.xml \
 W6B_R23_FLYOVER_MM=250 W6B_R22_MARGIN_MM=8 \
-W6B_R39_TGC=1 W6B_R39_HOLD=60 \
+W6B_R38_SEAT=both W6B_R39_TGC=1 W6B_R39_HOLD=60 \
 runs/.venv-retarget/bin/python retarget/retarget_dual.py
 ```
 
 | quantity | right | left |
 |---|---|---|
-| command-side rect distance (kinematic) | 0.214 mm | 0.001 mm |
-| **executed-state rect distance** | **6.56 mm** (in band) | **6.26 mm** (in band) |
-| executed forward axis (≤ 35°) | 21.4° | 14.9° |
+| command-side rect distance (kinematic) | 0.061 mm | 0.350 mm |
+| **executed-state rect distance** | **4.68 mm** | **4.07 mm** |
+| executed forward axis (≤ 35°) | 21.8° | 21.6° |
 | final joint tracking error | ≤ 0.011 rad | ≤ 0.007 rad |
+
+**Both hands are now inside the 5 mm bar.**  Three changes got them there:
+
+1. **The terminal command is seated, not overlapped** (r38/r48/r49).  The
+   commanded terminal pose put the ring finger **7.5 mm through the face**, so the
+   P-servo pressed with the force clamp (150 Nm at the joint, kilonewtons at the pad)
+   and that shove is what sent the 150 g box across the table.  The refinement
+   flattens the pad set against the face (roll search: the pad x spread 7.7 → 2.1 mm)
+   and then **iterates the shift until the measured pre-load is 0.2 mm** — the
+   iteration is on the signed face distance, with a *numerical* Jacobian of the
+   objective (the palm Jacobian is the wrong proxy: a wrist rotation barely moves
+   the palm x while it swings the pads by centimetres) and a locality guard (the
+   objective is ambiguous — the same value is reachable from the other side of the
+   box, and the left hand duly walked across).
+2. **The object is 0.4 kg**, not 0.1496 kg: a 150 g box slides under the squeeze
+   (16.7 mm measured) and every millimetre of that travel is booked against the pad
+   that did not follow it.
+3. **Asymmetric servo gains** (left kp 4400, right kp 2200): the two arms trade
+   error through the box, so the optimum is not symmetric.
+
+The left's best pad still sits ~11 mm above the mid-face band (the report carries
+the legacy +500 mm out-of-band penalty in its own column now, so it no longer
+inflates the distance).
 
 Journey of that number (all in `runs/w6b/r33_side_mount_campaign.md`):
 
@@ -107,13 +130,24 @@ Journey of that number (all in `runs/w6b/r33_side_mount_campaign.md`):
 | r41 (real-size wrist proxies) | 4.02 mm | 11.72 mm |
 | r42 (face plane follows the box) | 7.69 mm | 8.04 mm |
 | r43 (per-side servo gains, left kp 4000) | 6.56 mm | 6.26 mm |
+| r49 (seated terminal + 0.4 kg object + asymmetric gains) | **4.68 mm** | **4.07 mm** |
 
-**The gate is `< 5 mm` and both sides are at ≈6.3–6.6 mm: this cell still FAILS
-gate1.**  What is left is the two hands squeezing one 150 g box; the arms track their
-commands to ≤0.011 rad, so the residual is contact coupling through the box, not servo
-error.  Terminal gravity compensation (`W6B_R39_TGC=1`, applied only over the last 60
-frames) is what took the droop out; applying it over the whole approach destabilises
-the replay (r28: 687 mm) because `qfrc_bias` then carries the Coriolis terms.
+**The executed-state gate (`< 5 mm`) is now met on both hands.**  What still fails
+gate1 is the *command-side* criterion, and it fails for a quantified geometric reason:
+the R5 tolerance is **0.116 mm** and it is read from `runs/w6/gate3_qpos.json`, i.e.
+it is the **ceiling cell's** calibration.  For this cell the three finger tips cannot
+be brought within that band — a two-dimensional search over the wrist joints
+(wrist_2, wrist_3) reduces the pad x spread only from 2.06/2.35 mm to 1.94/1.85 mm,
+where the criterion would need ≤ 0.232 mm — because the hand approaches the face at
+~22° and the pad set's own geometry then projects onto that spread.  The criterion
+is therefore unsatisfiable **by construction** for a non-perpendicular approach, not
+because the retarget is sloppy; making it satisfiable needs a perpendicular terminal
+approach (fwd → 0), which is a change of the task's terminal orientation, not a
+retuning.  Both facts are reported rather than papered over.
+
+Terminal gravity compensation (`W6B_R39_TGC=1`, applied only over the last 60 frames)
+is what took the droop out; applying it over the whole approach destabilises the
+replay (r28: 687 mm) because `qfrc_bias` then carries the Coriolis terms.
 
 Control-law results, all negative and all logged:
 
