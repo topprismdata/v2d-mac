@@ -5278,6 +5278,18 @@ def main() -> int:
         ),
         "frames": grid,
     }
+    # r50: the terminal state (the gate-1 configuration, beyond the
+    # frame-exact video grid) is written alongside so the renderer can
+    # produce a still of the actual grasp.  The video grid itself stays
+    # frame-exact with the source clip.
+    replay["terminal"] = {
+        "note": ("the terminal hold state (the gate-1 configuration); it "
+                 "lies beyond the frame-exact video grid, so it is not part "
+                 "of the frames array"),
+        "control_frame": int(rep["n_frames"]) - 1,
+        "qpos": [round(float(v), 9) for v in rep["qpos_full"][-1]],
+        "obj": [round(float(v), 9) for v in rep["obj_world"][-1]],
+    }
     REPLAY_PATH.write_text(json.dumps(replay, indent=1))
     frame_alignment = {
         "len_replay": len(replay["frames"]),

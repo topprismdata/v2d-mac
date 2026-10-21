@@ -324,3 +324,13 @@ Measured and rejected:
 The finger joint-limit violations are unchanged by this work (identical per
 joint at curl 1.0 and 1.25) and occur only in the approach segment (frames
 0-62 of 390); the terminal window is clean.
+
+### the rendered grid vs the terminal state
+The replay grid is frame-exact with the source clip (390 video frames at 30 fps),
+and the seed blend + hold (the terminal configuration the gates measure) lies
+BEYOND that grid by contract -- so the 1170 rendered frames are identical for
+the r49 and r50 recipes, and the r50 grasp (the deeper curl + the midpoint seat)
+does not appear in them.  r50 therefore adds a dedicated still:
+`docs/replay_frames/terminal_{front,side,close}.png` (the gate-1 configuration,
+rendered with the same camera presets).  The pipeline writes that state into
+`runs/w6b/replay_frames.json` under "terminal"; the panel passes it through.

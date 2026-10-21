@@ -307,8 +307,8 @@ def build() -> dict:
     replay_fps = REPLAY_FPS
     scene_kind = "floating"
     if REPLAY_IN.exists():
-        frames, replay_fps, scene_kind = _convert_replay(
-            json.loads(REPLAY_IN.read_text()))
+        _raw_replay = json.loads(REPLAY_IN.read_text())
+        frames, replay_fps, scene_kind = _convert_replay(_raw_replay)
         source = "runs/w6b/replay_frames.json (W6b)"
         placeholder, notes = False, []
     else:
@@ -339,7 +339,13 @@ def build() -> dict:
     payload = {
         "fps": VIDEO_FPS,
         "video_frames": video_frames,
-        "replay": {"fps": replay_fps, "frames": frames},
+        "replay": {"fps": replay_fps, "frames": frames,
+                   # r50: the terminal hold state (the gate-1 configuration)
+                   # is beyond the frame-exact video grid; carry it so the
+                   # renderer can produce a still of the measured grasp
+                   **({"terminal": _raw_replay["terminal"]}
+                      if isinstance(_raw_replay, dict)
+                      and "terminal" in _raw_replay else {})},
         "gates": gates,
         "meta": {
             "generated_by": "viz/replay_to_panel.py",

@@ -143,6 +143,22 @@ def main() -> None:
             Image.fromarray(img).save(dst)
             outs.append(str(dst.relative_to(REPO)))
         renders[key] = outs
+    # r50: the terminal hold state (the gate-1 configuration) lies beyond
+    # the frame-exact video grid, so it gets its own still -- the grasp the
+    # gates actually measure.
+    term = payload["replay"].get("terminal")
+    if term:
+        for key, _cn, az, el, dist in presets:
+            d.qpos[:] = np.asarray(term["qpos"])
+            d.qpos[obj_adr:obj_adr + 7] = np.asarray(term["obj"])
+            mujoco.mj_forward(m, d)
+            cam.lookat[:] = d.xpos[obj_body]
+            cam.lookat[2] -= _off
+            cam.azimuth, cam.elevation, cam.distance = az, el, dist
+            renderer.update_scene(d, camera=cam)
+            img = renderer.render()
+            Image.fromarray(img).save(OUT / f"terminal_{key}.png")
+        print(f"rendered the terminal (gate-1) still -> {OUT}/terminal_*.png")
     renderer.close()
 
     payload["meta"]["renders"] = {
