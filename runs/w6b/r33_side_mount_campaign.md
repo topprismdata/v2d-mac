@@ -778,3 +778,42 @@ The orientation search is running (tools/w6b/palm_pose_search.py): the
 arm IK is solved for a palm pose whose fingertips land on the face by
 construction, and the finger axes' angles to the face normal are
 measured for each candidate.
+
+### r63f — gate1 v3 (surface-based) and the FIRST command-state PASS
+
+The r63 stack (reorient + equalize + seat) now produces, in the COMMAND
+state, **two pads per hand whose contact SURFACE is on the end face**:
+
+| side | v3 command | ff | mf | rf | v3 executed |
+|---|---|---|---|---|---|
+| right | **PASS** (2 eligible) | gap -0.05 mm, on face | gap -0.05 mm, on face | gap -0.05 mm, OFF the face (the ring finger sits at the box's top edge) | 0 eligible |
+| left | **PASS** (2 eligible) | gap -0.05 mm, on face | gap -0.05 mm, on face | gap -0.05 mm, OFF the face | 0 eligible |
+
+The v3 criterion (published in parallel with the frozen v1/v2, per the
+reviewer's versioning rule):
+
+    gate1 v3 = >= 2 pads per hand whose CONTACT SURFACE is within R5 of
+    the box AND whose closest point lies ON the end face, where the
+    surface gap is MuJoCo's own mj_geomDistance signed distance.
+
+The ring finger's closest point landing OFF the end face is the
+finite-face effect of r63b, now visible in the criterion instead of
+hidden inside a plane formula.
+
+The terminal palm ORIENTATION re-registration (r63d) is measured in the
+same run: the finger axes to the face normal go from 90.0 / 90.0 / 90.0
+deg (the shipped terminal) to **6.7 / 30.7 / 47.5** deg (right) and
+**5.5 / 33.0 / 49.4** deg (left) -- the known-good floating grasp's own
+angles are 5.4 / 34.2 / 45.8 deg, so the side cell now has the
+geometry of the grasp that PASSED gate1.
+
+### What is STILL open (measured, not claimed)
+
+The EXECUTED state still has no contact.  The arm tracks its commanded
+pose to 0.015 rad, but the fingers do not (up to 0.89 rad of joint
+error, the servo saturation r61 measured).  The reorientation and the
+equalisation are therefore coupled -- the curl changes the geometry the
+arm pose is solved in, and the arm pose changes the geometry the curl is
+solved in -- so they are being iterated to a fixed point
+(`tools/w6b/r63_fixed_point.py`), which reports the measured axes, gaps
+and the number of pads on the end face at every iteration.
