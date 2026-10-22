@@ -2913,12 +2913,23 @@ def refine_terminal_seat(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
     _r60 = _os.environ.get("W6B_R60_SURFACE_SEAT", "0") == "1"
 
     def fk_pad_sv(w_last):
-        _x = fk_pads(w_last)
-        _re = np.array([
-            float(model.geom_size[int(g)][0]) * abs(float(
-                np.array(data.geom_xmat[int(g)]).reshape(3, 3)[2, 0]))
+        """each pad's TRUE signed distance to the box.
+
+        r63: the pads are 12 x 12 x 3 mm BOXES and the end face is FINITE
+        (240 x 80 mm), so the infinite-plane support formula is wrong in
+        two ways: it is not the box's extent (the disc formula it replaced
+        was wrong in 7 of 7 tilts -- tools/w6b/pad_gap_verify.py), and it
+        ignores that a pad can sit OFF the face's edge (measured: the ring
+        finger reads +44.9 mm true against -0.05 mm by the plane formula --
+        tools/w6b/true_gap_probe.py).  MuJoCo's own mj_geomDistance is the
+        quantity that decides contact, so it is what the seat optimises.
+        """
+        fk_pads(w_last)
+        _obj_body = int(mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY,
+                                          "object"))
+        return np.array([
+            _true_box_gap(model, data, int(g), box_geom, _obj_body, half)[0]
             for g in tips])
-        return spec.face_sign * (_x - face_x) - _re
 
     w_last = base_w[-1].copy()
     _x0 = fk_pads(w_last)
@@ -2927,28 +2938,54 @@ def refine_terminal_seat(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
     # search (r38) hits its +-0.45 rad window whenever the terminal approach
     # is not near the face normal, and a 2-D scan showed the true minimum is
     # at 1.85-1.94 mm, not at the window edge (measured r50).
-    _spread_of = (lambda _w: float(np.ptp(fk_pad_sv(_w)))) if _r60 else \
-        (lambda _w: float(np.ptp(fk_pads(_w))))
+    #
+    # r63: the objective is now "coplanarity AND still near the face".
+    # Minimising the spread ALONE is degenerate: a wrist rotation that
+    # swings the whole pad set away from the face keeps the set coplanar
+    # (spread ~ 0) while the contact is lost -- measured: the left hand's
+    # set ended 30.8 mm off the face with a 0.05 mm spread.  The penalty
+    # term below makes that trade-off explicit and measurable.
+    def _sv_of(_w):
+        return fk_pad_sv(_w) if _r60 else (
+            spec.face_sign * (fk_pads(_w) - face_x))
+
+    def _score(_w):
+        _sv = _sv_of(_w)
+        _spread = float(np.ptp(_sv))
+        # the mean signed surface distance from the face plane (negative =
+        # embedded); a set that has swung away scores badly
+        _off = float(np.mean(_sv))
+        return _spread + 2.0 * abs(_off), _spread, _off
+
+    # r63: when the terminal palm ORIENTATION has been re-registered
+    # (W6B_R63_REORIENT), the wrist's roll and pitch are already fixed by
+    # that solve -- letting the coplanarity search move them again
+    # undoes it (a 0.3 rad roll is 18 deg on the finger axes).  In that
+    # mode the seat does the NORMAL-direction shift only, and the
+    # coplanarity comes from the per-finger curl equalisation instead.
+    _no_roll = (_os.environ.get("W6B_R38_NO_ROLL", "0") == "1")
+
     best = (np.inf, 0.0, 0.0)
-    for d3 in np.linspace(-1.5, 1.5, 61):
-        for d2 in np.linspace(-0.8, 0.8, 33):
-            trial = w_last.copy()
-            trial[-1] += float(d3)
-            trial[-2] += float(d2)
-            sp = _spread_of(trial)
-            if sp < best[0]:
-                best = (sp, float(d2), float(d3))
-    # local refinement around the coarse optimum
-    _sp0, _d2, _d3 = best
-    for _scale in (0.25, 0.08, 0.025):
-        for d3 in np.linspace(_d3 - _scale, _d3 + _scale, 9):
-            for d2 in np.linspace(_d2 - _scale, _d2 + _scale, 9):
+    if not _no_roll:
+        for d3 in np.linspace(-1.5, 1.5, 61):
+            for d2 in np.linspace(-0.8, 0.8, 33):
                 trial = w_last.copy()
                 trial[-1] += float(d3)
                 trial[-2] += float(d2)
-                sp = _spread_of(trial)
-                if sp < best[0]:
-                    best = (sp, float(d2), float(d3))
+                sc = _score(trial)[0]
+                if sc < best[0]:
+                    best = (sc, float(d2), float(d3))
+        # local refinement around the coarse optimum
+        _sp0, _d2, _d3 = best
+        for _scale in (0.25, 0.08, 0.025):
+            for d3 in np.linspace(_d3 - _scale, _d3 + _scale, 9):
+                for d2 in np.linspace(_d2 - _scale, _d2 + _scale, 9):
+                    trial = w_last.copy()
+                    trial[-1] += float(d3)
+                    trial[-2] += float(d2)
+                    sc = _score(trial)[0]
+                    if sc < best[0]:
+                        best = (sc, float(d2), float(d3))
     d_roll = best[2]
     d_pitch = best[1]
     w_last[-1] += d_roll
@@ -3016,10 +3053,12 @@ def refine_terminal_seat(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
         if nrm > 0.05:
             step = step * (0.05 / nrm)
         _trial = cand + step
-        # the objective (min signed face distance) is ambiguous: the same
-        # value is reachable from the OTHER side of the box, and the left
-        # hand duly walked across.  Keep the iteration local.
-        if float(np.max(np.abs(fk_pads(_trial) - xs_after_roll))) > 0.010:
+        # The objective is ambiguous: the same value is reachable from the
+        # OTHER side of the box, and the left hand duly walked across.
+        # Keep the iteration local -- but the guard is on the SURFACE gap
+        # (the physical quantity), and its window is wide enough to bring
+        # a set that the coplanarity search left a few mm off.
+        if float(np.max(np.abs(_sv_of(_trial)))) > 0.030:
             break
         cand = _trial
     w_new = best[1]
@@ -3060,6 +3099,339 @@ def refine_terminal_seat(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
         "preload_residual_mm": resid_hist,
         "face_x_mm": face_x * 1e3,
     }
+    return out, rec
+
+
+def reorient_terminal_pads(model, data, spec: SideSpec,
+                           wrist_cmd: np.ndarray, finger_cmd: np.ndarray,
+                           ref_R: np.ndarray, ref_pos: np.ndarray):
+    """r63: re-register the terminal palm ORIENTATION so the fingertip pads
+    land FLAT on the end face.
+
+    THE ROOT CAUSE (measured, r63): in the known-good floating grasp (the
+    gate-3 seed, gate1 PASS) the index finger's axis is 5.4 deg from the
+    end face's normal, so the pad's 12 x 12 mm FLAT face presses flat on
+    the box.  In the side cell ALL THREE finger axes stand at 90.0 deg:
+    the fingers lie IN the face plane, the pads present their 12 mm EDGE,
+    and the 16 mm distal links reach the box before the pads do (the
+    executed contact list is on the distal links, not on the pads).  An
+    edge-on pad cannot hold -- the reaction is taken by the finger's own
+    force-limited servo (0.04-0.18 N.m), so the fingers collapse (measured
+    up to 0.87 rad) and only the deepest pad stays on the face.
+
+    So this re-solves the ARM pose for a palm orientation whose finger
+    axes point INTO the face, keeping the known-good grasp's palm
+    rotation as the reference (the floating scene's gate-3 seed), and
+    sweeping the roll about the face normal plus the pose's standoff,
+    lateral and height offsets.  Every candidate is MEASURED: the arm
+    IK's residual and joint-limit margin, and the three finger axes'
+    angles to the face normal.
+
+    Returns (wrist_cmd, finger_cmd, record) with the arm joints and the
+    finger commands rewritten for the terminal window.
+    """
+    import mujoco
+
+    _, box_geom, _, _ = obj_ids(model)
+    half = model.geom_size[box_geom]
+    face_sign = spec.face_sign
+    n_in = np.array([-face_sign, 0.0, 0.0])
+    palm_bid = spec._palm_id
+    qadr = list(spec.wrist_qadr)
+    adof = [int(model.jnt_dofadr[int(q)]) for q in qadr]
+    arm_names = spec.wrist_joints
+    ajid = [mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, n)
+            for n in arm_names]
+    alo = model.jnt_range[ajid][:, 0]
+    ahi = model.jnt_range[ajid][:, 1]
+    tip_geoms = [g for g in spec.tip_geoms
+                 if (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM,
+                                       int(g)) or "").startswith(
+                     ("ff_tip", "mf_tip", "rf_tip"))]
+    dist_geoms = []
+    for g in tip_geoms:
+        _nm = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, int(g)) or ""
+        _base = _nm.replace("_tip_collision", "").replace("_tip_left_collision",
+                                                          "")
+        _d = _base + ("_distal_collision" if face_sign > 0
+                      else "_distal_left_collision")
+        _i = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, _d)
+        dist_geoms.append(int(_i) if _i >= 0 else None)
+
+    def state(w, f):
+        data.qpos[:] = model.qpos0
+        data.qpos[qadr] = w
+        for i, a in enumerate(np.asarray(spec.finger_act_id).ravel()):
+            j = int(model.actuator_trnid[int(a)][0])
+            data.qpos[int(model.jnt_qposadr[j])] = f[i]
+        mujoco.mj_forward(model, data)
+
+    def ik(tp, Rt, q0):
+        q = q0.copy()
+        for _ in range(220):
+            data.qpos[:] = model.qpos0
+            data.qpos[qadr] = q
+            mujoco.mj_kinematics(model, data)
+            mujoco.mj_comPos(model, data)
+            e_p = tp - np.array(data.xpos[palm_bid])
+            Rq = np.zeros(9)
+            mujoco.mju_quat2Mat(Rq, data.xquat[palm_bid])
+            R = np.array(Rq).reshape(3, 3)
+            Rrel = Rt.T @ R
+            e_r = Rt @ (0.5 * np.array([Rrel[2, 1] - Rrel[1, 2],
+                                        Rrel[0, 2] - Rrel[2, 0],
+                                        Rrel[1, 0] - Rrel[0, 1]]))
+            err = np.concatenate([e_p, e_r])
+            if np.linalg.norm(e_p) < 5e-4 and np.linalg.norm(e_r) < 5e-3:
+                break
+            jacp = np.zeros((3, model.nv))
+            jacr = np.zeros((3, model.nv))
+            mujoco.mj_jacBody(model, data, jacp, jacr, palm_bid)
+            J = np.vstack([jacp[:, adof], jacr[:, adof]])
+            try:
+                dq = np.linalg.solve(J @ J.T + 1e-4 * np.eye(6), err)
+            except np.linalg.LinAlgError:
+                break
+            q = np.clip(q + J.T @ dq, alo, ahi)
+        data.qpos[:] = model.qpos0
+        data.qpos[qadr] = q
+        mujoco.mj_kinematics(model, data)
+        mujoco.mj_comPos(model, data)
+        Rq = np.zeros(9)
+        mujoco.mju_quat2Mat(Rq, data.xquat[palm_bid])
+        R = np.array(Rq).reshape(3, 3)
+        Rrel = Rt.T @ R
+        ep = float(np.linalg.norm(tp - np.array(data.xpos[palm_bid])))
+        er = float(np.linalg.norm(0.5 * np.array(
+            [Rrel[2, 1] - Rrel[1, 2], Rrel[0, 2] - Rrel[2, 0],
+             Rrel[1, 0] - Rrel[0, 1]])))
+        mg = float(min(np.min(q - alo), np.min(ahi - q)))
+        return q, ep, er, mg
+
+    # the roll about the face normal
+    K = np.array([[0, -n_in[2], n_in[1]],
+                  [n_in[2], 0, -n_in[0]],
+                  [-n_in[1], n_in[0], 0]])
+    Rg = np.asarray(ref_R, float).copy()
+    best = None
+    rng = np.random.default_rng(20260922)
+    f_last = np.asarray(finger_cmd, float)[-1].copy()
+    _r63_dz = (-0.04, -0.03, -0.02, -0.01, 0.0, 0.01, 0.02)
+    _r63_standoff = (0.0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06)
+    _r63_roll_step = int(_os.environ.get("W6B_R63_ROLL_STEP", "10"))
+    for standoff in _r63_standoff:
+        for roll in range(0, 360, _r63_roll_step):
+            for lat in (-0.02, 0.0, 0.02):
+                for dz in _r63_dz:
+                    tp = (np.asarray(ref_pos, float)
+                          + np.array([face_sign * standoff, lat, dz]))
+                    ang = np.deg2rad(float(roll))
+                    cr, sr = np.cos(ang), np.sin(ang)
+                    Rt = (np.eye(3) + sr * K + (1 - cr) * (K @ K)) @ Rg
+                    bq = None
+                    for q_try in [np.asarray(wrist_cmd, float)[-1].copy(),
+                                  np.zeros(6)] + [
+                        rng.uniform(alo, ahi) for _ in range(3)]:
+                        qq, epp, errp, mgp = ik(tp, Rt, q_try)
+                        if bq is None or (epp + errp) < bq[1]:
+                            bq = (qq, epp + errp, epp, errp, mgp)
+                    q, ep, er, mg = bq[0], bq[2], bq[3], bq[4]
+                    if ep > 8e-3 or er > 0.06 or mg < 0.03:
+                        continue
+                    state(q, f_last)
+                    angs = {}
+                    for gi, dg in enumerate(dist_geoms):
+                        if dg is None:
+                            continue
+                        Rd = np.array(data.geom_xmat[dg]).reshape(3, 3)
+                        angs[tip_geoms[gi]] = float(np.degrees(np.arccos(
+                            abs(float(Rd[:, 2] @ n_in)))))
+                    if not angs:
+                        continue
+                    worst = max(angs.values())
+                    if best is None or worst < best[0]:
+                        best = (worst, standoff, roll, lat, dz, q.copy(), ep,
+                                er, mg, angs, Rt.copy(), tp.copy())
+    if best is None:
+        return wrist_cmd, finger_cmd, {"skipped": "no reachable pose"}
+    (worst, standoff, roll, lat, dz, q, ep, er, mg, angs, Rt,
+     tp) = best
+    rec = {
+        "method": ("the arm IK is re-solved for a palm orientation whose "
+                   "finger axes point INTO the end face; the known-good "
+                   "floating grasp's palm rotation is the reference and the "
+                   "roll about the face normal is swept"),
+        "reference": "the floating scene's gate-3 seed palm rotation",
+        "standoff_mm": standoff * 1e3, "roll_deg": roll,
+        "lateral_mm": lat * 1e3, "height_offset_mm": dz * 1e3,
+        "ik_e_p_mm": round(ep * 1e3, 4),
+        "ik_e_r_deg": round(float(np.degrees(er)), 3),
+        "joint_margin_rad": round(mg, 4),
+        "finger_axis_deg": {k: round(v, 2) for k, v in angs.items()},
+        "worst_axis_deg": round(worst, 2),
+        "arm": [round(float(v), 6) for v in q],
+        "palm_pos": [round(float(v), 6) for v in tp],
+        "palm_R": [[round(float(v), 6) for v in row] for row in Rt],
+    }
+    # write the arm pose back over the terminal window (ramped)
+    out = np.asarray(wrist_cmd, float).copy()
+    n_term = min(24, out.shape[0])
+    ramp = 0.5 * (1.0 + np.cos(np.linspace(np.pi, 0.0, n_term)))
+    _old = out[-1].copy()
+    out[-n_term:] = _old[None, :] + (q[None, :] - _old[None, :]) * ramp[:, None]
+    return out, finger_cmd, rec
+
+
+def equalize_pad_curls(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
+                        finger_cmd: np.ndarray, target_sv: float,
+                        max_scale: float = 2.0) -> tuple[np.ndarray, dict]:
+    # `data` is the MuJoCo data; the local name `d` is used below.
+    """r63: bring ALL THREE pads to the same surface gap, one finger at a
+    time, by adjusting each finger's own curl.
+
+    Why (measured, r63):
+      * the pads are 12 x 12 x 3 mm BOXES; their extent along the face
+        normal is the box's support function, so a pad's surface gap
+        depends on its TILT, not only on its distance;
+      * the shipped command state embeds the three pads 2.6 / 5.0 / 6.4 mm
+        into the end face (the corrected support-function gap), and the
+        3.8 mm SPREAD between them comes from their different tilts --
+        the pads are not coplanar, so a flat face cannot touch all three;
+      * the wrist's roll and pitch move all three pads together and
+        therefore CANNOT remove that spread (measured: the spread stays
+        3.7 mm after the search);
+      * each finger's curl controls ITS OWN pad's gap, monotonically over a
+        useful range, and does NOT move the other two pads (measured in
+        tools/w6b/curl_gap_probe.py: scaling the middle finger leaves the
+        index and ring gaps bit-identical).
+
+    So the equalisation is a per-finger 1-D root find on the curl scale,
+    and the wrist then only has to set the set's overall position.
+
+    The finger command is returned in ACTUATOR order (the same order the
+    caller holds), and the caller must write it back.
+    """
+    import mujoco
+
+    d = data
+    m = model
+    _, box_geom, _, _ = obj_ids(model)
+    half = model.geom_size[box_geom]
+    face_x = float(half[0]) * spec.face_sign
+    obj_body = int(mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "object"))
+    pad_of = {}
+    for g in spec.tip_geoms:
+        nm = (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, int(g))
+              or "")
+        for f in ("ff", "mf", "rf"):
+            if nm.startswith(f + "_tip"):
+                pad_of[f] = int(g)
+    if len(pad_of) < 3:
+        return finger_cmd, {"skipped": "fewer than 3 pads"}
+
+    act_ids = np.asarray(spec.finger_act_id).ravel()
+    a2j = {}
+    for i, a in enumerate(act_ids):
+        a2j[int(a)] = int(model.actuator_trnid[int(a)][0])
+    fing_act = {}
+    for f in ("ff", "mf", "rf"):
+        sel = []
+        for i, a in enumerate(act_ids):
+            nm = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_ACTUATOR,
+                                   int(a)) or ""
+            if nm.startswith(f + "a"):
+                sel.append((i, int(a)))
+        fing_act[f] = sel
+
+    qadr = list(spec.wrist_qadr)
+    wrist_last = np.asarray(wrist_cmd, float)[-1]
+    f_last = np.asarray(finger_cmd, float)[-1].copy()
+
+    def gap_of(f, scale, base, baseline=None):
+        """the pad's TRUE signed distance to the box at a curl scale.
+
+        The state is set DETERMINISTICALLY: the arm at the terminal wrist
+        and every finger at its baseline, with only this finger scaled.
+        Without that the scan is not reproducible (the other fingers kept
+        whatever the previous evaluation left behind).
+
+        The distance is MuJoCo's own mj_geomDistance, NOT the
+        infinite-plane support formula: the end face is finite (240 x 80
+        mm) and a pad off the face's top edge is tens of millimetres away
+        while the plane formula still reports a small penetration
+        (measured: tools/w6b/true_gap_probe.py -- the ring finger reads
+        +44.9 mm true against -0.05 mm by the plane formula)."""
+        d.qpos[:] = model.qpos0
+        d.qpos[qadr] = wrist_last
+        _bl = baseline if baseline is not None else f_last
+        for i, a in enumerate(act_ids):
+            d.qpos[int(model.jnt_qposadr[a2j[int(a)]]) ] = _bl[i]
+        for k, (i, a) in enumerate(fing_act[f]):
+            j = a2j[int(a)]
+            d.qpos[int(model.jnt_qposadr[j])] = base[k] * scale
+        mujoco.mj_forward(m, d)
+        dist, _on_end, _p = _true_box_gap(
+            model, d, int(pad_of[f]), box_geom, obj_body, half)
+        return dist
+
+    out = f_last.copy()
+    rec = {"target_surface_gap_mm": target_sv * 1e3, "per_finger": {}}
+    for f in ("ff", "mf", "rf"):
+        base = np.array([f_last[i] for i, _ in fing_act[f]])
+        lo_s, hi_s = 0.2, max_scale
+        prev_s, prev_g = None, None
+        found = False
+        for s in np.linspace(lo_s, hi_s, 61):
+            g = gap_of(f, float(s), base)
+            if prev_g is not None and (prev_g - target_sv) * (g - target_sv) <= 0:
+                lo_s, hi_s = prev_s, float(s)
+                found = True
+                break
+            prev_s, prev_g = float(s), g
+        if found:
+            for _ in range(24):
+                mid = 0.5 * (lo_s + hi_s)
+                gm = gap_of(f, mid, base)
+                g_lo = gap_of(f, lo_s, base)
+                if (g_lo - target_sv) * (gm - target_sv) <= 0:
+                    hi_s = mid
+                else:
+                    lo_s = mid
+            s_f = 0.5 * (lo_s + hi_s)
+        else:
+            s_f = 1.0
+        g_f = gap_of(f, s_f, base)
+        for i, _ in fing_act[f]:
+            out[i] = f_last[i] * s_f
+        rec["per_finger"][f] = {
+            "curl_scale": round(float(s_f), 5),
+            "surface_gap_mm": round(float(g_f) * 1e3, 4),
+            "root_found": bool(found),
+        }
+    # the final measured state
+    d.qpos[:] = model.qpos0
+    d.qpos[qadr] = wrist_last
+    for i, a in enumerate(act_ids):
+        d.qpos[int(model.jnt_qposadr[a2j[int(a)]]) ] = out[i]
+    mujoco.mj_forward(m, d)
+    gg = {}
+    on_end = {}
+    for f in ("ff", "mf", "rf"):
+        dist, on_e, _p = _true_box_gap(
+            model, d, int(pad_of[f]), box_geom, obj_body, half)
+        gg[f] = round(float(dist) * 1e3, 4)
+        on_end[f] = bool(on_e)
+    rec["surface_gaps_mm"] = gg
+    rec["closest_point_on_end_face"] = on_end
+    rec["spread_mm"] = round(float(np.ptp(list(gg.values()))), 4)
+    rec["gap_measure"] = (
+        "MuJoCo's mj_geomDistance signed distance to the box (the TRUE "
+        "gap: the end face is finite, so the infinite-plane support "
+        "formula is wrong for a pad off the face's edge)")
+    rec["method"] = (
+        "per-finger curl scale, one 1-D root find per pad on the pad's "
+        "TRUE distance to the box; the wrist then sets the set's overall "
+        "position (the wrist alone cannot remove the tilt spread)")
     return out, rec
 
 
@@ -3442,6 +3814,52 @@ def _gname(model, g):
             or f"geom_{g}")
 
 
+def _true_box_gap(model, data, geom_id, box_geom, box_body, half,
+                  max_dist=0.5):
+    """The pad's TRUE signed distance to the box (MuJoCo's own
+    mj_geomDistance) and where its closest point lands.
+
+    The support-function formula (the infinite-plane distance) is only
+    valid when the closest point is INSIDE the face rectangle: the box's
+    end face is finite (240 x 80 mm), and a pad can sit off its top edge
+    while the plane formula still reports a small penetration.  Measured
+    (tools/w6b/true_gap_probe.py): the ring finger's true distance to the
+    box is +44.9 mm while the plane formula says -0.05 mm.
+
+    Returns (distance, on_end_face, closest_point_on_the_box).
+    """
+    import mujoco
+
+    ft = np.zeros(6)
+    dist = float(mujoco.mj_geomDistance(model, data, int(geom_id),
+                                        int(box_geom), float(max_dist), ft))
+    p_box = ft[3:6]
+    rel = p_box - np.asarray(data.xpos[int(box_body)])
+    on_end = bool(abs(abs(rel[0]) - float(half[0])) < 1e-3)
+    return dist, on_end, p_box
+
+
+def _geom_support_along(model, data, geom_id, direction) -> float:
+    """The extent of a BOX geom along a unit direction: its support
+    function sum_i half_extent_i * |axis_i . direction|.
+
+    The fingertip pads are 12 x 12 x 3 mm boxes, so their extent along the
+    end face's normal depends on the pad's ORIENTATION and is between
+    1.5 mm (thin axis along the normal) and 8.5 mm (a corner along it).
+    Treating them as 6 mm discs -- the formula this replaces -- was wrong
+    in every tilt measured (tools/w6b/pad_gap_verify.py: the support
+    function reproduces MuJoCo's own contact distance to 1e-5 m in 7 of 7
+    tilts, the disc formula in 0).
+    """
+    import mujoco
+
+    R = np.asarray(data.geom_xmat[int(geom_id)], float).reshape(3, 3)
+    he = np.asarray(model.geom_size[int(geom_id)], float)
+    n = np.asarray(direction, float)
+    n = n / max(float(np.linalg.norm(n)), 1e-12)
+    return float(sum(he[i] * abs(float(R[:, i] @ n)) for i in range(3)))
+
+
 def gate3_touch_tol() -> float:
     """R5 tolerance read from the current gate3 seed file (v5: tol_m)."""
     g3 = json.loads((REPO / "runs/w6/gate3_qpos.json").read_text())
@@ -3536,6 +3954,69 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
             if abs(sv4) > tol:
                 buried_v2 = True
         _band = 0.0 if best_in_band else 0.5
+        # ------------------------------------------------------------------
+        # r63: gate1 VERSION 3 -- a SURFACE-based criterion, published in
+        # PARALLEL with v1 (the legacy centre-distance criterion) and v2.
+        #
+        # Why a v3 is needed (measured, r63):
+        #   * v1/v2 measure the pad CENTRE's distance to the end-face
+        #     rectangle.  That is a geometric LOCATOR, not a contact
+        #     measure: the pad is a 12 x 12 x 3 mm BOX, so its centre sits
+        #     ~6 mm outside the face when its flat face is touching, and a
+        #     v1 verdict of "5.8 mm from the face" can mean "touching".
+        #   * the contact quantity is the pad's SURFACE gap -- MuJoCo's own
+        #     mj_geomDistance signed distance to the box -- plus the
+        #     contact's normal force and whether the contact's closest
+        #     point is on the END face (the face is finite: 240 x 80 mm, so
+        #     a pad can be 45 mm away at the top edge while a plane
+        #     formula reports it as touching).
+        #
+        # v1 and v2 stay published unchanged, per the reviewer's rule that
+        # a criterion is versioned and never silently redefined.
+        # ------------------------------------------------------------------
+        _obj_b = int(mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY,
+                                        "object"))
+        _v3_pads = {}
+        for g in pad_geoms:
+            _gi = int(g)
+            _ft = np.zeros(6)
+            _dist = float(mujoco.mj_geomDistance(model, data, _gi,
+                                                  box_geom, 1.0, _ft))
+            _rel = _ft[3:6] - np.asarray(data.xpos[_obj_b])
+            _on_end = bool(abs(abs(_rel[0]) - float(half[0])) < 2e-3)
+            _fn = 0.0
+            _in_contact = False
+            for _ci in range(data.ncon):
+                _con = data.contact[_ci]
+                if _gi not in (int(_con.geom1), int(_con.geom2)):
+                    continue
+                _cf = np.zeros(6)
+                mujoco.mj_contactForce(model, data, _ci, _cf)
+                _fn = float(abs(np.asarray(_cf[:3]) @ np.array([-side, 0.0, 0.0])))
+                _in_contact = True
+                break
+            _v3_pads[_gname(model, g)] = {
+                "surface_gap_mm": round(_dist * 1e3, 4),
+                "closest_point_on_end_face": _on_end,
+                "contact_normal_force_N": round(_fn, 4),
+                "in_contact": bool(_in_contact),
+                "eligible": bool(_on_end and abs(_dist) <= tol),
+            }
+        _v3_elig = [k for k, v in _v3_pads.items() if v["eligible"]]
+        _v3 = {
+            "version": ("v3 (surface-based; published in parallel with the "
+                        "frozen v1 and v2, which are unchanged)"),
+            "criterion": (
+                ">= 2 pads per hand whose CONTACT SURFACE is within the R5 "
+                "tolerance of the box AND whose closest point lies on the "
+                "end face; the surface gap is MuJoCo's own "
+                "mj_geomDistance signed distance to the box"),
+            "tolerance_mm": round(tol * 1e3, 4),
+            "pads": _v3_pads,
+            "n_eligible": len(_v3_elig),
+            "eligible_pads": _v3_elig,
+            "pass": bool(len(_v3_elig) >= 2),
+        }
         # r54: the CONTACT EVIDENCE per pad.  The centre-to-face distance is
         # a geometric locator, not a contact measure: the pad is a 6 mm
         # cylinder, so the honest surface gap and the normal force have to
@@ -3575,14 +4056,14 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
                 _contact = True
             else:
                 _fn = 0.0
-                # no contact: the geometric surface gap of the cylinder
-                # (centre depth minus the radius, signed the same way)
-                # the pad is a cylinder (radius 6 mm) whose axis is the
-                # geom's local z: the surface offset along the face normal
-                # is the radius projected on that normal
-                _bid = int(model.geom_bodyid[_gi])
-                _ax = np.asarray(data.xmat[_bid], float).reshape(3, 3)[:, 2]
-                _proj = abs(float(_ax @ np.array([-side, 0.0, 0.0]))) * 0.006
+                # No contact: the geometric surface gap.  The pad is a BOX
+                # (12 x 12 x 3 mm), not a disc: the extent of a box along a
+                # direction n is its SUPPORT FUNCTION, sum_i h_i |axis_i . n|
+                # (verified against MuJoCo's own contact distance over 7
+                # tilts: tools/w6b/pad_gap_verify.py -- the disc formula this
+                # replaces was wrong in all 7).
+                _proj = _geom_support_along(model, data, _gi,
+                                            np.array([-side, 0.0, 0.0]))
                 _gap = float(side * (_px - face_plane)) - _proj
                 _contact = False
             _pad_contact[_pn] = {
@@ -3597,7 +4078,7 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
                 "eligible_contact_pad": bool(_contact and _in_plane),
             }
         return (best, buried, fwd_deg, per_pad, ctr.tolist(), pad_burial,
-                buried_v2, _band, _pad_contact)
+                buried_v2, _band, _pad_contact, _v3)
 
     out = {}
     for side, spec in specs.items():
@@ -3609,7 +4090,7 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
         data.qpos[spec.finger_qadr] = cmds[side]["finger"][-1]
         _mj.mj_forward(model, data)
         (dist, buried, fwd_deg, per_pad, ctr, pad_burial, buried_v2,
-         band_pen, pad_contact) = measure(spec, coll)
+         band_pen, pad_contact, v3_cmd) = measure(spec, coll)
         cmd_pad_contact = pad_contact
         # executed final state: contact-physics evidence
         data.qpos[:] = cmds[side]["exec_qpos"][-1]
@@ -3617,7 +4098,7 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
         data.qpos[_ba:_ba + 7] = cmds[side]["exec_obj"][-1]
         _mj.mj_forward(model, data)
         (dist_e, buried_e, fwd_deg_e, per_pad_e, ctr_e, pad_burial_e,
-         buried_v2_e, band_pen_e, pad_contact_e) = measure(spec, coll)
+         buried_v2_e, band_pen_e, pad_contact_e, v3_exec) = measure(spec, coll)
         # GPT round-3 upgrade: >= 2 pads per hand inside the rectangle
         n_in_rect = sum(1 for v in per_pad.values() if v <= tol * 1e3)
         out[side] = {
@@ -3667,6 +4148,8 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
                          "minus the 6 mm radius)"),
                 "pads": pad_contact,
             },
+            # r63: the surface-based criterion, in parallel with v1/v2
+            "gate1_v3_command_state": v3_cmd,
             "gate1_v2_command_state": {
                 "version": "v2 (parallel publication; the legacy criterion is "
                            "frozen and unchanged)",
@@ -3685,6 +4168,7 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
                                "R5 and the surface gap inside the tol"),
             },
             "executed_state_evidence": {
+                "gate1_v3_executed_state": v3_exec,
                 "note": ("post-contact-physics final state, identical metric: "
                          "the solver keeps pad SURFACES on the face so pad "
                          "centres ride ~pad-radius off the plane"),
@@ -5408,6 +5892,72 @@ def main() -> int:
         _r38_sides = list(VIDEOS)
     if _os.environ.get("W6B_R38_SEAT", "0") == "1":
         _r38_sides = ["right"]
+    # r63: RE-REGISTER THE TERMINAL PALM ORIENTATION.  The side cell's
+    # shipped terminal has all three finger axes at 90 deg to the end
+    # face (the pads present their EDGE and the distal links hit the box
+    # first -- the executed contact list is on the distal links); the
+    # known-good floating grasp has the index finger at 5.4 deg, i.e. the
+    # pad FLAT on the face.  This re-solves the arm for a palm pose whose
+    # fingers point into the face, which is the prerequisite for a
+    # stable pad grasp (an edge-on pad is held only by the finger's own
+    # force-limited servo, and collapses).
+    _r63_reorient = (_os.environ.get("W6B_R63_REORIENT", "0") == "1")
+    if _r63_reorient:
+        _vg63 = measure_verified_grasp()
+        for _side in VIDEOS:
+            try:
+                _w3, _f3, _rec3 = reorient_terminal_pads(
+                    model, data, specs[_side],
+                    np.asarray(cmds_global[_side]["wrist"], float),
+                    np.asarray(cmds_global[_side]["finger"], float),
+                    np.asarray(_vg63[_side]["R"], float),
+                    np.asarray(_vg63[_side]["pos"], float))
+                cmds_global[_side]["wrist"] = _w3
+                cmds_global[_side]["finger"] = _f3
+                seat_records[_side + "_reorient"] = _rec3
+                print(f"    [r63-reorient] {_side}: axes="
+                      f"{_rec3.get('finger_axis_deg')} "
+                      f"worst={_rec3.get('worst_axis_deg')} deg "
+                      f"roll={_rec3.get('roll_deg')} deg "
+                      f"standoff={_rec3.get('standoff_mm')} mm "
+                      f"margin={_rec3.get('joint_margin_rad')} rad")
+            except Exception as _exc:
+                seat_records[_side + "_reorient"] = {"error": repr(_exc)}
+                print(f"    [r63-reorient] {_side}: ERROR {repr(_exc)}")
+
+    # r63: EQUALIZE THE PADS FIRST.  The three pads are boxes at different
+    # tilts, so their surface gaps differ by 3.8 mm and no flat face can
+    # touch all three; each finger's own curl controls its own pad's gap
+    # (measured: tools/w6b/curl_gap_probe.py).  Equalising the curls FIRST
+    # and seating the wrist SECOND makes the set coplanar by construction.
+    _r63_equalize = (_os.environ.get("W6B_R63_EQUALIZE", "0") == "1")
+    _r63_target_sv = -float(_os.environ.get("W6B_R50_PRELOAD_MM", "0.2")) * 1e-3
+    if _r63_equalize:
+        for _side in VIDEOS:
+            try:
+                _f2, _eq = equalize_pad_curls(
+                    model, data, specs[_side],
+                    np.asarray(cmds_global[_side]["wrist"], float),
+                    np.asarray(cmds_global[_side]["finger"], float),
+                    _r63_target_sv)
+                # write the equalised curl back over the terminal window
+                # (the ramp keeps the approach untouched)
+                _fs = cmds_global[_side]["finger"]
+                _nterm = min(24, _fs.shape[0])
+                _ramp = 0.5 * (1.0 + np.cos(np.linspace(np.pi, 0.0, _nterm)))
+                _old = _fs[-1].copy()
+                _fs[-_nterm:] = (_old[None, :]
+                                 + (_f2[None, :] - _old[None, :])
+                                 * _ramp[:, None])
+                cmds_global[_side]["finger"] = _fs
+                seat_records[_side + "_equalize"] = _eq
+                print(f"    [r63-equalize] {_side}: scales="
+                      f"{ {k: v['curl_scale'] for k, v in _eq.get('per_finger', {}).items()} } "
+                      f"gaps={_eq.get('surface_gaps_mm')} "
+                      f"spread={_eq.get('spread_mm')} mm")
+            except Exception as _exc:
+                seat_records[_side + "_equalize"] = {"error": repr(_exc)}
+                print(f"    [r63-equalize] {_side}: ERROR {repr(_exc)}")
     for _side in VIDEOS:
         if _side in _r38_sides:
             try:
@@ -5427,6 +5977,24 @@ def main() -> int:
             except Exception as _exc:
                 seat_records[_side] = {"error": repr(_exc)}
                 print(f"    [r38-seat] {_side}: ERROR {repr(_exc)}")
+    # r63: publish the seat records in the report (they were computed and
+    # printed but never recorded, so the terminal's seating was not
+    # traceable from the committed evidence).
+    seat_pub = {}
+    for _side in (list(VIDEOS) + [v + "_equalize" for v in VIDEOS]
+                  + [v + "_reorient" for v in VIDEOS]):
+        _rec = seat_records.get(_side)
+        if not _rec:
+            continue
+        _rec = dict(_rec)
+        _rec.pop("wrist_last", None)
+        _rec.pop("finger_last", None)
+        _rec["seat_gap_formula"] = (
+            "the pad CONTACT SURFACE = the pad BOX's support function along "
+            "the face normal, sum_i h_i |axis_i . n| (verified against "
+            "MuJoCo's own contact distance: tools/w6b/pad_gap_verify.py -- "
+            "7 of 7 tilts; the disc formula it replaced was wrong in 7 of 7)")
+        seat_pub[_side] = _rec
     _dump = _os.environ.get("W6B_DUMP_TERMINAL", "")
     if _dump:
         import json as _json
@@ -5474,6 +6042,7 @@ def main() -> int:
     report["scene"]["nq_nv_nu"] = [int(model.nq), int(model.nv), int(model.nu)]
     report["replay"]["support_resting_penetration_m"] = settle_pen
     report["terminal_target_provenance"]["blend"] = blend_record
+    report["terminal_target_provenance"]["terminal_seat"] = seat_pub
     report["terminal_target_provenance"]["table_clearance_clamp"] = clamp_rec
     report["terminal_target_provenance"]["r8_execution_fixes"] = {
         "base_y_corridor_world_centring": {
@@ -5606,6 +6175,7 @@ def main() -> int:
     report["scene"]["nq_nv_nu"] = [int(model.nq), int(model.nv), int(model.nu)]
     report["replay"]["support_resting_penetration_m"] = settle_pen
     report["terminal_target_provenance"]["blend"] = blend_record
+    report["terminal_target_provenance"]["terminal_seat"] = seat_pub
     report["terminal_target_provenance"]["table_clearance_clamp"] = clamp_rec
     report["terminal_target_provenance"]["r8_execution_fixes"] = {
         "base_y_corridor_world_centring": {
