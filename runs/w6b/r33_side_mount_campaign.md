@@ -661,3 +661,120 @@ What it needs (not started, and NOT claimed):
      surface is the plate) -- v1/v2 stay published unchanged, per the
      reviewer's rule that criteria are versioned, never silently redefined;
   4. the mass scan and the lift re-run on the new grasp.
+
+## r63 — the ROOT CAUSE of the side cell's one-pad grasp (measured)
+
+Three defects were found in my own r60/r61 work, and the underlying
+physical cause of the failing grasp was finally identified.
+
+### r63a — the pad's "surface gap" formula was wrong (my bug)
+
+The r60 seat and the r61 diagnosis both computed a pad's distance to the
+end face as
+
+    r_eff = geom_size[0] * |geom_z_axis . n_face|
+
+i.e. as a 6 mm-radius DISC with its radius projected on the face
+normal.  The pad is not a disc: `ff_tip_collision` is geom type 6
+(**BOX**), 12 x 12 x 3 mm (`grounding/assets/allegro_floating_ur5e_side_r37.xml`
+line 316).  The correct extent of a box along a direction n is its
+**support function** `sum_i h_i |axis_i . n|`.
+
+Verified against MuJoCo's own contact solver (`tools/w6b/pad_gap_verify.py`,
+a pad driven into a face over 7 tilts): the support function reproduces
+MuJoCo's contact distance to 1e-5 m in **7 of 7** tilts; the disc formula
+was wrong in **7 of 7**.  The formula is fixed in the pipeline
+(`_geom_support_along`).
+
+### r63b — the end face is FINITE, so even the support formula is not the gap
+
+The support function measures the distance to an INFINITE plane.  The
+box's end face is 240 x 80 mm, and a fingertip can sit OFF that
+rectangle.  Measured (`tools/w6b/true_gap_probe.py`, MuJoCo's own
+`mj_geomDistance`): in the shipped command state the ring finger reads
+**+44.9 mm** true distance while the plane formula says **-0.05 mm** —
+it is 45 mm away, up at the box's top edge, and the plane formula
+reports it as touching.  The pipeline now uses `mj_geomDistance` (with
+its `fromto` closest-point output audited, per the
+`mujoco-geomdistance-trap` skill) for both the seat and the report.
+
+### r63c — the seat's coplanarity objective was degenerate
+
+Step 1 of the seat minimised the pad set's SPREAD, with no term keeping
+the set near the face.  A wrist rotation that swings the whole set away
+keeps it coplanar (spread ~ 0) while the contact is lost — measured: the
+left hand's set ended **30.8 mm** off the face with a 0.05 mm spread.
+The objective now carries a proximity penalty.
+
+### r63d — THE ROOT CAUSE: the side cell's fingers lie IN the face plane
+
+This is the physical cause of the one-pad grasp, and it was never a
+"grasp type" question.  Measured, the finger's distal axis against the
+end face's normal:
+
+| configuration | index | middle | ring |
+|---|---|---|---|
+| the known-good floating grasp (gate-3 seed, gate1 PASS) | **5.4 deg** | 34.2 deg | 45.8 deg |
+| the side cell (shipped terminal) | **90.0 deg** | **90.0 deg** | **90.0 deg** |
+
+In the known-good grasp the index finger points INTO the face, so its
+12 x 12 mm FLAT pad presses flat on the box.  In the side cell all three
+fingers stand at 90 deg: they lie IN the face plane, the pads present
+their 12 mm EDGE, and the 16 mm distal links reach the box before the
+pads do.  The executed contact list confirms it — the contacts are on
+`mf_distal`, `rf_distal`, `rf_medial_left`, NOT on the pads.
+
+That explains everything the r60/r61 ledger measured as symptoms:
+
+* an edge-on pad cannot hold, because the reaction is taken by the
+  finger's own force-limited servo (0.04-0.18 N.m) instead of by the
+  arm: the fingers collapse (measured up to 0.87 rad) and only the
+  deepest pad stays on the face;
+* the contact force is set by the servo clamp, not by the commanded
+  preload, which is why the preload sweep (0.03 -> 3.0 mm) changed
+  nothing;
+* the seat cannot fix it, because the wrist moves all three pads
+  together while the defect is their individual ORIENTATION.
+
+=> The fix is a **terminal palm-ORIENTATION re-registration** for the
+side cell: the same grasp, placed so the fingers point into the face.
+This is NOT the palm-plate grasp of r62 -- that note's premise (that the
+palm's plate is the grasp surface) is withdrawn: the measured grasp
+surface of this hand is the FINGERTIP PAD (the upstream menagerie
+geometry has the tip capsule 19 mm out along the finger axis, clear of
+the distal link), and the r62 note's own measurement of the palm slab
+put its faces 117-183 mm away from the face.
+
+### r63e — per-finger curl equalisation (measured, implemented)
+
+With the correct gap measure, each finger's curl controls ITS OWN pad's
+distance, monotonically over a useful range, and does NOT move the other
+two pads (`tools/w6b/curl_gap_probe.py`: scaling the middle finger
+leaves the index and ring gaps bit-identical).  A per-finger 1-D root
+find therefore equalises the three pads exactly: the shipped command
+state's spread of 3.8 mm becomes **0.0 mm** (all three pads at the same
+true distance), and the wrist then only has to set the set's position.
+
+Measured with `W6B_R63_EQUALIZE=1`:
+* the three pads' true gaps: ff -0.05, mf -0.05, rf -0.05 mm
+  (spread 0.00 mm) on both hands, versus the shipped 2.6 / 5.0 / 6.4 mm
+  embedding with a 3.8 mm spread;
+* the box's pre-grasp push drops from **55.5 mm** to **0.07 mm** (with the
+  v9 approach) — the commanded interpenetration that shoved the box is
+  gone.
+
+### What is still open (measured, not claimed)
+
+The executed state still holds no contact.  The cause is now localised:
+the arm tracks its commanded pose to 0.015 rad (measured), but the
+FINGERS do not — the executed finger joints differ from the commanded
+ones by up to **0.89 rad** (mfj3), which is the servo saturation that
+the r61 ledger measured.  With the pads now coplanar and tangent, the
+remaining work is to give the finger servos the geometry that lets them
+hold that pose: the terminal palm ORIENTATION (r63d), which is what the
+side cell has never had.
+
+The orientation search is running (tools/w6b/palm_pose_search.py): the
+arm IK is solved for a palm pose whose fingertips land on the face by
+construction, and the finger axes' angles to the face normal are
+measured for each candidate.
