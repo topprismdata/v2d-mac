@@ -2534,7 +2534,8 @@ def _native_curl_sweep(model, data, spec: SideSpec, arm_q: np.ndarray):
 
 
 def _finger_polish(model, data, spec: SideSpec, arm_q: np.ndarray,
-                   f_start: np.ndarray):
+                   f_start: np.ndarray,
+                   freeze_arm: bool = False):
     """r18: continuous coordinate-descent polish of the FULL terminal
     configuration (6 arm + 16 finger joints) starting from the measured
     native pair — pad-in-band is configuration-specific (the 2 mm/5 deg
@@ -2621,6 +2622,11 @@ def _finger_polish(model, data, spec: SideSpec, arm_q: np.ndarray,
         return sc, best, n_rect, buried_v2
 
     arm_x = np.clip(np.asarray(arm_q, float), lo_arm, hi_arm)
+    # r63: when the arm pose is the SEARCHED solution (measured in this
+    # scene, the pads on the end face), the polish may refine the curl
+    # only -- letting it move the arm walks away from the pose whose
+    # geometry was measured.
+    _arm_frozen = np.array(arm_x, float).copy()
     x = np.clip(np.asarray(f_start, float), lo16, hi16)
     sc, gap, n_rect, _ = score(arm_x, x)
     evals = 1
@@ -2628,7 +2634,7 @@ def _finger_polish(model, data, spec: SideSpec, arm_q: np.ndarray,
         improved = True
         while improved:
             improved = False
-            for j in range(6):
+            for j in range(6 if not freeze_arm else 0):
                 for sgn in (+1.0, -1.0):
                     cand = arm_x.copy()
                     cand[j] = np.clip(arm_x[j] + sgn * step,
@@ -2638,6 +2644,8 @@ def _finger_polish(model, data, spec: SideSpec, arm_q: np.ndarray,
                     if s2 < sc:
                         arm_x, sc, gap, n_rect = cand, s2, g2, r2
                         improved = True
+            if freeze_arm:
+                arm_x = _arm_frozen.copy()
             for j in range(16):
                 for sgn in (+1.0, -1.0):
                     cand = x.copy()
@@ -2807,18 +2815,40 @@ def _terminal_pair_freeze(model, data, spec: SideSpec, pair: dict):
                                     ), fwd_deg, evals, True
 
 
+# r79: the side cell's HOME pose, per side.  It is applied by
+# _reset_home AFTER the data reset -- it must NOT be written into
+# model.qpos0, because MuJoCo uses qpos0 as the arm joints' reference
+# configuration: writing it changes the FORWARD KINEMATICS (measured: the
+# same joint vector then placed the palm 540 mm from the terminal's
+# position).
+_HOME_Q: dict = {}
+
+
 def _reset_home(model, data):
     """r34: reset to the scene's first keyframe when one exists.
 
     The UR5e side-mount cells spawn with the arm joints at zero, which puts
     both hands inside the box; the settle then kicks the box 0.36 m away
     before the replay starts.  A keyframe gives the scene a valid home.
+
+    r79: the side cell's solved home (the palm on its own side, high, in
+    the grasp orientation) is applied on top -- the scene's zero pose has
+    the arms CROSSED (the right arm's wrist at x = -117 mm), so the
+    replay would otherwise start 540 mm from the commanded path's first
+    frame.
     """
     import mujoco as _mj
     if int(getattr(model, "nkey", 0)) > 0:
         _mj.mj_resetDataKeyframe(model, data, 0)
     else:
         _mj.mj_resetData(model, data)
+    for _sd, _q in _HOME_Q.items():
+        for _n in ("shoulder_pan", "shoulder_lift", "elbow",
+                   "wrist_1", "wrist_2", "wrist_3"):
+            _j = _mj.mj_name2id(model, _mj.mjtObj.mjOBJ_JOINT,
+                                f"ur5e_{_sd}_{_n}_joint")
+            if _j >= 0:
+                data.qpos[int(model.jnt_qposadr[_j])] = _q[_n]
     _mj.mj_forward(model, data)
 
 
@@ -3104,7 +3134,8 @@ def refine_terminal_seat(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
 
 def reorient_terminal_pads(model, data, spec: SideSpec,
                            wrist_cmd: np.ndarray, finger_cmd: np.ndarray,
-                           ref_R: np.ndarray, ref_pos: np.ndarray):
+                           ref_R: np.ndarray, ref_pos: np.ndarray,
+                           ref_q: np.ndarray | None = None):
     """r63: re-register the terminal palm ORIENTATION so the fingertip pads
     land FLAT on the end face.
 
@@ -3146,7 +3177,10 @@ def reorient_terminal_pads(model, data, spec: SideSpec,
     ahi = model.jnt_range[ajid][:, 1]
     tip_geoms = [g for g in spec.tip_geoms
                  if (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM,
-                                       int(g)) or "").startswith(
+                                       int(g)) or "").endswith(
+                     ("_tip_collision", "_tip_left_collision"))
+                 and (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM,
+                                        int(g)) or "").startswith(
                      ("ff_tip", "mf_tip", "rf_tip"))]
     dist_geoms = []
     for g in tip_geoms:
@@ -3216,8 +3250,15 @@ def reorient_terminal_pads(model, data, spec: SideSpec,
     best = None
     rng = np.random.default_rng(20260922)
     f_last = np.asarray(finger_cmd, float)[-1].copy()
-    _r63_dz = (-0.04, -0.03, -0.02, -0.01, 0.0, 0.01, 0.02)
-    _r63_standoff = (0.0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06)
+    # r63: the sweep's height range must cover the known-good pose's
+    # offset from the reference (the reference palm sits 791.6 mm up and
+    # the reachable flat-pad poses sit ~760 mm up -- a 30 mm difference,
+    # which a +-20 mm sweep missed: it then settled on a pose with the
+    # middle/ring fingers 31/47 deg off the normal instead of 18/24 deg).
+    _r63_dz = tuple(float(x) for x in _os.environ.get(
+        "W6B_R63_DZ", "-0.03,-0.02,-0.01,0,0.01,0.02,0.03"
+    ).split(","))
+    _r63_standoff = (-0.02, -0.01, 0.0, 0.01, 0.02, 0.03)
     _r63_roll_step = int(_os.environ.get("W6B_R63_ROLL_STEP", "10"))
     for standoff in _r63_standoff:
         for roll in range(0, 360, _r63_roll_step):
@@ -3225,11 +3266,15 @@ def reorient_terminal_pads(model, data, spec: SideSpec,
                 for dz in _r63_dz:
                     tp = (np.asarray(ref_pos, float)
                           + np.array([face_sign * standoff, lat, dz]))
+                    # the target pose's own orientation is the reference;
+                    # the roll sweeps a neighbourhood of it
                     ang = np.deg2rad(float(roll))
                     cr, sr = np.cos(ang), np.sin(ang)
                     Rt = (np.eye(3) + sr * K + (1 - cr) * (K @ K)) @ Rg
                     bq = None
                     for q_try in [np.asarray(wrist_cmd, float)[-1].copy(),
+                                  np.asarray(ref_q, float).copy()
+                                  if ref_q is not None else np.zeros(6),
                                   np.zeros(6)] + [
                         rng.uniform(alo, ahi) for _ in range(3)]:
                         qq, epp, errp, mgp = ik(tp, Rt, q_try)
@@ -3507,6 +3552,10 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
         "contact", "pen_seq", "ctrl_sat", "force_sat", "qpos", "qvel",
         "force", "qfrc_con", "qfrc_other", "tips", "palm", "ctrl")} for s in VIDEOS}
     hist["__yaw_stop__"] = []
+    # r73: the terminal contact probe -- WHICH geoms are in contact at the
+    # end of the replay.  The executed state diverges while the command
+    # state passes, so the arm must be blocked; this names the blocker.
+    _dbg_con = _os_r28.environ.get("W6B_DBG_CONTACT", "0") == "1"
     # r59: the terminal hand-geometry probe.  It reports the palm frame,
     # the tip positions and the lowest hand geom relative to the table at
     # the END of the replay, so the approach registration can be reasoned
@@ -3517,7 +3566,38 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
     obj_body, _, _, _ = obj_ids(model)
     obj_world, contact_cls, qpos_full, ctrl_full = [], [], [], []
 
+    # r63: the replay tracker -- prints the commanded vs the executed arm
+    # joints at the terminal window, so a divergence can be attributed to
+    # the ARM (tracking) or to the HAND (the pads' geometry).
+    _dbg_track = _os_r28.environ.get("W6B_DBG_TRACK", "0") == "1"
     for t in range(n_frames):
+        if _dbg_track and (t % 20 == 0 or t == n_frames - 1):
+            _msgs = []
+            for _sd2 in VIDEOS:
+                _aq2 = (arm_qadr_r if _sd2 == "right" else arm_qadr_l)
+                _cmd2 = np.asarray(cmds[_sd2]["wrist"][t], float)
+                _act2 = np.asarray(data.qpos[_aq2], float)
+                _msgs.append(
+                    f"{_sd2} t={t} |err|={np.max(np.abs(_cmd2-_act2)):.3f} rad"
+                    f" cmd={np.round(_cmd2,2).tolist()}"
+                    f" act={np.round(_act2,2).tolist()}")
+            _pen = []
+            for _c in range(data.ncon):
+                _cn = data.contact[_c]
+                if _cn.dist > -0.3:
+                    continue
+                _g1 = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM,
+                                       int(_cn.geom1)) or "?"
+                _g2 = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM,
+                                       int(_cn.geom2)) or "?"
+                _b1 = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY,
+                                        int(model.geom_bodyid[int(_cn.geom1)]))
+                _b2 = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY,
+                                        int(model.geom_bodyid[int(_cn.geom2)]))
+                _pen.append(f"{_b1}/{_g1}<->{_b2}/{_g2}:{_cn.dist*1e3:.1f}")
+            if _pen:
+                _msgs.append("PEN " + "; ".join(_pen[:4]))
+            print("    [dbg-track] " + " | ".join(_msgs))
         if r28_gcomp:
             # the gravity+coriolis cancel on the arm dofs (the
             # compensation the position servos lack)
@@ -3691,6 +3771,25 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
             h[k] = np.stack(v) if len(v) and isinstance(v[0], np.ndarray) else np.asarray(v)
     q = np.stack(qpos_full)
     joint_v = np.diff(q, axis=0) / dt_ctrl
+    if _dbg_con:
+        import mujoco as _mj
+        print(f"    [dbg-contact] the final frame: {data.ncon} contacts")
+        for _c in range(data.ncon):
+            _cn = data.contact[_c]
+            _g1 = _mj.mj_id2name(model, _mj.mjtObj.mjOBJ_GEOM, int(_cn.geom1))
+            _g2 = _mj.mj_id2name(model, _mj.mjtObj.mjOBJ_GEOM, int(_cn.geom2))
+            if _cn.dist < 1e-4:
+                print(f"       {_g1} <-> {_g2}  {_cn.dist*1e3:.2f} mm")
+        for _sd in VIDEOS:
+            _aq = (arm_qadr_r if _sd == "right" else arm_qadr_l)
+            _ad = (arm_dof_r if _sd == "right" else arm_dof_l)
+            _cmd = np.asarray(cmds[_sd]["wrist"][-1], float)
+            _act = np.asarray(data.qpos[_aq], float)
+            print(f"       {_sd}: the cmd {np.round(_cmd,3).tolist()}")
+            print(f"       {' '*len(_sd)}  the act {np.round(_act,3).tolist()}"
+                  f"  the error {np.round(_cmd-_act,3).tolist()}")
+            print(f"       {' '*len(_sd)}  the actuator force "
+                  f"{np.round(data.actuator_force[[_ad[0]+0]],3).tolist()}")
     if _dbg_geom:
         import mujoco as _mj
         _tbl = None
@@ -4089,6 +4188,12 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
         data.qpos[spec.wrist_qadr] = cmds[side]["wrist"][-1]
         data.qpos[spec.finger_qadr] = cmds[side]["finger"][-1]
         _mj.mj_forward(model, data)
+        if _os.environ.get("W6B_DBG_GATE", "0") == "1":
+            print(f"    [dbg-gate] {side}: the wrist_qadr "
+                  f"{np.asarray(spec.wrist_qadr).ravel().tolist()} "
+                  f"the cmd last {np.round(np.asarray(cmds[side]['wrist'][-1], float),3).tolist()} "
+                  f"the qpos {np.round(np.asarray(data.qpos)[np.asarray(spec.wrist_qadr).ravel().astype(int)],3).tolist()} "
+                  f"the palm {np.round(data.xpos[spec._palm_id],4).tolist()}")
         (dist, buried, fwd_deg, per_pad, ctr, pad_burial, buried_v2,
          band_pen, pad_contact, v3_cmd) = measure(spec, coll)
         cmd_pad_contact = pad_contact
@@ -5145,10 +5250,52 @@ def main() -> int:
     }
     r50_rec = {"curl_scale": float(_os.environ.get("W6B_R50_CURL", "1.0")),
                "preload_mm": float(_os.environ.get("W6B_R50_PRELOAD_MM", "0.2"))}
+    # r63: the SIDE CELL's own measured flat-pad palm pose.  The terminal
+    # IK normally aims at the FLOATING scene's verified grasp, which the
+    # side cell cannot reproduce (the hand's mount differs, so the same
+    # palm world rotation is a different wrist_3 angle -- and the search
+    # measured the side cell's own solution, with the pads ON the end
+    # face).  The search's pose is loaded here so the terminal IK can
+    # aim at it and the rate-aware blend can drive the arm there.
+    _r63_tgt = {}
+    if _os.environ.get("W6B_R63_TARGET", "0") == "1":
+        # r66: the reference is the REFINED search (the per-finger IK with
+        # the table-clearance constraint); palm_pose_reach.json is the
+        # superseded r63 artifact -- its numbers came from an IK whose
+        # rotation error vanishes at 180 deg (r65), so they are invalid.
+        _rp63 = Path(_os.environ.get(
+            "W6B_R63_REFERENCE",
+            str(REPO / "runs/w6b/palm_pose_refine.json")))
+        if _rp63.is_file():
+            _rd63 = json.loads(_rp63.read_text()).get("sides", {})
+            for _s63 in VIDEOS:
+                _e63 = _rd63.get(_s63)
+                if isinstance(_e63, dict) and "best" in _e63:
+                    _e63 = _e63["best"][0]      # the refined search's list
+                if (_e63 and "palm_R" in _e63 and "arm" in _e63):
+                    _r63_tgt[_s63] = {
+                        "pos": np.asarray(_e63["palm_pos"], float),
+                        "R": np.asarray(_e63["palm_R"], float),
+                        "arm": np.asarray(_e63["arm"], float),
+                        "fingers": _e63.get("fingers"),
+                    }
+    # r63: the terminal CURL comes from the search too -- the pose and the
+    # curls are ONE solution (the curl decides where each pad lands, and
+    # the search measured the pads' distances with those curls).
+    if _r63_tgt:
+        for _s63 in VIDEOS:
+            _ff = _r63_tgt[_s63].get("fingers")
+            if _ff:
+                _fv = []
+                for _f in ("ff", "mf", "rf", "th"):
+                    _fv += list(_ff.get(_f, [0.0] * 4))
+                cmds_global[_s63]["finger_target_override"] = (
+                    np.asarray(_fv, float))
     if verified_grasp is not None:
         vg = measure_verified_grasp()
         n_term = n_blend + n_hold
         r18_solve_rec = {}
+        _r63_path = {}
         native_done = False
         # r19/r20: the native pairs (arm + fingers FULL pairs — arm-only
         # seeds broke r13.7) and the cut-10b mirror transfer
@@ -5183,6 +5330,10 @@ def main() -> int:
             hi2 = model.jnt_range[jids2][:, 1]
             tgt_pos = np.asarray(vg[s2]["pos"], float)
             tgt_R = np.asarray(vg[s2]["R"], float)
+            # r63: aim at the SIDE CELL's measured flat-pad palm pose
+            if s2 in _r63_tgt:
+                tgt_pos = _r63_tgt[s2]["pos"].copy()
+                tgt_R = _r63_tgt[s2]["R"].copy()
             # r45: the verified grasp pose was measured against the 0.06-half
             # wide box; when the cell's box is turned (its long axis
             # left-right, the hands on the END faces) the palm has to move
@@ -5205,7 +5356,7 @@ def main() -> int:
                 _bv = [float(x) for x in _boff.split(",")]
                 if len(_bv) == 3:
                     tgt_pos = tgt_pos + np.array(_bv, float)
-            if R18_NATIVE_TARGET:
+            if R18_NATIVE_TARGET and s2 not in _r63_tgt:
                 # r18 cut 6: the floating verified-grasp pose extrapolated
                 # to the UR5e flange frame is unreachable (measured r17:
                 # |e_r| = 177/163 deg after 200 iterations).  Target the
@@ -5276,7 +5427,7 @@ def main() -> int:
                 # approach branch (and the additive pre-roll) cannot
                 # perturb the terminal state; the multi-restart pose
                 # solve is skipped entirely
-                if side_pair.get(s2) is not None:
+                if side_pair.get(s2) is not None and s2 not in _r63_tgt:
                     suffix16p = "" if s2 == "right" else "_left"
                     fjp = [mujoco.mj_name2id(
                         model, mujoco.mjtObj.mjOBJ_JOINT,
@@ -5296,6 +5447,7 @@ def main() -> int:
                 else:
                     best6 = None
                     n_conv6 = 0
+                    sols6 = []
                     for attempt in range(R18_RESTARTS + 1):
                         q = warm6.copy() if attempt == 0 else \
                             rng6.uniform(lo2, hi2)
@@ -5326,6 +5478,60 @@ def main() -> int:
                             jump6 = float(np.abs(sol6 - jump_ref6).max())
                             if best6 is None or jump6 < best6[0]:
                                 best6 = (jump6, sol6, e_p6, e_r6)
+                            sols6.append((jump6, sol6.copy()))
+                    # r73: PATH CLEARANCE.  The terminal pose itself can
+                    # be collision-free and still be unreachable: the
+                    # STRAIGHT-LINE joint interpolation from the approach
+                    # end can drive the arm's links through the table.
+                    # Measured: the right arm's wrist_1_link ended 1.81 mm
+                    # INSIDE the table and its forearm 1.63 mm inside its
+                    # own palm, every servo saturated (the actuator forces
+                    # [-150, 150, 63, -28, 28, -28] are all at their
+                    # limits) and the executed pad distance blew up to
+                    # 366 mm.  So the solution is chosen by the PATH's
+                    # clearance, not by the pose alone.
+                    if s2 in _r63_tgt and sols6:
+                        _tbl_top = None
+                        for _g in range(model.ngeom):
+                            if mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM,
+                                                 _g) == "table_slab":
+                                _tbl_top = float(model.geom_pos[_g][2]
+                                                 + model.geom_size[_g][2])
+                        def _path_clear(_qc):
+                            """the worst penetration along the straight-line
+                            blend from the approach end to _qc"""
+                            _worst = 0.0
+                            for _k in range(17):
+                                _q = q_app + (0.5 * (1.0 + np.cos(
+                                    np.linspace(np.pi, 0.0, 17)[_k]))) * (
+                                        _qc - q_app)
+                                _save_q = data.qpos.copy()
+                                data.qpos[qadr2] = _q
+                                mujoco.mj_forward(model, data)
+                                for _c in range(data.ncon):
+                                    _d = float(data.contact[_c].dist)
+                                    if _d < _worst:
+                                        _worst = _d
+                                data.qpos[:] = _save_q
+                            return _worst
+                        _scored = []
+                        for _j6, _qc in sols6:
+                            _scored.append((_path_clear(_qc), _j6, _qc))
+                        _scored.sort(key=lambda _t: (_t[0], _t[1]))
+                        _best_clear, _best_jump, _best_q = _scored[0]
+                        _r63_path[s2] = {
+                            "path_clearance_mm": round(_best_clear * 1e3, 3),
+                            "path_candidates": len(_scored),
+                            "path_worst_mm": [round(_t[0] * 1e3, 2)
+                                              for _t in _scored[:6]],
+                        }
+                        r18_solve_rec[s2]["path_note"] = (
+                            "the terminal is chosen by the straight-line "
+                            "blend's clearance (the worst contact distance "
+                            "along the path), because a collision-free "
+                            "terminal pose can still be unreachable")
+                        best6 = (_best_jump, _best_q,
+                                 np.zeros(3), np.zeros(3))
                 r18_solve_rec[s2] = {
                     "converged": bool(best6 is not None),
                     "n_converged_attempts": int(n_conv6),
@@ -5358,7 +5564,21 @@ def main() -> int:
                         ("ff", "mf", "rf", "th") for k in range(4)]
                     lo16_f = model.jnt_range[fj16][:, 0]
                     hi16_f = model.jnt_range[fj16][:, 1]
-                    if side_pair.get(s2) is not None:
+                    if s2 in _r63_tgt:
+                        # r63: the searched (arm, curls) PAIR is the
+                        # terminal; the polish may refine it but starts
+                        # from the measured solution
+                        _sf63 = _r63_tgt[s2].get("fingers") or {}
+                        # the command layout is ff, mf, rf, th (4 x 4);
+                        # the search solves the three grasp fingers, the
+                        # thumb keeps its stream value (0 = open)
+                        _fv63 = []
+                        for _f63 in ("ff", "mf", "rf", "th"):
+                            _fv63 += list(_sf63.get(_f63, [0.0] * 4))
+                        f_start = np.clip(np.asarray(_fv63, float),
+                                          lo16_f, hi16_f)
+                        arm_start = _r63_tgt[s2]["arm"].copy()
+                    elif side_pair.get(s2) is not None:
                         f_start = np.clip(
                             np.asarray(side_pair[s2]["fingers"], float),
                             lo16_f, hi16_f)
@@ -5375,9 +5595,26 @@ def main() -> int:
                     else:
                         f_start = np.zeros(16)
                         arm_start = q
-                    (arm_pol, pol_curl, pol_score, pol_gap, pol_rect,
-                     pol_evals) = _finger_polish(
-                        model, data, spec2, arm_start, f_start)
+                    if s2 in _r63_tgt:
+                        # r66: the SEARCHED pair is authoritative.  The
+                        # polish's metric is the pad CENTRE's distance to
+                        # the face RECTANGLE, which does not capture "the
+                        # pad's flat face lies on the box's end face"; run
+                        # on the searched pair it MOVED the index and
+                        # middle pads 19 mm off (measured r66) while its
+                        # own score improved.  The search measured the
+                        # pads' SURFACE distance and their closest
+                        # point's face, so its pair is the reference.
+                        arm_pol = arm_start
+                        pol_curl = f_start
+                        pol_score = 0.0
+                        pol_gap = 0.0
+                        pol_rect = 0
+                        pol_evals = 0
+                    else:
+                        (arm_pol, pol_curl, pol_score, pol_gap, pol_rect,
+                         pol_evals) = _finger_polish(
+                            model, data, spec2, arm_start, f_start)
                     r18_solve_rec[s2]["pair"] = (
                         None if side_pair.get(s2) is None else {
                             "first_mm": side_pair[s2]["first_mm"],
@@ -5396,6 +5633,18 @@ def main() -> int:
                     if side_pair.get(s2) is not None or \
                             (s2 == "left" and mirror_left is not None):
                         q = arm_pol
+                        cmds_global[s2]["finger_target_override"] = pol_curl
+                    elif s2 in _r63_tgt:
+                        # r73: the terminal arm is the PATH-CLEARANCE
+                        # selection (r73 above), which is the searched arm
+                        # among the IK's converged solutions whenever that
+                        # one is reachable.  The pads follow the PALM POSE
+                        # (the IK's residual is 0.0 mm), so the branch
+                        # choice does not move them off the face.
+                        if best6 is not None:
+                            q = best6[1]
+                        else:
+                            q = arm_start
                         cmds_global[s2]["finger_target_override"] = pol_curl
 
                     # r18: adaptive terminal window — the blend length
@@ -5417,15 +5666,451 @@ def main() -> int:
                     ramp6 = 0.5 * (1.0 - np.cos(
                         np.linspace(0.0, np.pi, n_blend6)))
                     np.save('/tmp/r26_pin_q.npy', q)
-                    for k in range(n_blend6):
-                        idx = n_ctrl + k
-                        if idx < cmds_global[s2]["wrist"].shape[0]:
-                            cmds_global[s2]["wrist"][idx] = \
-                                q_app + ramp6[k] * (q - q_app)
+                    # r74: a CARTESIAN terminal blend.  The joint-space
+                    # straight line is not a safe path: the measured path
+                    # swung the hand out to x = 594 mm and DOWN through
+                    # the table (the palm reached z = 589 mm, i.e. 111 mm
+                    # below the table's top, with the finger links 59 mm
+                    # inside it).  The approach end's palm is only ~110 mm
+                    # from the terminal's, so the blend is tracked in
+                    # CARTESIAN space: each frame's palm pose is
+                    # interpolated (position lerp + rotation slerp) and the
+                    # arm is solved for it, so the hand stays up and
+                    # beside the box.
+                    _cart = (s2 in _r63_tgt
+                             and _os.environ.get("W6B_R74_CARTESIAN", "1")
+                             == "1")
+                    if _cart:
+                        from scipy.spatial.transform import Rotation as _Rt74
+                        from scipy.spatial.transform import Slerp as _Sl74
+                        _saver = data.qpos.copy()
+                        data.qpos[qadr2] = q_app
+                        mujoco.mj_kinematics(model, data)
+                        mujoco.mj_comPos(model, data)
+                        _p_app = np.array(data.xpos[pb2]).copy()
+                        _Ra = np.array(data.xmat[pb2]).reshape(3, 3).copy()
+                        data.qpos[:] = _saver
+                        # r74: the rotation is interpolated directly (a
+                        # quaternion slerp between the approach end's
+                        # rotation and the terminal's).  scipy's Slerp
+                        # needs one rotation per timestamp, so the two
+                        # endpoint rotations are slerped here.
+                        _qa74 = _Rt74.from_matrix(_Ra).as_quat()
+                        _qb74 = _Rt74.from_matrix(tgt_R).as_quat()
+                        _q_prev = q_app.copy()
+                        _worst74 = 0.0
+                        for k in range(n_blend6):
+                            _t = float(ramp6[k])
+                            _tp = _p_app + _t * (tgt_pos - _p_app)
+                            _tR = _Rt74.from_quat(
+                                _qa74 * (1.0 - _t)
+                                + _qb74 * _t).as_matrix()
+                            _qk = _q_prev.copy()
+                            for _it in range(120):
+                                data.qpos[qadr2] = _qk
+                                mujoco.mj_kinematics(model, data)
+                                mujoco.mj_comPos(model, data)
+                                _ep = _tp - np.array(data.xpos[pb2])
+                                _Rq74 = np.zeros(9)
+                                mujoco.mju_quat2Mat(_Rq74, data.xquat[pb2])
+                                _er = _Rt74.from_matrix(
+                                    _tR @ np.array(_Rq74).reshape(3, 3).T
+                                ).as_rotvec()
+                                if (np.linalg.norm(_ep) < 5e-4
+                                        and np.linalg.norm(_er) < 3e-3):
+                                    break
+                                _jp = np.zeros((3, model.nv))
+                                _jr = np.zeros((3, model.nv))
+                                mujoco.mj_jacBody(model, data, _jp, _jr, pb2)
+                                _J = np.vstack([_jp[:, vjad2], _jr[:, vjad2]])
+                                try:
+                                    _dq = np.linalg.solve(
+                                        _J @ _J.T + 1e-4 * np.eye(6),
+                                        np.concatenate([_ep, _er]))
+                                except np.linalg.LinAlgError:
+                                    break
+                                _qk = np.clip(_qk + _J.T @ _dq, lo2, hi2)
+                            _q_prev = _qk
+                            data.qpos[qadr2] = _qk
+                            mujoco.mj_forward(model, data)
+                            for _c in range(data.ncon):
+                                _dd = float(data.contact[_c].dist)
+                                if _dd < _worst74:
+                                    _worst74 = _dd
+                            idx = n_ctrl + k
+                            if idx < cmds_global[s2]["wrist"].shape[0]:
+                                cmds_global[s2]["wrist"][idx] = _qk
+                        data.qpos[:] = _saver
+                        _r63_path[s2] = {
+                            "path_clearance_mm": round(_worst74 * 1e3, 3),
+                            "path_candidates": 1,
+                            "path_note": "the CARTESIAN blend (r74): the palm "
+                                         "pose is interpolated and the arm "
+                                         "solved for each frame, so the hand "
+                                         "stays up and beside the box",
+                        }
+                    else:
+                        for k in range(n_blend6):
+                            idx = n_ctrl + k
+                            if idx < cmds_global[s2]["wrist"].shape[0]:
+                                cmds_global[s2]["wrist"][idx] = \
+                                    q_app + ramp6[k] * (q - q_app)
                     for k in range(n_hold):
                         idx = n_ctrl + n_blend6 + k
                         if idx < cmds_global[s2]["wrist"].shape[0]:
                             cmds_global[s2]["wrist"][idx] = q
+                    if _os.environ.get("W6B_DBG_Q", "0") == "1":
+                        print(f"    [dbg-q] {s2}: q={np.round(q,4).tolist()} "
+                              f"arm_start={np.round(arm_start,4).tolist()} "
+                              f"arm_pol={np.round(arm_pol,4).tolist()} "
+                              f"q_app={np.round(q_app,4).tolist()} "
+                              f"n_blend6={n_blend6}")
+                    # r75: the SIDE CELL's own approach.  The terminal
+                    # blend starts from the video-driven approach end, but
+                    # that end's hand ORIENTATION differs from the grasp
+                    # orientation by 102 deg (right) / 26 deg (left), and
+                    # rotating the hand into the grasp while it descends
+                    # sweeps it through the table (measured: the palm
+                    # reached z = 589 mm, 111 mm below the table's top).
+                    # So the side cell's approach is CARTESIAN and
+                    # two-phase: (1) from the home pose to a STAGING pose
+                    # (the terminal's position, raised by W6B_R75_STAGE_MM,
+                    # with the terminal's rotation) -- the big rotation
+                    # happens UP in the air; (2) from the staging pose down
+                    # to the terminal, the rotation already done.
+                    _side_approach = (
+                        s2 in _r63_tgt
+                        and _os.environ.get("W6B_R75_SIDE_APPROACH", "0")
+                        == "1")
+                    if _side_approach:
+                        from scipy.spatial.transform import Rotation as _R75
+                        _stage_mm = float(_os.environ.get(
+                            "W6B_R75_STAGE_MM", "100"))
+                        # the phase lengths keep the stream's TOTAL length
+                        # (n_ctrl + n_blend6 + n_hold), so the downstream
+                        # window bookkeeping stays valid
+                        _n75a = int(_os.environ.get("W6B_R75_PHASE_A",
+                                                    str(n_ctrl)))
+                        _n75b = int(_os.environ.get("W6B_R75_PHASE_B",
+                                                    str(n_blend6)))
+                        _save75 = data.qpos.copy()
+                        # r76: the side cell's HOME pose is SOLVED, not
+                        # the scene's zero pose: at the zero pose the arms
+                        # are CROSSED (the right arm's wrist sits at
+                        # x = -117 mm, the left's at +119 mm) and the
+                        # right's path then runs through the left hand
+                        # (measured: the right's path hit the left's
+                        # ff_medial).  The home is solved so the palm is
+                        # on its OWN side, high, ALREADY in the grasp
+                        # orientation -- so the approach is a pure
+                        # translation (no rotation sweep to sweep the
+                        # hand through the table).
+                        # r84: the staging is OUTBOARD along the face
+                        # NORMAL, not above.  The fingers point into the
+                        # face, so a VERTICAL descent sweeps them along
+                        # the face and into the box's top edge -- measured:
+                        # the box was pushed 27.9 mm.  A staging offset
+                        # along the normal makes the final phase a
+                        # straight INWARD approach (the horizontal entry
+                        # the reference video shows).
+                        _stage_mode = _os.environ.get(
+                            "W6B_R84_STAGE_MODE", "normal")   # r84: the
+                        # staging is OUTBOARD along the face normal
+                        if _stage_mode == "normal":
+                            _p_stage = tgt_pos + np.array(
+                                [spec2.face_sign * _stage_mm * 1e-3,
+                                 0.0, 0.0])
+                        else:
+                            _p_stage = tgt_pos + np.array([0.0, 0.0,
+                                                          _stage_mm * 1e-3])
+                        # the rotation is FIXED at the grasp orientation
+                        # for the whole approach (the home is solved in it)
+
+                        def _ik75_home(_tp, _tR, _q0):
+                            from scipy.spatial.transform import Rotation as _R76
+                            _qq = _q0.copy()
+                            for _it in range(200):
+                                data.qpos[qadr2] = _qq
+                                mujoco.mj_kinematics(model, data)
+                                mujoco.mj_comPos(model, data)
+                                _ep = _tp - np.array(data.xpos[pb2])
+                                _Rq = np.zeros(9)
+                                mujoco.mju_quat2Mat(_Rq, data.xquat[pb2])
+                                _er = _R76.from_matrix(
+                                    _tR @ np.array(_Rq).reshape(3, 3).T
+                                ).as_rotvec()
+                                if (np.linalg.norm(_ep) < 1e-3
+                                        and np.linalg.norm(_er) < 5e-3):
+                                    return _qq
+                                _jp = np.zeros((3, model.nv))
+                                _jr = np.zeros((3, model.nv))
+                                mujoco.mj_jacBody(model, data, _jp, _jr, pb2)
+                                _J = np.vstack([_jp[:, vjad2], _jr[:, vjad2]])
+                                try:
+                                    _dq = np.linalg.solve(
+                                        _J @ _J.T + 1e-4 * np.eye(6),
+                                        np.concatenate([_ep, _er]))
+                                except np.linalg.LinAlgError:
+                                    return None
+                                _qq = np.clip(_qq + _J.T @ _dq, lo2, hi2)
+                            return None
+
+                        def _ik75(_tp, _tR, _q0, _damp=1e-4, _q_ref=None,
+                                  _lam=0.0):
+                            _qq = _q0.copy()
+                            for _it in range(150):
+                                data.qpos[qadr2] = _qq
+                                mujoco.mj_kinematics(model, data)
+                                mujoco.mj_comPos(model, data)
+                                _ep = _tp - np.array(data.xpos[pb2])
+                                _Rq = np.zeros(9)
+                                mujoco.mju_quat2Mat(_Rq, data.xquat[pb2])
+                                _er = _R75.from_matrix(
+                                    _tR @ np.array(_Rq).reshape(3, 3).T
+                                ).as_rotvec()
+                                if (np.linalg.norm(_ep) < 5e-4
+                                        and np.linalg.norm(_er) < 3e-3):
+                                    break
+                                _jp = np.zeros((3, model.nv))
+                                _jr = np.zeros((3, model.nv))
+                                mujoco.mj_jacBody(model, data, _jp, _jr, pb2)
+                                _J = np.vstack([_jp[:, vjad2], _jr[:, vjad2]])
+                                try:
+                                    # r81: the descent's IK reaches the
+                                    # palm target AND stays near the
+                                    # TERMINAL's arm configuration (the
+                                    # augmented objective).  Without it
+                                    # the descent swings the forearm down:
+                                    # the wrist_2 link ended 13.4 mm
+                                    # INSIDE the table, the reaction
+                                    # saturated the wrist_1 actuator
+                                    # (+-28 N.m) and the executed pads
+                                    # sat 17-49 mm off the face.
+                                    if _q_ref is not None and _lam > 0.0:
+                                        _A = np.vstack([_J, _lam * np.eye(6)])
+                                        _b = np.concatenate([
+                                            np.concatenate([_ep, _er]),
+                                            _lam * (_qq - _q_ref)])
+                                        _dq = np.linalg.solve(
+                                            _A.T @ _A + _damp * np.eye(6),
+                                            _A.T @ _b)
+                                    else:
+                                        _dq = np.linalg.solve(
+                                            _J @ _J.T + _damp * np.eye(6),
+                                            np.concatenate([_ep, _er]))
+                                except np.linalg.LinAlgError:
+                                    break
+                                _qq = np.clip(_qq + _J.T @ _dq, lo2, hi2)
+                            return _qq
+
+                        # r76: the side cell's HOME pose is SOLVED, not
+                        # the scene's zero pose: at the zero pose the arms
+                        # are CROSSED (the right arm's wrist sits at
+                        # x = -117 mm, the left's at +119 mm) and the
+                        # right's path then runs through the left hand
+                        # (measured: the right's path hit the left's
+                        # ff_medial).  The home is solved so the palm is
+                        # on its OWN side, high, ALREADY in the grasp
+                        # orientation -- so the approach is a pure
+                        # translation (no rotation sweep to sweep the
+                        # hand through the table).
+                        _p_home = np.array([spec2.face_sign * 0.45, 0.0,
+                                            1.15])
+                        # r85: the home's orientation is the hand pointing
+                        # DOWN, not the grasp orientation.  With the grasp
+                        # orientation the arm has to be folded (the wrist_1
+                        # against the upper arm -- measured: a 79 mm
+                        # SELF-COLLISION at the home), and the replay would
+                        # start interpenetrating.  The 180 deg rotation
+                        # sweep then happens during phase 1, which is HIGH
+                        # (z ~ 1.15 m) and out of the table's way.
+                        _R_home = tgt_R
+                        _home_q = None
+                        for _hs in range(24):
+                            _q_try = (np.asarray(model.qpos0)[qadr2].copy()
+                                      if _hs == 0
+                                      else rng6.uniform(lo2, hi2))
+                            _qh = _ik75_home(_p_home, _R_home, _q_try)
+                            if _qh is not None:
+                                _home_q = _qh
+                                break
+                        # r78: the replay must START at the path's first
+                        # pose.  The replay resets to the scene's qpos0
+                        # (the CROSSED zero pose), so without this the
+                        # first commanded frame is a jump the servos
+                        # cannot make (measured: the executed state
+                        # diverged to 604-1346 mm).
+                        if _home_q is not None:
+                            _HOME_Q[s2] = {
+                                n: float(_home_q[i]) for i, n in enumerate(
+                                    ("shoulder_pan", "shoulder_lift",
+                                     "elbow", "wrist_1", "wrist_2",
+                                     "wrist_3"))}
+                        data.qpos[:] = _save75
+                        if _os.environ.get("W6B_DBG_PATH", "0") == "1":
+                            print(f"    [dbg-path] {s2}: the home solve "
+                                  f"{'OK' if _home_q is not None else 'FAILED'}"
+                                  f"  the staging {np.round(_p_stage*1e3,1)}"
+                                  f"  the terminal {np.round(tgt_pos*1e3,1)}")
+                        _path75 = []
+                        _q_prev = (_home_q if _home_q is not None
+                                   else np.asarray(model.qpos0)[qadr2].copy())
+                        _prev80 = _q_prev.copy()
+                        _ramp_a = 0.5 * (1.0 - np.cos(np.linspace(
+                            0.0, np.pi, _n75a)))
+                        for _k in range(_n75a):
+                            _t = float(_ramp_a[_k])
+                            _tp = _p_home + _t * (_p_stage - _p_home)
+                            _tR = tgt_R
+                            _q_prev = _ik75(_tp, _tR, _q_prev)
+                            _path75.append(_q_prev.copy())
+                            # r80: keep the solution CONTINUOUS.  The
+                            # descent's IK flips branch by 2*pi (the
+                            # wrist_1 goes from 4.98 to -1.25 between two
+                            # adjacent frames -- the same physical pose,
+                            # a different revolution), and the servos
+                            # cannot follow a 6.2 rad step: the executed
+                            # state blew up (measured: the arm ended
+                            # 5.4-8.3 rad from the command).  Each joint
+                            # is shifted by +-2*pi to the branch nearest
+                            # the previous frame, when the joint's range
+                            # allows it.
+                            for _j80 in range(6):
+                                _d80 = _q_prev[_j80] - _prev80[_j80]
+                                while abs(_d80) > np.pi:
+                                    _alt = _q_prev[_j80] - np.sign(_d80) * 2 * np.pi
+                                    if lo2[_j80] - 1e-9 <= _alt <= hi2[_j80] + 1e-9:
+                                        _q_prev[_j80] = _alt
+                                        _d80 = _q_prev[_j80] - _prev80[_j80]
+                                    else:
+                                        break
+                            _prev80 = _q_prev.copy()
+                        _ramp_b = 0.5 * (1.0 - np.cos(np.linspace(
+                            0.0, np.pi, _n75b)))
+                        _damp75 = float(_os.environ.get(
+                            "W6B_R81_DESCENT_DAMP", "1e-4"))
+                        _lam75 = float(_os.environ.get(
+                            "W6B_R82_DESCENT_LAM_" + s2.upper(),
+                            _os.environ.get("W6B_R82_DESCENT_LAM", "0.8")))
+                        _q_term_ref = np.asarray(q, float).copy()
+                        for _k in range(_n75b):
+                            _t = float(_ramp_b[_k])
+                            _tp = _p_stage + _t * (tgt_pos - _p_stage)
+                            _q_prev = _ik75(_tp, tgt_R, _q_prev,
+                                            _damp75, _q_ref=_q_term_ref,
+                                            _lam=_lam75)
+                            _path75.append(_q_prev.copy())
+                        _worst75 = 0.0
+                        _worst75_who = ""
+                        _dbg75 = _os.environ.get("W6B_DBG_PATH", "0") == "1"
+                        for _qk in _path75:
+                            data.qpos[qadr2] = _qk
+                            # r77: the check uses the TERMINAL's finger
+                            # posture; the data.qpos still held whatever
+                            # the last forward pass left, and that stale
+                            # posture put the ring fingertip 10-12 mm into
+                            # the table (a false alarm -- the terminal's
+                            # own curl is clear, measured).
+                            try:
+                                data.qpos[spec2.finger_qadr] = pol_curl
+                            except Exception:
+                                pass
+                            mujoco.mj_forward(model, data)
+                            for _c in range(data.ncon):
+                                _dd = float(data.contact[_c].dist)
+                                _b1 = mujoco.mj_id2name(
+                                    model, mujoco.mjtObj.mjOBJ_BODY,
+                                    int(model.geom_bodyid[int(
+                                        data.contact[_c].geom1)]))
+                                _b2 = mujoco.mj_id2name(
+                                    model, mujoco.mjtObj.mjOBJ_BODY,
+                                    int(model.geom_bodyid[int(
+                                        data.contact[_c].geom2)]))
+                                # r77: the per-side check ignores the
+                                # OTHER arm: it is still at the scene's
+                                # crossed zero pose when this side's path
+                                # is checked, and its links sweep the whole
+                                # cell.  The mutual interference is
+                                # checked after both paths exist.
+                                _mk = ("_left" if s2 == "right" else "")
+                                _other_ok = ("ur5e_l" if s2 == "right"
+                                             else "ur5e_r")
+                                _hits_other = (
+                                    (_mk and ((_b1 or "").endswith(_mk)
+                                              or (_b2 or "").endswith(_mk)))
+                                    or (_other_ok in (_b1 or "")
+                                        or _other_ok in (_b2 or "")))
+                                if _hits_other:
+                                    continue
+                                if _dd < _worst75:
+                                    _worst75 = _dd
+                                    _worst75_who = f"{_b1}<->{_b2}"
+                            if _dbg75:
+                                _pb = np.array(data.xpos[pb2]) * 1e3
+                                print(f"       [path] the step's palm "
+                                      f"{np.round(_pb,1).tolist()} the "
+                                      f"worst {_worst75*1e3:+.2f} mm "
+                                      f"{_worst75_who}")
+                        data.qpos[:] = _save75
+                        _n_new = len(_path75) + n_hold
+                        _new_wrist = np.zeros((_n_new, 6))
+                        _new_wrist[:len(_path75)] = np.array(_path75)
+                        # r80: the HOLD must be on the path's branch too.
+                        # The terminal's arm vector (the IK's solution)
+                        # can be 2*pi away from the path's last frame
+                        # (measured: the shoulder_pan jumped from 3.51 to
+                        # -2.77 between two frames), and the servos
+                        # cannot follow that.
+                        _q_hold = np.asarray(q, float).copy()
+                        if _path75:
+                            _last = _path75[-1]
+                            for _j80 in range(6):
+                                while abs(_q_hold[_j80] - _last[_j80]) > np.pi:
+                                    _alt = _q_hold[_j80] + (
+                                        2 * np.pi if _last[_j80]
+                                        > _q_hold[_j80] else -2 * np.pi)
+                                    if lo2[_j80] - 1e-9 <= _alt <= hi2[_j80] + 1e-9:
+                                        _q_hold[_j80] = _alt
+                                    else:
+                                        break
+                        _new_wrist[len(_path75):] = _q_hold
+                        cmds_global[s2]["wrist"] = _new_wrist
+                        # the finger stream: the approach's own curl, then
+                        # the searched terminal curl
+                        _fs75 = np.asarray(cmds_global[s2]["finger"], float)
+                        _n_f75 = len(_path75)
+                        if _fs75.shape[0] < _n_new:
+                            _fs75 = np.concatenate(
+                                [_fs75,
+                                 np.tile(_fs75[-1:], (_n_new - _fs75.shape[0], 1))],
+                                axis=0)
+                        _old75 = _fs75[_n_f75 - 1].copy()
+                        _ramp_f75 = 0.5 * (1.0 - np.cos(np.linspace(
+                            0.0, np.pi, n_hold)))
+                        for _k in range(n_hold):
+                            if _n_f75 + _k < _fs75.shape[0]:
+                                _fs75[_n_f75 + _k] = (
+                                    _old75 + _ramp_f75[_k] * (pol_curl - _old75))
+                        cmds_global[s2]["finger"] = _fs75[:_n_new]
+                        _r63_path[s2] = {
+                            "path_clearance_mm": round(_worst75 * 1e3, 3),
+                            "path_candidates": 1,
+                            "path_worst_who": _worst75_who,
+                            "path_note": "the side cell's CARTESIAN "
+                                         "two-phase approach (r75): home -> "
+                                         "staging (the terminal's position "
+                                         "raised, with the terminal's "
+                                         "rotation) -> the terminal",
+                        }
+                        r18_solve_rec[s2]["side_approach"] = True
+                        if _os.environ.get("W6B_DBG_PATH", "0") == "1":
+                            print(f"    [dbg-path] {s2}: the new wrist "
+                                  f"stream {cmds_global[s2]['wrist'].shape} "
+                                  f"the path {len(_path75)} the first "
+                                  f"{np.round(cmds_global[s2]['wrist'][0],3).tolist()}"
+                                  f" the last "
+                                  f"{np.round(cmds_global[s2]['wrist'][-1],3).tolist()}"
+                                  f" the hold {np.round(q,3).tolist()}")
                     r18_solve_rec[s2]["blend_frames"] = int(n_blend6)
                     r18_solve_rec[s2]["rate_ceiling_rad_s"] = R18_RATE_CEILING
                     r18_solve_rec[s2]["pad_note"] = (
@@ -5452,6 +6137,11 @@ def main() -> int:
                         float), lo2, hi2))
                 except NameError:
                     pass
+                # r63: the searched arm IS a solution for the searched
+                # target pose, so seed the multi-restart with it
+                if s2 in _r63_tgt:
+                    _starts33.insert(0, np.clip(
+                        _r63_tgt[s2]["arm"], lo2, hi2))
                 _starts33 += [_rng33.uniform(lo2, hi2) for _ in range(48)]
                 _best33 = None
                 _nconv33 = 0
@@ -5513,6 +6203,11 @@ def main() -> int:
                       f"|e_r|={np.linalg.norm(e_r):.4f}")
             else:
                 print(f"    r18 native-target solve {s2}: "
+                      f"the path clearance "
+                      f"{_r63_path.get(s2, {}).get('path_clearance_mm')} mm "
+                      f"({_r63_path.get(s2, {}).get('path_candidates')} cands, "
+                      f"the worst {_r63_path.get(s2, {}).get('path_worst_mm')}"
+                      f" [{_r63_path.get(s2, {}).get('path_worst_who')}]), "
                       f"converged n={r18_solve_rec[s2]['n_converged_attempts']}"
                       f"/{r18_solve_rec[s2]['attempts']}, "
                       f"|e_p|={r18_solve_rec[s2]['final_e_p_mm']} mm, "
@@ -5601,7 +6296,7 @@ def main() -> int:
                   f"{np.rad2deg(best_off).round(1).tolist()} deg, "
                   f"pad score {base_score*1000:.2f} -> "
                   f"{best_s*1000:.2f} mm (raw)")
-        if R18_NATIVE_TARGET:
+        if R18_NATIVE_TARGET or _r63_tgt:
             # apply finger-target overrides (the curl sweep's solution
             # becomes the side's terminal finger target).  The write spans
             # the FULL remaining stream — the adaptive window may have
@@ -5904,23 +6599,102 @@ def main() -> int:
     _r63_reorient = (_os.environ.get("W6B_R63_REORIENT", "0") == "1")
     if _r63_reorient:
         _vg63 = measure_verified_grasp()
+        # r63: the search's own reachable pose, when it is committed, is a
+        # BETTER reference than the floating seed's palm rotation: the
+        # search measured the finger axes for each candidate in the SIDE
+        # cell's own geometry, and the best reachable one has all three
+        # axes at 17-24 deg (vs the pipeline's own sweep's 6.7-47.5 deg,
+        # whose spread comes from the ring finger).
+        _r63_ref = {}
+        _r63_fing = {}
+        _rp = Path(_os.environ.get(
+            "W6B_R63_REFERENCE",
+            str(REPO / "runs/w6b/palm_pose_refine.json")))
+        if _rp.is_file():
+            _rd = json.loads(_rp.read_text()).get("sides", {})
+            for _s2 in VIDEOS:
+                if _s2 in _rd and isinstance(_rd[_s2], dict) \
+                        and "best" in _rd[_s2]:
+                    _rd[_s2] = _rd[_s2]["best"][0]
+                if _s2 in _rd and "palm_R" in _rd[_s2]:
+                    _r63_ref[_s2] = (np.asarray(_rd[_s2]["palm_R"], float),
+                                     np.asarray(_rd[_s2]["palm_pos"], float),
+                                     np.asarray(_rd[_s2]["arm"], float)
+                                     if "arm" in _rd[_s2] else None)
+                    if "fingers" in _rd[_s2]:
+                        _r63_fing[_s2] = _rd[_s2]["fingers"]
         for _side in VIDEOS:
             try:
-                _w3, _f3, _rec3 = reorient_terminal_pads(
-                    model, data, specs[_side],
-                    np.asarray(cmds_global[_side]["wrist"], float),
-                    np.asarray(cmds_global[_side]["finger"], float),
-                    np.asarray(_vg63[_side]["R"], float),
-                    np.asarray(_vg63[_side]["pos"], float))
+                if _side in _r63_ref:
+                    _refR, _refP, _refQ = _r63_ref[_side]
+                else:
+                    _refR = np.asarray(_vg63[_side]["R"], float)
+                    _refP = np.asarray(_vg63[_side]["pos"], float)
+                    _refQ = None
+                # r63: the search's pose is a MEASURED solution (its pads
+                # are on the end face, its finger axes 10-20 deg from the
+                # normal, its IK residual < 0.2 mm, its joint margin
+                # > 0.3 rad).  Applying it DIRECTLY is better than
+                # re-searching around it: the search already used the
+                # reach condition, and the pipeline's own sweep (which
+                # scores the AXES only) would pick a pose whose pads the
+                # curl cannot reach -- measured: the re-search left the
+                # right hand's pads 13.7 and 6.1 mm short.
+                if _refQ is not None and _os.environ.get(
+                        "W6B_R63_USE_SEARCH", "0") == "1":
+                    _w3 = np.asarray(cmds_global[_side]["wrist"], float).copy()
+                    _old = _w3[-1].copy()
+                    # r63: the ramp must respect the joint-rate ceiling
+                    # (2.0 rad/s at 20 Hz).  A 6.6 rad move over 48 frames
+                    # is 2.75 rad/s -- over the ceiling, and the executed
+                    # state then diverges (measured: the executed pad
+                    # distance exploded to 459 mm).  The ramp is sized
+                    # from the move itself.
+                    _move = float(np.max(np.abs(
+                        np.asarray(_refQ, float) - _old)))
+                    _n_t = int(np.ceil(_move / (R18_RATE_CEILING / 20.0))) + 1
+                    _n_t = min(_n_t, _w3.shape[0])
+                    _ramp = 0.5 * (1.0 + np.cos(np.linspace(np.pi, 0.0, _n_t)))
+                    _w3[-_n_t:] = (_old[None, :]
+                                    + (np.asarray(_refQ, float)[None, :]
+                                       - _old[None, :]) * _ramp[:, None])
+                    _f3 = np.asarray(cmds_global[_side]["finger"], float).copy()
+                    # the search's SOLVED curls: the pose and the curls are
+                    # one solution (the curl sets where each pad lands)
+                    _sf = _r63_fing.get(_side)
+                    if _sf:
+                        _fv = []
+                        for _f in ("ff", "mf", "rf", "th"):
+                            _fv += list(_sf.get(_f, [0.0] * 4))
+                        _fv = np.asarray(_fv, float)
+                        _n_f = min(_n_t, _f3.shape[0])
+                        _ramp_f = 0.5 * (1.0 + np.cos(
+                            np.linspace(np.pi, 0.0, _n_f)))
+                        _f3[-_n_f:] = (_f3[-1][None, :]
+                                       + (_fv[None, :] - _f3[-1][None, :])
+                                       * _ramp_f[:, None])
+                    _rec3 = {"method": "the searched flat-pad pose, applied "
+                                       "directly",
+                             "arm": [round(float(v), 6) for v in _refQ],
+                             "joint_move_rad": round(float(np.max(
+                                 np.abs(np.asarray(_refQ, float) - _old))), 4)}
+                else:
+                    _w3, _f3, _rec3 = reorient_terminal_pads(
+                        model, data, specs[_side],
+                        np.asarray(cmds_global[_side]["wrist"], float),
+                        np.asarray(cmds_global[_side]["finger"], float),
+                        _refR, _refP, _refQ)
                 cmds_global[_side]["wrist"] = _w3
                 cmds_global[_side]["finger"] = _f3
                 seat_records[_side + "_reorient"] = _rec3
-                print(f"    [r63-reorient] {_side}: axes="
-                      f"{_rec3.get('finger_axis_deg')} "
+                print(f"    [r63-reorient] {_side}: "
+                      f"{_rec3.get('method', 'the sweep')} | "
+                      f"axes={_rec3.get('finger_axis_deg')} "
                       f"worst={_rec3.get('worst_axis_deg')} deg "
                       f"roll={_rec3.get('roll_deg')} deg "
                       f"standoff={_rec3.get('standoff_mm')} mm "
-                      f"margin={_rec3.get('joint_margin_rad')} rad")
+                      f"margin={_rec3.get('joint_margin_rad')} rad "
+                      f"move={_rec3.get('joint_move_rad')} rad")
             except Exception as _exc:
                 seat_records[_side + "_reorient"] = {"error": repr(_exc)}
                 print(f"    [r63-reorient] {_side}: ERROR {repr(_exc)}")
@@ -5930,7 +6704,14 @@ def main() -> int:
     # touch all three; each finger's own curl controls its own pad's gap
     # (measured: tools/w6b/curl_gap_probe.py).  Equalising the curls FIRST
     # and seating the wrist SECOND makes the set coplanar by construction.
-    _r63_equalize = (_os.environ.get("W6B_R63_EQUALIZE", "0") == "1")
+    # r66: with the r63 SEARCHED pair active, the equalise step is
+    # DISABLED: it scales each finger's curl by a factor that ignores the
+    # servo's holdable band, and the scaled middle finger fell 0.14 rad
+    # below its 0.227 rad band floor (measured), so the finger could not
+    # hold its posture.  The search already measured the three pads'
+    # surface gaps with curls that ARE inside the band.
+    _r63_equalize = (_os.environ.get("W6B_R63_EQUALIZE", "0") == "1"
+                     and not _r63_tgt)
     _r63_target_sv = -float(_os.environ.get("W6B_R50_PRELOAD_MM", "0.2")) * 1e-3
     if _r63_equalize:
         for _side in VIDEOS:
