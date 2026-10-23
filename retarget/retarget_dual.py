@@ -4835,6 +4835,17 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
                          "against (the registration the v9 approach "
                          "re-registration edits)"),
             },
+            # r106: the commanded wrist stream's per-frame joint step:
+            # the BRANCH CONTINUITY metric.  A path that switches its
+            # 2*pi branch mid-stream shows up here as a step of ~2*pi
+            # (6.283 rad) between two consecutive frames, which the
+            # servos cannot follow.
+            "commanded_wrist_max_joint_step_rad": float(
+                np.max(np.abs(np.diff(np.asarray(cmd_wrist, float), axis=0)))
+                if np.asarray(cmd_wrist, float).shape[0] > 1 else 0.0),
+            "commanded_wrist_branch_continuity": (
+                "the max |dq| between two consecutive commanded frames; a "
+                "2*pi branch switch would read ~6.283 rad"),
             "terminal_commands": {
                 "wrist_rad": [round(float(x), 9) for x in
                               np.asarray(cmds[side]["wrist"][-1])],
@@ -8086,7 +8097,17 @@ def main() -> int:
         for side in VIDEOS:
             pres_wl = wl[f"{side}/present"].astype(bool)
             wrist_px = wl[f"{side}/wrist_px"].copy()
-            ref_px = wrist_px[0:a1][pres_wl[0:a1]].mean(axis=0)
+            # r105: a (0, 0) wrist pixel is the detector's MISSING
+            # sentinel, not a wrist at the image origin.  It was being
+            # averaged into the registration reference (pulling the
+            # reference toward the origin) and compared as a real
+            # coordinate, so the metric scored the sim against a
+            # fabricated observation.  The missing frames are now
+            # MASKED OUT of both the reference and the error, and the
+            # count is published.
+            _zero_px = np.all(np.abs(wrist_px) < 0.5, axis=1)
+            valid_wl = pres_wl & (~_zero_px)
+            ref_px = wrist_px[0:a1][valid_wl[0:a1]].mean(axis=0)
             wrist_m = (wrist_px - ref_px) * (span_m / span_px_wl[side])
             # round-5: the pipeline consumes the wrist path THROUGH the
             # grasp registration (the same rigid transform every gate
@@ -8119,7 +8140,7 @@ def main() -> int:
                 ci = min(rep["n_frames"] - 1,
                          R25_PREROLL + int(np.floor(gi / VIDEO_FPS * CTRL_HZ
                                                     + 1e-9)))
-                if not pres_wl[gi]:
+                if not valid_wl[gi]:
                     continue
                 errs.append(float(np.linalg.norm(
                     palm_c[ci] - wrist_m_reg[gi])))
@@ -8134,6 +8155,13 @@ def main() -> int:
                          "sampling) vs MediaPipe wrist, both centred at "
                          "their grasp-window means",
                 "n_frames": len(errs),
+                "n_frames_observed": int(valid_wl[0:a1].sum()),
+                "n_frames_missing_masked": int((~valid_wl[0:a1]).sum()),
+                "missing_mask_note": (
+                    "the frames with a missing wrist observation (the "
+                    "detector's present flag or a (0,0) sentinel pixel) are "
+                    "masked out of BOTH the registration reference and the "
+                    "error, and the count is published"),
                 "conf_weighted_median_err_m": wmedian,
                 "conf_weighted_median_err_span_frac": round(frac, 4),
                 "conf_weighted_median_err_span_frac_raw_frame": round(
