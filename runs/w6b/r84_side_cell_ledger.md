@@ -144,14 +144,15 @@ the box's displacement over the whole replay: 16.2 mm
   frame 338 (the terminal window);
 * the executed pads land **7.75 mm (right) / 4.22 mm (left)** from the face.
 
-### Open defects (not claimed as solved)
+### Open defects (not claimed as solved) — SUPERSEDED by r86 below
 
-| # | defect | measured |
-|---|---|---|
-| 1 | the right's executed forward axis | **45.61°** (the gate's limit is 35°) |
-| 2 | the box's displacement over the replay | **16.2 mm** (the r63 item wants ~0) |
-| 3 | the executed pad distance | 7.75 mm right / 4.22 mm left (the target is < 5 mm) |
-| 4 | the home pose's arm self-collision | the upper arm vs the wrist_1 interpenetrate 79 mm at the home |
+| # | defect | measured (r84) | measured (r87) |
+|---|---|---|---|
+| 1 | the right's executed forward axis | **45.61°** (the limit is 35°) | **24.37°** (the command is 26.33°) |
+| 2 | the box's displacement over the replay | **16.2 mm** | **0.54 mm** (max 1.11 mm) |
+| 3 | the executed pad distance | 7.75 / 4.22 mm | 9.38 / 10.44 mm |
+| 4 | the arm's collision proxy inside the table | 7.4 / 13.6 mm | **0** (no support contact on the right) |
+| 5 | the path's Cartesian tracking | not measured | **up to 947 / 1449 mm** (OPEN) |
 
 Defect 2 is the known one: the pads are commanded with their **centres on
 the face plane** (which is what gate1 measures and what the reference grasp
@@ -196,3 +197,124 @@ The debug hooks (all off by default) name the evidence:
 `W6B_DBG_PATH` (the Cartesian path's per-step clearance),
 `W6B_DBG_GATE` (the gate's command-state inputs),
 `W6B_DBG_Q` (the terminal arm vector).
+
+
+---
+
+## r86 — THE ARM WAS INSIDE THE TABLE (the one cause of both r84 defects)
+
+The r84 executed state (the right's forward axis 45.6°, the box flying
+16.2 mm) had **one** cause, and it was not the servo stiffness.
+
+**The measurement.** The replay's contact list at the terminal frame:
+
+```
+('ur5e_r_wrist_2_link', 'world', -2.41)
+```
+
+The right's wrist_2 mesh was 2.30 mm INSIDE the table slab, the table
+pushed back with **30.0 N**, and the wrist_2's actuator force read
+**-28.0** — exactly the actuator's ±28 N·m limit. The wrist was
+saturated, the hand was twisted off the face, the right's pads lost the
+face, and the box (pushed by a hand that was in the wrong place) was
+shoved 16.2 mm into the vise's corner.
+
+**The static check that missed it.** The search measured the table
+clearance on the **HAND's** geoms only, and the arm's clearance on its
+**MESH** geometry. Two errors:
+
+* the UR5e's mesh geometry extends 40–50 mm below its collision
+  capsules, so the mesh-based measure read **-44 mm** for a pose whose
+  collision proxy was **-7 mm**;
+* the arm was never checked at all.
+
+The corrected measure — `mj_geomDistance` from each of the arm's
+**collision** geoms (contype ≠ 0) to the table slab — gives the old
+path-verified solution **-7.36 mm (right) / -13.55 mm (left)**: the arm's
+collision proxy was inside the table in the pose that "worked".
+
+**The fix.** `tools/w6b/palm_pose_refine.py` now treats the arm's
+collision-proxy clearance as a HARD constraint (≥ 12 mm, so the measured
+±0.13 rad tracking error cannot push the wrist in). The search returns:
+
+| | right | left |
+|---|---|---|
+| the arm's collision clearance | **+13.3 mm** | **+16.8 mm** |
+| the hand's clearance | +34.6 mm | +40.6 mm |
+| the pad centres vs the face | 0.0001 / 0.0001 mm | 0.0076 / 0.0003 mm |
+| the forward axis | 26.34° | 27.61° |
+
+**The measured effect** (the same command stream otherwise):
+
+| | r84 | r87 |
+|---|---|---|
+| the right's executed forward axis | 45.61° | **24.37°** (the command 26.33°) |
+| the left's executed forward axis | 4.82° | **26.98°** (the command 27.58°) |
+| the box's displacement | 16.2 mm | **0.54 mm** |
+| the arm's tracking error at the terminal | 0.116–0.132 rad | **0.007–0.015 rad** |
+| the support contacts (the right) | the wrist in the table | **0** |
+| the executed pad distance | 7.75 / 4.22 mm | 9.38 / 10.44 mm |
+
+## r87 — FOUR MORE MEASURED DEFECTS IN THE PATH
+
+1. **The regularizer's sign was inverted.** The descent's IK adds a term
+   pulling the arm toward the terminal's configuration; the residual was
+   `λ·(dq + q_ref − q)`, i.e. it asked the step to move the arm **away**
+   from the reference. The range clip then pinned every joint at its
+   limit. Fixed to `λ·(dq + q − q_ref)`.
+2. **The path's last frame was garbage.** Measured: the path's final
+   frame was `[6.069, 0, 3.142, 6.283, 0, 0]` — the hand **1.6 m in the
+   air** — while the pipeline's print showed the terminal's arm (it
+   printed a different array). The replay therefore swung the arm wildly
+   and then snapped to the hold, which is why the terminal state looked
+   good while the approach did not.
+3. **The IK's step was unbounded**, so one ill-conditioned iteration
+   slammed the joints into their limits. A projected-gradient term now
+   refuses to push a joint that already sits at its limit.
+4. **The gate5's "constrained solve" leg measured the wrong target.** It
+   compares the side path against the **floating cell's** registered task
+   trajectory — a different trajectory in a different cell — and reported
+   848 mm of "deviation" for a path that is on its own target. The side
+   path's own achieved-vs-target deviation is now recorded separately
+   (`gate5_palm_deviation.side_path_palm_deviation`).
+
+### The KNOWN-BAD numbers that did NOT survive (recorded so they are not re-tried)
+
+| tried | result |
+|---|---|
+| the finger servo stiffness ×3 … ×30 | the executed error 81–338 mm: the Allegro's finger servos are unstable at the scene's 2 ms timestep (the distal links need dt < 0.5 ms) |
+| the physics timestep 0.5 ms / 0.25 ms | the executed error 18–228 mm: the 2 ms integration error was accidentally helping |
+| the IK's step bounded to 0.15 / 0.25 / 0.6 rad | the IK cannot converge in 150 iterations: 188–373 mm |
+| the phase-A non-convergence guard | freezes the path (the IK legitimately lags a fast Cartesian move): 188–373 mm |
+| the finger/box mass scan | not run in r87 |
+
+### The configuration that reproduces (the defaults in the code)
+
+`W6B_R86_LAM_A_RIGHT = 1.5`, `W6B_R86_LAM_A_LEFT = 0.6`,
+`W6B_R82_DESCENT_LAM = 0.8`, `W6B_R75_STAGE_MM = 100`.
+
+**The phase-A tracking weight is a narrow, fragile knob** — the left's
+region is 0.5–0.6 (0.45 sends the box 2018 mm). It is disclosed here
+rather than hidden: the path's IK basin is knife-edged, and that is the
+same root cause as the open defect below.
+
+### The remaining open defect (r87)
+
+**The path's Cartesian tracking is broken.** The side path's own
+achieved-vs-target palm deviation reaches **947 mm (right) / 1449 mm
+(left)** — the arm does not follow the intended home → staging →
+terminal line; it flails and only the final HOLD lands the arm on the
+terminal. The terminal state is correct (the arm tracks to 0.007 rad,
+the pads 9–11 mm from the face, the fwd within 2° of the command, the
+box 0.54 mm), but the **approach** in the render is wrong, and gate5
+fails for that reason.
+
+The cause is now localised: the path's IK diverges in phase A (the
+Cartesian move from the home to the staging), the divergence is not
+detected as such (the guard's absolute threshold freezes the path, the
+relative criterion does not catch it), and the λ regulariser — which
+exists only to pick the IK branch — fights the Cartesian task instead of
+resolving it. The next step is a path construction that keeps the
+Cartesian task exact and selects the branch by the ±2π wrap alone
+(a null-space-free 6-DOF arm has no null space, so the branch must come
+from the wrap, not from a competing objective).
