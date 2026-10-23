@@ -1,0 +1,38 @@
+{
+  "mass_kg": 0.40039774800000005,
+  "weight_N": 3.927901907880001,
+  "mu_sliding": 1.8,
+  "measured_normal_force_N": {
+    "right": 0.2972,
+    "left": 0.7177
+  },
+  "measured_total_normal_force_N": 1.0149,
+  "available_friction_N": 1.8268199999999999,
+  "required_total_normal_force_N": 2.1821677266000004,
+  "required_per_hand_N": 1.0910838633000002,
+  "moment_ratio_required": 0.6228589224540639,
+  "static_feasible_with_the_measured_state": false,
+  "finger_torque_capacity_Nm": {
+    "right": 1.3877799999999998,
+    "left": 1.3877799999999998
+  },
+  "normal_force_capacity_per_hand_N": {
+    "right": 27.755599999999994,
+    "left": 27.755599999999994
+  },
+  "required_squeeze_within_the_hardware_capacity": true,
+  "local_execution": {
+    "step_mm": 6.0,
+    "n_steps": 90,
+    "z0_mm": 739.9709076796572,
+    "z1_mm": 739.9709075740625,
+    "dz_mm": -1.0559475516203065e-07,
+    "f0_N": 3.9279020326401857,
+    "f1_N": 3.927901907880001,
+    "drift_mm": -3.5035278263582285e-08,
+    "pad_normal_forces_after_N": {},
+    "note": "the mass, the friction coefficients and the joint limits are untouched; only the arm's commanded pose is raised"
+  },
+  "verdict_note": "the infeasibility is a property of the CURRENT terminal configuration (the searched anchor's squeeze), not of the hardware: the required normal force per hand is within the fingers' torque capacity",
+  "verdict": "the static balance is INFEASIBLE with the measured contact state: the available friction is short of the weight by 53.5%.  A lift needs the normal force raised to 1.091 N per hand (measured 0.297 / 0.718 N).  The local execution below tests whether a small continuous upward motion changes that."
+}
