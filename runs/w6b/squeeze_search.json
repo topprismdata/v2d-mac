@@ -1,0 +1,213 @@
+{
+  "rows": [
+    {
+      "side": "right",
+      "index": 0,
+      "force_N": 0.2972,
+      "gates_ok": true,
+      "red": [
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "margin": 1.7894
+    },
+    {
+      "side": "right",
+      "index": 1,
+      "force_N": 0.372,
+      "gates_ok": false,
+      "red": [
+        "gate1_final_touch",
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "margin": 0.7197
+    },
+    {
+      "side": "right",
+      "index": 2,
+      "force_N": 0.0,
+      "gates_ok": true,
+      "red": [
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "margin": 1.5928
+    },
+    {
+      "side": "right",
+      "index": 3,
+      "force_N": 0.4312,
+      "gates_ok": false,
+      "red": [
+        "gate1_final_touch",
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "margin": 0.7919
+    },
+    {
+      "side": "right",
+      "index": 4,
+      "force_N": 0.1851,
+      "gates_ok": false,
+      "red": [
+        "gate1_final_touch",
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "margin": 0.7506
+    },
+    {
+      "side": "right",
+      "index": 5,
+      "force_N": 0.1843,
+      "gates_ok": true,
+      "red": [
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "margin": 1.2204
+    },
+    {
+      "side": "right",
+      "index": 6,
+      "force_N": 0.0,
+      "gates_ok": false,
+      "red": [
+        "gate1_final_touch",
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "margin": 1.9833
+    },
+    {
+      "side": "right",
+      "index": 7,
+      "force_N": 0.0,
+      "gates_ok": false,
+      "red": [
+        "gate1_final_touch",
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "margin": 1.1149
+    },
+    {
+      "side": "left",
+      "index": 0,
+      "force_N": 0.7177,
+      "gates_ok": true,
+      "red": [
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "margin": 2.6207
+    },
+    {
+      "side": "left",
+      "index": 1,
+      "force_N": 0.337,
+      "gates_ok": true,
+      "red": [
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "margin": 2.6536
+    },
+    {
+      "side": "left",
+      "index": 2,
+      "force_N": 0.0,
+      "gates_ok": true,
+      "red": [
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "margin": 1.2717
+    },
+    {
+      "side": "left",
+      "index": 3,
+      "force_N": 0.555,
+      "gates_ok": true,
+      "red": [
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "margin": 0.7038
+    },
+    {
+      "side": "left",
+      "index": 4,
+      "force_N": 0.0809,
+      "gates_ok": false,
+      "red": [
+        "gate3_approach_clean",
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "margin": 1.298
+    },
+    {
+      "side": "left",
+      "index": 5,
+      "force_N": 0.6803,
+      "gates_ok": false,
+      "red": [
+        "gate1_final_touch",
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "margin": 1.3335
+    },
+    {
+      "side": "left",
+      "index": 6,
+      "force_N": 0.5972,
+      "gates_ok": false,
+      "red": [
+        "gate1_final_touch",
+        "wrist_referenced_error"
+      ],
+      "margin": 1.7932
+    },
+    {
+      "side": "left",
+      "index": 7,
+      "force_N": 0.0,
+      "gates_ok": false,
+      "red": [
+        "gate1_final_touch",
+        "gate2_contact",
+        "gate3_approach_clean",
+        "wrist_referenced_error"
+      ],
+      "margin": 2.5614
+    }
+  ],
+  "winners": {
+    "right": {
+      "side": "right",
+      "index": 0,
+      "force_N": 0.2972,
+      "gates_ok": true,
+      "red": [
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "margin": 1.7894
+    },
+    "left": {
+      "side": "left",
+      "index": 0,
+      "force_N": 0.7177,
+      "gates_ok": true,
+      "red": [
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "margin": 2.6207
+    }
+  }
+}

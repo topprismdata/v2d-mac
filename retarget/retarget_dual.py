@@ -5784,6 +5784,24 @@ def main() -> int:
                         _fv63 = []
                         for _f63 in ("ff", "mf", "rf", "th"):
                             _fv63 += list(_sf63.get(_f63, [0.0] * 4))
+                        # r110: the terminal's CURL SCALE.  The
+                        # searched terminal's pads sit ON the face, so
+                        # the contact force is only the servo's push at
+                        # that residual (0.297 N right / 0.718 N left)
+                        # and the v10 lift gate needs 1.091 N per hand.
+                        # The curl is the physical squeeze: the flexion
+                        # joints (j1..j3) are scaled while the spread
+                        # (j0) is kept, so the pad's posture on the
+                        # face is unchanged and the press increases.
+                        # (Scaling the whole curl also scales the
+                        # spread and moves the pads off the face: the
+                        # measured force DROPPED to 0.24 N.)
+                        _cs110 = float(_os.environ.get(
+                            "W6B_R110_CURL_SCALE", "1.0"))
+                        if _cs110 != 1.0:
+                            for _i110 in range(0, 16, 4):
+                                for _j110 in (1, 2, 3):
+                                    _fv63[_i110 + _j110] *= _cs110
                         f_start = np.clip(np.asarray(_fv63, float),
                                           lo16_f, hi16_f)
                         arm_start = _r63_tgt[s2]["arm"].copy()
@@ -6208,6 +6226,57 @@ def main() -> int:
                         # the arm does not have to re-aim -- and the
                         # horizontal entry that follows is exactly what
                         # the reference video shows.
+                        # r109: the terminal's SQUEEZE.  The searched
+                        # terminal puts the pads ON the face (the
+                        # surface gap ~0), so the contact force is only
+                        # the servo's push at that residual: 0.2972 N
+                        # (right) / 0.7177 N (left).  The v10 lift gate
+                        # needs 1.091 N per hand.  The squeeze shifts
+                        # the terminal's ARM configuration along the
+                        # face normal so the servos press the pads into
+                        # the face; the shift is a Jacobian step on the
+                        # palm (no IK tolerance, so sub-millimetre
+                        # amounts are honoured).
+                        _sq109 = float(_os.environ.get(
+                            "W6B_R109_SQUEEZE_MM", "0"))
+                        if _sq109 > 0.0:
+                            data.qpos[qadr2] = q
+                            mujoco.mj_kinematics(model, data)
+                            mujoco.mj_comPos(model, data)
+                            _jp109 = np.zeros((3, model.nv))
+                            _jr109 = np.zeros((3, model.nv))
+                            mujoco.mj_jacBody(model, data, _jp109, _jr109,
+                                              pb2)
+                            # the squeeze is a TRANSLATION along the
+                            # face normal with the palm's ORIENTATION
+                            # held: an unconstrained Jacobian step also
+                            # rotates the hand, the pads' contact slides
+                            # off the face and the force DROPS (measured:
+                            # the right 0.297 N -> 0.237 N at a 0.2 mm
+                            # unconstrained squeeze, and gate1 breaks).
+                            # The task is therefore 1 row (the normal
+                            # translation) + 3 rows (the orientation
+                            # held).
+                            _dir109 = np.array(
+                                [-spec2.face_sign, 0.0, 0.0])
+                            _Jn = _jp109[:, vjad2].T @ _dir109
+                            _Jo = _jr109[:, vjad2]
+                            _A109 = np.vstack([_Jn, _Jo])
+                            _b109 = np.concatenate([
+                                np.array([_sq109 * 1e-3]), np.zeros(3)])
+                            _dq109 = np.linalg.lstsq(
+                                _A109, _b109, rcond=None)[0]
+                            q = np.clip(q + _dq109, lo2, hi2)
+                            if _os.environ.get("W6B_DBG_SQUEEZE", "0") == "1":
+                                _p0 = np.array(data.xpos[pb2]).copy()
+                                data.qpos[qadr2] = q
+                                mujoco.mj_kinematics(model, data)
+                                mujoco.mj_comPos(model, data)
+                                print(f"    [dbg-squeeze] {s2}: asked "
+                                      f"{_sq109} mm, the palm moved "
+                                      f"{np.round((np.array(data.xpos[pb2])-_p0)*1e3,3)} mm, "
+                                      f"the dq {np.round(_dq109,4).tolist()}, "
+                                      f"the J normal {np.round(_Jn,4).tolist()}")
                         _home_lift = float(_os.environ.get(
                             "W6B_R91_HOME_LIFT_MM", "350"))
                         _p_home = np.array([_p_stage[0], _p_stage[1],

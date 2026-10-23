@@ -291,7 +291,18 @@ def main():
         rows = []
         n_arm_fail = n_ff_fail = n_mf_fail = 0
         n_ac_fail = 0
-        for roll in range(0, 360, 10):
+        # r110: the PRELOAD dimension.  The v10 lift feasibility gate
+        # needs 1.091 N of normal force per hand; the delivered
+        # terminal only produces 0.297 N (right) / 0.718 N (left) because
+        # the search targets the pads exactly ON the face plane, so the
+        # contact force is only the servo's residual.  The preload pushes
+        # the index and middle pads' targets INTO the face, which is the
+        # physical squeeze.  The rows are kept per preload value so the
+        # physics leg (tools/w6b/squeeze_search.py) can pick from every
+        # squeeze level, not only from the best geometry.
+        for _pre110, roll in [(p, r)
+                              for p in (0.0, -0.15, -0.30, -0.50)
+                              for r in range(0, 360, 10)]:
             ang = np.deg2rad(float(roll))
             cr, sr = np.cos(ang), np.sin(ang)
             Rz = (np.eye(3) + sr * K + (1 - cr) * (K @ K))
@@ -361,7 +372,8 @@ def main():
                     # gate's forward axis is that centroid's direction,
                     # so the ring's posture drags it from 26 deg (the
                     # reference) to 38.7 deg (measured).
-                    for f, extra_x in (("ff", 0.0), ("mf", 0.0)):
+                    for f, extra_x in (("ff", _pre110),
+                                       ("mf", _pre110)):
                         o = Rt @ offs[f]
                         tgt = np.array([face_sign * (float(HALF[0]) + extra_x),
                                         py + float(o[1]),
@@ -466,6 +478,7 @@ def main():
                         "e_p_mm": round(ep * 1e3, 3),
                         "e_r_deg": round(float(np.degrees(er)), 2),
                         "margin": round(mg, 4),
+                        "preload_mm": round(_pre110 * 1e3, 3),
                         "clearance_mm": round(clear * 1e3, 1),
                         "arm_clearance_mm": round(arm_clear * 1e3, 1),
                         "axes": {k: round(v, 1) for k, v in a2.items()},
@@ -517,7 +530,17 @@ def main():
                   f"| clear {r['clearance_mm']:+6.1f} mm "
                   f"| the rect {r['rect_mm']} | fwd {r['fwd_deg']} "
                   f"| in_rect {r['n_in_rect']} | band {r['in_band']}")
-        out["sides"][side] = {"candidates": len(rows), "best": rows[:8]}
+        # r110: the best rows are kept PER PRELOAD LEVEL, so the physics
+        # leg can choose from every squeeze level instead of only from
+        # the best geometry (the preloaded rows score worse on the
+        # rectangle distance -- the pads are deliberately deeper -- and
+        # would otherwise never reach the list).
+        _keep = []
+        for _p in sorted({r["preload_mm"] for r in rows}):
+            _keep += [r for r in rows if r["preload_mm"] == _p][:6]
+        out["sides"][side] = {"candidates": len(rows), "best": _keep,
+                              "preload_levels_mm": sorted(
+                                  {r["preload_mm"] for r in rows})}
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(out, indent=1))
     print(f"\nwrote {OUT}")
