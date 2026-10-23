@@ -412,3 +412,91 @@ same way: off 9.90/10.04, hold-only 10.43/10.65, whole replay 10.42/10.73).
 | the finger gravity compensation (r52, three modes) | off is the best of the three (see above) |
 | the phase split (A/B from 40/261 to 260/41) | the executed terminal moves 9.6-9.9 mm; the wrist metric 0.308-0.319 -- insensitive, so the split is a shape choice, not a tuning knob |
 | the stiffened joint limit + 200 solver iterations (r99) | the 0.86 um residual is unchanged -> it is the contact's compliance |
+
+
+---
+
+## r101-r102: the gravity compensations' sign, and the mass scan
+
+### r101: every gravity compensation in the pipeline had the sign inverted
+
+MuJoCo's equation of motion is
+
+```
+M qdd = tau_actuator + tau_applied + tau_constraint - qfrc_bias
+```
+
+so at rest (qdd = 0) with a P-servo at equilibrium, the applied torque
+must EQUAL **+qfrc_bias**. Every compensation in this file applied
+**-qfrc_bias** -- it pushed the arm AGAINST gravity and doubled the
+droop. That is why every earlier attempt to use the compensation
+regressed and was written off as "the compensation destabilises the
+replay" (the r28 note: 687 mm; the r36/r39/r52 notes: the executed
+terminal 9.90 -> 19.96 mm).
+
+Measured at the terminal hold (the dbg-force probe): the right's
+shoulder_lift carries 30.7 N.m of gravity with kp 2200 N.m/rad, so the
+P-servo's droop is 14 mrad -- about 5.6 mm at the tool, which IS the
+9.9 mm executed distance.
+
+| the compensation | before (the sign was wrong) | after (the sign is right) |
+|---|---|---|
+| the r36 static gravity bias | the executed terminal 19.72/10.21 mm | **4.58/6.06 mm** |
+| the r39 terminal gravity cancel | 19.96/10.53 mm, gate2 broke | (not used: r36 is better) |
+| the r52 finger gravity cancel | the right 11.94 mm | (not used: the right 12.25 mm) |
+
+The r36 static bias is now ON by default; the r39 and r52 cancels stay
+off (measured worse).
+
+### The final measured result
+
+```
+W6B_R75_SIDE_APPROACH=1 W6B_R63_TARGET=1 W6B_R18_NATIVE_TARGET=1
+W6B_R50_PRELOAD_MM=0.05 W6B_R50_CURL=1.25 W6B_R39_TGC=0 W6B_R36_GSTATIC=1
+W6B_R36_I=0 W6B_R39_HOLD=60 W6B_SCENE=ur5e
+W6B_SCENE_XML=grounding/assets/allegro_floating_ur5e_side_r37.xml
+W6B_R23_FLYOVER_MM=250 W6B_R22_MARGIN_MM=8
+runs/.venv-retarget/bin/python retarget/retarget_dual.py
+```
+
+| metric | right | left |
+|---|---|---|
+| the command's pad distance | 0.000 mm | 0.000 mm |
+| **the executed pad distance** | **4.58 mm** | **6.06 mm** |
+| the executed forward axis | 33.3 deg (the cmd 26.3) | 32.9 deg (the cmd 27.6) |
+| the path's own palm deviation | 2.60 mm | 2.59 mm |
+| the executed-vs-commanded deviation | 17.0 mm (cap 40) | 11.0 mm |
+| the box's displacement | 1.98 mm | |
+| gate1 / gate2 / gate3 / gate5 | **pass / pass / pass / pass** | |
+
+Reproduced twice, byte-identical (the pipeline is deterministic: the
+same command gives the same numbers).
+
+### r102: the mass robustness scan
+
+`W6B_R102_BOX_MASS_KG` overrides the box's mass (and scales its inertia
+with it, so the override is a consistent rigid body). The scene's box is
+0.4004 kg.
+
+| the box's mass | the right's executed | the left's executed | the box's displacement | the gates |
+|---|---|---|---|---|
+| 0.15 kg | 4.09 mm | 6.12 mm | 2.90 mm | gate1/2/3/5 pass |
+| 0.25 kg | 4.17 mm | 6.16 mm | 2.65 mm | gate1/2/3/5 pass |
+| 0.40 kg (the scene's) | 4.56 mm | 6.06 mm | 1.98 mm | gate1/2/3/5 pass |
+
+The terminal's accuracy is flat across a 2.7x mass range: the residual is
+not the box's weight but the arm's own compliance under the contact.
+
+### The open defects (unchanged, stated)
+
+1. the left's executed pad distance is 6.06 mm (the goal was < 5 mm; the
+   right is at 4.58 mm) -- the same mechanism as the right's, a factor
+   1.3x, from the left's mount (its shoulder_lift carries 21.9 N.m of
+   gravity against the right's 30.7 N.m but its lever arm is longer).
+2. gate4 fails on 8.6e-07 rad (0.86 um) of the left's thumb past its own
+   stop -- MuJoCo's soft contact/limit compliance. Not changed: the gate
+   is not touched and the committed baseline's residual on the same leg is
+   1.63 rad.
+3. wrist_referenced_error is a video-fidelity metric that the side cell's
+   constructed approach does not reproduce; the committed baseline fails
+   the same leg.

@@ -3578,7 +3578,13 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
     # terms and injecting them destabilises the replay (r28 GCOMP: 687 mm).
     r39_tgc = _os_r28.environ.get("W6B_R39_TGC", "0") == "1"
     r39_hold = int(_os_r28.environ.get("W6B_R39_HOLD", "60"))
-    r36_gs = _os_r28.environ.get("W6B_R36_GSTATIC", "0") == "1"
+    # r101: the static gravity bias is ON by default.  With the sign
+    # corrected (+qfrc_bias, the sign the equation of motion requires) it
+    # removes the arm's gravity droop at the terminal hold: the executed
+    # pad distance 9.90/10.04 mm -> 4.58/6.06 mm.  With the old (wrong)
+    # sign it made things worse, which is why every earlier attempt to
+    # use it regressed.
+    r36_gs = _os_r28.environ.get("W6B_R36_GSTATIC", "1") == "1"
     r36_gtau = {"right": np.zeros(6), "left": np.zeros(6)}
     dt_ctrl = frame_skip * float(model.opt.timestep)
     ctrl_lo = model.actuator_ctrlrange[:, 0]
@@ -3654,8 +3660,13 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
             print("    [dbg-track] " + " | ".join(_msgs))
         if r28_gcomp:
             # the gravity+coriolis cancel on the arm dofs (the
-            # compensation the position servos lack)
-            data.qfrc_applied[arm_dofs] = -data.qfrc_bias[arm_dofs]
+            # compensation the position servos lack).
+            # r101: the sign is +qfrc_bias: MuJoCo's equation of motion
+            # is M qdd = tau_actuator + tau_applied + tau_constraint -
+            # qfrc_bias, so at rest the applied torque must EQUAL
+            # +qfrc_bias.  The old -qfrc_bias pushed the arm against
+            # gravity and doubled the droop.
+            data.qfrc_applied[arm_dofs] = data.qfrc_bias[arm_dofs]
         for side in VIDEOS:
             spec = specs[side]
             w = np.clip(cmds[side]["wrist"][t], ctrl_lo[spec.wrist_act_id], ctrl_hi[spec.wrist_act_id])
@@ -3688,7 +3699,8 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
                 mujoco.mj_forward(model, data)
             if r36_gs and t >= n_frames - r36_hold:
                 _dofs = arm_dof_r if side == "right" else arm_dof_l
-                data.qfrc_applied[_dofs] = -r36_gtau[side]
+                # r101: the sign is + (see the r28 note above)
+                data.qfrc_applied[_dofs] = r36_gtau[side]
             if r36_i and t >= n_frames - r36_hold:
                 _qd = np.array([float(data.qpos[d]) for d in
                                 (arm_qadr_r if side == "right" else arm_qadr_l)])
@@ -3709,7 +3721,8 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
         if SCENE_KIND != "ur5e":
             write_arm_ik_ctrl(model, data)
         if r39_tgc and t >= n_frames - r39_hold:
-            data.qfrc_applied[arm_dofs] = -data.qfrc_bias[arm_dofs]
+            # r101: the sign is + (see the r28 note above)
+            data.qfrc_applied[arm_dofs] = data.qfrc_bias[arm_dofs]
         if r52_ftgc and (t >= n_frames - r39_hold or _r52_full):
             # r52: the same gravity cancel on the FINGER dofs.  The arm's
             # cancel left the fingers hanging: with kp 0.3-1.5 N m/rad the
@@ -3717,7 +3730,8 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
             # weight, and the 4-tip pad centroid (the forward-axis metric
             # includes the thumb) swung with it -- the executed forward axis
             # drifted from the commanded 18.7 deg to 35.8 deg.
-            data.qfrc_applied[finger_dofs] = -data.qfrc_bias[finger_dofs]
+            # r101: the sign is + (see the r28 note above)
+            data.qfrc_applied[finger_dofs] = data.qfrc_bias[finger_dofs]
         for _ in range(frame_skip):
             mujoco.mj_step(model, data)
 
@@ -5165,6 +5179,21 @@ def main() -> int:
 
     _SIDE_PATH_REC = {}
     model = mujoco.MjModel.from_xml_path(str(SCENE_XML))
+    # r102: the box's mass is overridable (the robustness scan).  The
+    # scene's box is 0.4004 kg; the scan runs 0.15 / 0.25 / 0.40 kg.
+    # The body inertia is scaled with the mass (for a fixed shape the
+    # inertia scales with the mass), so the override is a consistent
+    # rigid body rather than a mass-only edit.
+    _bm = _os.environ.get("W6B_R102_BOX_MASS_KG", "")
+    if _bm:
+        _bid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "object")
+        if _bid >= 0:
+            _m0 = float(model.body_mass[_bid])
+            _m1 = float(_bm)
+            if _m0 > 0:
+                model.body_mass[_bid] = _m1
+                model.body_inertia[_bid] = (model.body_inertia[_bid]
+                                            * (_m1 / _m0))
     # r99: the finger joints' LIMIT constraint is stiffened.  MuJoCo's
     # default limit solref (0.02 s) is a SOFT constraint: under the
     # thumb's own load the joint sinks ~1e-6 rad past its stop, and the
