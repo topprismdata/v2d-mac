@@ -301,7 +301,10 @@ def main():
         # physics leg (tools/w6b/squeeze_search.py) can pick from every
         # squeeze level, not only from the best geometry.
         for _pre110, roll in [(p, r)
-                              for p in (0.0, 0.30)
+                              for p in tuple(float(v) for v in
+                                             _os.environ.get(
+                                                 "W6B_R110_PRELOADS_MM",
+                                                 "0.0,0.30").split(","))]
                               for r in range(0, 360, 10)]:
             ang = np.deg2rad(float(roll))
             cr, sr = np.cos(ang), np.sin(ang)
