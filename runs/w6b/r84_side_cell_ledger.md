@@ -327,3 +327,88 @@ pose searched for (not guessed). The search machinery already exists
 clearance, the joint margin and the natural branch); it needs a second
 candidate set — the intermediate poses, scored for the clearance of the
 WHOLE segment home→intermediate→terminal, not just the endpoint.
+
+
+---
+
+## r89-r100: the approach path, rebuilt
+
+### What the r88 state actually was
+
+The r87 numbers (the right 9.38 mm / the left 10.44 mm) were measured with
+**two latent bugs** that had been in the pipeline for many rounds, and the
+"the path's own palm deviation 1421 mm" was the visible symptom of the
+second one.
+
+| # | the defect | how it was found | the effect |
+|---|---|---|---|
+| 1 | the replay's reset wrote the home into joints named `ur5e_right_*` / `ur5e_left_*`, but the scene's joints are `ur5e_r_*` / `ur5e_l_*` -- so `mj_name2id` returned -1 and **the home was never applied** | the executed palm at frame 0 sat at the scene's crossed zero pose while the path's first frame was the home | the servos were asked to make a 600 mm jump on frame 1; the executed palm left the home by 190-300 mm in one frame |
+| 2 | the path's frames were produced by solvers that each chose their 2*pi branch independently, so consecutive frames could differ by exactly 2*pi | the dbg-track error read 6.283 rad at t=0 while the physical pose matched | the position servo was told to turn a joint a full revolution -> the arm swung across the cell |
+| 3 | the path's LAST frame converged to a *different arm configuration* than the searched terminal (the palm pose has several solutions; the elbow-up one differs by 2.56 rad in the shoulder_pan and 3.56 rad in the wrist_2) | the dbg-track at t=320: the command jumped from the path's last frame to the hold | the HOLD was a multi-radian jump; the executed pads ended 556 mm from the face even though the commanded path tracked the line perfectly (deviation 0 mm) |
+| 4 | the descent's IK had no trust region and returned its last iterate, not its best | the phase-A residual probe: the residual stayed at 350 mm for 100 frames | a near-singular Jacobian made the damped step 1e4 x the residual; one iteration threw the arm a metre away and every later step inherited that state |
+
+### The four fixes (all measured)
+
+| fix | what it does | the measured effect |
+|---|---|---|
+| **r90** the path is unwrapped frame-to-frame in the 2*pi branch, and the reset state is the path's OWN first frame | the branch is continuous and the servos start exactly where the commands start | the executed-vs-commanded tracking: 0.000 rad at t=0 (was 6.283) |
+| **r92** the IK is trust-region limited (0.05 rad/iteration) and returns its BEST iterate | a diverging step can no longer poison the rest of the path | the path's own palm deviation 1421 -> 364 mm |
+| **r94** the path is solved BACKWARD from the terminal (the default) | the path's last frame IS the terminal's configuration by construction, and the whole path is in the terminal's branch -- no posture regulariser is needed, so the Cartesian task is not fought | the path's own palm deviation 364 -> **0 mm**, the executed terminal 9.90/10.04 mm |
+| **r96/r97/r98** the reset also sets the fingers, and the finger command is clipped to the joints' ranges with a 5 mrad margin | the scene's zero pose puts the thumb's joint 0 at 0 while that joint's range starts at 0.263 rad | the gate4 finger residual 0.130 -> 0.0 (right) / 8.6e-07 rad (left) |
+
+### The measured result (the final command, no env overrides)
+
+```
+W6B_R75_SIDE_APPROACH=1 W6B_R63_TARGET=1 W6B_R18_NATIVE_TARGET=1
+W6B_R50_PRELOAD_MM=0.05 W6B_R50_CURL=1.25 W6B_R39_TGC=0 W6B_R36_GSTATIC=0
+W6B_R36_I=0 W6B_R39_HOLD=60 W6B_SCENE=ur5e
+W6B_SCENE_XML=grounding/assets/allegro_floating_ur5e_side_r37.xml
+W6B_R23_FLYOVER_MM=250 W6B_R22_MARGIN_MM=8
+runs/.venv-retarget/bin/python retarget/retarget_dual.py
+```
+
+| metric | right | left | the baseline (the committed floating cell) |
+|---|---|---|---|
+| the command's pad distance | 0.000 mm | 0.000 mm | - |
+| **the executed pad distance** | **9.90 mm** | **10.04 mm** | the gate1 cmd 15.9/1.6 mm; the executed 320-384 mm |
+| the executed forward axis | 33.8 deg (the cmd 26.3) | 33.1 deg (the cmd 27.6) | - |
+| the path's own palm deviation | **2.60 mm** | **2.59 mm** | 1421 mm (the side path) / 163.8 mm (the registered leg) |
+| the executed-vs-commanded deviation | 17.0 mm | 11.0 mm (cap 40) | - |
+| the box's displacement | **0.24 mm** | | 16.2 mm (the r84 side cell) |
+| the gate4 finger residual | 0.0 rad | 8.6e-07 rad | 1.63 / 1.52 rad |
+| gate1 / gate2 / gate3 / gate5 | pass / pass / pass / pass | | fail / fail / fail / fail |
+
+The executed trajectory is the reference motion: the palm descends vertically
+(272, -30, 1148) -> (278, -25, 806) and then enters horizontally to
+(181, -25, 792); the left mirrors it.
+
+### The two red gates, and why they are red
+
+| gate | the measurement | why |
+|---|---|---|
+| **gate4_joint_limits** | the left's thumb joint 0 is 8.6e-07 rad (0.86 um) outside its own stop for 16 frames | MuJoCo's joint-limit and contact constraints are SOFT: the contact on the thumb pushes it a micrometre past the stop. Stiffening the limit (jnt_solref 0.02 -> 0.0005 s) and the solver (100 -> 200 iterations) did not remove it, so the residual is the contact's compliance, not our command (the command keeps a 5 mrad margin). The gate demands exactly 0.0, so it is reported as FAIL. The gate is NOT changed: the committed baseline's residual on the same leg is 1.63 rad, i.e. 1.9 million times larger. |
+| **wrist_referenced_error** | the confidence-weighted median 30.1 mm (right) / 40.4 mm (left), 0.318 / 0.427 of the span (the limit 0.15) | this is a VIDEO-FIDELITY metric: the executed palm's lateral vs the MediaPipe wrist's lateral over the video's approach window. The side cell does not use the video's trajectory (it is a constructed descent + horizontal entry), so the metric compares two different motions. The committed floating cell FAILS the same metric (the MediaPipe wrist signal is partial: the detected px jump between frames), so this is a known-red leg of the baseline, not a regression of the side cell. |
+
+### The open defect
+
+The **executed** pad distance is 9.90/10.04 mm, not the < 5 mm the r84 goal
+asked for. The command is exact (0.000 mm) and the path tracks the line to
+2.6 mm; the residual is the servo's own tracking (the executed-vs-commanded
+deviation is 17.0/11.0 mm) plus the pads' contact compliance. The arm's
+gravity compensation was measured and is NOT the fix: with it the right
+regresses to 19.96 mm and gate2 breaks (the finger gravity cancel behaves the
+same way: off 9.90/10.04, hold-only 10.43/10.65, whole replay 10.42/10.73).
+
+### Tried and failed (so they are not re-tried)
+
+| the attempt | the measurement |
+|---|---|
+| the joint-space path (r88) | the wrist folds into the hand: -40.0 mm (`ur5e_r_wrist_1_link<->palm`) |
+| the waypoint search (r89), the candidates scored by the path's clearance | the joint interpolation swings the palm in a 2.3 m arc anyway - the palm's path is NOT controlled by the joint path |
+| the posture regulariser lambda (the terminal's configuration as the reference) | it fights the Cartesian task: the path's deviation 0 -> 303/352 mm, and it is what produced the 1421 mm divergence in the first place |
+| the terminal-branch +-2*pi wrap (r87) | neutral for the working configuration, kept as a switch |
+| the blend of the path's last frames into the terminal (r93) | the two configurations are at the same pose but the interpolation sweeps the palm 528 mm |
+| the arm's gravity compensation (r39/r36) | the right 9.90 -> 19.96 mm and gate2 breaks |
+| the finger gravity compensation (r52, three modes) | off is the best of the three (see above) |
+| the phase split (A/B from 40/261 to 260/41) | the executed terminal moves 9.6-9.9 mm; the wrist metric 0.308-0.319 -- insensitive, so the split is a shape choice, not a tuning knob |
+| the stiffened joint limit + 200 solver iterations (r99) | the 0.86 um residual is unchanged -> it is the contact's compliance |

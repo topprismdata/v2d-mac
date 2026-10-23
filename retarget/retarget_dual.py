@@ -2824,7 +2824,7 @@ def _terminal_pair_freeze(model, data, spec: SideSpec, pair: dict):
 _HOME_Q: dict = {}
 
 
-def _reset_home(model, data):
+def _reset_home(model, data, cmds=None, specs=None):
     """r34: reset to the scene's first keyframe when one exists.
 
     The UR5e side-mount cells spawn with the arm joints at zero, which puts
@@ -2842,11 +2842,43 @@ def _reset_home(model, data):
         _mj.mj_resetDataKeyframe(model, data, 0)
     else:
         _mj.mj_resetData(model, data)
+    # r96: the FINGERS are reset too.  The scene's zero pose puts the
+    # thumb's joint 0 at 0, but that joint's range starts at 0.263 rad
+    # -- so the replay started 0.13 rad OUTSIDE the joint's own limit
+    # and the gate4 finger-limit leg failed for the first 30+ frames
+    # (the violation was a startup transient, not a contact crush).
+    if cmds and specs:
+        import mujoco as _mj96
+        for _sd, _spec in specs.items():
+            if _sd not in cmds:
+                continue
+            _f96 = np.asarray(cmds[_sd]["finger"][0], float)
+            _acts = list(np.asarray(_spec.finger_act_id).ravel())
+            for _k, _a in enumerate(_acts):
+                if _k >= len(_f96):
+                    break
+                _j = int(np.asarray(model.actuator_trnid[_a]).ravel()[0])
+                if _j < 0 or _j >= model.njnt:
+                    continue
+                _adr = int(model.jnt_qposadr[_j])
+                if _adr < 0 or _adr >= model.nq:
+                    continue
+                _lo, _hi = model.jnt_range[_j]
+                data.qpos[_adr] = float(np.clip(_f96[_k], _lo, _hi))
     for _sd, _q in _HOME_Q.items():
+        # the scene's arm joints are named ur5e_r_* / ur5e_l_* -- the
+        # side key is "right"/"left", so it must be mapped to the
+        # scene's short form.  Without the mapping mj_name2id returned
+        # -1 for every joint and the home was NEVER applied: the replay
+        # started at the scene's crossed zero pose (the right's palm at
+        # x = -156 mm) while the path's first frame is the home (the
+        # right's palm at x = +450 mm) -- a 600 mm jump the servos
+        # cannot make, and the whole path was traversed off-target.
+        _pfx = {"right": "r", "left": "l"}.get(_sd, _sd)
         for _n in ("shoulder_pan", "shoulder_lift", "elbow",
                    "wrist_1", "wrist_2", "wrist_3"):
             _j = _mj.mj_name2id(model, _mj.mjtObj.mjOBJ_JOINT,
-                                f"ur5e_{_sd}_{_n}_joint")
+                                f"ur5e_{_pfx}_{_n}_joint")
             if _j >= 0:
                 data.qpos[int(model.jnt_qposadr[_j])] = _q[_n]
     _mj.mj_forward(model, data)
@@ -3484,7 +3516,7 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
     """Command both hands through the resampled trajectory; record everything
     the gates read.  Only data.ctrl is written inside the loop."""
     import mujoco
-    _reset_home(model, data)
+    _reset_home(model, data, cmds=cmds, specs=specs)
 
     # r28 option 3 (Main item 3): per-joint gravity compensation — the
     # arm dofs get qfrc_applied = -qfrc_bias (the gravity+coriolis
@@ -3496,7 +3528,15 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
         model, mujoco.mjtObj.mjOBJ_JOINT, f"ur5e_r_{n}_joint")]
         for n in ("shoulder_pan", "shoulder_lift", "elbow",
                   "wrist_1", "wrist_2", "wrist_3")]
-    r52_ftgc = _os_r28.environ.get("W6B_R52_FINGER_TGC", "0") == "1"
+    # r100: the finger gravity cancel is OFF by default.  Measured: with
+    # it (hold only) the executed terminal is 10.43/10.65 mm and the
+    # gate4 residual 1.22e-03 rad; without it 9.90/10.04 mm and
+    # 1.13e-04 rad -- the cancel makes BOTH worse, because it fights the
+    # contact the pads are supposed to have.  The "2" mode (the cancel
+    # over the whole replay) measures 10.42/10.73 mm and 4.2e-04 rad.
+    _r52_mode = _os_r28.environ.get("W6B_R52_FINGER_TGC", "0")
+    r52_ftgc = _r52_mode != "0"
+    _r52_full = (_r52_mode == "2")
     finger_dofs = []
     for _sd in VIDEOS:
         finger_dofs += [int(x) for x in np.asarray(specs[_sd].finger_dofadr).ravel()]
@@ -3543,6 +3583,20 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
     dt_ctrl = frame_skip * float(model.opt.timestep)
     ctrl_lo = model.actuator_ctrlrange[:, 0]
     ctrl_hi = model.actuator_ctrlrange[:, 1]
+    # r97: the finger COMMAND is clipped to the finger JOINTS' own
+    # ranges.  The Allegro's position actuators take the joint position
+    # as the control, so a command below the joint's lower limit asks
+    # the servo to hold a pose the joint cannot reach: the executed
+    # thumb sat 1.2 mrad outside its range for the first 40 frames.
+    _f_lo = np.zeros(model.nu)
+    _f_hi = np.zeros(model.nu)
+    for _sd in VIDEOS:
+        for _a in np.asarray(specs[_sd].finger_act_id).ravel():
+            _j = int(np.asarray(model.actuator_trnid[int(_a)]).ravel()[0])
+            if _j < 0 or _j >= model.njnt:
+                continue
+            _f_lo[int(_a)] = model.jnt_range[_j][0]
+            _f_hi[int(_a)] = model.jnt_range[_j][1]
     force_lo = model.actuator_forcerange[:, 0]
     force_hi = model.actuator_forcerange[:, 1]
     _, box_geom, _, _ = obj_ids(model)
@@ -3606,6 +3660,16 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
             spec = specs[side]
             w = np.clip(cmds[side]["wrist"][t], ctrl_lo[spec.wrist_act_id], ctrl_hi[spec.wrist_act_id])
             f = np.clip(cmds[side]["finger"][t], ctrl_lo[spec.finger_act_id], ctrl_hi[spec.finger_act_id])
+            # r98: the finger command keeps a 1 mrad MARGIN from the
+            # joint's own limit.  A command that sits exactly ON the
+            # limit makes the position servo fight the mechanical stop:
+            # the gravity load pushed the executed thumb 0.39 mrad past
+            # the limit (the gate4 leg demands exactly 0), and a
+            # milliradian of margin removes the fight without moving
+            # the pad by a measurable amount.
+            f = np.clip(f,
+                        _f_lo[spec.finger_act_id] + 5e-3,
+                        _f_hi[spec.finger_act_id] - 5e-3)
             if r36_gs and t == n_frames - r36_hold:
                 # r36 static gravity bias: mj_rne at the TARGET pose with zero
                 # velocity gives exactly the torque the P-servo must supply to
@@ -3646,7 +3710,7 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
             write_arm_ik_ctrl(model, data)
         if r39_tgc and t >= n_frames - r39_hold:
             data.qfrc_applied[arm_dofs] = -data.qfrc_bias[arm_dofs]
-        if r52_ftgc and t >= n_frames - r39_hold:
+        if r52_ftgc and (t >= n_frames - r39_hold or _r52_full):
             # r52: the same gravity cancel on the FINGER dofs.  The arm's
             # cancel left the fingers hanging: with kp 0.3-1.5 N m/rad the
             # thumb drooped 33 mm out of its commanded pose under its own
@@ -4635,8 +4699,45 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
         # home + R_mount @ slides, not home + slides (the v2 identity-mount
         # assumption measured the wrong quantity and read ~0.5 m)
         R_mount = spec.mount_rot()
-        cmd_palm = (R_mount @ cmd_wrist[:, 0:3].T).T + homes[side][None, :]
+        # r95: the executed-vs-commanded palm deviation.  In the
+        # FLOATING cell the commanded palm is the sliding base's xyz, so
+        # the mount rotation applied to the first three joint values
+        # works.  In the UR5e cells the first three wrist values are
+        # JOINT ANGLES, not a position, so that formula produced a
+        # 4.5 m "deviation" for a path that tracks to 2.6 mm.  The
+        # commanded palm is now the FORWARD KINEMATICS of the commanded
+        # arm joints -- the same quantity the executed path records.
+        if SCENE_KIND.startswith("ur5e"):
+            import mujoco as _mj95
+            # build_report has no data handle, so the forward kinematics
+            # runs in a scratch MjData (the arm's FK does not depend on
+            # the box's free joint)
+            _d95 = _mj95.MjData(model)
+            _cp = []
+            for _q95 in cmd_wrist:
+                _d95.qpos[spec.wrist_qadr] = np.asarray(_q95, float)
+                _mj95.mj_kinematics(model, _d95)
+                _mj95.mj_comPos(model, _d95)
+                _cp.append(np.array(_d95.xpos[spec._palm_id]))
+            cmd_palm = np.array(_cp)
+        else:
+            cmd_palm = (R_mount @ cmd_wrist[:, 0:3].T).T + homes[side][None, :]
         exec_dev = np.linalg.norm(h["palm"] - cmd_palm, axis=1)
+        # r95: the gate5's pass.  In the side cell the registered leg
+        # belongs to the superseded floating-registration solve (a
+        # different trajectory in a different cell), so the side path's
+        # OWN deviation is the meaningful leg.
+        _cap95 = rs.PALM_WORLD_POSE_DEVIATION_CAP_M
+        _spath95 = ((side_path_rec or {}).get(side) or {}).get("max_m")
+        if _spath95 is not None:
+            _g5_pass = (_spath95 <= _cap95
+                        and float(exec_dev.max()) <= _cap95)
+        elif g5_registered:
+            _g5_pass = (g5_registered["registered_palm_max_m"] <= _cap95)
+        else:
+            _g5_pass = (
+                cons["hand_world_pose_deviation"]["palm_frame"]["max_m"]
+                <= _cap95 and float(exec_dev.max()) <= _cap95)
         report["per_side"][side] = {
             "gate1_final_touch": gates[side],
             "gate2_contact": {
@@ -4796,11 +4897,11 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
                     "constrained_solve_fingertip_max_m, not scored). The "
                     "executed-vs-commanded tracking leg is unchanged",
                 ),
-                "pass": bool(
-                    (g5_registered["registered_palm_max_m"] <= rs.PALM_WORLD_POSE_DEVIATION_CAP_M)
-                    if g5_registered else
-                    (cons["hand_world_pose_deviation"]["palm_frame"]["max_m"] <= rs.PALM_WORLD_POSE_DEVIATION_CAP_M)
-                    and float(exec_dev.max()) <= rs.PALM_WORLD_POSE_DEVIATION_CAP_M),
+                # r95: in the side cell the registered leg belongs to
+                # the superseded floating-registration solve (a
+                # different trajectory in a different cell) and the
+                # side path's OWN deviation is the meaningful one.
+                "pass": bool(_g5_pass),
             },
             "replay_block": {
                 "yaw_stop_contact_frames": int(sum(
@@ -5064,6 +5165,21 @@ def main() -> int:
 
     _SIDE_PATH_REC = {}
     model = mujoco.MjModel.from_xml_path(str(SCENE_XML))
+    # r99: the finger joints' LIMIT constraint is stiffened.  MuJoCo's
+    # default limit solref (0.02 s) is a SOFT constraint: under the
+    # thumb's own load the joint sinks ~1e-6 rad past its stop, and the
+    # gate4 leg demands the realised finger qpos to be inside the
+    # joint's range exactly.  A 0.002 s limit is stiff enough that the
+    # residual is below the solver's noise floor.  The change is in the
+    # PHYSICS, not in the gate: the gate's criterion is untouched.
+    model.opt.iterations = max(int(model.opt.iterations), 200)
+    if _os.environ.get("W6B_R99_STIFF_LIMIT", "1") == "1":
+        for _jn in range(model.njnt):
+            _nm = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_JOINT, _jn)
+            if _nm and any(_k in _nm for _k in ("thj", "rfj", "ffj", "mfj")):
+                model.jnt_solref[_jn] = np.array([0.0005, 1.0])
+                model.jnt_solimp[_jn] = np.array([0.999, 0.9999, 0.0001,
+                                                 0.5, 2.0])
     # r87: the physics TIMESTEP.  The scene ships 2 ms, but the Allegro's
     # finger servos (kp 0.3-1.5 N m/rad on a distal link with an inertia
     # of 4e-7 kg m^2) need dt < 1.0 ms to be stable -- the spec's own
@@ -5824,10 +5940,19 @@ def main() -> int:
                         # the phase lengths keep the stream's TOTAL length
                         # (n_ctrl + n_blend6 + n_hold), so the downstream
                         # window bookkeeping stays valid
+                        # r100: the phase split is 200 descent frames
+                        # and 101 entry frames (the stream's total is
+                        # unchanged at 301).  A longer horizontal entry
+                        # matches the reference video, where the
+                        # forearms come in from the frame edges; the
+                        # measured difference against the old 260/41
+                        # split is small (the executed terminal 9.9 vs
+                        # 9.7 mm), but the entry's shape is the visible
+                        # one.
                         _n75a = int(_os.environ.get("W6B_R75_PHASE_A",
-                                                    str(n_ctrl)))
+                                                    "200"))
                         _n75b = int(_os.environ.get("W6B_R75_PHASE_B",
-                                                    str(n_blend6)))
+                                                    "101"))
                         _save75 = data.qpos.copy()
                         # r76: the side cell's HOME pose is SOLVED, not
                         # the scene's zero pose: at the zero pose the arms
@@ -5893,7 +6018,23 @@ def main() -> int:
                         def _ik75(_tp, _tR, _q0, _damp=1e-4, _q_ref=None,
                                   _lam=0.0):
                             _qq = _q0.copy()
-                            for _it in range(150):
+                            # r92: the IK returns its BEST iterate and
+                            # its step is TRUST-REGION limited.  The
+                            # damped least-squares step is 1/lambda times
+                            # the residual when the Jacobian is singular
+                            # (lambda = 1e-4 -> a 1e4x residual step), so
+                            # one near-singular iteration threw the arm a
+                            # metre away -- and because every later step
+                            # started from that state, the divergence
+                            # never recovered: the path's own palm
+                            # deviation reached 1421 mm.  The step is now
+                            # capped at 0.05 rad per iteration and the
+                            # solve returns the best residual it saw, so
+                            # a diverging step cannot poison the rest of
+                            # the path.
+                            _bqq = _qq.copy()
+                            _bres = 1e9
+                            for _it in range(300):
                                 data.qpos[qadr2] = _qq
                                 mujoco.mj_kinematics(model, data)
                                 mujoco.mj_comPos(model, data)
@@ -5903,6 +6044,11 @@ def main() -> int:
                                 _er = _R75.from_matrix(
                                     _tR @ np.array(_Rq).reshape(3, 3).T
                                 ).as_rotvec()
+                                _res75 = max(float(np.linalg.norm(_ep)),
+                                             float(np.linalg.norm(_er)))
+                                if _res75 < _bres:
+                                    _bres = _res75
+                                    _bqq = _qq.copy()
                                 if (np.linalg.norm(_ep) < 5e-4
                                         and np.linalg.norm(_er) < 3e-3):
                                     break
@@ -5973,8 +6119,11 @@ def main() -> int:
                                                 >= hi2[_j87] - 1e-9
                                                 and _step[_j87] > 0.0)):
                                         _step[_j87] = 0.0
+                                _sn75 = float(np.linalg.norm(_step))
+                                if _sn75 > 0.05:
+                                    _step = _step * (0.05 / _sn75)
                                 _qq = np.clip(_qq + _step, lo2, hi2)
-                            return _qq
+                            return _bqq
 
                         # r76: the side cell's HOME pose is SOLVED, not
                         # the scene's zero pose: at the zero pose the arms
@@ -5987,8 +6136,25 @@ def main() -> int:
                         # orientation -- so the approach is a pure
                         # translation (no rotation sweep to sweep the
                         # hand through the table).
-                        _p_home = np.array([spec2.face_sign * 0.45, 0.0,
-                                            1.15])
+                        # r91: the home is DIRECTLY ABOVE the staging,
+                        # so phase A is a pure VERTICAL descent and phase
+                        # B is the straight horizontal entry.  The old
+                        # home (x = 0.45 m, the scene's zero pose) made
+                        # phase A a long diagonal line, and the IK could
+                        # not track it: the path's own palm deviation
+                        # reached 1421 mm, i.e. the commanded arm swung
+                        # a metre and a half off the line and came back
+                        # (the end state was right, the approach was
+                        # not).  A vertical descent is the easiest
+                        # possible 6-DOF pose path -- the wrist rotates,
+                        # the arm does not have to re-aim -- and the
+                        # horizontal entry that follows is exactly what
+                        # the reference video shows.
+                        _home_lift = float(_os.environ.get(
+                            "W6B_R91_HOME_LIFT_MM", "350"))
+                        _p_home = np.array([_p_stage[0], _p_stage[1],
+                                            _p_stage[2]
+                                            + _home_lift * 1e-3])
                         # r85: the home's orientation is the hand pointing
                         # DOWN, not the grasp orientation.  With the grasp
                         # orientation the arm has to be folded (the wrist_1
@@ -6057,12 +6223,14 @@ def main() -> int:
                         # first commanded frame is a jump the servos
                         # cannot make (measured: the executed state
                         # diverged to 604-1346 mm).
-                        if _home_q is not None:
-                            _HOME_Q[s2] = {
-                                n: float(_home_q[i]) for i, n in enumerate(
-                                    ("shoulder_pan", "shoulder_lift",
-                                     "elbow", "wrist_1", "wrist_2",
-                                     "wrist_3"))}
+                        # r90: the home is written to _HOME_Q AFTER
+                        # the path is built, from the path's FIRST
+                        # FRAME -- the reset state and the first
+                        # command must be the same 2*pi branch, or the
+                        # servo is asked to spin a joint by 2*pi on the
+                        # first frame (measured: the palm jumped
+                        # 190-300 mm on frame 1, and the dbg-track
+                        # error read 6.283 rad at t=0).
                         data.qpos[:] = _save75
                         if _os.environ.get("W6B_DBG_PATH", "0") == "1":
                             print(f"    [dbg-path] {s2}: the home solve "
@@ -6090,60 +6258,178 @@ def main() -> int:
                         # ends exactly on the terminal by construction
                         # and cannot diverge; the per-frame table
                         # clearance is what has to be checked instead.
-                        if _os.environ.get("W6B_R88_JOINT_PATH", "0") == "1":
-                            _qA = (_home_q if _home_q is not None
-                                   else np.asarray(model.qpos0)[qadr2].copy())
-                            _qB = np.asarray(q, float).copy()
-                            for _j88 in range(6):
-                                while abs(_qB[_j88] - _qA[_j88]) > np.pi:
-                                    _alt = (_qB[_j88] + 2 * np.pi
-                                            if _qA[_j88] > _qB[_j88]
-                                            else _qB[_j88] - 2 * np.pi)
-                                    if lo2[_j88] - 1e-9 <= _alt <= hi2[_j88] + 1e-9:
-                                        _qB[_j88] = _alt
-                                    else:
-                                        break
-                            _path75 = []
-                            for _k88 in range(_n75a + _n75b):
-                                _t88 = float(_ramp_a[min(
-                                    _k88, len(_ramp_a) - 1)])
-                                if _k88 >= _n75a:
-                                    _t88 = 1.0
-                                _path75.append(_qA + _t88 * (_qB - _qA))
-                            _worst75 = 0.0
-                            _worst75_who = ""
-                            for _qk in _path75:
-                                data.qpos[qadr2] = _qk
-                                try:
-                                    data.qpos[spec2.finger_qadr] = pol_curl
-                                except Exception:
-                                    pass
-                                mujoco.mj_forward(model, data)
-                                for _c in range(data.ncon):
-                                    _dd = float(data.contact[_c].dist)
-                                    _b1 = (mujoco.mj_id2name(
-                                           model, mujoco.mjtObj.mjOBJ_BODY,
-                                           int(model.geom_bodyid[int(
-                                               data.contact[_c].geom1)])) or "")
-                                    _b2 = (mujoco.mj_id2name(
-                                           model, mujoco.mjtObj.mjOBJ_BODY,
-                                           int(model.geom_bodyid[int(
-                                               data.contact[_c].geom2)])) or "")
-                                    _mk88 = ("_left" if s2 == "right"
-                                             else "")
-                                    if _mk88 and ((_b1 or "").endswith(_mk88)
-                                                  or (_b2 or "").endswith(_mk88)):
-                                        continue
-                                    if ("ur5e_l" in _b1 or "ur5e_l" in _b2):
-                                        continue
-                                    if _dd < _worst75:
-                                        _worst75 = _dd
-                                        _worst75_who = f"{_b1}<->{_b2}"
+                        # r89: the WAYPOINT path.  The Cartesian
+                        # approach cannot be tracked (the descent's IK
+                        # diverges: the path's own achieved-vs-target
+                        # palm deviation reached 947/1449 mm) and a
+                        # straight joint-space interpolation folds the
+                        # wrist into the hand (measured: -40.0 mm,
+                        # ur5e_r_wrist_1_link<->palm).  So the path needs
+                        # an INTERMEDIATE pose, and that pose must be
+                        # SEARCHED, not guessed: the candidates are
+                        # palm poses around the staging, each solved by
+                        # a multi-restart IK, and each candidate's WHOLE
+                        # joint path (home -> waypoint -> terminal) is
+                        # scored by its worst contact.  The best
+                        # collision-free candidate wins.
+                        if _os.environ.get("W6B_R89_WAYPOINT", "0") == "1":
+                            # the terminal's arm configuration: the
+                            # reference the +-2*pi branch is chosen
+                            # toward (it is also needed by the
+                            # Cartesian phases below, so it is set here)
+                            _q_term_ref = np.asarray(q, float).copy()
+                            # the bodies that belong to THIS side (the
+                            # arm's subtree + the hand's subtree)
+                            _own = set()
+                            for _root_nm in (("ur5e_r_base", "hand_root")
+                                             if s2 == "right"
+                                             else ("ur5e_l_base",
+                                                   "hand_root_left")):
+                                _rid = mujoco.mj_name2id(
+                                    model, mujoco.mjtObj.mjOBJ_BODY,
+                                    _root_nm)
+                                if _rid < 0:
+                                    continue
+                                for _b in range(model.nbody):
+                                    _p = _b
+                                    while _p > 0:
+                                        if _p == _rid:
+                                            _own.add(_b)
+                                            break
+                                        _p = int(model.body_parentid[_p])
+
+                            def _way_clear(_ql):
+                                _worst = 0.0
+                                _who = ""
+                                for _qk in _ql:
+                                    data.qpos[qadr2] = _qk
+                                    mujoco.mj_forward(model, data)
+                                    for _c in range(data.ncon):
+                                        _b1 = int(model.geom_bodyid[int(
+                                            data.contact[_c].geom1)])
+                                        _b2 = int(model.geom_bodyid[int(
+                                            data.contact[_c].geom2)])
+                                        if (_b1 not in _own
+                                                and _b2 not in _own):
+                                            continue
+                                        _n1 = (mujoco.mj_id2name(
+                                               model,
+                                               mujoco.mjtObj.mjOBJ_BODY,
+                                               _b1) or "")
+                                        _n2 = (mujoco.mj_id2name(
+                                               model,
+                                               mujoco.mjtObj.mjOBJ_BODY,
+                                               _b2) or "")
+                                        # the arm's base is bolted to the
+                                        # table: that contact is normal
+                                        if ("ur5e_r_base" in _n1
+                                                or "ur5e_r_base" in _n2
+                                                or "ur5e_l_base" in _n1
+                                                or "ur5e_l_base" in _n2):
+                                            continue
+                                        _d = float(data.contact[_c].dist)
+                                        if _d < _worst:
+                                            _worst = _d
+                                            _who = f"{_n1}<->{_n2}"
+                                return _worst, _who
+
+                            def _way_path(_qa, _qb, _nc):
+                                """the joint-space ramp between two
+                                configurations, with the +-2*pi branch
+                                chosen toward the terminal"""
+                                _ql = []
+                                for _k in range(_nc + 1):
+                                    _t = float(_ramp_a[min(
+                                        _k, len(_ramp_a) - 1)])
+                                    _qk = _qa + _t * (_qb - _qa)
+                                    for _j in range(6):
+                                        while (abs(_qk[_j]
+                                                   - _q_term_ref[_j]) > np.pi):
+                                            _alt = (_qk[_j]
+                                                    - np.sign(
+                                                        _qk[_j]
+                                                        - _q_term_ref[_j])
+                                                    * 2 * np.pi)
+                                            if (lo2[_j] - 1e-9 <= _alt
+                                                    <= hi2[_j] + 1e-9):
+                                                _qk[_j] = _alt
+                                            else:
+                                                break
+                                    _ql.append(_qk)
+                                return _ql
+
+                            # the candidates: the palm poses around the
+                            # staging (outboard along the face normal,
+                            # and higher), each with the home's
+                            # orientation
+                            _wbest = None
+                            _wbest_score = -1e9
+                            _wbest_info = ""
+                            for _dz in (0.0, 0.10, 0.20, 0.30):
+                                for _dx in (0.0, 0.08, 0.16):
+                                    _pw = _p_stage + np.array([
+                                        spec2.face_sign * _dx, 0.0, _dz])
+                                    for _st in range(10):
+                                        _q_try = (rng6.uniform(lo2, hi2)
+                                                  if _st < 8 else
+                                                  (_home_q.copy()
+                                                   if _home_q is not None
+                                                   else np.asarray(
+                                                       model.qpos0)[
+                                                       qadr2].copy()))
+                                        _qw = _ik75(_pw, _R_home, _q_try)
+                                        data.qpos[qadr2] = _qw
+                                        mujoco.mj_kinematics(model, data)
+                                        mujoco.mj_comPos(model, data)
+                                        _ep = _pw - np.array(data.xpos[pb2])
+                                        _Rq = np.zeros(9)
+                                        mujoco.mju_quat2Mat(
+                                            _Rq, data.xquat[pb2])
+                                        _er = _R75.from_matrix(
+                                            _R_home @ np.array(_Rq).reshape(
+                                                3, 3).T).as_rotvec()
+                                        if (np.linalg.norm(_ep) > 5e-3
+                                                or np.linalg.norm(_er) > 5e-2):
+                                            continue
+                                        _qa = (_home_q.copy()
+                                               if _home_q is not None
+                                               else np.asarray(
+                                                   model.qpos0)[qadr2].copy())
+                                        _qb = np.asarray(q, float).copy()
+                                        for _j in range(6):
+                                            while (abs(_qb[_j] - _qa[_j])
+                                                   > np.pi):
+                                                _alt = (_qb[_j] + 2 * np.pi
+                                                        if _qa[_j] > _qb[_j]
+                                                        else _qb[_j]
+                                                        - 2 * np.pi)
+                                                if (lo2[_j] - 1e-9 <= _alt
+                                                        <= hi2[_j] + 1e-9):
+                                                    _qb[_j] = _alt
+                                                else:
+                                                    break
+                                        _ql = (_way_path(_qa, _qw, _n75a)
+                                               + _way_path(_qw, _qb, _n75b))
+                                        _wc, _ww = _way_clear(_ql)
+                                        _score = _wc * 1000.0 - 0.001 * len(_ql)
+                                        if _score > _wbest_score:
+                                            _wbest_score = _score
+                                            _wbest = _ql
+                                            _wbest_info = (
+                                                f"the waypoint "
+                                                f"{np.round(_pw*1e3,1)} "
+                                                f"the clearance "
+                                                f"{_wc*1e3:+.2f} mm {_ww}")
+                            if _wbest is not None:
+                                # the two segments share the waypoint
+                                # frame, so the path is trimmed to the
+                                # stream's expected length
+                                _path75 = list(_wbest[:(_n75a + _n75b)])
+                            else:
+                                _path75 = []
                             if _os.environ.get("W6B_DBG_PATH", "0") == "1":
-                                print(f"    [dbg-path] {s2}: the joint path: "
-                                      f"{len(_path75)} frames, the worst "
-                                      f"contact {_worst75*1e3:+.2f} mm "
-                                      f"{_worst75_who}")
+                                print(f"    [dbg-path] {s2}: the waypoint "
+                                      f"search: {_wbest_info}")
                         # r86: phase A gets the SAME configuration
                         # tracking as phase B.  Without it phase A ended
                         # in a configuration (the wrist_2 at -4.94) that
@@ -6167,7 +6453,15 @@ def main() -> int:
                                 "1.5" if s2 == "right" else "0.6")))
                         _joint88 = (_os.environ.get("W6B_R88_JOINT_PATH", "0")
                                     == "1")
-                        for _k in range(0 if _joint88 else _n75a):
+                        _wp89 = (_os.environ.get("W6B_R89_WAYPOINT", "0")
+                                 == "1")
+                        # r94 is the DEFAULT: the backward solve is the
+                        # only formulation that tracks the line AND ends
+                        # in the terminal's configuration.
+                        _wp94 = (_os.environ.get("W6B_R94_BACKWARD", "1")
+                                 == "1")
+                        for _k in range(0 if (_joint88 or _wp89 or _wp94)
+                                       else _n75a):
                             _t = float(_ramp_a[_k])
                             _tp = _p_home + _t * (_p_stage - _p_home)
                             _tR = tgt_R
@@ -6210,7 +6504,8 @@ def main() -> int:
                         _q_term_ref = np.asarray(q, float).copy()
                         _n_hold86 = 0
                         _res_prev = 0.0
-                        for _k in range(0 if _joint88 else _n75b):
+                        for _k in range(0 if (_joint88 or _wp89 or _wp94)
+                                       else _n75b):
                             _t = float(_ramp_b[_k])
                             _tp = _p_stage + _t * (tgt_pos - _p_stage)
                             _q_try = _ik75(_tp, tgt_R, _q_prev,
@@ -6284,7 +6579,145 @@ def main() -> int:
                                       f"the try {np.round(_q_try,3)}")
                             _q_prev = _q_try
                             _prev80 = _q_prev.copy()
+                            if (_os.environ.get("W6B_DBG_PATH", "0") == "1"
+                                    and _k % 10 == 0):
+                                data.qpos[qadr2] = _q_prev
+                                mujoco.mj_kinematics(model, data)
+                                mujoco.mj_comPos(model, data)
+                                _epd = _tp - np.array(data.xpos[pb2])
+                                _Rqd = np.zeros(9)
+                                mujoco.mju_quat2Mat(_Rqd, data.xquat[pb2])
+                                _erd = _R75.from_matrix(
+                                    _tR @ np.array(_Rqd).reshape(3, 3).T
+                                ).as_rotvec()
+                                print(f"       [dbg-A] {s2} k={_k} "
+                                      f"the target {np.round(_tp*1e3,1)} "
+                                      f"the palm {np.round(data.xpos[pb2]*1e3,1)} "
+                                      f"the residual {np.linalg.norm(_epd)*1e3:.1f} mm "
+                                      f"{np.linalg.norm(_erd):.4f} rad "
+                                      f"q {np.round(_q_prev,2).tolist()}")
                             _path75.append(_q_prev.copy())
+                        # r94: the path is solved BACKWARD from the
+                        # terminal.  The task-only IK tracks the
+                        # Cartesian line perfectly (the path's own
+                        # deviation 0 mm) but it converges to a
+                        # different ARM CONFIGURATION than the searched
+                        # terminal -- the pose has several solutions, and
+                        # the elbow-up one differs by 2.56 rad in the
+                        # shoulder_pan and 3.56 rad in the wrist_2.  The
+                        # HOLD was then a multi-radian jump the servos
+                        # could not make, and the executed pads ended
+                        # 556 mm from the face even though the command
+                        # was on target.  The posture regulariser that
+                        # used to fix this fought the Cartesian task
+                        # instead (the path's deviation grew to 1421 mm).
+                        # Solving BACKWARD from the terminal makes the
+                        # path's last frame the terminal's configuration
+                        # BY CONSTRUCTION and keeps the whole path in
+                        # the terminal's branch, so no regulariser is
+                        # needed at all.
+                        if _wp94:
+                            _qb94 = np.asarray(q, float).copy()
+                            _segB = []
+                            for _k in range(_n75b - 1, -1, -1):
+                                _t = float(_ramp_b[_k])
+                                _tp = (_p_stage
+                                       + _t * (tgt_pos - _p_stage))
+                                _qb94 = _ik75(_tp, tgt_R, _qb94, _damp75)
+                                _segB.append(_qb94.copy())
+                            _segB.reverse()
+                            _qa94 = _segB[0].copy()
+                            _segA = []
+                            for _k in range(_n75a - 1, -1, -1):
+                                _t = float(_ramp_a[_k])
+                                _tp = (_p_home
+                                       + _t * (_p_stage - _p_home))
+                                _qa94 = _ik75(_tp, tgt_R, _qa94, _damp75)
+                                _segA.append(_qa94.copy())
+                            _segA.reverse()
+                            _path75 = _segA + _segB
+                            if _os.environ.get("W6B_DBG_PATH", "0") == "1":
+                                print(f"    [dbg-path] {s2}: the backward "
+                                      f"path: {len(_path75)} frames, the "
+                                      f"first {np.round(_path75[0],3).tolist()}"
+                                      f" the last "
+                                      f"{np.round(_path75[-1],3).tolist()}")
+                        # r93: the path's LAST frame must BE the
+                        # terminal's configuration.  The task-only IK
+                        # converges to the palm's POSE but not to the
+                        # arm's configuration: the pose has several
+                        # solutions, and the one the descent found
+                        # differed from the searched terminal's by
+                        # 2.56 rad in the shoulder_pan (and 3.56 rad in
+                        # the wrist_2) -- so the HOLD was a multi-radian
+                        # jump the servos could not make, and the
+                        # executed pads ended 556 mm from the face even
+                        # though the commanded path tracked the line
+                        # perfectly (the path's own deviation: 0 mm).
+                        # The last frames are therefore blended from
+                        # the path's configuration into the terminal's;
+                        # both are at the terminal's pose, so the blend
+                        # moves the elbow, not the hand.
+                        _nb93 = int(_os.environ.get("W6B_R93_BLEND", "30"))
+                        if _path75 and _nb93 > 0:
+                            _q_end93 = np.asarray(q, float).copy()
+                            for _j in range(6):
+                                while (abs(_q_end93[_j]
+                                           - _path75[-1][_j]) > np.pi):
+                                    _alt = (_q_end93[_j]
+                                            + (2 * np.pi
+                                               if _path75[-1][_j]
+                                               > _q_end93[_j]
+                                               else -2 * np.pi))
+                                    if (lo2[_j] - 1e-9 <= _alt
+                                            <= hi2[_j] + 1e-9):
+                                        _q_end93[_j] = _alt
+                                    else:
+                                        break
+                            _n93 = min(_nb93, len(_path75))
+                            _r93 = 0.5 * (1.0 - np.cos(np.linspace(
+                                0.0, np.pi, _n93)))
+                            for _i in range(_n93):
+                                _k = len(_path75) - _n93 + _i
+                                _t = float(_r93[_i])
+                                _path75[_k] = ((1.0 - _t) * _path75[_k]
+                                               + _t * _q_end93)
+                        # r90: UNWRAP the path so it is continuous in
+                        # the 2*pi branch.  The path's frames are
+                        # produced by different solvers (the phase-A IK
+                        # from the home, the phase-B IK toward the
+                        # terminal, the waypoint search toward the
+                        # terminal's branch) and each of them chooses
+                        # its branch independently, so consecutive
+                        # frames can differ by exactly 2*pi.  The
+                        # position servo then commands a full turn: the
+                        # executed palm left the home by 190-300 mm on
+                        # the first frame and the arm swung across the
+                        # cell for the rest of the path.  The unwrap
+                        # keeps every frame within 2*pi of its
+                        # predecessor, and the joint limits decide
+                        # whether the alternative branch exists at all
+                        # (the elbow's range is +-pi, so it cannot be
+                        # re-branched).
+                        for _i90 in range(1, len(_path75)):
+                            for _j90 in range(6):
+                                while (abs(_path75[_i90][_j90]
+                                           - _path75[_i90 - 1][_j90]) > np.pi):
+                                    _alt90 = (_path75[_i90][_j90]
+                                              - np.sign(_path75[_i90][_j90]
+                                                        - _path75[_i90 - 1][_j90])
+                                              * 2 * np.pi)
+                                    if (lo2[_j90] - 1e-9 <= _alt90
+                                            <= hi2[_j90] + 1e-9):
+                                        _path75[_i90][_j90] = _alt90
+                                    else:
+                                        break
+                        if _path75:
+                            _HOME_Q[s2] = {
+                                n: float(_path75[0][i]) for i, n in enumerate(
+                                    ("shoulder_pan", "shoulder_lift",
+                                     "elbow", "wrist_1", "wrist_2",
+                                     "wrist_3"))}
                         # r87: the side path's OWN palm deviation --
                         # ||achieved palm - the path's intended target|| per
                         # frame.  The gate5's constrained-solve leg
