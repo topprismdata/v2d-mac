@@ -1,0 +1,92 @@
+{
+  "right": {
+    "the joint errors rad": [
+      -0.0,
+      0.002,
+      0.001,
+      0.0,
+      0.0,
+      -0.0
+    ],
+    "the servo's holding torque N.m": [
+      -0.0,
+      4.4,
+      2.0,
+      0.0,
+      0.0,
+      -0.0
+    ],
+    "the uncompensated gravity bias N.m": [
+      0.0,
+      31.3,
+      6.3,
+      1.9,
+      -0.4,
+      -0.1
+    ],
+    "the residual torque N.m": [
+      0.0,
+      35.7,
+      8.3,
+      1.9,
+      -0.4,
+      -0.1
+    ],
+    "the tool-tip displacement it explains mm": [
+      -12.01,
+      -5.453,
+      9.45
+    ],
+    "the magnitude mm": 16.225
+  },
+  "left": {
+    "the joint errors rad": [
+      0.0,
+      0.001,
+      -0.0,
+      -0.0,
+      -0.0,
+      0.0
+    ],
+    "the servo's holding torque N.m": [
+      0.0,
+      4.4,
+      -0.0,
+      -0.0,
+      -0.0,
+      0.0
+    ],
+    "the uncompensated gravity bias N.m": [
+      -0.6,
+      22.2,
+      13.4,
+      1.9,
+      -0.3,
+      -0.1
+    ],
+    "the residual torque N.m": [
+      -0.6,
+      26.6,
+      13.4,
+      1.9,
+      -0.3,
+      -0.1
+    ],
+    "the tool-tip displacement it explains mm": [
+      6.009,
+      1.481,
+      5.876
+    ],
+    "the magnitude mm": 8.534
+  },
+  "the measured": {
+    "right": {
+      "the executed pad distance mm": null,
+      "the executed forward axis deg": 26.34
+    },
+    "left": {
+      "the executed pad distance mm": null,
+      "the executed forward axis deg": 27.61
+    }
+  }
+}
