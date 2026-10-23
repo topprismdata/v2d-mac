@@ -31,6 +31,7 @@ and the IK residuals.
 usage: palm_pose_refine.py [scene.xml]
 """
 import json
+import os as _os
 import sys
 from pathlib import Path
 
@@ -61,6 +62,22 @@ def gid(m, n):
     i = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, n)
     assert i >= 0, n
     return i
+
+
+# r86: the ARM's table clearance (hard) and the BRANCH ANCHOR.
+#   W6B_R86_ARM_CLEAR=0  -- disable the arm-clearance constraint
+#   W6B_R86_ANCHOR=<json> -- a file with {"right": [6 joints], "left": [...]};
+#                           the arm solutions are then constrained to that
+#                           branch (the multi-start is seeded near it and a
+#                           solution further than ANCHOR_TOL from it is
+#                           rejected).
+# WHY the anchor: the search must return a branch the APPROACH PATH can
+# traverse.  Measured (r86): a solution whose elbow was 0.74 rad from
+# the path-verified branch made the path's IK diverge -- every joint ran
+# to its ctrlrange limit for the last ~40 frames and the servos stalled
+# (the executed wrist_1 sat 5.0 rad from its command).  The search's own
+# joint-margin score cannot see that; only the path can.
+ANCHOR_TOL = 0.60      # rad, per joint, from the anchor (wrapped)
 
 
 def main():
@@ -113,6 +130,13 @@ def main():
         print(f"=== {side}: the known-good palm at {np.round(Pp*1e3,1)} mm")
 
         AJ = [jid(sm, f"{prefix}_{n}_joint") for n in ARM]
+        # r86: the branch anchor (the path-verified arm configuration)
+        _anchor = None
+        _ap = _os.environ.get("W6B_R86_ANCHOR", "")
+        if _ap and Path(_ap).is_file():
+            _anchor = np.asarray(
+                json.loads(Path(_ap).read_text())[side], float)
+        _arm_clear_on = _os.environ.get("W6B_R86_ARM_CLEAR", "1") != "0"
         AQ = [int(sm.jnt_qposadr[j]) for j in AJ]
         AD = [int(sm.jnt_dofadr[j]) for j in AJ]
         ALO = sm.jnt_range[AJ][:, 0]
@@ -141,6 +165,42 @@ def main():
                 sm, mujoco.mjtObj.mjOBJ_GEOM, i) or "")
                  or "tip" in (mujoco.mj_id2name(
                      sm, mujoco.mjtObj.mjOBJ_GEOM, i) or ""))]
+        # r86: the ARM's links must clear the table too.  The search only
+        # ever checked the HAND's geoms, so the searched terminal put the
+        # wrist 2.3 mm INSIDE the table slab; the executed tracking error
+        # (0.13 rad on the wrist_1) pushed it in, the wrist_2's servo
+        # saturated at its 28 Nm limit against the 30 N table reaction,
+        # and the hand was twisted off the face -- measured in the
+        # replay: the right's fwd 26.3 -> 45.6 deg, the box pushed
+        # 16.2 mm, the right's wrist_2 reaction 30.0 N.
+        # The arm's links are meshes, so the clearance is measured from
+        # the meshes' lowest WORLD vertex (exact, not a bounding box).
+        ARM_LINKS = ("upper_arm_link", "forearm_link", "wrist_1_link",
+                     "wrist_2_link", "wrist_3_link")
+        # NOTE: the arm's MESH geometry extends 40-50 mm below its
+        # COLLISION proxy (the capsules), so the clearance must be
+        # measured on the collision geoms (contype != 0), not on the
+        # meshes.  Measured (r86): the old path-verified solution's
+        # collision proxy is 7.4 mm (right) / 13.6 mm (left) INSIDE the
+        # table slab -- which is why the wrist saturated against the
+        # table in the replay.
+        ARM_GEOMS = [
+            i for i in range(sm.ngeom)
+            if (mujoco.mj_id2name(sm, mujoco.mjtObj.mjOBJ_BODY,
+                                 int(sm.geom_bodyid[i])) or "").startswith(
+                prefix)
+            and any(ln in (mujoco.mj_id2name(
+                sm, mujoco.mjtObj.mjOBJ_BODY, int(sm.geom_bodyid[i])) or "")
+                for ln in ARM_LINKS)
+            and sm.geom_contype[i] != 0]
+        ARM_CLEAR_M = 0.012      # 12 mm of clearance, so a 0.13 rad
+                                  # tracking error cannot push the wrist in
+
+        def _low_z(gi):
+            """the geom's clearance to the table's slab (the exact signed
+            distance, negative = penetrating)"""
+            return float(mujoco.mj_geomDistance(
+                sm, sd, gi, TABLE_G, 0.05, None))
 
         def state(q, fv):
             mujoco.mj_resetData(sm, sd)
@@ -230,6 +290,7 @@ def main():
         rng = np.random.default_rng(19)
         rows = []
         n_arm_fail = n_ff_fail = n_mf_fail = 0
+        n_ac_fail = 0
         for roll in range(0, 360, 10):
             ang = np.deg2rad(float(roll))
             cr, sr = np.cos(ang), np.sin(ang)
@@ -251,11 +312,27 @@ def main():
                     # the executed wrist_1 stalled at 1.02 rad against a
                     # -1.84 rad command.
                     cands = []
-                    for q_try in [np.zeros(6)] + [
-                            rng.uniform(ALO, AHI) for _ in range(14)]:
+                    if _anchor is not None:
+                        # r86: seed NEAR the anchor so the multi-start
+                        # explores the path-verified branch, plus small
+                        # perturbations of it
+                        _seeds = [_anchor] + [
+                            _anchor + rng.normal(0.0, 0.15, 6)
+                            for _ in range(14)]
+                    else:
+                        _seeds = [np.zeros(6)] + [
+                            rng.uniform(ALO, AHI) for _ in range(14)]
+                    for q_try in _seeds:
                         qq, epp, errp, mgp = ik_arm(tp, Rt, q_try)
                         if epp > 2e-3 or errp > 0.01 or mgp < 0.10:
                             continue
+                        if _anchor is not None:
+                            # the branch must be the anchor's (wrapped to
+                            # the nearest equivalent revolution)
+                            _dq = qq - _anchor
+                            _dq = _dq - 2 * np.pi * np.round(_dq / (2 * np.pi))
+                            if np.abs(_dq).max() > ANCHOR_TOL:
+                                continue
                         cands.append((sum(1 for v in qq if abs(v) > 3.0),
                                       sum(abs(v) for v in qq),
                                       epp + errp, qq, epp, errp, mgp))
@@ -324,6 +401,17 @@ def main():
                     # slab and the arm jammed)
                     if clear < 5e-3:
                         continue
+                    # r86: the arm's links must clear the table as well
+                    arm_clear = 1.0
+                    for gi in ARM_GEOMS:
+                        arm_clear = min(arm_clear, _low_z(gi))
+                    if _arm_clear_on and arm_clear < ARM_CLEAR_M:
+                        if n_ac_fail <= 3:
+                            print(f"    [aclear] roll {roll} py {py} pz "
+                                  f"{pz*1e3:.0f}: the arm's clearance "
+                                  f"{arm_clear*1e3:.1f} mm")
+                            n_ac_fail += 1
+                        continue
                     a2, pd2 = {}, {}
                     # r70: measure the GATE'S OWN metric, not a proxy.
                     # The gate scores each pad's CENTRE against the end
@@ -379,6 +467,7 @@ def main():
                         "e_r_deg": round(float(np.degrees(er)), 2),
                         "margin": round(mg, 4),
                         "clearance_mm": round(clear * 1e3, 1),
+                        "arm_clearance_mm": round(arm_clear * 1e3, 1),
                         "axes": {k: round(v, 1) for k, v in a2.items()},
                         "rect_mm": {k: round(v * 1e3, 4)
                                     for k, v in _rect.items()},

@@ -5996,9 +5996,45 @@ def main() -> int:
                         for _k in range(_n75b):
                             _t = float(_ramp_b[_k])
                             _tp = _p_stage + _t * (tgt_pos - _p_stage)
-                            _q_prev = _ik75(_tp, tgt_R, _q_prev,
-                                            _damp75, _q_ref=_q_term_ref,
-                                            _lam=_lam75)
+                            _q_try = _ik75(_tp, tgt_R, _q_prev,
+                                           _damp75, _q_ref=_q_term_ref,
+                                           _lam=_lam75)
+                            # r86: phase B needs the SAME branch
+                            # continuity phase A has.  Without it the
+                            # descent's IK walked every joint to its
+                            # ctrlrange limit (measured: the commanded
+                            # arm was [6.28, 6.28, 3.14, 6.28, 6.28,
+                            # 6.28] for ~40 frames) and the servos
+                            # stalled (the executed wrist_1 sat 5.0 rad
+                            # from its command).
+                            for _j86 in range(6):
+                                _d86 = _q_try[_j86] - _prev80[_j86]
+                                while abs(_d86) > np.pi:
+                                    _alt = _q_try[_j86] - np.sign(_d86) * 2 * np.pi
+                                    if lo2[_j86] - 1e-9 <= _alt <= hi2[_j86] + 1e-9:
+                                        _q_try[_j86] = _alt
+                                        _d86 = _q_try[_j86] - _prev80[_j86]
+                                    else:
+                                        break
+                            # r86: a NON-CONVERGED IK is not a solution.
+                            # If the descent's IK cannot reach the
+                            # target, keep the previous frame's
+                            # solution instead of walking the joints to
+                            # their limits.
+                            data.qpos[qadr2] = _q_try
+                            mujoco.mj_kinematics(model, data)
+                            mujoco.mj_comPos(model, data)
+                            _Rq86 = np.zeros(9)
+                            mujoco.mju_quat2Mat(_Rq86, data.xquat[pb2])
+                            _er86 = _R75.from_matrix(
+                                tgt_R @ np.array(_Rq86).reshape(3, 3).T
+                            ).as_rotvec()
+                            _ep86 = _tp - np.array(data.xpos[pb2])
+                            if (np.linalg.norm(_ep86) > 2e-3
+                                    or np.linalg.norm(_er86) > 1e-2):
+                                _q_try = _q_prev
+                            _q_prev = _q_try
+                            _prev80 = _q_prev.copy()
                             _path75.append(_q_prev.copy())
                         _worst75 = 0.0
                         _worst75_who = ""
