@@ -465,7 +465,7 @@ runs/.venv-retarget/bin/python retarget/retarget_dual.py
 | **the executed pad distance** | **4.58 mm** | **6.06 mm** |
 | the executed forward axis | 33.3 deg (the cmd 26.3) | 32.9 deg (the cmd 27.6) |
 | the path's own palm deviation | 2.60 mm | 2.59 mm |
-| the executed-vs-commanded deviation | 17.0 mm (cap 40) | 11.0 mm |
+| the executed-vs-commanded deviation | 16.70 mm (cap 40) | 11.02 mm |
 | the box's displacement | 1.98 mm | |
 | gate1 / gate2 / gate3 / gate5 | **pass / pass / pass / pass** | |
 
