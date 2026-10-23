@@ -6076,6 +6076,74 @@ def main() -> int:
                         _res_prev = 0.0
                         _ramp_a = 0.5 * (1.0 - np.cos(np.linspace(
                             0.0, np.pi, _n75a)))
+                        # r88: the JOINT-SPACE path.  The Cartesian
+                        # approach could not be tracked: the descent's IK
+                        # diverges in phase A (the path's own
+                        # achieved-vs-target palm deviation reached
+                        # 947/1449 mm -- the hand 1.6 m up in the air),
+                        # because the Cartesian line home->staging is not
+                        # reachable in the terminal's branch with a
+                        # 6-DOF arm and a 6-D task (there is no null
+                        # space to absorb the difference).  The
+                        # joint-space interpolation from the home's
+                        # configuration to the TERMINAL's configuration
+                        # ends exactly on the terminal by construction
+                        # and cannot diverge; the per-frame table
+                        # clearance is what has to be checked instead.
+                        if _os.environ.get("W6B_R88_JOINT_PATH", "0") == "1":
+                            _qA = (_home_q if _home_q is not None
+                                   else np.asarray(model.qpos0)[qadr2].copy())
+                            _qB = np.asarray(q, float).copy()
+                            for _j88 in range(6):
+                                while abs(_qB[_j88] - _qA[_j88]) > np.pi:
+                                    _alt = (_qB[_j88] + 2 * np.pi
+                                            if _qA[_j88] > _qB[_j88]
+                                            else _qB[_j88] - 2 * np.pi)
+                                    if lo2[_j88] - 1e-9 <= _alt <= hi2[_j88] + 1e-9:
+                                        _qB[_j88] = _alt
+                                    else:
+                                        break
+                            _path75 = []
+                            for _k88 in range(_n75a + _n75b):
+                                _t88 = float(_ramp_a[min(
+                                    _k88, len(_ramp_a) - 1)])
+                                if _k88 >= _n75a:
+                                    _t88 = 1.0
+                                _path75.append(_qA + _t88 * (_qB - _qA))
+                            _worst75 = 0.0
+                            _worst75_who = ""
+                            for _qk in _path75:
+                                data.qpos[qadr2] = _qk
+                                try:
+                                    data.qpos[spec2.finger_qadr] = pol_curl
+                                except Exception:
+                                    pass
+                                mujoco.mj_forward(model, data)
+                                for _c in range(data.ncon):
+                                    _dd = float(data.contact[_c].dist)
+                                    _b1 = (mujoco.mj_id2name(
+                                           model, mujoco.mjtObj.mjOBJ_BODY,
+                                           int(model.geom_bodyid[int(
+                                               data.contact[_c].geom1)])) or "")
+                                    _b2 = (mujoco.mj_id2name(
+                                           model, mujoco.mjtObj.mjOBJ_BODY,
+                                           int(model.geom_bodyid[int(
+                                               data.contact[_c].geom2)])) or "")
+                                    _mk88 = ("_left" if s2 == "right"
+                                             else "")
+                                    if _mk88 and ((_b1 or "").endswith(_mk88)
+                                                  or (_b2 or "").endswith(_mk88)):
+                                        continue
+                                    if ("ur5e_l" in _b1 or "ur5e_l" in _b2):
+                                        continue
+                                    if _dd < _worst75:
+                                        _worst75 = _dd
+                                        _worst75_who = f"{_b1}<->{_b2}"
+                            if _os.environ.get("W6B_DBG_PATH", "0") == "1":
+                                print(f"    [dbg-path] {s2}: the joint path: "
+                                      f"{len(_path75)} frames, the worst "
+                                      f"contact {_worst75*1e3:+.2f} mm "
+                                      f"{_worst75_who}")
                         # r86: phase A gets the SAME configuration
                         # tracking as phase B.  Without it phase A ended
                         # in a configuration (the wrist_2 at -4.94) that
@@ -6097,7 +6165,9 @@ def main() -> int:
                             _os.environ.get(
                                 "W6B_R86_LAM_A",
                                 "1.5" if s2 == "right" else "0.6")))
-                        for _k in range(_n75a):
+                        _joint88 = (_os.environ.get("W6B_R88_JOINT_PATH", "0")
+                                    == "1")
+                        for _k in range(0 if _joint88 else _n75a):
                             _t = float(_ramp_a[_k])
                             _tp = _p_home + _t * (_p_stage - _p_home)
                             _tR = tgt_R
@@ -6140,7 +6210,7 @@ def main() -> int:
                         _q_term_ref = np.asarray(q, float).copy()
                         _n_hold86 = 0
                         _res_prev = 0.0
-                        for _k in range(_n75b):
+                        for _k in range(0 if _joint88 else _n75b):
                             _t = float(_ramp_b[_k])
                             _tp = _p_stage + _t * (tgt_pos - _p_stage)
                             _q_try = _ik75(_tp, tgt_R, _q_prev,
@@ -6154,6 +6224,29 @@ def main() -> int:
                             # 6.28] for ~40 frames) and the servos
                             # stalled (the executed wrist_1 sat 5.0 rad
                             # from its command).
+                            # r87: select the branch by the +-2*pi WRAP
+                            # toward the TERMINAL's arm configuration, not
+                            # by a competing regulariser.  A 6-DOF arm with
+                            # a 6-D task has NO null space, so the branch
+                            # must come from the wrap; the regulariser
+                            # (which fought the Cartesian task) is what
+                            # drove the descent's IK into the joint
+                            # limits.
+                            _ref86 = (_q_term_ref
+                                      if _os.environ.get(
+                                          "W6B_R87_TERM_BRANCH", "1") == "1"
+                                      else _prev80)
+                            for _j86 in range(6):
+                                _d86 = _q_try[_j86] - _ref86[_j86]
+                                while abs(_d86) > np.pi:
+                                    _alt = _q_try[_j86] - np.sign(_d86) * 2 * np.pi
+                                    if lo2[_j86] - 1e-9 <= _alt <= hi2[_j86] + 1e-9:
+                                        _q_try[_j86] = _alt
+                                        _d86 = _q_try[_j86] - _ref86[_j86]
+                                    else:
+                                        break
+                            # and keep the path CONTINUOUS with the
+                            # previous frame as well
                             for _j86 in range(6):
                                 _d86 = _q_try[_j86] - _prev80[_j86]
                                 while abs(_d86) > np.pi:

@@ -286,6 +286,7 @@ collision-proxy clearance as a HARD constraint (≥ 12 mm, so the measured
 | the physics timestep 0.5 ms / 0.25 ms | the executed error 18–228 mm: the 2 ms integration error was accidentally helping |
 | the IK's step bounded to 0.15 / 0.25 / 0.6 rad | the IK cannot converge in 150 iterations: 188–373 mm |
 | the phase-A non-convergence guard | freezes the path (the IK legitimately lags a fast Cartesian move): 188–373 mm |
+| the joint-space path (`W6B_R88_JOINT_PATH=1`) | it does not diverge (it ends exactly on the terminal) but the interpolation folds the arm into its own hand: the worst contact **-40.0 mm** (`ur5e_r_wrist_1_link<->palm`, right) and **-39.9 mm** (`world<->rf_medial_left`, left) — the r12 joint-space-blend failure, reproduced and localised. It needs a waypoint path (home → a clear intermediate → the terminal), not a straight interpolation. |
 | the finger/box mass scan | not run in r87 |
 
 ### The configuration that reproduces (the defaults in the code)
@@ -314,7 +315,15 @@ Cartesian move from the home to the staging), the divergence is not
 detected as such (the guard's absolute threshold freezes the path, the
 relative criterion does not catch it), and the λ regulariser — which
 exists only to pick the IK branch — fights the Cartesian task instead of
-resolving it. The next step is a path construction that keeps the
-Cartesian task exact and selects the branch by the ±2π wrap alone
-(a null-space-free 6-DOF arm has no null space, so the branch must come
-from the wrap, not from a competing objective).
+resolving it.
+
+**The next step** (measured, not guessed): the joint-space path proves
+the Cartesian one is not the only option — it does not diverge — but a
+straight interpolation folds the wrist into the hand (-40.0 mm). So the
+path needs **waypoints**: home → a clear intermediate pose → the
+terminal, with the clearance checked per segment, and the intermediate
+pose searched for (not guessed). The search machinery already exists
+(`tools/w6b/palm_pose_refine.py` scores a candidate with the table
+clearance, the joint margin and the natural branch); it needs a second
+candidate set — the intermediate poses, scored for the clearance of the
+WHOLE segment home→intermediate→terminal, not just the endpoint.
