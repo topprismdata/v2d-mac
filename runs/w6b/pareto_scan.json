@@ -1,0 +1,272 @@
+[
+  {
+    "curl": 1.0,
+    "squeeze_mm": 0.0,
+    "right": {
+      "the commanded forward axis deg": 26.34,
+      "the contacting pads": [
+        "ff_tip_collision"
+      ],
+      "the normal force N": 0.2972,
+      "the gate1 pass": true,
+      "the gate2 pass": true,
+      "the gate3 pass": true,
+      "the gate5 pass": true,
+      "the red gates": [
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "the executed pad distance mm": 4.58,
+      "the EXECUTED forward axis deg": 33.3
+    },
+    "left": {
+      "the commanded forward axis deg": 27.61,
+      "the contacting pads": [
+        "ff_tip_left_collision"
+      ],
+      "the normal force N": 0.7177,
+      "the gate1 pass": true,
+      "the gate2 pass": true,
+      "the gate3 pass": true,
+      "the gate5 pass": true,
+      "the red gates": [
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "the executed pad distance mm": 6.06,
+      "the EXECUTED forward axis deg": 32.9
+    }
+  },
+  {
+    "curl": 1.05,
+    "squeeze_mm": 0.0,
+    "right": {
+      "the commanded forward axis deg": 26.15,
+      "the contacting pads": [
+        "ff_tip_collision"
+      ],
+      "the normal force N": 0.2893,
+      "the gate1 pass": false,
+      "the gate2 pass": true,
+      "the gate3 pass": true,
+      "the gate5 pass": true,
+      "the red gates": [
+        "gate1_final_touch",
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "the executed pad distance mm": 4.8,
+      "the EXECUTED forward axis deg": 33.4
+    },
+    "left": {
+      "the commanded forward axis deg": 27.52,
+      "the contacting pads": [
+        "ff_tip_left_collision"
+      ],
+      "the normal force N": 0.7433,
+      "the gate1 pass": false,
+      "the gate2 pass": true,
+      "the gate3 pass": true,
+      "the gate5 pass": true,
+      "the red gates": [
+        "gate1_final_touch",
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "the executed pad distance mm": 5.99,
+      "the EXECUTED forward axis deg": 33.1
+    }
+  },
+  {
+    "curl": 1.1,
+    "squeeze_mm": 0.0,
+    "right": {
+      "the commanded forward axis deg": 26.1,
+      "the contacting pads": [],
+      "the normal force N": 0.0,
+      "the gate1 pass": false,
+      "the gate2 pass": true,
+      "the gate3 pass": true,
+      "the gate5 pass": true,
+      "the red gates": [
+        "gate1_final_touch",
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "the executed pad distance mm": 5.2,
+      "the EXECUTED forward axis deg": 33.6
+    },
+    "left": {
+      "the commanded forward axis deg": 27.56,
+      "the contacting pads": [
+        "ff_tip_left_collision"
+      ],
+      "the normal force N": 0.9391,
+      "the gate1 pass": false,
+      "the gate2 pass": true,
+      "the gate3 pass": true,
+      "the gate5 pass": true,
+      "the red gates": [
+        "gate1_final_touch",
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "the executed pad distance mm": 5.77,
+      "the EXECUTED forward axis deg": 33.2
+    }
+  },
+  {
+    "curl": 1.2,
+    "squeeze_mm": 0.0,
+    "right": {
+      "the commanded forward axis deg": 26.42,
+      "the contacting pads": [],
+      "the normal force N": 0.0,
+      "the gate1 pass": false,
+      "the gate2 pass": true,
+      "the gate3 pass": true,
+      "the gate5 pass": true,
+      "the red gates": [
+        "gate1_final_touch",
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "the executed pad distance mm": 10.7,
+      "the EXECUTED forward axis deg": 34.2
+    },
+    "left": {
+      "the commanded forward axis deg": 28.04,
+      "the contacting pads": [
+        "ff_tip_left_collision"
+      ],
+      "the normal force N": 1.1945,
+      "the gate1 pass": false,
+      "the gate2 pass": true,
+      "the gate3 pass": true,
+      "the gate5 pass": true,
+      "the red gates": [
+        "gate1_final_touch",
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "the executed pad distance mm": 5.65,
+      "the EXECUTED forward axis deg": 33.7
+    }
+  },
+  {
+    "curl": 1.0,
+    "squeeze_mm": 0.05,
+    "right": {
+      "the commanded forward axis deg": 26.34,
+      "the contacting pads": [
+        "ff_tip_collision"
+      ],
+      "the normal force N": 0.3639,
+      "the gate1 pass": true,
+      "the gate2 pass": true,
+      "the gate3 pass": true,
+      "the gate5 pass": true,
+      "the red gates": [
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "the executed pad distance mm": 4.55,
+      "the EXECUTED forward axis deg": 33.3
+    },
+    "left": {
+      "the commanded forward axis deg": 27.61,
+      "the contacting pads": [
+        "ff_tip_left_collision"
+      ],
+      "the normal force N": 0.7162,
+      "the gate1 pass": true,
+      "the gate2 pass": true,
+      "the gate3 pass": true,
+      "the gate5 pass": true,
+      "the red gates": [
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "the executed pad distance mm": 6.06,
+      "the EXECUTED forward axis deg": 33.0
+    }
+  },
+  {
+    "curl": 1.0,
+    "squeeze_mm": 0.1,
+    "right": {
+      "the commanded forward axis deg": 26.34,
+      "the contacting pads": [
+        "ff_tip_collision"
+      ],
+      "the normal force N": 0.2453,
+      "the gate1 pass": true,
+      "the gate2 pass": true,
+      "the gate3 pass": true,
+      "the gate5 pass": true,
+      "the red gates": [
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "the executed pad distance mm": 4.7,
+      "the EXECUTED forward axis deg": 33.3
+    },
+    "left": {
+      "the commanded forward axis deg": 27.61,
+      "the contacting pads": [
+        "ff_tip_left_collision"
+      ],
+      "the normal force N": 0.6387,
+      "the gate1 pass": true,
+      "the gate2 pass": true,
+      "the gate3 pass": true,
+      "the gate5 pass": true,
+      "the red gates": [
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "the executed pad distance mm": 6.07,
+      "the EXECUTED forward axis deg": 33.0
+    }
+  },
+  {
+    "curl": 1.05,
+    "squeeze_mm": 0.05,
+    "right": {
+      "the commanded forward axis deg": 26.15,
+      "the contacting pads": [
+        "ff_tip_collision"
+      ],
+      "the normal force N": 0.2445,
+      "the gate1 pass": false,
+      "the gate2 pass": true,
+      "the gate3 pass": true,
+      "the gate5 pass": true,
+      "the red gates": [
+        "gate1_final_touch",
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "the executed pad distance mm": 4.88,
+      "the EXECUTED forward axis deg": 33.4
+    },
+    "left": {
+      "the commanded forward axis deg": 27.52,
+      "the contacting pads": [
+        "ff_tip_left_collision"
+      ],
+      "the normal force N": 0.791,
+      "the gate1 pass": false,
+      "the gate2 pass": true,
+      "the gate3 pass": true,
+      "the gate5 pass": true,
+      "the red gates": [
+        "gate1_final_touch",
+        "gate4_joint_limits",
+        "wrist_referenced_error"
+      ],
+      "the executed pad distance mm": 5.98,
+      "the EXECUTED forward axis deg": 33.1
+    }
+  }
+]
