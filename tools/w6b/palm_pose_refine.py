@@ -301,14 +301,25 @@ def main():
         # physics leg (tools/w6b/squeeze_search.py) can pick from every
         # squeeze level, not only from the best geometry.
         for _pre110, roll in [(p, r)
-                              for p in (0.0, -0.25, -0.50)
+                              for p in (0.0, 0.30)
                               for r in range(0, 360, 10)]:
             ang = np.deg2rad(float(roll))
             cr, sr = np.cos(ang), np.sin(ang)
             Rz = (np.eye(3) + sr * K + (1 - cr) * (K @ K))
             Rt = Rz @ R0
             # the palm's x so the INDEX pad lands exactly on the face
-            px = face_sign * float(HALF[0]) - float((Rt @ offs["ff"])[0])
+            # r110: the PRELOAD is a shift of the PALM's position along
+            # the face normal, not of the finger's target.  Shifting the
+            # finger's target instead asks the FINGER to reach deeper,
+            # and the searched posture is already at its flexion limit:
+            # every preloaded variant failed the finger IK (the index IK
+            # rejections went 4172 -> 2899 and no preloaded row survived
+            # -- the levels list came back [0.0] only).  Shifting the
+            # whole palm keeps the finger's posture identical (the tip's
+            # target relative to the palm is unchanged) and presses the
+            # whole hand into the face, which is the physical squeeze.
+            px = (face_sign * (float(HALF[0]) - _pre110)
+                  - float((Rt @ offs["ff"])[0]))
             # the index pad's own y/z on the face (from the known-good)
             fy = float((Rt @ offs["ff"])[1])
             fz = float((Rt @ offs["ff"])[2])
@@ -372,8 +383,7 @@ def main():
                     # gate's forward axis is that centroid's direction,
                     # so the ring's posture drags it from 26 deg (the
                     # reference) to 38.7 deg (measured).
-                    for f, extra_x in (("ff", _pre110),
-                                       ("mf", _pre110)):
+                    for f, extra_x in (("ff", 0.0), ("mf", 0.0)):
                         o = Rt @ offs[f]
                         tgt = np.array([face_sign * (float(HALF[0]) + extra_x),
                                         py + float(o[1]),
@@ -479,6 +489,8 @@ def main():
                         "e_r_deg": round(float(np.degrees(er)), 2),
                         "margin": round(mg, 4),
                         "preload_mm": round(_pre110 * 1e3, 3),
+                        "preload_note": ("the palm's shift along the face "
+                                         "normal into the face (mm)"),
                         "clearance_mm": round(clear * 1e3, 1),
                         "arm_clearance_mm": round(arm_clear * 1e3, 1),
                         "axes": {k: round(v, 1) for k, v in a2.items()},
