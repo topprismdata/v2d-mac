@@ -4971,6 +4971,17 @@ def gpt_triptych(model, data, rep, specs) -> dict:
         score = min(n["right"], n["left"]) * 10 + n["right"] + n["left"]
         if score > best_score:
             best_score, best_k = score, k
+    # r104: when NO frame has a pad inside the box's face rectangle (the
+    # rect tolerance is 3 mm and the executed terminal sits 4.6/6.1 mm
+    # from the face), the scan used to keep the first frame with the
+    # maximum score -- a DESCENT frame, with the hands a metre above
+    # the box.  The evidence frame then showed a scene with no contact
+    # at all.  The terminal frame is the honest fallback: it is where
+    # the hands are on the face, and the pad counts are reported next to
+    # it either way.
+    if best_score <= 0:
+        best_k = rep["n_frames"] - 1
+        best_score = 0
     data.qpos[:] = rep["qpos_full"][best_k]
     data.qpos[ba:ba + 7] = rep["obj_world"][best_k]
     mujoco.mj_forward(model, data)
@@ -4990,8 +5001,15 @@ def gpt_triptych(model, data, rep, specs) -> dict:
         data.qpos[ba:ba + 7] = rep["obj_world"][k]
         mujoco.mj_forward(model, data)
         _sc = _is_side_cell(model)
-        cam.lookat[:] = [0.0, 0.0, 0.74 - (0.06 if _sc else 0.0)]
-        cam.azimuth, cam.elevation, cam.distance = ((90.0, -14.0, 0.40)
+        # r103: the side cell's camera follows the measured composition
+        # target (viz/composition_target.json): the camera 0.85-0.90 m
+        # high, 15-20 deg down, 0.9 m from the box, so the box sits at
+        # the frame's centre and the two forearms enter from the left and
+        # right edges at mid-height -- the reference video's layout.  The
+        # old side camera (0.40 m) framed only the box and cut the arms
+        # out of the picture entirely.
+        cam.lookat[:] = [0.0, 0.0, 0.86 if _sc else 0.68]
+        cam.azimuth, cam.elevation, cam.distance = ((90.0, -16.0, 0.95)
                                                     if _sc else
                                                     (105.0, -22.0, 0.80))
         renderer.update_scene(data, camera=cam)

@@ -500,3 +500,27 @@ not the box's weight but the arm's own compliance under the contact.
 3. wrist_referenced_error is a video-fidelity metric that the side cell's
    constructed approach does not reproduce; the committed baseline fails
    the same leg.
+
+
+---
+
+## r103-r104: the evidence camera and the evidence frame
+
+**r103 -- the side cell's camera.** The triptych's side-cell preset was
+`az 90 / el -14 / distance 0.40` with the lookat at z = 0.68: it framed
+the box alone and cut both arms out of the picture, so the evidence image
+showed a scene with no hands in it. The camera now follows the measured
+composition target (`viz/composition_target.json`): the lookat at
+z = 0.86, elevation -16 deg, distance 0.95 m. The rendered frame is now
+the reference layout -- the box at the frame's centre, the two forearms
+entering horizontally from the left and right edges at mid-height.
+
+**r104 -- the contact evidence frame.** The triptych's "two pads in the
+face rectangle" scan keeps the frame with the maximum pad count, and the
+rect tolerance is the gate3 seed's 3 mm while the executed terminal sits
+4.58/6.06 mm from the face -- so NO frame scored, and the scan kept the
+FIRST frame with the maximum score, i.e. a descent frame with the hands
+a metre above the box. The evidence image showed a scene with no contact
+at all. The scan now falls back to the terminal frame (the honest one:
+the hands ARE on the face there) and the pad counts are reported beside
+it either way.
