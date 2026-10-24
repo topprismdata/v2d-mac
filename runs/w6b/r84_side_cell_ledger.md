@@ -912,3 +912,58 @@ z ≈ 0.79 m —— 臂要在 0.70 m 水平跨度上折下 0.56 m（≈39°）�
 
 **决策**：低基座单元**不作为交付单元** ✓（两侧力都低于 r37 ✓）。r115/r116 的价值是把
 "视觉缺口 vs 物理缺口"的取舍**量化**了 ✓✓，这正是 v9 评审要求的证据形态 ✓。
+
+
+---
+
+## r117：交付单元的终端参考**从未入库**（可复现性缺陷，已修复并复验）
+
+### 缺陷
+
+管线的**默认终端**来自 `runs/w6b/palm_pose_refine.json`（`retarget/retarget_dual.py:5477`
+的 `W6B_R63_REFERENCE` 默认值）。这个文件在 `runs/`（默认 gitignore ✓）里而且**从未入
+库** ✓，后果有两个：
+
+1. **新克隆跑不出交付数字**：文件缺失 → `_r63_tgt` 为空 ✓ → 管线退回天花板 cell 的种子
+   对（`runs/w6b/native_seed_pairs.json` ✓）→ 终端完全不同 ✓。
+2. **分析工具读的是"磁盘上恰好存在的那份"**：r115 为低基座单元重跑终端搜索 ✓，把这份参
+   考**覆盖**了 ✓ → 所有依赖它的数字静默移动 ✓（实测：力臂归因里右臂的"残差解释的工具
+   端位移"从 **16.225 mm 变成 10.591 mm** ✓，左臂的法向分量从 6.009 变成 4.185 ✓）。
+
+### 为什么不能靠"重跑搜索"修
+
+搜索的候选集依赖**工具版本的随机序列**（多起点 IK 的候选顺序 ✓）。用仓库里能找到的三个
+历史版本（r64-r85 ✓ / r86 ✓ / r114 ✓）在 r37 场景上重跑，**没有一个能产出交付的那条
+终端** ✓（右臂交付臂角 [-2.7205, 2.2339, -0.3968, -0.9615, -0.9894, 4.4938] ✓，三个版本
+的候选都不匹配 ✓）。所以"再搜一次"不能重建交付状态 ✓。
+
+### 修复：用运动学反推，而不是再搜一次
+
+**臂的正向运动学唯一决定掌位姿** ✓，而交付终端的臂角与手指角都**记录在交付报告里** ✓
+（`per_side.*.terminal_commands` ✓）。所以参考可以**精确重建** ✓✓：
+`tools/w6b/rebuild_terminal_reference.py` 从 `git show HEAD:runs/w6b/report.json` 取
+出臂角与手指角 ✓ → 在 r37 场景上做 FK ✓ → 得到掌心位姿 ✓（右 [170.9, −30.0, 800.02]
+mm ✓、左 [−171.03, −30.0, 805.02] mm ✓）→ 写出与搜索同构的参考文件 ✓。
+
+重建后 `verify_v9.py` **PASS** ✓（盒体位移 1.984 mm ✓，全部 v9 头条数字 ✓）；力臂归因
+的数字回到 r111 的值 ✓（右 16.225 mm ✓ / 左 8.534 mm ✓，左的法向分量 **6.009 mm** ✓）。
+
+### 新克隆复现测试（通过）
+
+```
+git clone ~/v2d-mac /tmp/v2d_clone          # 只含已提交内容
+# 外部资产（不入库）：menagerie 网格、MANO 模型、dex-retargeting URDF、参考视频帧
+ln -s ~/v2d-mac/runs/upstream/menagerie      /tmp/v2d_clone/runs/upstream/menagerie
+ln -s ~/v2d-mac/runs/upstream/dex-retargeting /tmp/v2d_clone/runs/upstream/dex-retargeting
+ln -s ~/v2d-mac/runs/mano                     /tmp/v2d_clone/runs/mano
+ln -s ~/v2d-mac/runs/p0/assets/frames         /tmp/v2d_clone/runs/p0/assets/frames
+cd /tmp/v2d_clone && <交付配方> python retarget/retarget_dual.py
+```
+
+新克隆的结果：**右执行态垫距 4.590 mm / 前向轴 33.279°** ✓，**左 6.060 mm / 32.944°** ✓，
+命令态 6.2e-5 / 5.0e-5 mm ✓，红门 **gate4 + wrist** ✓（与交付一致 ✓✓）。
+
+**外部资产依赖（必须写进交付说明）**：新克隆需要四棵**不入库**的外部资产 ✓ ——
+`runs/upstream/menagerie`（Allegro 网格 ✓）、`runs/upstream/dex-retargeting`（手模型
+URDF ✓）、`runs/mano/mano_v1_2`（MANO 模型 ✓）、`runs/p0/assets/frames`（参考视频帧
+✓，wrist 门要用 ✓）。缺任何一棵管线都会在加载阶段报错 ✓。
