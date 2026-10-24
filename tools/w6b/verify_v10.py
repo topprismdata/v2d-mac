@@ -176,6 +176,60 @@ def main() -> int:
           "the force " + str(rrows[("right", 1)]["force_N"]) + " N, the red "
           + str(rrows[("right", 1)]["red"]))
 
+    # 6b. the r118 root causes (the static, recomputable ones)
+    fc = json.loads((REPO / "runs/w6b/finger_force_ceiling.json")
+                    .read_text())
+    check("the hardware force ceiling is well above the lift's need",
+          fc["sides"]["right"]["ff"]["the hardware force ceiling N"] > 2.0
+          and fc["sides"]["left"]["ff"]["the hardware force ceiling N"] > 2.0,
+          "the right ff "
+          + str(fc["sides"]["right"]["ff"]["the hardware force ceiling N"])
+          + " N, the left ff "
+          + str(fc["sides"]["left"]["ff"]["the hardware force ceiling N"])
+          + " N")
+    check("the middle pad's own ceiling is BELOW the lift's need",
+          fc["sides"]["right"]["mf"]["the hardware force ceiling N"] < 1.0911
+          and fc["sides"]["left"]["mf"]["the hardware force ceiling N"] < 1.0911,
+          "the right mf "
+          + str(fc["sides"]["right"]["mf"]["the hardware force ceiling N"])
+          + " N, the left mf "
+          + str(fc["sides"]["left"]["mf"]["the hardware force ceiling N"])
+          + " N")
+    fdl = json.loads((REPO / "runs/w6b/force_depth_law.json").read_text())
+    green = [r for r in fdl
+             if r["right"]["the command pads in the rect"] >= 2
+             and not r["right"]["the command burial"]]
+    check("the green window's force stays far below the lift's need",
+          all(r["right"]["the normal force N"] < 1.0911 for r in green)
+          and all(r["left"]["the normal force N"] < 1.0911 for r in green),
+          "the best green row: the right "
+          + str(max(r["right"]["the normal force N"] for r in green))
+          + " N, the left "
+          + str(max(r["left"]["the normal force N"] for r in green)) + " N")
+    cb = json.loads((REPO / "runs/w6b/curl_baked_scan.json").read_text())
+    left_strong = [r for r in cb if r["the left curl"] > 1.0
+                   and r["left"]["the normal force N"] >= 1.0911]
+    check("a deeper per-side curl reaches the required force",
+          bool(left_strong),
+          "the left: " + ", ".join(
+              "the curl " + str(r["the left curl"]) + " -> "
+              + str(r["left"]["the normal force N"]) + " N"
+              for r in left_strong))
+    check("but every such curl breaks the command state's geometry",
+          all(r["left"]["the command pads in the rect"] == 0
+              for r in left_strong),
+          "the rect: " + ", ".join(
+              str(r["left"]["the command rect mm"]) for r in left_strong))
+    ssb = json.loads((REPO / "runs/w6b/surface_seated_build.json").read_text())
+    v3_green = [r for r in ssb if r.get("the v3 eligible", 0) >= 1]
+    check("the surface-seated geometry makes the v3 criterion green",
+          len(v3_green) >= 4,
+          str(len(v3_green)) + " of " + str(len(ssb)) + " rows")
+    check("but it makes the v1v2 criterion red (they are exclusive)",
+          all(r.get("the v1v2 pads in the rect") == 0 for r in v3_green),
+          "the rect: " + ", ".join(
+              str(r.get("the v1v2 rect mm")) for r in v3_green))
+
     # 7. the delivered cell reproduces in a FRESH CLONE (only the
     # committed files; the four external asset trees are linked in)
     clone = pathlib.Path("/tmp/v10_clone_check")
