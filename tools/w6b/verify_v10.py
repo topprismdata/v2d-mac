@@ -220,6 +220,24 @@ def main() -> int:
               for r in left_strong),
           "the rect: " + ", ".join(
               str(r["left"]["the command rect mm"]) for r in left_strong))
+    dps = json.loads((REPO / "runs/w6b/dual_pad_surface_seat.json").read_text())
+    def _on_face(row, finger):
+        d = (row.get("the contact point on the face")
+             or row.get("the support point on the face"))
+        return bool(d[finger])
+    ff_on_face = [r for r in dps["sides"]["right"]["best"]
+                  if _on_face(r, "ff")]
+    mf_on_face = [r for r in dps["sides"]["right"]["best"]
+                  if _on_face(r, "mf")]
+    check("the index pad's contact point reaches the end face",
+          len(ff_on_face) >= 3,
+          str(len(ff_on_face)) + " of "
+          + str(len(dps["sides"]["right"]["best"])) + " rows")
+    check("the middle pad's contact point does NOT (the two pads' "
+          "supports differ)",
+          len(mf_on_face) == 0,
+          str(len(mf_on_face)) + " of "
+          + str(len(dps["sides"]["right"]["best"])) + " rows")
     ssb = json.loads((REPO / "runs/w6b/surface_seated_build.json").read_text())
     v3_green = [r for r in ssb if r.get("the v3 eligible", 0) >= 1]
     check("the surface-seated geometry makes the v3 criterion green",

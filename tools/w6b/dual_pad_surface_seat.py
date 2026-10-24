@@ -332,9 +332,17 @@ def main() -> int:
                 on_face = {}
                 for f in FINGERS:
                     p = con[f]
+                    # STRICT: the contact point must be on the END
+                    # FACE, not on the edge where the end face meets
+                    # the top face.  The box's top is z = 780 and the
+                    # face band is 700-780, so a contact at exactly
+                    # 780 is on the EDGE -- and the measured mf contacts
+                    # all landed exactly there.
+                    _bz = float(sd.d.xpos[int(sd.obj)][2])
                     on_face[f] = bool(
-                        abs(p[1]) <= float(sd.HALF[1])
-                        and abs(p[2] - 0.74) <= float(sd.HALF[2]))
+                        abs(abs(p[0]) - float(sd.HALF[0])) < 1e-3
+                        and abs(p[1]) <= float(sd.HALF[1])
+                        and abs(p[2] - _bz) < float(sd.HALF[2]) - 1e-3)
                 # the palm pose MUST be the one the arm realises: the
                 # pipeline drives its terminal IK from the reference's
                 # palm_pos / palm_R, so a stale pair puts the executed
@@ -352,7 +360,7 @@ def main() -> int:
                         f: round(float(con[f][0]) * 1e3, 4) for f in FINGERS},
                     "the support point x mm": {
                         f: round(float(sup[f][0]) * 1e3, 4) for f in FINGERS},
-                    "the support point on the face": on_face,
+                    "the contact point on the face": on_face,
                     "the surface gaps mm": {f: round(float(gaps[f]) * 1e3, 4)
                                             for f in FINGERS},
                     "the pad centres mm": {

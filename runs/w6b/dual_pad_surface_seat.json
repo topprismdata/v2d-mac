@@ -16,7 +16,7 @@
       "ff": 59.9809,
       "mf": 97.4452
      },
-     "the support point on the face": {
+     "the contact point on the face": {
       "ff": true,
       "mf": false
      },
@@ -100,7 +100,7 @@
       "ff": 59.9809,
       "mf": 97.4452
      },
-     "the support point on the face": {
+     "the contact point on the face": {
       "ff": true,
       "mf": false
      },
@@ -184,9 +184,9 @@
       "ff": 59.9815,
       "mf": 68.1576
      },
-     "the support point on the face": {
+     "the contact point on the face": {
       "ff": true,
-      "mf": true
+      "mf": false
      },
      "the surface gaps mm": {
       "ff": -0.0185,
@@ -268,9 +268,9 @@
       "ff": 59.9815,
       "mf": 68.1576
      },
-     "the support point on the face": {
+     "the contact point on the face": {
       "ff": true,
-      "mf": true
+      "mf": false
      },
      "the surface gaps mm": {
       "ff": -0.0185,
@@ -352,9 +352,9 @@
       "ff": 59.9818,
       "mf": 68.6703
      },
-     "the support point on the face": {
+     "the contact point on the face": {
       "ff": true,
-      "mf": true
+      "mf": false
      },
      "the surface gaps mm": {
       "ff": -0.0182,
@@ -436,9 +436,9 @@
       "ff": 59.9818,
       "mf": 68.6703
      },
-     "the support point on the face": {
+     "the contact point on the face": {
       "ff": true,
-      "mf": true
+      "mf": false
      },
      "the surface gaps mm": {
       "ff": -0.0182,
@@ -525,7 +525,7 @@
       "ff": -799.2139,
       "mf": -822.3376
      },
-     "the support point on the face": {
+     "the contact point on the face": {
       "ff": false,
       "mf": false
      },
@@ -609,7 +609,7 @@
       "ff": -799.2139,
       "mf": -822.3376
      },
-     "the support point on the face": {
+     "the contact point on the face": {
       "ff": false,
       "mf": false
      },
@@ -693,9 +693,9 @@
       "ff": -59.9806,
       "mf": -67.7569
      },
-     "the support point on the face": {
+     "the contact point on the face": {
       "ff": true,
-      "mf": true
+      "mf": false
      },
      "the surface gaps mm": {
       "ff": -0.0194,
@@ -777,9 +777,9 @@
       "ff": -59.9806,
       "mf": -67.7569
      },
-     "the support point on the face": {
+     "the contact point on the face": {
       "ff": true,
-      "mf": true
+      "mf": false
      },
      "the surface gaps mm": {
       "ff": -0.0194,
@@ -861,9 +861,9 @@
       "ff": -59.98,
       "mf": -66.6345
      },
-     "the support point on the face": {
+     "the contact point on the face": {
       "ff": true,
-      "mf": true
+      "mf": false
      },
      "the surface gaps mm": {
       "ff": -0.02,
@@ -945,9 +945,9 @@
       "ff": -59.98,
       "mf": -66.6345
      },
-     "the support point on the face": {
+     "the contact point on the face": {
       "ff": true,
-      "mf": true
+      "mf": false
      },
      "the surface gaps mm": {
       "ff": -0.02,
