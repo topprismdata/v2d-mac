@@ -31,10 +31,17 @@ import sys
 REPO = pathlib.Path(__file__).resolve().parents[2]
 PIPE = REPO / "runs/.venv-retarget/bin/python"
 SCRIPT = REPO / "retarget/retarget_dual.py"
-SCENE = "grounding/assets/allegro_floating_ur5e_side_r37.xml"
-REFINE = REPO / "runs/w6b/palm_pose_refine.json"
-WORK = REPO / "runs/w6b/squeeze_candidates"
-OUT = REPO / "runs/w6b/squeeze_search.json"
+# r115: the cell, the reference and the outputs are selectable, so the
+# same physics leg can be run on the low-base cell (r38) without
+# overwriting the r37 results.
+SCENE = os.environ.get("W6B_SQUEEZE_SCENE",
+                        "grounding/assets/allegro_floating_ur5e_side_r37.xml")
+REFINE = pathlib.Path(os.environ.get(
+    "W6B_SQUEEZE_REFINE", str(REPO / "runs/w6b/palm_pose_refine.json")))
+WORK = pathlib.Path(os.environ.get(
+    "W6B_SQUEEZE_WORK", str(REPO / "runs/w6b/squeeze_candidates")))
+OUT = pathlib.Path(os.environ.get(
+    "W6B_SQUEEZE_OUT", str(REPO / "runs/w6b/squeeze_search.json")))
 
 BASE = {
     "W6B_SCENE": "ur5e",
@@ -125,7 +132,7 @@ def main() -> int:
 
     out = {"rows": rows, "winners": winners}
     OUT.write_text(json.dumps(out, indent=2, default=float))
-    print(f"\n  written: {OUT.relative_to(REPO)}")
+    print(f"\n  written: {OUT}")
     if len(winners) == 2:
         print("  to apply the winners: "
               "runs/.venv-retarget/bin/python tools/w6b/squeeze_search.py "

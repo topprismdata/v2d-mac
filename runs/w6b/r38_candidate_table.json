@@ -1,0 +1,243 @@
+{
+ "scene": "grounding/assets/allegro_floating_ur5e_side_r38.xml",
+ "rows": [
+  {
+   "side": "right",
+   "index": 0,
+   "path_max_mm": 2.59,
+   "path_rms_mm": 0.51,
+   "other_path_max_mm": 2.57,
+   "force_N": 0.1403,
+   "cmd_rect_mm": 6.847628746670109e-05,
+   "exec_rect_mm": null,
+   "cmd_fwd_deg": 26.343908187818634,
+   "exec_fwd_deg": null,
+   "green": [
+    "gate2_contact",
+    "gate3_approach_clean",
+    "gate5_palm_deviation"
+   ],
+   "red": [
+    "gate1_final_touch"
+   ]
+  },
+  {
+   "side": "right",
+   "index": 1,
+   "path_max_mm": 2.58,
+   "path_rms_mm": 0.51,
+   "other_path_max_mm": 2.57,
+   "force_N": 0.0,
+   "cmd_rect_mm": 0.0001583180592318323,
+   "exec_rect_mm": null,
+   "cmd_fwd_deg": 26.34387436373982,
+   "exec_fwd_deg": null,
+   "green": [
+    "gate1_final_touch",
+    "gate2_contact",
+    "gate3_approach_clean",
+    "gate5_palm_deviation"
+   ],
+   "red": []
+  },
+  {
+   "side": "right",
+   "index": 2,
+   "path_max_mm": 2.59,
+   "path_rms_mm": 0.51,
+   "other_path_max_mm": 2.57,
+   "force_N": 0.175,
+   "cmd_rect_mm": 2.7596974191967938e-05,
+   "exec_rect_mm": null,
+   "cmd_fwd_deg": 26.343960184094428,
+   "exec_fwd_deg": null,
+   "green": [
+    "gate2_contact",
+    "gate3_approach_clean",
+    "gate5_palm_deviation"
+   ],
+   "red": [
+    "gate1_final_touch"
+   ]
+  },
+  {
+   "side": "right",
+   "index": 3,
+   "path_max_mm": 88.31,
+   "path_rms_mm": 32.68,
+   "other_path_max_mm": 2.57,
+   "force_N": 0.1744,
+   "cmd_rect_mm": 0.0002853717233353148,
+   "exec_rect_mm": null,
+   "cmd_fwd_deg": 26.343905584174173,
+   "exec_fwd_deg": null,
+   "green": [
+    "gate2_contact",
+    "gate3_approach_clean"
+   ],
+   "red": [
+    "gate1_final_touch",
+    "gate5_palm_deviation"
+   ]
+  },
+  {
+   "side": "right",
+   "index": 4,
+   "path_max_mm": 259.6,
+   "path_rms_mm": 118.55,
+   "other_path_max_mm": 2.57,
+   "force_N": 1.0568,
+   "cmd_rect_mm": 0.00023681406514930448,
+   "exec_rect_mm": null,
+   "cmd_fwd_deg": 26.343940400510252,
+   "exec_fwd_deg": null,
+   "green": [
+    "gate1_final_touch",
+    "gate2_contact",
+    "gate3_approach_clean"
+   ],
+   "red": [
+    "gate5_palm_deviation"
+   ]
+  },
+  {
+   "side": "right",
+   "index": 5,
+   "path_max_mm": 2.59,
+   "path_rms_mm": 0.51,
+   "other_path_max_mm": 2.57,
+   "force_N": 0.0,
+   "cmd_rect_mm": 0.000305831891526942,
+   "exec_rect_mm": null,
+   "cmd_fwd_deg": 26.343944859054286,
+   "exec_fwd_deg": null,
+   "green": [
+    "gate2_contact",
+    "gate3_approach_clean",
+    "gate5_palm_deviation"
+   ],
+   "red": [
+    "gate1_final_touch"
+   ]
+  },
+  {
+   "side": "left",
+   "index": 0,
+   "path_max_mm": 2.57,
+   "path_rms_mm": 0.51,
+   "other_path_max_mm": 2.59,
+   "force_N": 0.678,
+   "cmd_rect_mm": 0.000848745595874445,
+   "exec_rect_mm": null,
+   "cmd_fwd_deg": 27.594712814964055,
+   "exec_fwd_deg": null,
+   "green": [
+    "gate1_final_touch",
+    "gate2_contact",
+    "gate3_approach_clean",
+    "gate5_palm_deviation"
+   ],
+   "red": []
+  },
+  {
+   "side": "left",
+   "index": 1,
+   "path_max_mm": 121.89,
+   "path_rms_mm": 49.88,
+   "other_path_max_mm": 2.59,
+   "force_N": 0.4102,
+   "cmd_rect_mm": 0.00011859574397532491,
+   "exec_rect_mm": null,
+   "cmd_fwd_deg": 27.61754024251989,
+   "exec_fwd_deg": null,
+   "green": [
+    "gate1_final_touch",
+    "gate2_contact",
+    "gate3_approach_clean"
+   ],
+   "red": [
+    "gate5_palm_deviation"
+   ]
+  },
+  {
+   "side": "left",
+   "index": 2,
+   "path_max_mm": 87.37,
+   "path_rms_mm": 30.09,
+   "other_path_max_mm": 2.59,
+   "force_N": 0.729,
+   "cmd_rect_mm": 0.0004134462367744174,
+   "exec_rect_mm": null,
+   "cmd_fwd_deg": 27.605544300916268,
+   "exec_fwd_deg": null,
+   "green": [
+    "gate1_final_touch",
+    "gate2_contact",
+    "gate3_approach_clean"
+   ],
+   "red": [
+    "gate5_palm_deviation"
+   ]
+  },
+  {
+   "side": "left",
+   "index": 3,
+   "path_max_mm": 2.59,
+   "path_rms_mm": 0.51,
+   "other_path_max_mm": 2.59,
+   "force_N": 0.6546,
+   "cmd_rect_mm": 0.0014888430343029668,
+   "exec_rect_mm": null,
+   "cmd_fwd_deg": 27.60559336692947,
+   "exec_fwd_deg": null,
+   "green": [
+    "gate2_contact",
+    "gate3_approach_clean",
+    "gate5_palm_deviation"
+   ],
+   "red": [
+    "gate1_final_touch"
+   ]
+  },
+  {
+   "side": "left",
+   "index": 4,
+   "path_max_mm": 2.59,
+   "path_rms_mm": 0.51,
+   "other_path_max_mm": 2.59,
+   "force_N": 0.6754,
+   "cmd_rect_mm": 0.0012985963765560493,
+   "exec_rect_mm": null,
+   "cmd_fwd_deg": 27.605351543661843,
+   "exec_fwd_deg": null,
+   "green": [
+    "gate2_contact",
+    "gate3_approach_clean",
+    "gate5_palm_deviation"
+   ],
+   "red": [
+    "gate1_final_touch"
+   ]
+  },
+  {
+   "side": "left",
+   "index": 5,
+   "path_max_mm": 2.59,
+   "path_rms_mm": 0.51,
+   "other_path_max_mm": 2.59,
+   "force_N": 0.672,
+   "cmd_rect_mm": 0.003885089160618471,
+   "exec_rect_mm": null,
+   "cmd_fwd_deg": 27.605540241896925,
+   "exec_fwd_deg": null,
+   "green": [
+    "gate2_contact",
+    "gate3_approach_clean",
+    "gate5_palm_deviation"
+   ],
+   "red": [
+    "gate1_final_touch"
+   ]
+  }
+ ]
+}
