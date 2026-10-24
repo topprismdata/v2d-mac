@@ -209,6 +209,11 @@ def main():
                   f"clearance {clear*1e3:8.2f} mm | the e_p {ep*1e3:.3f} mm "
                   f"| the table's contacts {len(hits)}")
         rows.append(row)
+    # the scene variants are throwaway: the mesh paths are relative, so
+    # they have to sit beside the original, and they are removed again
+    for z in HEIGHTS:
+        (Path("grounding/assets")
+         / f"_baseprobe_{int(round(z*100)):03d}.xml").unlink(missing_ok=True)
     Path("runs/w6b/base_height_probe.json").write_text(
         json.dumps({"rows": rows}, indent=1))
     print("written: runs/w6b/base_height_probe.json")
