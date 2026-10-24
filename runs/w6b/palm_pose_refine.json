@@ -1,0 +1,143 @@
+{
+ "scene": "grounding/assets/allegro_floating_ur5e_side_r37.xml",
+ "note": "the side cell's terminal reference.  The pipeline's default terminal comes from this file (the W6B_R63_REFERENCE default), so it must be in the repo: without it a fresh clone falls back to the ceiling-cell seed pairs and cannot reproduce the delivered numbers (r117).",
+ "rebuilt_from": "runs/w6b/report.json",
+ "sides": {
+  "right": {
+   "best": [
+    {
+     "source": "rebuilt from the delivered report's terminal commands by tools/w6b/rebuild_terminal_reference.py",
+     "palm_pos": [
+      0.17090215914834617,
+      -0.029997696331356676,
+      0.8000199373420949
+     ],
+     "palm_R": [
+      [
+       -0.71301603446648,
+       0.13181747218189385,
+       -0.6886452560072346
+      ],
+      [
+       0.2823482285225061,
+       0.9529934501044108,
+       -0.10992252684638004
+      ],
+      [
+       0.641784708795634,
+       -0.2728142923046116,
+       -0.7167180404248492
+      ]
+     ],
+     "arm": [
+      -2.72046,
+      2.23392,
+      -0.396756,
+      -0.961542,
+      -0.989443,
+      4.493839
+     ],
+     "fingers": {
+      "ff": [
+       -0.278231,
+       0.419297,
+       0.315423,
+       0.188665
+      ],
+      "mf": [
+       0.179567,
+       0.318081,
+       0.621199,
+       0.380479
+      ],
+      "rf": [
+       -0.06588,
+       0.582845,
+       0.547072,
+       0.467689
+      ],
+      "th": [
+       0.334637,
+       0.614005,
+       0.548322,
+       0.233235
+      ]
+     },
+     "palm_pos_mm": [
+      170.9,
+      -30.0,
+      800.02
+     ]
+    }
+   ]
+  },
+  "left": {
+   "best": [
+    {
+     "source": "rebuilt from the delivered report's terminal commands by tools/w6b/rebuild_terminal_reference.py",
+     "palm_pos": [
+      -0.17103118982848747,
+      -0.030001504233778592,
+      0.805015332932986
+     ],
+     "palm_R": [
+      [
+       0.6977125417315639,
+       -0.13881447808592245,
+       0.7027999358168809
+      ],
+      [
+       -0.2859662251129687,
+       -0.9534617612001786,
+       0.09557189975976868
+      ],
+      [
+       0.6568261011905038,
+       -0.26765875775469283,
+       -0.7049384811400887
+      ]
+     ],
+     "arm": [
+      -2.873459,
+      1.857866,
+      0.520803,
+      -1.472206,
+      -1.106263,
+      -1.690329
+     ],
+     "fingers": {
+      "ff": [
+       -0.278333,
+       0.410875,
+       0.315595,
+       0.193333
+      ],
+      "mf": [
+       0.184975,
+       0.338686,
+       0.624862,
+       0.38788
+      ],
+      "rf": [
+       -0.04597,
+       0.588405,
+       0.555807,
+       0.470217
+      ],
+      "th": [
+       0.319449,
+       0.58703,
+       0.541998,
+       0.240509
+      ]
+     },
+     "palm_pos_mm": [
+      -171.03,
+      -30.0,
+      805.02
+     ]
+    }
+   ]
+  }
+ }
+}

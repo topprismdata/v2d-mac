@@ -32,6 +32,13 @@ runs/**
 !runs/w6b/r17_backoff_sweep.json
 !runs/w6b/r18_native_target.json
 !runs/w6b/native_seed_pairs.json
+# the side cell's TERMINAL REFERENCE.  The pipeline's default terminal
+# comes from this file (retarget_dual.py's W6B_R63_REFERENCE default), so
+# without it in the repo a fresh clone silently falls back to the
+# ceiling-cell seed pairs and cannot reproduce the delivered numbers
+# (r117).
+!runs/w6b/palm_pose_refine.json
+!runs/w6b/palm_pose_refine_r38.json
 !runs/w6b/r19_fwd_pairs.json
 !runs/w6b/r20_terminal.json
 !runs/w6b/r21_pose_kf.json
