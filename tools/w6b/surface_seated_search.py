@@ -293,6 +293,46 @@ def main() -> int:
                                         res_mf = res_f
                                 if res_ff > 3e-3 or res_mf > 3e-3:
                                     continue
+                                # the arm and the fingers must agree: the
+                                # palm's stand-off is set by the pad's
+                                # extent along the normal, which the
+                                # finger IK just realised.  Re-solve the
+                                # arm for the palm's normal translation
+                                # that puts the ff pad's SURFACE on the
+                                # face, then re-run the finger IK on that
+                                # arm.
+                                for _ in range(3):
+                                    place(q, fv)
+                                    _d_ff, _ = surf("ff")
+                                    _jp = np.zeros((3, sm.nv))
+                                    _jr = np.zeros((3, sm.nv))
+                                    mujoco.mj_jacBody(sm, sd, _jp, _jr,
+                                                      PALM)
+                                    _Jn = _jp[:, AD].T @ n_in
+                                    _Jo = _jr[:, AD]
+                                    _A = np.vstack([_Jn, _Jo])
+                                    _b = np.concatenate(
+                                        [np.array([_d_ff - target_sv]),
+                                         np.zeros(3)])
+                                    _dq = np.linalg.lstsq(_A, _b,
+                                                         rcond=None)[0]
+                                    q = np.clip(q + _dq,
+                                                sm.jnt_range[AJ, 0],
+                                                sm.jnt_range[AJ, 1])
+                                    fv2 = {f: list(fv[f]) for f in FINGERS}
+                                    for f in ("ff", "mf"):
+                                        x_f, r_f = ik_finger(q, f,
+                                                             target_sv, fv2)
+                                        fv2[f] = list(x_f)
+                                        if f == "ff":
+                                            res_ff = r_f
+                                        else:
+                                            res_mf = r_f
+                                    fv = fv2
+                                    if res_ff > 3e-3 or res_mf > 3e-3:
+                                        break
+                                if res_ff > 3e-3 or res_mf > 3e-3:
+                                    continue
                                 place(q, fv)
                                 gaps = {f: surf(f)[0] for f in FINGERS}
                                 _bot = 0.74 - float(HALF[2])
@@ -318,14 +358,28 @@ def main() -> int:
                                     np.clip(float(_fw @ n_in), -1.0, 1.0))))
                                 if fwd_deg > 33.0:
                                     continue
+                                # the palm pose MUST be the one the arm
+                                # actually realises: the pipeline's
+                                # terminal IK aims at the reference's
+                                # palm_pos / palm_R (retarget_dual.py:
+                                # 5544), so a stale pair puts the
+                                # executed pads off the face (measured:
+                                # the executed ff surface gap 0.73 mm
+                                # while the static gap was -0.05 mm).
+                                _palm_pos = np.array(sd.xpos[PALM],
+                                                     dtype=float).copy()
+                                _Rq = np.zeros(9)
+                                mujoco.mju_quat2Mat(_Rq, sd.xquat[PALM])
+                                _palm_R = np.array(_Rq).reshape(3, 3).copy()
                                 rows.append({
                                     "the curl": curl,
                                     "the preload mm": preload_mm,
                                     "the roll": roll,
                                     "the palm": [round(float(v), 5)
-                                                 for v in tp],
+                                                 for v in _palm_pos],
                                     "the palm_R": [[round(float(v), 6)
-                                                    for v in r] for r in Rt],
+                                                    for v in r]
+                                                   for r in _palm_R],
                                     "the surface gaps mm": {
                                         f: round(gaps[f] * 1e3, 4)
                                         for f in FINGERS},
