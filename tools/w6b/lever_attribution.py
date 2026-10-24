@@ -152,15 +152,28 @@ def main() -> int:
     rep = json.loads((REPO / "runs/w6b/report.json").read_text())
     meas = {}
     for side in ("right", "left"):
+        _g1 = rep["per_side"][side]["gate1_final_touch"]
+        # the executed distance lives under the executed-state evidence
+        # (the flat key the script used before was never in the report,
+        # so this field was silently null)
+        _exec = _g1.get("executed_state_evidence", {})
+        _dist = _exec.get("rect_dist_mm")
+        # the face's normal is the world x for BOTH sides (the right's
+        # palm presses the box's +x face, the left's the -x face), so
+        # the gap the residual torque would explain is the magnitude of
+        # the tool-tip displacement's x component.
+        _disp = out.get(side, {}).get(
+            "the tool-tip displacement it explains mm")
         meas[side] = {
-            "the executed pad distance mm": round(float(
-                rep["per_side"][side]["gate1_final_touch"].get(
-                    "executed_rect_dist_mm", float("nan"))), 3)
-            if "executed_rect_dist_mm" in rep["per_side"][side][
-                "gate1_final_touch"] else None,
+            "the executed pad distance mm": round(float(_dist), 3)
+            if _dist is not None else None,
             "the executed forward axis deg": round(float(
-                rep["per_side"][side]["gate1_final_touch"]["forward_axis_deg"]),
-                2),
+                _g1["forward_axis_deg"]), 2),
+            "the predicted gap from the residual mm":
+                round(abs(float(_disp[0])), 3) if _disp else None,
+            "the hypothesis holds": (
+                abs(abs(float(_disp[0])) - float(_dist)) < 0.2
+                if _disp and _dist is not None else None),
         }
     print()
     for side in ("right", "left"):

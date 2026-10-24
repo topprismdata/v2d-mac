@@ -81,12 +81,16 @@
   },
   "the measured": {
     "right": {
-      "the executed pad distance mm": null,
-      "the executed forward axis deg": 26.34
+      "the executed pad distance mm": 4.59,
+      "the executed forward axis deg": 26.34,
+      "the predicted gap from the residual mm": 12.01,
+      "the hypothesis holds": false
     },
     "left": {
-      "the executed pad distance mm": null,
-      "the executed forward axis deg": 27.61
+      "the executed pad distance mm": 6.06,
+      "the executed forward axis deg": 27.61,
+      "the predicted gap from the residual mm": 6.009,
+      "the hypothesis holds": true
     }
   }
 }

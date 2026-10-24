@@ -3,11 +3,11 @@
   "weight_N": 3.927901907880001,
   "mu_sliding": 1.8,
   "measured_normal_force_N": {
-    "right": 0.2972,
-    "left": 0.7177
+    "right": 0.2549,
+    "left": 0.7377
   },
-  "measured_total_normal_force_N": 1.0149,
-  "available_friction_N": 1.8268199999999999,
+  "measured_total_normal_force_N": 0.9926,
+  "available_friction_N": 1.78668,
   "required_total_normal_force_N": 2.1821677266000004,
   "required_per_hand_N": 1.0910838633000002,
   "moment_ratio_required": 0.6228589224540639,
@@ -34,5 +34,5 @@
     "note": "the mass, the friction coefficients and the joint limits are untouched; only the arm's commanded pose is raised"
   },
   "verdict_note": "the infeasibility is a property of the CURRENT terminal configuration (the searched anchor's squeeze), not of the hardware: the required normal force per hand is within the fingers' torque capacity",
-  "verdict": "the static balance is INFEASIBLE with the measured contact state: the available friction is short of the weight by 53.5%.  A lift needs the normal force raised to 1.091 N per hand (measured 0.297 / 0.718 N).  The local execution below tests whether a small continuous upward motion changes that."
+  "verdict": "the static balance is INFEASIBLE with the measured contact state: the available friction is short of the weight by 54.5%.  A lift needs the normal force raised to 1.091 N per hand (measured 0.255 / 0.738 N).  The local execution below tests whether a small continuous upward motion changes that."
 }

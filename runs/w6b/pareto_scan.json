@@ -7,7 +7,7 @@
       "the contacting pads": [
         "ff_tip_collision"
       ],
-      "the normal force N": 0.2972,
+      "the normal force N": 0.2549,
       "the gate1 pass": true,
       "the gate2 pass": true,
       "the gate3 pass": true,
@@ -16,7 +16,7 @@
         "gate4_joint_limits",
         "wrist_referenced_error"
       ],
-      "the executed pad distance mm": 4.58,
+      "the executed pad distance mm": 4.59,
       "the EXECUTED forward axis deg": 33.3
     },
     "left": {
@@ -24,7 +24,7 @@
       "the contacting pads": [
         "ff_tip_left_collision"
       ],
-      "the normal force N": 0.7177,
+      "the normal force N": 0.7377,
       "the gate1 pass": true,
       "the gate2 pass": true,
       "the gate3 pass": true,
@@ -45,7 +45,7 @@
       "the contacting pads": [
         "ff_tip_collision"
       ],
-      "the normal force N": 0.2893,
+      "the normal force N": 0.3225,
       "the gate1 pass": false,
       "the gate2 pass": true,
       "the gate3 pass": true,
@@ -63,7 +63,7 @@
       "the contacting pads": [
         "ff_tip_left_collision"
       ],
-      "the normal force N": 0.7433,
+      "the normal force N": 0.7455,
       "the gate1 pass": false,
       "the gate2 pass": true,
       "the gate3 pass": true,
@@ -82,8 +82,10 @@
     "squeeze_mm": 0.0,
     "right": {
       "the commanded forward axis deg": 26.1,
-      "the contacting pads": [],
-      "the normal force N": 0.0,
+      "the contacting pads": [
+        "ff_tip_collision"
+      ],
+      "the normal force N": 1.1384,
       "the gate1 pass": false,
       "the gate2 pass": true,
       "the gate3 pass": true,
@@ -93,7 +95,7 @@
         "gate4_joint_limits",
         "wrist_referenced_error"
       ],
-      "the executed pad distance mm": 5.2,
+      "the executed pad distance mm": 4.99,
       "the EXECUTED forward axis deg": 33.6
     },
     "left": {
@@ -101,7 +103,7 @@
       "the contacting pads": [
         "ff_tip_left_collision"
       ],
-      "the normal force N": 0.9391,
+      "the normal force N": 0.6669,
       "the gate1 pass": false,
       "the gate2 pass": true,
       "the gate3 pass": true,
@@ -111,7 +113,7 @@
         "gate4_joint_limits",
         "wrist_referenced_error"
       ],
-      "the executed pad distance mm": 5.77,
+      "the executed pad distance mm": 5.78,
       "the EXECUTED forward axis deg": 33.2
     }
   },
@@ -131,15 +133,15 @@
         "gate4_joint_limits",
         "wrist_referenced_error"
       ],
-      "the executed pad distance mm": 10.7,
-      "the EXECUTED forward axis deg": 34.2
+      "the executed pad distance mm": 12.12,
+      "the EXECUTED forward axis deg": 34.3
     },
     "left": {
       "the commanded forward axis deg": 28.04,
       "the contacting pads": [
         "ff_tip_left_collision"
       ],
-      "the normal force N": 1.1945,
+      "the normal force N": 1.2868,
       "the gate1 pass": false,
       "the gate2 pass": true,
       "the gate3 pass": true,
@@ -149,8 +151,8 @@
         "gate4_joint_limits",
         "wrist_referenced_error"
       ],
-      "the executed pad distance mm": 5.65,
-      "the EXECUTED forward axis deg": 33.7
+      "the executed pad distance mm": 5.89,
+      "the EXECUTED forward axis deg": 33.8
     }
   },
   {
@@ -161,7 +163,7 @@
       "the contacting pads": [
         "ff_tip_collision"
       ],
-      "the normal force N": 0.3639,
+      "the normal force N": 0.3797,
       "the gate1 pass": true,
       "the gate2 pass": true,
       "the gate3 pass": true,
@@ -178,7 +180,7 @@
       "the contacting pads": [
         "ff_tip_left_collision"
       ],
-      "the normal force N": 0.7162,
+      "the normal force N": 0.7015,
       "the gate1 pass": true,
       "the gate2 pass": true,
       "the gate3 pass": true,
@@ -199,7 +201,7 @@
       "the contacting pads": [
         "ff_tip_collision"
       ],
-      "the normal force N": 0.2453,
+      "the normal force N": 0.3702,
       "the gate1 pass": true,
       "the gate2 pass": true,
       "the gate3 pass": true,
@@ -208,7 +210,7 @@
         "gate4_joint_limits",
         "wrist_referenced_error"
       ],
-      "the executed pad distance mm": 4.7,
+      "the executed pad distance mm": 4.55,
       "the EXECUTED forward axis deg": 33.3
     },
     "left": {
@@ -216,7 +218,7 @@
       "the contacting pads": [
         "ff_tip_left_collision"
       ],
-      "the normal force N": 0.6387,
+      "the normal force N": 0.7015,
       "the gate1 pass": true,
       "the gate2 pass": true,
       "the gate3 pass": true,
@@ -237,7 +239,7 @@
       "the contacting pads": [
         "ff_tip_collision"
       ],
-      "the normal force N": 0.2445,
+      "the normal force N": 0.2545,
       "the gate1 pass": false,
       "the gate2 pass": true,
       "the gate3 pass": true,
@@ -247,7 +249,7 @@
         "gate4_joint_limits",
         "wrist_referenced_error"
       ],
-      "the executed pad distance mm": 4.88,
+      "the executed pad distance mm": 4.84,
       "the EXECUTED forward axis deg": 33.4
     },
     "left": {
@@ -255,7 +257,7 @@
       "the contacting pads": [
         "ff_tip_left_collision"
       ],
-      "the normal force N": 0.791,
+      "the normal force N": 0.7489,
       "the gate1 pass": false,
       "the gate2 pass": true,
       "the gate3 pass": true,
@@ -265,7 +267,7 @@
         "gate4_joint_limits",
         "wrist_referenced_error"
       ],
-      "the executed pad distance mm": 5.98,
+      "the executed pad distance mm": 5.99,
       "the EXECUTED forward axis deg": 33.1
     }
   }
