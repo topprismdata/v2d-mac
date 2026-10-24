@@ -304,7 +304,7 @@ def main():
                               for p in tuple(float(v) for v in
                                              _os.environ.get(
                                                  "W6B_R110_PRELOADS_MM",
-                                                 "0.0,0.30").split(","))]
+                                                 "0.0,0.30").split(","))
                               for r in range(0, 360, 10)]:
             ang = np.deg2rad(float(roll))
             cr, sr = np.cos(ang), np.sin(ang)
