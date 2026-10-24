@@ -1,0 +1,208 @@
+{
+  "the scene": "grounding/assets/allegro_floating_ur5e_side_r37.xml",
+  "sides": {
+    "right": {
+      "ff": {
+        "the tip position mm": [
+          60.0,
+          9.34,
+          753.71
+        ],
+        "the normal moment arms mm": [
+          0.746,
+          23.482,
+          1.904,
+          1.764
+        ],
+        "the actuator kp": [
+          0.375,
+          0.836,
+          1.456,
+          0.064
+        ],
+        "the torque limits Nm": [
+          0.015,
+          0.179,
+          0.159,
+          0.042
+        ],
+        "the per-joint force caps N": [
+          20.13,
+          7.63,
+          83.65,
+          23.92
+        ],
+        "the hardware force ceiling N": 7.631,
+        "the binding joint": 1
+      },
+      "mf": {
+        "the tip position mm": [
+          60.0,
+          -10.83,
+          770.0
+        ],
+        "the normal moment arms mm": [
+          17.039,
+          7.699,
+          15.447,
+          9.474
+        ],
+        "the actuator kp": [
+          0.377,
+          0.836,
+          1.456,
+          0.064
+        ],
+        "the torque limits Nm": [
+          0.015,
+          0.177,
+          0.16,
+          0.042
+        ],
+        "the per-joint force caps N": [
+          0.88,
+          22.94,
+          10.35,
+          4.47
+        ],
+        "the hardware force ceiling N": 0.881,
+        "the binding joint": 0
+      },
+      "rf": {
+        "the tip position mm": [
+          52.51,
+          -67.83,
+          814.87
+        ],
+        "the normal moment arms mm": [
+          2.02,
+          14.544,
+          26.101,
+          13.613
+        ],
+        "the actuator kp": [
+          0.329,
+          0.727,
+          0.235,
+          0.045
+        ],
+        "the torque limits Nm": [
+          0.015,
+          0.18,
+          0.159,
+          0.042
+        ],
+        "the per-joint force caps N": [
+          7.43,
+          12.37,
+          6.11,
+          3.1
+        ],
+        "the hardware force ceiling N": 3.099,
+        "the binding joint": 3
+      }
+    },
+    "left": {
+      "ff": {
+        "the tip position mm": [
+          -60.01,
+          -71.07,
+          760.24
+        ],
+        "the normal moment arms mm": [
+          0.01,
+          22.324,
+          1.238,
+          2.044
+        ],
+        "the actuator kp": [
+          0.375,
+          0.836,
+          1.456,
+          0.064
+        ],
+        "the torque limits Nm": [
+          0.015,
+          0.179,
+          0.159,
+          0.042
+        ],
+        "the per-joint force caps N": [
+          1496.62,
+          8.03,
+          128.68,
+          20.64
+        ],
+        "the hardware force ceiling N": 8.027,
+        "the binding joint": 1
+      },
+      "mf": {
+        "the tip position mm": [
+          -60.0,
+          -52.06,
+          779.26
+        ],
+        "the normal moment arms mm": [
+          18.01,
+          3.022,
+          17.998,
+          10.303
+        ],
+        "the actuator kp": [
+          0.377,
+          0.836,
+          1.456,
+          0.064
+        ],
+        "the torque limits Nm": [
+          0.015,
+          0.177,
+          0.16,
+          0.042
+        ],
+        "the per-joint force caps N": [
+          0.83,
+          58.44,
+          8.88,
+          4.11
+        ],
+        "the hardware force ceiling N": 0.833,
+        "the binding joint": 0
+      },
+      "rf": {
+        "the tip position mm": [
+          -52.9,
+          4.61,
+          822.21
+        ],
+        "the normal moment arms mm": [
+          3.767,
+          17.749,
+          27.868,
+          14.1
+        ],
+        "the actuator kp": [
+          0.329,
+          0.727,
+          0.235,
+          0.045
+        ],
+        "the torque limits Nm": [
+          0.015,
+          0.18,
+          0.159,
+          0.042
+        ],
+        "the per-joint force caps N": [
+          3.98,
+          10.14,
+          5.72,
+          2.99
+        ],
+        "the hardware force ceiling N": 2.992,
+        "the binding joint": 3
+      }
+    }
+  },
+  "the note": "F_max = min_j (the actuator's torque limit / the joint's normal moment arm).  It is the largest normal force the finger can hold against the end face at the delivered pose, and it is a HARDWARE limit (the Allegro's actuator torque limits are physical).  The delivered cell's measured force is far below it, so the delivered force is limited by the SERVO's stiffness and the command state's geometry, not by the hardware."
+}

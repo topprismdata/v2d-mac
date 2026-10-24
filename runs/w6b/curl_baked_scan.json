@@ -1,0 +1,565 @@
+[
+  {
+    "the right curl": 1.0,
+    "the left curl": 1.0,
+    "right": {
+      "the command rect mm": 0.0001,
+      "the command pads in the rect": 2,
+      "the command burial": false,
+      "the command fwd deg": 26.34,
+      "the gate1 pass": true,
+      "the executed pads in contact": [
+        "ff_tip_collision"
+      ],
+      "the executed n_eligible": 1,
+      "the executed penetration mm": -0.0646,
+      "the normal force N": 0.2549,
+      "the per-pad through mm": {
+        "ff_tip_collision": 0.0,
+        "mf_tip_collision": 0.0,
+        "rf_tip_collision": -7.49,
+        "th_tip_collision": 115.688
+      }
+    },
+    "left": {
+      "the command rect mm": 0.0001,
+      "the command pads in the rect": 2,
+      "the command burial": false,
+      "the command fwd deg": 27.61,
+      "the gate1 pass": true,
+      "the executed pads in contact": [
+        "ff_tip_left_collision"
+      ],
+      "the executed n_eligible": 1,
+      "the executed penetration mm": -0.083,
+      "the normal force N": 0.7377,
+      "the per-pad through mm": {
+        "ff_tip_left_collision": -0.007,
+        "mf_tip_left_collision": -0.0,
+        "rf_tip_left_collision": 7.104,
+        "th_tip_left_collision": -120.049
+      }
+    },
+    "the red gates": [
+      "gate4_joint_limits",
+      "wrist_referenced_error"
+    ]
+  },
+  {
+    "the right curl": 1.02,
+    "the left curl": 1.0,
+    "right": {
+      "the command rect mm": 0.1931,
+      "the command pads in the rect": 0,
+      "the command burial": true,
+      "the command fwd deg": 26.25,
+      "the gate1 pass": false,
+      "the executed pads in contact": [
+        "ff_tip_collision"
+      ],
+      "the executed n_eligible": 0,
+      "the executed penetration mm": -0.1265,
+      "the normal force N": 0.7993,
+      "the per-pad through mm": {
+        "ff_tip_collision": -0.193,
+        "mf_tip_collision": 0.228,
+        "rf_tip_collision": -6.888,
+        "th_tip_collision": 114.748
+      }
+    },
+    "left": {
+      "the command rect mm": 0.0001,
+      "the command pads in the rect": 2,
+      "the command burial": false,
+      "the command fwd deg": 27.61,
+      "the gate1 pass": true,
+      "the executed pads in contact": [
+        "ff_tip_left_collision"
+      ],
+      "the executed n_eligible": 1,
+      "the executed penetration mm": -0.0627,
+      "the normal force N": 0.5329,
+      "the per-pad through mm": {
+        "ff_tip_left_collision": -0.007,
+        "mf_tip_left_collision": -0.0,
+        "rf_tip_left_collision": 7.104,
+        "th_tip_left_collision": -120.049
+      }
+    },
+    "the red gates": [
+      "gate1_final_touch",
+      "gate4_joint_limits",
+      "wrist_referenced_error"
+    ]
+  },
+  {
+    "the right curl": 1.04,
+    "the left curl": 1.0,
+    "right": {
+      "the command rect mm": 0.3681,
+      "the command pads in the rect": 0,
+      "the command burial": true,
+      "the command fwd deg": 26.18,
+      "the gate1 pass": false,
+      "the executed pads in contact": [
+        "ff_tip_collision"
+      ],
+      "the executed n_eligible": 1,
+      "the executed penetration mm": -0.0951,
+      "the normal force N": 0.3889,
+      "the per-pad through mm": {
+        "ff_tip_collision": -0.368,
+        "mf_tip_collision": 0.481,
+        "rf_tip_collision": -6.247,
+        "th_tip_collision": 113.821
+      }
+    },
+    "left": {
+      "the command rect mm": 0.0001,
+      "the command pads in the rect": 2,
+      "the command burial": false,
+      "the command fwd deg": 27.61,
+      "the gate1 pass": true,
+      "the executed pads in contact": [
+        "ff_tip_left_collision"
+      ],
+      "the executed n_eligible": 1,
+      "the executed penetration mm": -0.0823,
+      "the normal force N": 0.7235,
+      "the per-pad through mm": {
+        "ff_tip_left_collision": -0.007,
+        "mf_tip_left_collision": -0.0,
+        "rf_tip_left_collision": 7.104,
+        "th_tip_left_collision": -120.049
+      }
+    },
+    "the red gates": [
+      "gate1_final_touch",
+      "gate4_joint_limits",
+      "wrist_referenced_error"
+    ]
+  },
+  {
+    "the right curl": 1.06,
+    "the left curl": 1.0,
+    "right": {
+      "the command rect mm": 0.5249,
+      "the command pads in the rect": 0,
+      "the command burial": true,
+      "the command fwd deg": 26.13,
+      "the gate1 pass": false,
+      "the executed pads in contact": [
+        "ff_tip_collision"
+      ],
+      "the executed n_eligible": 1,
+      "the executed penetration mm": -0.0572,
+      "the normal force N": 0.1666,
+      "the per-pad through mm": {
+        "ff_tip_collision": -0.525,
+        "mf_tip_collision": 0.76,
+        "rf_tip_collision": -5.568,
+        "th_tip_collision": 112.908
+      }
+    },
+    "left": {
+      "the command rect mm": 0.0001,
+      "the command pads in the rect": 2,
+      "the command burial": false,
+      "the command fwd deg": 27.61,
+      "the gate1 pass": true,
+      "the executed pads in contact": [
+        "ff_tip_left_collision"
+      ],
+      "the executed n_eligible": 1,
+      "the executed penetration mm": -0.071,
+      "the normal force N": 0.6268,
+      "the per-pad through mm": {
+        "ff_tip_left_collision": -0.007,
+        "mf_tip_left_collision": -0.0,
+        "rf_tip_left_collision": 7.104,
+        "th_tip_left_collision": -120.049
+      }
+    },
+    "the red gates": [
+      "gate1_final_touch",
+      "gate4_joint_limits",
+      "wrist_referenced_error"
+    ]
+  },
+  {
+    "the right curl": 1.08,
+    "the left curl": 1.0,
+    "right": {
+      "the command rect mm": 0.6634,
+      "the command pads in the rect": 0,
+      "the command burial": true,
+      "the command fwd deg": 26.1,
+      "the gate1 pass": false,
+      "the executed pads in contact": [
+        "ff_tip_collision"
+      ],
+      "the executed n_eligible": 1,
+      "the executed penetration mm": -0.0522,
+      "the normal force N": 0.169,
+      "the per-pad through mm": {
+        "ff_tip_collision": -0.663,
+        "mf_tip_collision": 1.064,
+        "rf_tip_collision": -4.852,
+        "th_tip_collision": 112.009
+      }
+    },
+    "left": {
+      "the command rect mm": 0.0001,
+      "the command pads in the rect": 2,
+      "the command burial": false,
+      "the command fwd deg": 27.61,
+      "the gate1 pass": true,
+      "the executed pads in contact": [
+        "ff_tip_left_collision"
+      ],
+      "the executed n_eligible": 1,
+      "the executed penetration mm": -0.0825,
+      "the normal force N": 0.7438,
+      "the per-pad through mm": {
+        "ff_tip_left_collision": -0.007,
+        "mf_tip_left_collision": -0.0,
+        "rf_tip_left_collision": 7.104,
+        "th_tip_left_collision": -120.049
+      }
+    },
+    "the red gates": [
+      "gate1_final_touch",
+      "gate4_joint_limits",
+      "wrist_referenced_error"
+    ]
+  },
+  {
+    "the right curl": 1.1,
+    "the left curl": 1.0,
+    "right": {
+      "the command rect mm": 0.7838,
+      "the command pads in the rect": 0,
+      "the command burial": true,
+      "the command fwd deg": 26.1,
+      "the gate1 pass": false,
+      "the executed pads in contact": [
+        "ff_tip_collision"
+      ],
+      "the executed n_eligible": 0,
+      "the executed penetration mm": -0.1205,
+      "the normal force N": 0.6684,
+      "the per-pad through mm": {
+        "ff_tip_collision": -0.784,
+        "mf_tip_collision": 1.393,
+        "rf_tip_collision": -4.1,
+        "th_tip_collision": 111.126
+      }
+    },
+    "left": {
+      "the command rect mm": 0.0001,
+      "the command pads in the rect": 2,
+      "the command burial": false,
+      "the command fwd deg": 27.61,
+      "the gate1 pass": true,
+      "the executed pads in contact": [
+        "ff_tip_left_collision"
+      ],
+      "the executed n_eligible": 1,
+      "the executed penetration mm": -0.0684,
+      "the normal force N": 0.5668,
+      "the per-pad through mm": {
+        "ff_tip_left_collision": -0.007,
+        "mf_tip_left_collision": -0.0,
+        "rf_tip_left_collision": 7.104,
+        "th_tip_left_collision": -120.049
+      }
+    },
+    "the red gates": [
+      "gate1_final_touch",
+      "gate4_joint_limits",
+      "wrist_referenced_error"
+    ]
+  },
+  {
+    "the right curl": 1.12,
+    "the left curl": 1.0,
+    "right": {
+      "the command rect mm": 0.886,
+      "the command pads in the rect": 0,
+      "the command burial": true,
+      "the command fwd deg": 26.12,
+      "the gate1 pass": false,
+      "the executed pads in contact": [
+        "ff_tip_collision"
+      ],
+      "the executed n_eligible": 0,
+      "the executed penetration mm": 1.9408,
+      "the normal force N": 0.7022,
+      "the per-pad through mm": {
+        "ff_tip_collision": -0.886,
+        "mf_tip_collision": 1.746,
+        "rf_tip_collision": -3.311,
+        "th_tip_collision": 110.258
+      }
+    },
+    "left": {
+      "the command rect mm": 0.0001,
+      "the command pads in the rect": 2,
+      "the command burial": false,
+      "the command fwd deg": 27.61,
+      "the gate1 pass": true,
+      "the executed pads in contact": [
+        "ff_tip_left_collision"
+      ],
+      "the executed n_eligible": 1,
+      "the executed penetration mm": -0.0639,
+      "the normal force N": 0.5413,
+      "the per-pad through mm": {
+        "ff_tip_left_collision": -0.007,
+        "mf_tip_left_collision": -0.0,
+        "rf_tip_left_collision": 7.104,
+        "th_tip_left_collision": -120.049
+      }
+    },
+    "the red gates": [
+      "gate1_final_touch",
+      "gate4_joint_limits",
+      "wrist_referenced_error"
+    ]
+  },
+  {
+    "the right curl": 1.0,
+    "the left curl": 1.05,
+    "right": {
+      "the command rect mm": 0.0001,
+      "the command pads in the rect": 2,
+      "the command burial": false,
+      "the command fwd deg": 26.34,
+      "the gate1 pass": true,
+      "the executed pads in contact": [
+        "ff_tip_collision"
+      ],
+      "the executed n_eligible": 1,
+      "the executed penetration mm": -0.0388,
+      "the normal force N": 0.2385,
+      "the per-pad through mm": {
+        "ff_tip_collision": 0.0,
+        "mf_tip_collision": 0.0,
+        "rf_tip_collision": -7.49,
+        "th_tip_collision": 115.688
+      }
+    },
+    "left": {
+      "the command rect mm": 0.3953,
+      "the command pads in the rect": 0,
+      "the command burial": false,
+      "the command fwd deg": 27.52,
+      "the gate1 pass": false,
+      "the executed pads in contact": [
+        "ff_tip_left_collision"
+      ],
+      "the executed n_eligible": 1,
+      "the executed penetration mm": -0.1134,
+      "the normal force N": 1.0166,
+      "the per-pad through mm": {
+        "ff_tip_left_collision": 0.395,
+        "mf_tip_left_collision": -0.794,
+        "rf_tip_left_collision": 5.355,
+        "th_tip_left_collision": -117.693
+      }
+    },
+    "the red gates": [
+      "gate1_final_touch",
+      "gate4_joint_limits",
+      "wrist_referenced_error"
+    ]
+  },
+  {
+    "the right curl": 1.0,
+    "the left curl": 1.1,
+    "right": {
+      "the command rect mm": 0.0001,
+      "the command pads in the rect": 2,
+      "the command burial": false,
+      "the command fwd deg": 26.34,
+      "the gate1 pass": true,
+      "the executed pads in contact": [
+        "ff_tip_collision"
+      ],
+      "the executed n_eligible": 1,
+      "the executed penetration mm": -0.0907,
+      "the normal force N": 0.6102,
+      "the per-pad through mm": {
+        "ff_tip_collision": 0.0,
+        "mf_tip_collision": 0.0,
+        "rf_tip_collision": -7.49,
+        "th_tip_collision": 115.688
+      }
+    },
+    "left": {
+      "the command rect mm": 0.6865,
+      "the command pads in the rect": 0,
+      "the command burial": false,
+      "the command fwd deg": 27.56,
+      "the gate1 pass": false,
+      "the executed pads in contact": [
+        "ff_tip_left_collision"
+      ],
+      "the executed n_eligible": 1,
+      "the executed penetration mm": -0.1094,
+      "the normal force N": 0.8376,
+      "the per-pad through mm": {
+        "ff_tip_left_collision": 0.686,
+        "mf_tip_left_collision": -1.75,
+        "rf_tip_left_collision": 3.37,
+        "th_tip_left_collision": -115.418
+      }
+    },
+    "the red gates": [
+      "gate1_final_touch",
+      "gate4_joint_limits",
+      "wrist_referenced_error"
+    ]
+  },
+  {
+    "the right curl": 1.0,
+    "the left curl": 1.15,
+    "right": {
+      "the command rect mm": 0.0001,
+      "the command pads in the rect": 2,
+      "the command burial": false,
+      "the command fwd deg": 26.34,
+      "the gate1 pass": true,
+      "the executed pads in contact": [
+        "ff_tip_collision"
+      ],
+      "the executed n_eligible": 1,
+      "the executed penetration mm": -0.0011,
+      "the normal force N": 0.2445,
+      "the per-pad through mm": {
+        "ff_tip_collision": 0.0,
+        "mf_tip_collision": 0.0,
+        "rf_tip_collision": -7.49,
+        "th_tip_collision": 115.688
+      }
+    },
+    "left": {
+      "the command rect mm": 0.8663,
+      "the command pads in the rect": 0,
+      "the command burial": false,
+      "the command fwd deg": 27.74,
+      "the gate1 pass": false,
+      "the executed pads in contact": [
+        "ff_tip_left_collision"
+      ],
+      "the executed n_eligible": 0,
+      "the executed penetration mm": -0.1221,
+      "the normal force N": 1.0033,
+      "the per-pad through mm": {
+        "ff_tip_left_collision": 0.866,
+        "mf_tip_left_collision": -2.865,
+        "rf_tip_left_collision": 1.16,
+        "th_tip_left_collision": -113.234
+      }
+    },
+    "the red gates": [
+      "gate1_final_touch",
+      "gate4_joint_limits",
+      "wrist_referenced_error"
+    ]
+  },
+  {
+    "the right curl": 1.0,
+    "the left curl": 1.2,
+    "right": {
+      "the command rect mm": 0.0001,
+      "the command pads in the rect": 2,
+      "the command burial": false,
+      "the command fwd deg": 26.34,
+      "the gate1 pass": true,
+      "the executed pads in contact": [
+        "ff_tip_collision"
+      ],
+      "the executed n_eligible": 1,
+      "the executed penetration mm": -0.0395,
+      "the normal force N": 0.2509,
+      "the per-pad through mm": {
+        "ff_tip_collision": 0.0,
+        "mf_tip_collision": 0.0,
+        "rf_tip_collision": -7.49,
+        "th_tip_collision": 115.688
+      }
+    },
+    "left": {
+      "the command rect mm": 0.935,
+      "the command pads in the rect": 0,
+      "the command burial": false,
+      "the command fwd deg": 28.04,
+      "the gate1 pass": false,
+      "the executed pads in contact": [
+        "ff_tip_left_collision"
+      ],
+      "the executed n_eligible": 0,
+      "the executed penetration mm": -0.1551,
+      "the normal force N": 1.4044,
+      "the per-pad through mm": {
+        "ff_tip_left_collision": 0.935,
+        "mf_tip_left_collision": -4.132,
+        "rf_tip_left_collision": -1.262,
+        "th_tip_left_collision": -111.148
+      }
+    },
+    "the red gates": [
+      "gate1_final_touch",
+      "gate4_joint_limits",
+      "wrist_referenced_error"
+    ]
+  },
+  {
+    "the right curl": 1.0,
+    "the left curl": 1.25,
+    "right": {
+      "the command rect mm": 0.0001,
+      "the command pads in the rect": 2,
+      "the command burial": false,
+      "the command fwd deg": 26.34,
+      "the gate1 pass": true,
+      "the executed pads in contact": [
+        "ff_tip_collision"
+      ],
+      "the executed n_eligible": 1,
+      "the executed penetration mm": -0.0597,
+      "the normal force N": 0.2479,
+      "the per-pad through mm": {
+        "ff_tip_collision": 0.0,
+        "mf_tip_collision": 0.0,
+        "rf_tip_collision": -7.49,
+        "th_tip_collision": 115.688
+      }
+    },
+    "left": {
+      "the command rect mm": 0.8931,
+      "the command pads in the rect": 0,
+      "the command burial": false,
+      "the command fwd deg": 28.47,
+      "the gate1 pass": false,
+      "the executed pads in contact": [
+        "ff_tip_left_collision"
+      ],
+      "the executed n_eligible": 0,
+      "the executed penetration mm": -0.1777,
+      "the normal force N": 1.6398,
+      "the per-pad through mm": {
+        "ff_tip_left_collision": 0.893,
+        "mf_tip_left_collision": -5.546,
+        "rf_tip_left_collision": -3.883,
+        "th_tip_left_collision": -109.169
+      }
+    },
+    "the red gates": [
+      "gate1_final_touch",
+      "gate4_joint_limits",
+      "wrist_referenced_error"
+    ]
+  }
+]
