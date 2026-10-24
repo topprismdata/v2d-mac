@@ -1,0 +1,210 @@
+[
+  {
+    "side": "right",
+    "the curl": 1.0,
+    "the static surface gaps mm": {
+      "ff": -0.0478,
+      "mf": -0.0538,
+      "rf": 26.8982
+    },
+    "the v1v2 rect mm": 2.0738,
+    "the v1v2 pads in the rect": 0,
+    "the v1v2 pass": false,
+    "the v3 eligible": 1,
+    "the v3 pass": false,
+    "the normal force N": 0.2109,
+    "the per-pad surface gap mm": {
+      "ff_tip_collision": -0.0345,
+      "mf_tip_collision": 9.3134,
+      "rf_tip_collision": 5.2564,
+      "th_tip_collision": 129.0479
+    },
+    "the red gates": [
+      "gate1_final_touch",
+      "gate4_joint_limits",
+      "wrist_referenced_error"
+    ]
+  },
+  {
+    "side": "right",
+    "the curl": 1.05,
+    "the static surface gaps mm": {
+      "ff": -0.0459,
+      "mf": -0.0774,
+      "rf": 31.156
+    },
+    "the v1v2 rect mm": 2.3429,
+    "the v1v2 pads in the rect": 0,
+    "the v1v2 pass": false,
+    "the v3 eligible": 1,
+    "the v3 pass": false,
+    "the normal force N": 0.1752,
+    "the per-pad surface gap mm": {
+      "ff_tip_collision": -0.0232,
+      "mf_tip_collision": 9.2902,
+      "rf_tip_collision": 5.463,
+      "th_tip_collision": 129.1919
+    },
+    "the red gates": [
+      "gate1_final_touch",
+      "gate4_joint_limits",
+      "wrist_referenced_error"
+    ]
+  },
+  {
+    "side": "right",
+    "the curl": 1.1,
+    "the static surface gaps mm": {
+      "ff": -0.044,
+      "mf": -0.0681,
+      "rf": 35.388
+    },
+    "the v1v2 rect mm": 2.607,
+    "the v1v2 pads in the rect": 0,
+    "the v1v2 pass": false,
+    "the v3 eligible": 1,
+    "the v3 pass": false,
+    "the normal force N": 0.1834,
+    "the per-pad surface gap mm": {
+      "ff_tip_collision": -0.0219,
+      "mf_tip_collision": 9.3546,
+      "rf_tip_collision": 8.0252,
+      "th_tip_collision": 129.2553
+    },
+    "the red gates": [
+      "gate1_final_touch",
+      "gate4_joint_limits",
+      "wrist_referenced_error"
+    ]
+  },
+  {
+    "side": "right",
+    "the curl": 1.15,
+    "the static surface gaps mm": {
+      "ff": -0.0422,
+      "mf": -0.0539,
+      "rf": 39.5791
+    },
+    "the v1v2 rect mm": 2.8654,
+    "the v1v2 pads in the rect": 0,
+    "the v1v2 pass": false,
+    "the v3 eligible": 1,
+    "the v3 pass": false,
+    "the normal force N": 0.1554,
+    "the per-pad surface gap mm": {
+      "ff_tip_collision": -0.0093,
+      "mf_tip_collision": 9.7607,
+      "rf_tip_collision": 12.8554,
+      "th_tip_collision": 129.4687
+    },
+    "the red gates": [
+      "gate1_final_touch",
+      "gate4_joint_limits",
+      "wrist_referenced_error"
+    ]
+  },
+  {
+    "side": "left",
+    "the curl": 1.0,
+    "the static surface gaps mm": {
+      "ff": -0.0481,
+      "mf": -0.0745,
+      "rf": 34.4175
+    },
+    "the v1v2 rect mm": 2.0892,
+    "the v1v2 pads in the rect": 0,
+    "the v1v2 pass": false,
+    "the v3 eligible": 1,
+    "the v3 pass": false,
+    "the normal force N": 0.5662,
+    "the per-pad surface gap mm": {
+      "ff_tip_left_collision": -0.0628,
+      "mf_tip_left_collision": 6.5403,
+      "rf_tip_left_collision": 22.9634,
+      "th_tip_left_collision": 138.1629
+    },
+    "the red gates": [
+      "gate1_final_touch",
+      "gate4_joint_limits",
+      "wrist_referenced_error"
+    ]
+  },
+  {
+    "side": "left",
+    "the curl": 1.05,
+    "the static surface gaps mm": {
+      "ff": -0.0467,
+      "mf": -0.0498,
+      "rf": 38.7405
+    },
+    "the v1v2 rect mm": 2.3558,
+    "the v1v2 pads in the rect": 0,
+    "the v1v2 pass": false,
+    "the v3 eligible": 1,
+    "the v3 pass": false,
+    "the normal force N": 0.1549,
+    "the per-pad surface gap mm": {
+      "ff_tip_left_collision": -0.0271,
+      "mf_tip_left_collision": 6.715,
+      "rf_tip_left_collision": 25.3018,
+      "th_tip_left_collision": 138.7956
+    },
+    "the red gates": [
+      "gate1_final_touch",
+      "gate4_joint_limits",
+      "wrist_referenced_error"
+    ]
+  },
+  {
+    "side": "left",
+    "the curl": 1.1,
+    "the static surface gaps mm": {
+      "ff": -0.05,
+      "mf": 52.13,
+      "rf": 43.0232
+    },
+    "the v1v2 rect mm": 2.6119,
+    "the v1v2 pads in the rect": 0,
+    "the v1v2 pass": false,
+    "the v3 eligible": 1,
+    "the v3 pass": false,
+    "the normal force N": 0.3075,
+    "the per-pad surface gap mm": {
+      "ff_tip_left_collision": -0.0313,
+      "mf_tip_left_collision": 7.2191,
+      "rf_tip_left_collision": 27.6616,
+      "th_tip_left_collision": 139.1961
+    },
+    "the red gates": [
+      "gate1_final_touch",
+      "gate4_joint_limits",
+      "wrist_referenced_error"
+    ]
+  },
+  {
+    "side": "left",
+    "the curl": 1.15,
+    "the static surface gaps mm": {
+      "ff": -0.05,
+      "mf": 78.5375,
+      "rf": 47.2465
+    },
+    "the v1v2 rect mm": 2.8654,
+    "the v1v2 pads in the rect": 0,
+    "the v1v2 pass": false,
+    "the v3 eligible": 1,
+    "the v3 pass": false,
+    "the normal force N": 0.3826,
+    "the per-pad surface gap mm": {
+      "ff_tip_left_collision": -0.0377,
+      "mf_tip_left_collision": 31.5296,
+      "rf_tip_left_collision": 30.2536,
+      "th_tip_left_collision": 139.5714
+    },
+    "the red gates": [
+      "gate1_final_touch",
+      "gate4_joint_limits",
+      "wrist_referenced_error"
+    ]
+  }
+]
