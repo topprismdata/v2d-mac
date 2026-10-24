@@ -208,7 +208,7 @@
     <camera name="cam_wrist" mode="fixed" pos="0 0.16 0.10" xyaxes="1 0 0 0 0 -1" fovy="70" />
     <body name="object" pos="0 0 0.7400">
       <freejoint name="object_free" />
-      <geom name="object_geom" type="box" size="0.12 0.06 0.04" mass="0.149602252" rgba="0.30 0.55 0.85 1" material="box" condim="4" friction="1.4 0.02 0.004" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" />
+      <geom name="object_geom" type="box" size="0.06 0.12 0.04" mass="0.4" rgba="0.30 0.55 0.85 1" material="box" condim="4" friction="1.4 0.02 0.004" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" />
       <geom name="object_chamfer_negx" type="box" size="0.00212132 0.12 0.0015" pos="-0.0595607 0 0.0395607" euler="0 45 0" mass="0.000198874" rgba="0.30 0.55 0.85 1" material="box" condim="4" friction="1.4 0.02 0.004" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" />
       <geom name="object_chamfer_posx" type="box" size="0.00212132 0.12 0.0015" pos="0.0595607 0 0.0395607" euler="0 -45 0" mass="0.000198874" rgba="0.30 0.55 0.85 1" material="box" condim="4" friction="1.4 0.02 0.004" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" />
     </body>
@@ -224,7 +224,7 @@
     <body name="r22_vise_corner_nx_ny" pos="-0.065 -0.125 0.7075">
       <geom name="r22_vise_corner_nx_ny_geom" type="box" size="0.004 0.004 0.0075" rgba="0.45 0.38 0.28 1" />
     </body>
-    <body name="ur5e_r_base" quat="0.000000 0.000000 0.000000 1.000000" childclass="ur5e" pos="0.70 0 1.35">
+    <body name="ur5e_r_base" quat="0.000000 0.000000 0.000000 1.000000" childclass="ur5e" pos="0.70 0 1.10">
       <inertial mass="4.0" pos="0 0 0" diaginertia="0.00443333156 0.00443333156 0.0072" />
       <geom mesh="ur5e_base_0" material="ur5e_black" class="ur5e_visual" />
       <geom mesh="ur5e_base_1" material="ur5e_jointgray" class="ur5e_visual" />
@@ -405,7 +405,7 @@
         </body>
       </body>
     </body>
-    <body name="ur5e_l_base" quat="0.999391 0.000000 0.034899 0.000000" childclass="ur5e" pos="-0.70 0 1.35">
+    <body name="ur5e_l_base" quat="0.999391 0.000000 0.034899 0.000000" childclass="ur5e" pos="-0.70 0 1.10">
       <inertial mass="4.0" pos="0 0 0" diaginertia="0.00443333156 0.00443333156 0.0072" />
       <geom mesh="ur5e_base_0" material="ur5e_black" class="ur5e_visual" />
       <geom mesh="ur5e_base_1" material="ur5e_jointgray" class="ur5e_visual" />
@@ -599,6 +599,16 @@
        removed, the stiffer left servo removes its residual droop; the two arms
        trade error through the light box, so equal gains are not the optimum:
        equal (2000/2000) -> 7.35/12.75 mm, (4000/2000) -> 6.56/6.26 mm. -->
+  <!-- r49 (side cell): two modelling changes that close the executed gap to
+       < 5 mm on BOTH hands.
+       1. the object is 0.4 kg, not 0.1496 kg: a 150 g box is shoved across
+          the table by the squeeze (measured 16.7 mm) and every millimetre of
+          that travel is booked against the pad that did not follow it.
+       2. the servos: left kp 4400 / right kp 2200 (kv = kp/5).  The two arms
+          trade error through the box, so the optimum is asymmetric.
+       The terminal command itself is seated by the r38 refinement (pad set
+       flattened against the face, 0.2 mm pre-load instead of a 7.5 mm
+       commanded overlap); it is enabled with W6B_R38_SEAT=both. -->
   <contact>
     <!-- r40: same-hand finger-finger collision.  The Allegro collision
          proxies of adjacent fingers overlap by 4-6 mm even in the rest
@@ -1063,17 +1073,17 @@
     <position name="tha1_left" joint="thj1_left" class="thumb_proximal" kp="0.4073" forcerange="-0.02942 0.02942" />
     <position name="tha2_left" joint="thj2_left" class="thumb_medial" kp="0.4186" forcerange="-0.07284 0.07284" />
     <position name="tha3_left" joint="thj3_left" class="thumb_distal" kp="0.0968" forcerange="-0.01633 0.01633" />
-    <general class="ur5e_size3" name="ur5e_r_shoulder_pan" joint="ur5e_r_shoulder_pan_joint" />
-    <general class="ur5e_size3" name="ur5e_r_shoulder_lift" joint="ur5e_r_shoulder_lift_joint" />
+    <general class="ur5e_size3" name="ur5e_r_shoulder_pan" joint="ur5e_r_shoulder_pan_joint" gainprm="2200" biasprm="0 -2200 -440" />
+    <general class="ur5e_size3" name="ur5e_r_shoulder_lift" joint="ur5e_r_shoulder_lift_joint" gainprm="2200" biasprm="0 -2200 -440" />
     <general class="ur5e_size3_limited" name="ur5e_r_elbow" joint="ur5e_r_elbow_joint" />
-    <general class="ur5e_size1" name="ur5e_r_wrist_1" joint="ur5e_r_wrist_1_joint" />
-    <general class="ur5e_size1" name="ur5e_r_wrist_2" joint="ur5e_r_wrist_2_joint" />
-    <general class="ur5e_size1" name="ur5e_r_wrist_3" joint="ur5e_r_wrist_3_joint" />
-    <general name="ur5e_l_shoulder_pan" class="ur5e_size3" joint="ur5e_l_shoulder_pan_joint" gainprm="4000" biasprm="0 -4000 -800" />
-    <general name="ur5e_l_shoulder_lift" class="ur5e_size3" joint="ur5e_l_shoulder_lift_joint" gainprm="4000" biasprm="0 -4000 -800" />
+    <general class="ur5e_size1" name="ur5e_r_wrist_1" joint="ur5e_r_wrist_1_joint" gainprm="550" biasprm="0 -550 -110" />
+    <general class="ur5e_size1" name="ur5e_r_wrist_2" joint="ur5e_r_wrist_2_joint" gainprm="550" biasprm="0 -550 -110" />
+    <general class="ur5e_size1" name="ur5e_r_wrist_3" joint="ur5e_r_wrist_3_joint" gainprm="550" biasprm="0 -550 -110" />
+    <general name="ur5e_l_shoulder_pan" class="ur5e_size3" joint="ur5e_l_shoulder_pan_joint" gainprm="4400" biasprm="0 -4400 -880" />
+    <general name="ur5e_l_shoulder_lift" class="ur5e_size3" joint="ur5e_l_shoulder_lift_joint" gainprm="4400" biasprm="0 -4400 -880" />
     <general class="ur5e_size3_limited" name="ur5e_l_elbow" joint="ur5e_l_elbow_joint" />
-    <general name="ur5e_l_wrist_1" class="ur5e_size1" joint="ur5e_l_wrist_1_joint" gainprm="1000" biasprm="0 -1000 -200" />
-    <general name="ur5e_l_wrist_2" class="ur5e_size1" joint="ur5e_l_wrist_2_joint" gainprm="1000" biasprm="0 -1000 -200" />
-    <general name="ur5e_l_wrist_3" class="ur5e_size1" joint="ur5e_l_wrist_3_joint" gainprm="1000" biasprm="0 -1000 -200" />
+    <general name="ur5e_l_wrist_1" class="ur5e_size1" joint="ur5e_l_wrist_1_joint" gainprm="1100" biasprm="0 -1100 -220" />
+    <general name="ur5e_l_wrist_2" class="ur5e_size1" joint="ur5e_l_wrist_2_joint" gainprm="1100" biasprm="0 -1100 -220" />
+    <general name="ur5e_l_wrist_3" class="ur5e_size1" joint="ur5e_l_wrist_3_joint" gainprm="1100" biasprm="0 -1100 -220" />
   </actuator>
 </mujoco>
