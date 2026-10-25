@@ -4299,7 +4299,12 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
         _pin = False
         for _pci in range(data.ncon):
             _pc = data.contact[_pci]
-            if _pg not in (int(_pc.geom1), int(_pc.geom2)):
+            _g1c, _g2c = int(_pc.geom1), int(_pc.geom2)
+            # r125: only the plate-vs-BOX contact counts -- the plate is
+            # bigger than the face is tall, so it can graze the TABLE, and
+            # the first plate contact found was measured at 448.9 N against
+            # the TABLE while the plate stood 13.3 mm off the box.
+            if {_g1c, _g2c} != {_pg, int(box_geom)}:
                 continue
             _pcf = np.zeros(6)
             _mj.mj_contactForce(model, data, _pci, _pcf)
