@@ -7955,8 +7955,9 @@ def main() -> int:
     #   * "real contact" = the solver itself registered a contact on the
     #     pad (data.contact), the contact's closest point is ON the end
     #     face, and the pad is not buried (surface gap >= -0.5 mm; the
-    #     pad's half-thickness is 3 mm and the review flagged 2.1-5.8 mm
-    #     burial as failure -- 0.5 mm is 1/6 of the half-thickness);
+    #     delivered pad is a 12 x 12 x 3 mm box, half-thickness 1.5 mm,
+    #     and the review flagged 2.1-5.8 mm burial as failure -- 0.5 mm
+    #     is 1/3 of the half-thickness);
     #   * "load capacity" = the summed normal force of the real contacts
     #     must reach the friction-lift need N >= m*g/(2*mu) derived from
     #     the SCENE's own box mass and friction, not a hand-picked number.
