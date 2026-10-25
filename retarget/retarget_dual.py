@@ -4282,6 +4282,38 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
         _mj.mj_forward(model, data)
         (dist_e, buried_e, fwd_deg_e, per_pad_e, ctr_e, pad_burial_e,
          buried_v2_e, band_pen_e, pad_contact_e, v3_exec) = measure(spec, coll)
+        # r123 (grant B): the PALM PLATE is a legitimate grasp contact
+        # surface -- the v10 review's authorization B (palm plate / thumb
+        # opposition).  Measured at the same executed terminal state with
+        # the same semantics as the fingertip v3 evidence: solver contact,
+        # closest point on the end face, signed surface gap, normal force.
+        _pg_name = "palm_collision" if side == "right" \
+            else "palm_collision_left"
+        _pg = int(_mj.mj_name2id(model, _mj.mjtObj.mjOBJ_GEOM, _pg_name))
+        _pft = np.zeros(6)
+        _pd = float(_mj.mj_geomDistance(model, data, _pg, box_geom,
+                                        1.0, _pft))
+        _prel = np.asarray(_pft[3:6]) - np.asarray(data.xpos[obj_body])
+        _pon_end = bool(abs(abs(float(_prel[0])) - face_x) < 2e-3)
+        _pfn = 0.0
+        _pin = False
+        for _pci in range(data.ncon):
+            _pc = data.contact[_pci]
+            if _pg not in (int(_pc.geom1), int(_pc.geom2)):
+                continue
+            _pcf = np.zeros(6)
+            _mj.mj_contactForce(model, data, _pci, _pcf)
+            _pfn = float(abs(np.asarray(_pcf[:3])
+                             @ np.array([-spec.face_sign, 0.0, 0.0])))
+            _pin = True
+            break
+        palm_plate_exec = {
+            "geom": _pg_name,
+            "surface_gap_mm": round(_pd * 1e3, 4),
+            "closest_point_on_end_face": _pon_end,
+            "in_contact": bool(_pin),
+            "contact_normal_force_N": round(_pfn, 4),
+        }
         # GPT round-3 upgrade: >= 2 pads per hand inside the rectangle
         n_in_rect = sum(1 for v in per_pad.values() if v <= tol * 1e3)
         out[side] = {
@@ -4352,6 +4384,7 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
             },
             "executed_state_evidence": {
                 "gate1_v3_executed_state": v3_exec,
+                "palm_plate_executed_state": palm_plate_exec,
                 "note": ("post-contact-physics final state, identical metric: "
                          "the solver keeps pad SURFACES on the face so pad "
                          "centres ride ~pad-radius off the plane"),
@@ -7981,7 +8014,9 @@ def main() -> int:
         _mu6 = float(model.geom_friction[_bg6][0])
         for _gi6 in range(model.ngeom):
             _nm6 = _mj6.mj_id2name(model, _mj6.mjtObj.mjOBJ_GEOM, _gi6)
-            if _nm6 and _nm6.endswith("tip_collision"):
+            if _nm6 and (_nm6.endswith("tip_collision")
+                         or _nm6 in ("palm_collision",
+                                     "palm_collision_left")):
                 _mu6 = max(_mu6, float(model.geom_friction[_gi6][0]))
         _need6 = _m6 * 9.80665 / (2.0 * _mu6)
         _real = {}
@@ -8001,6 +8036,30 @@ def main() -> int:
             }
             if _is_real:
                 _fn_sum += float(_pd.get("contact_normal_force_N", 0.0))
+        # r123 (grant B): the PALM PLATE joins the grasp contact set with
+        # identical semantics -- the review's authorization B explicitly
+        # makes the plate a legitimate contact surface, carried by the
+        # arm's servo instead of the finger servos.
+        _plate = _g1["executed_state_evidence"].get(
+            "palm_plate_executed_state")
+        if _plate:
+            _preal = bool(
+                _plate.get("in_contact")
+                and _plate.get("closest_point_on_end_face")
+                and -_G6_PEN_TOL_MM
+                <= float(_plate.get("surface_gap_mm", 1e9))
+                <= _G6_GAP_TOL_MM)
+            _real[_plate["geom"]] = {
+                "real_contact": _preal,
+                "surface_gap_mm": _plate.get("surface_gap_mm"),
+                "on_end_face": _plate.get("closest_point_on_end_face"),
+                "in_contact": _plate.get("in_contact"),
+                "contact_normal_force_N":
+                    _plate.get("contact_normal_force_N"),
+            }
+            if _preal:
+                _fn_sum += float(
+                    _plate.get("contact_normal_force_N", 0.0))
         report["per_side"][_s]["gate6_executed_contact"] = {
             "criterion": (
                 "GPT v10 Q6/Q8: executed-state REAL contact on the end "
