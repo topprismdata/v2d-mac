@@ -119,6 +119,70 @@ def build_ref(idx: int) -> pathlib.Path:
     cand["palm_pos"] = [float(v) for v in _palm_pos]
     cand["palm_R"] = [[float(v) for v in rr] for rr in row["R"]]
     cand["fingers"] = curl_fingers(m, float(row["curl"]))
+    # r125: the reference's arm IS the terminal IK's start seed (the
+    # pipeline's arm_start).  The stale delivered arm (solved for the OLD
+ #   ceiling mount) seeds a WOUND solution at the new base -- measured:
+    # wrist_3 commanded 4.49 rad while the servo executed -1.69 (a 6.19
+    # rad = 2*pi winding), and the whole execution tracked 0.5 m off.
+    # Solve the arm HERE, multi-restart, position+orientation, and
+    # unwrap every joint into its [lo, hi] limit band before seeding.
+    _d2 = mujoco.MjData(_m)
+    _AJ = [mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_JOINT,
+                              f"ur5e_r_{n}_joint") for n in
+           ("shoulder_pan", "shoulder_lift", "elbow", "wrist_1",
+            "wrist_2", "wrist_3")]
+    _AQ = np.array([int(_m.jnt_qposadr[j]) for j in _AJ])
+    _AD = np.array([int(_m.jnt_dofadr[j]) for j in _AJ])
+    _LO = np.array([_m.jnt_range[j][0] for j in _AJ])
+    _HI = np.array([_m.jnt_range[j][1] for j in _AJ])
+    _tgt_p = np.asarray(_palm_pos, float)
+    _tgt_R = np.asarray(row["R"], float)
+    _rng = np.random.default_rng(7)
+    _best = None
+    for _t in range(120):
+        mujoco.mj_resetData(_m, _d2)
+        _d2.qpos[:] = _m.qpos0
+        for _i in range(6):
+            _d2.qpos[_AQ[_i]] = _rng.uniform(_LO[_i], _HI[_i])
+        _d2.qpos[_AQ] = np.clip(_d2.qpos[_AQ], _LO, _HI)
+        for _f in ("ff", "mf", "rf", "th"):
+            for _k in range(4):
+                _j = mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_JOINT,
+                                       f"{_f}j{_k}")
+                _d2.qpos[int(_m.jnt_qposadr[_j])] = _cf[_f][_k]
+        for _it in range(260):
+            mujoco.mj_forward(_m, _d2)
+            _ep = _tgt_p - np.asarray(_d2.xpos[_palm_b])
+            _Rp = np.asarray(_d2.xmat[_palm_b]).reshape(3, 3)
+            _eR = 0.5 * (_Rp.T @ _tgt_R - _tgt_R.T @ _Rp)
+            _er = np.array([_eR[2, 1], _eR[0, 2], _eR[1, 0]])
+            if np.linalg.norm(_ep) < 1e-5 and np.linalg.norm(_er) < 1e-4:
+                break
+            _jp = np.zeros((3, _m.nv))
+            _jr = np.zeros((3, _m.nv))
+            mujoco.mj_jacBody(_m, _d2, _jp, _jr, _palm_b)
+            _J = np.vstack([_jp[:, _AD], _jr[:, _AD]])
+            _dq = np.linalg.lstsq(_J, np.concatenate([_ep, _er]),
+                                  rcond=None)[0]
+            _d2.qpos[_AQ] = np.clip(_d2.qpos[_AQ] + _dq, _LO, _HI)
+        mujoco.mj_forward(_m, _d2)
+        _ep = float(np.linalg.norm(
+            _tgt_p - np.asarray(_d2.xpos[_palm_b])))
+        _Rp = np.asarray(_d2.xmat[_palm_b]).reshape(3, 3)
+        _eR = 0.5 * (_Rp.T @ _tgt_R - _tgt_R.T @ _Rp)
+        _er = float(np.linalg.norm([_eR[2, 1], _eR[0, 2], _eR[1, 0]]))
+        if _best is None or (_ep + 0.05 * _er) < (_best[0] + 0.05 * _best[1]):
+            _best = (_ep, _er, _d2.qpos[_AQ].copy())
+    _arm = _best[2]
+    # unwrap: shift by +-2*pi into the limit band where possible
+    for _i in range(6):
+        while _arm[_i] > _HI[_i] and _arm[_i] - 2 * np.pi >= _LO[_i]:
+            _arm[_i] -= 2 * np.pi
+        while _arm[_i] < _LO[_i] and _arm[_i] + 2 * np.pi <= _HI[_i]:
+            _arm[_i] += 2 * np.pi
+    cand["arm"] = [float(v) for v in np.clip(_arm, _LO, _HI)]
+    print(f"  [plate-arm-seed] residual pos {_best[0]*1000:.3f} mm "
+          f"rot {_best[1]:.5f} | arm {np.round(_arm, 3).tolist()}")
     # the left: its winning thin-pad curl (r122), same transform as the
     # thinpad scan
     l = ref["sides"]["left"]
