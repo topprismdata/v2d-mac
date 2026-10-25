@@ -180,9 +180,16 @@ def build_ref(idx: int) -> pathlib.Path:
         _Rp = np.asarray(_d2.xmat[_palm_b]).reshape(3, 3)
         _eR = 0.5 * (_Rp.T @ _tgt_R - _tgt_R.T @ _Rp)
         _er = float(np.linalg.norm([_eR[2, 1], _eR[0, 2], _eR[1, 0]]))
-        if _best is None or (_ep + 0.05 * _er) < (_best[0] + 0.05 * _best[1]):
-            _best = (_ep, _er, _d2.qpos[_AQ].copy())
-    _arm = _best[2]
+        # r125c: ties at ~0 residual are broken by the DISTANCE to the
+        # delivered arm -- the free tie-break once picked an elbow-DOWN
+        # branch whose approach swept the box (the box was shoved 21 mm
+        # and the plate ended 26 mm short)
+        _qdel = np.asarray(cand.get("arm", np.zeros(6)), float)
+        _cost = (_ep + 0.05 * _er
+                 + 1e-6 * float(np.linalg.norm(_d2.qpos[_AQ] - _qdel)))
+        if _best is None or _cost < _best[0]:
+            _best = (_cost, _ep, _er, _d2.qpos[_AQ].copy())
+    _arm = _best[3]
     # unwrap: shift by +-2*pi into the limit band where possible
     for _i in range(6):
         while _arm[_i] > _HI[_i] and _arm[_i] - 2 * np.pi >= _LO[_i]:
@@ -190,8 +197,8 @@ def build_ref(idx: int) -> pathlib.Path:
         while _arm[_i] < _LO[_i] and _arm[_i] + 2 * np.pi <= _HI[_i]:
             _arm[_i] += 2 * np.pi
     cand["arm"] = [float(v) for v in np.clip(_arm, _LO, _HI)]
-    print(f"  [plate-arm-seed] residual pos {_best[0]*1000:.3f} mm "
-          f"rot {_best[1]:.5f} | arm {np.round(_arm, 3).tolist()}")
+    print(f"  [plate-arm-seed] residual pos {_best[1]*1000:.3f} mm "
+          f"rot {_best[2]:.5f} | arm {np.round(_arm, 3).tolist()}")
     # the left: its winning thin-pad curl (r122), same transform as the
     # thinpad scan
     l = ref["sides"]["left"]
