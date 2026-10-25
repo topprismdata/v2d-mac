@@ -73,17 +73,17 @@ def curl_fingers(m, curl):
             v.append(base + curl * 0.35 * (hi - base))
         out[f] = v
     return out
-
-
 def build_ref(idx: int) -> pathlib.Path:
     row = json.loads(SEARCH.read_text())["feasible"][idx]
     m = mujoco.MjModel.from_xml_path(str(REPO / SCENE))
     ref = json.loads(REFERENCE.read_text())
     r = ref["sides"]["right"]
     cand = r["best"][0] if isinstance(r.get("best"), list) else r["best"]
-    cand["the palm"] = [float(v) for v in row["palm"]]
-    cand["the palm_R"] = [[float(v) for v in rr] for rr in row["R"]]
-    cand["the fingers"] = curl_fingers(m, float(row["curl"]))
+    # the r63 target reads palm_pos / palm_R (the pipeline's key names);
+    # 'the palm' / 'the palm_R' are the ANALYSIS outputs' key names
+    cand["palm_pos"] = [float(v) for v in row["palm"]]
+    cand["palm_R"] = [[float(v) for v in rr] for rr in row["R"]]
+    cand["fingers"] = curl_fingers(m, float(row["curl"]))
     # the left: its winning thin-pad curl (r122), same transform as the
     # thinpad scan
     l = ref["sides"]["left"]
