@@ -3741,10 +3741,10 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
         # default).  The plate branch still shoves the box ~10 mm and the
         # source (which frame, which geom) needs per-frame forensics.
         if _os.environ.get("W6B_R126_BOX_TRACE", "0") == "1":
-            _bt_obj = _mj.mj_name2id(model, _mj.mjtObj.mjOBJ_BODY,
-                                     "object")
-            _bt_boxg = _mj.mj_name2id(model, _mj.mjtObj.mjOBJ_GEOM,
-                                      "object_geom")
+            _bt_obj = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY,
+                                         "object")
+            _bt_boxg = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM,
+                                         "object_geom")
             _bt_pos = np.asarray(data.xpos[_bt_obj]).tolist()
             _bt_con = []
             for _btc in range(data.ncon):
@@ -3754,10 +3754,11 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
                 if _o < 0:
                     continue
                 _bf = np.zeros(6)
-                _mj.mj_contactForce(model, data, _btc, _bf)
+                mujoco.mj_contactForce(model, data, _btc, _bf)
                 _bt_con.append({
-                    "other": _mj.mj_id2name(model, _mj.mjtObj.mjOBJ_GEOM,
-                                            _o),
+                    "other": mujoco.mj_id2name(model,
+                                               mujoco.mjtObj.mjOBJ_GEOM,
+                                               _o),
                     "dist": float(_b.dist),
                     "fn": float(abs(_bf[0])),
                 })
