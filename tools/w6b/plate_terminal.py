@@ -81,7 +81,42 @@ def build_ref(idx: int) -> pathlib.Path:
     cand = r["best"][0] if isinstance(r.get("best"), list) else r["best"]
     # the r63 target reads palm_pos / palm_R (the pipeline's key names);
     # 'the palm' / 'the palm_R' are the ANALYSIS outputs' key names
-    cand["palm_pos"] = [float(v) for v in row["palm"]]
+    # r124: the search's pose puts the plate CENTRE at z = 0.7877, above
+    # the box top (0.78), so the first run contacted the box's TOP EDGE
+    # (174.8 N, on_end_face False).  Recentre: the plate's centre offset
+    # in the palm frame is measured by FK at the row's curl, then the
+    # palm is placed so the plate's centre sits at the end face's centre
+    # (x = standoff off the face plane, z = 0.74).
+    _m = m
+    _d = mujoco.MjData(_m)
+    _d.qpos[:] = _m.qpos0
+    _cf = curl_fingers(_m, float(row["curl"]))
+    for _f in ("ff", "mf", "rf", "th"):
+        for _k in range(4):
+            _j = mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_JOINT,
+                                   f"{_f}j{_k}")
+            _d.qpos[int(_m.jnt_qposadr[_j])] = _cf[_f][_k]
+    mujoco.mj_forward(_m, _d)
+    _palm_b = mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_BODY, "palm")
+    _palm_p = np.asarray(_d.xpos[_palm_b])
+    _palm_R = np.asarray(_d.xmat[_palm_b]).reshape(3, 3)
+    _plate_g = mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_GEOM,
+                                 "palm_collision")
+    _plate_c = np.asarray(_d.geom_xpos[_plate_g]) - _palm_p
+    _plate_half = float(_m.geom_size[_plate_g][0])
+    _R = np.asarray(row["R"], float)
+    _c_w = _R @ (_palm_R.T @ _plate_c)     # the plate centre in the ROW frame
+    _box_half = np.asarray(_m.geom_size[
+        mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_GEOM, "object_geom")])
+    _face_x = float(_box_half[0])          # the box centre x = 0
+    _box_z = 0.74
+    _standoff = float(os.environ.get("W6B_PLATE_STANDOFF_MM", "0.1")) * 1e-3
+    _palm_pos = [
+        _face_x + _plate_half + _standoff - _c_w[0],
+        0.0194 - _c_w[1],
+        _box_z - _c_w[2],
+    ]
+    cand["palm_pos"] = [float(v) for v in _palm_pos]
     cand["palm_R"] = [[float(v) for v in rr] for rr in row["R"]]
     cand["fingers"] = curl_fingers(m, float(row["curl"]))
     # the left: its winning thin-pad curl (r122), same transform as the
