@@ -5467,7 +5467,8 @@ def main() -> int:
         # unused under UR5e (the arm holds the registered task pose)
     ctrl_lo = model.actuator_ctrlrange[:, 0]
     ctrl_hi = model.actuator_ctrlrange[:, 1]
-    n_blend = int(round(BLEND_SECONDS * CTRL_HZ))
+    n_blend = int(round(float(_os.environ.get(
+        "W6B_BLEND_SECONDS", BLEND_SECONDS)) * CTRL_HZ))
     n_hold = int(round(HOLD_SECONDS * CTRL_HZ))
     verified_grasp = (measure_verified_grasp()
                       if SCENE_KIND.startswith("ur5e") else None)
