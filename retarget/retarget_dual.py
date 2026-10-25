@@ -7263,6 +7263,19 @@ def main() -> int:
                 span = stream.shape[0] - n_ctrl
                 ramp_f = 0.5 * (1.0 - np.cos(
                     np.linspace(0.0, np.pi, span)))
+                # r127: the LEFT curl can be DELAYED past the right
+                # plate's seating (W6B_R127_LEFT_CURL_DELAY, frames).
+                # Measured r126: at t=299 the left index finger hits the
+                # box first, before the plate lands, and the unopposed
+                # box escapes into the yaw stop bars at 55-118 N.
+                _dly127 = int(_os.environ.get(
+                    "W6B_R127_LEFT_CURL_DELAY", "0")) \
+                    if s == "left" else 0
+                if _dly127 > 0 and span > _dly127:
+                    ramp_f = np.concatenate([
+                        np.zeros(_dly127),
+                        0.5 * (1.0 - np.cos(
+                            np.linspace(0.0, np.pi, span - _dly127)))])
                 for k in range(span):
                     stream[n_ctrl + k] = f0 + ramp_f[k] * (tgt16 - f0)
             # the terminal window is COMMON — both sides share one
