@@ -7278,6 +7278,24 @@ def main() -> int:
                             np.linspace(0.0, np.pi, span - _dly127)))])
                 for k in range(span):
                     stream[n_ctrl + k] = f0 + ramp_f[k] * (tgt16 - f0)
+                # r127b: the LEFT WRIST terminal must be delayed too --
+                # with only the fingers delayed the left's ARM still
+                # pressed its ff pad into the box at t=299 (measured),
+                # before the plate landed, and the unopposed box escaped
+                # sideways into the yaw stops.
+                if s == "left" and _dly127 > 0:
+                    wstream = cmds_global[s]["wrist"]
+                    if wstream.shape[0] >= n_ctrl + _dly127:
+                        w0w = wstream[n_ctrl - 1].copy()
+                        wT = wstream[-1].copy()
+                        _rw = 0.5 * (1.0 - np.cos(
+                            np.linspace(0.0, np.pi,
+                                        wstream.shape[0] - n_ctrl - _dly127)))
+                        for _k in range(wstream.shape[0] - n_ctrl):
+                            _j = _k - _dly127
+                            wstream[n_ctrl + _k] = (
+                                w0w if _j < 0
+                                else w0w + _rw[_j] * (wT - w0w))
             # the terminal window is COMMON — both sides share one
             # timeline; pad the shorter side by holding its terminal pose
             max_len = max(cmds_global[s]["wrist"].shape[0] for s in VIDEOS)
