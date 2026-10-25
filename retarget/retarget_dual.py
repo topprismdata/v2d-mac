@@ -3512,6 +3512,9 @@ def equalize_pad_curls(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
     return out, rec
 
 
+BOX_TRACE: list = []          # r126: filled when W6B_R126_BOX_TRACE=1
+
+
 def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
     """Command both hands through the resampled trajectory; record everything
     the gates read.  Only data.ctrl is written inside the loop."""
@@ -3734,6 +3737,31 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
             data.qfrc_applied[finger_dofs] = data.qfrc_bias[finger_dofs]
         for _ in range(frame_skip):
             mujoco.mj_step(model, data)
+        # r126: per-frame box trace + box contacts (env-gated, off by
+        # default).  The plate branch still shoves the box ~10 mm and the
+        # source (which frame, which geom) needs per-frame forensics.
+        if _os.environ.get("W6B_R126_BOX_TRACE", "0") == "1":
+            _bt_obj = _mj.mj_name2id(model, _mj.mjtObj.mjOBJ_BODY,
+                                     "object")
+            _bt_boxg = _mj.mj_name2id(model, _mj.mjtObj.mjOBJ_GEOM,
+                                      "object_geom")
+            _bt_pos = np.asarray(data.xpos[_bt_obj]).tolist()
+            _bt_con = []
+            for _btc in range(data.ncon):
+                _b = data.contact[_btc]
+                _o = int(_b.geom1) if int(_b.geom2) == _bt_boxg \
+                    else (int(_b.geom2) if int(_b.geom1) == _bt_boxg else -1)
+                if _o < 0:
+                    continue
+                _bf = np.zeros(6)
+                _mj.mj_contactForce(model, data, _btc, _bf)
+                _bt_con.append({
+                    "other": _mj.mj_id2name(model, _mj.mjtObj.mjOBJ_GEOM,
+                                            _o),
+                    "dist": float(_b.dist),
+                    "fn": float(abs(_bf[0])),
+                })
+            BOX_TRACE.append({"t": t, "pos": _bt_pos, "contacts": _bt_con})
 
         if _os.environ.get("W6B_DBG_FORCE", "0") == "1" and t in (n_frames - r36_hold, n_frames - 1):
             print(f"    [dbg-force] t={t} r force={np.round(data.actuator_force[arm_act_r],1)} "
@@ -7705,6 +7733,12 @@ def main() -> int:
                         "finger": np.asarray(cmds_global[s]["finger"])[-1].tolist()}
                     for s in VIDEOS}, open(_dump, "w"))
     rep = dual_replay(model, data, specs, cmds_global, frame_skip)
+    if BOX_TRACE:
+        import json as _json126
+        (OUT_DIR / "box_trace.json").write_text(
+            _json126.dumps(BOX_TRACE))
+        print(f"    [r126] the box trace: {len(BOX_TRACE)} frames -> "
+              f"{OUT_DIR / 'box_trace.json'}")
     rep["support_resting_penetration_m"] = settle_pen
     for s in VIDEOS:
         w = warm[s]
