@@ -7946,10 +7946,83 @@ def main() -> int:
         "runs/w6b/mano_params.npz stays on that video timeline (t=(N-1)/3); "
         "video frame N sits at t=(N-1)/3 on this axis.")
 
+    # ------------------------------------------------------------------
+    # GPT v10 review (docs/gpt_v10_review.md, Q6/Q8): the command-state
+    # geometry gates (v1/v2) may stay green while the EXECUTED state has
+    # zero real contact.  gate6 makes executed-state real contact a HARD
+    # gate.  Thresholds are defined A PRIORI and anchored to the scene,
+    # not fitted to any candidate:
+    #   * "real contact" = the solver itself registered a contact on the
+    #     pad (data.contact), the contact's closest point is ON the end
+    #     face, and the pad is not buried (surface gap >= -0.5 mm; the
+    #     pad's half-thickness is 3 mm and the review flagged 2.1-5.8 mm
+    #     burial as failure -- 0.5 mm is 1/6 of the half-thickness);
+    #   * "load capacity" = the summed normal force of the real contacts
+    #     must reach the friction-lift need N >= m*g/(2*mu) derived from
+    #     the SCENE's own box mass and friction, not a hand-picked number.
+    # Today this gate is RED by construction (measured 0.25/0.74 N) --
+    # that is the honest state the review demanded, not a regression.
+    # ------------------------------------------------------------------
+    _G6_PEN_TOL_MM = 0.5
+    _G6_GAP_TOL_MM = 0.2
+    for _s in VIDEOS:
+        _g1 = report["per_side"][_s]["gate1_final_touch"]
+        _v3x = _g1["executed_state_evidence"]["gate1_v3_executed_state"]
+        import mujoco as _mj6
+        _obj_b6 = int(_mj6.mj_name2id(model, _mj6.mjtObj.mjOBJ_BODY,
+                                      "object"))
+        _bg6 = int(_mj6.mj_name2id(model, _mj6.mjtObj.mjOBJ_GEOM,
+                                   "object_geom"))
+        _m6 = float(model.body_mass[_obj_b6])
+        # MuJoCo's pair friction is the elementwise max of the two geoms,
+        # so the box-hand coefficient is the max over the box and every
+        # fingertip pad -- read from the scene, not hard-coded.
+        _mu6 = float(model.geom_friction[_bg6][0])
+        for _gi6 in range(model.ngeom):
+            _nm6 = _mj6.mj_id2name(model, _mj6.mjtObj.mjOBJ_GEOM, _gi6)
+            if _nm6 and _nm6.endswith("tip_collision"):
+                _mu6 = max(_mu6, float(model.geom_friction[_gi6][0]))
+        _need6 = _m6 * 9.80665 / (2.0 * _mu6)
+        _real = {}
+        _fn_sum = 0.0
+        for _pn, _pd in _v3x["pads"].items():
+            _is_real = bool(
+                _pd.get("in_contact")
+                and _pd.get("closest_point_on_end_face")
+                and -_G6_PEN_TOL_MM <= float(_pd.get("surface_gap_mm", 1e9))
+                <= _G6_GAP_TOL_MM)
+            _real[_pn] = {
+                "real_contact": _is_real,
+                "surface_gap_mm": _pd.get("surface_gap_mm"),
+                "on_end_face": _pd.get("closest_point_on_end_face"),
+                "in_contact": _pd.get("in_contact"),
+                "contact_normal_force_N": _pd.get("contact_normal_force_N"),
+            }
+            if _is_real:
+                _fn_sum += float(_pd.get("contact_normal_force_N", 0.0))
+        report["per_side"][_s]["gate6_executed_contact"] = {
+            "criterion": (
+                "GPT v10 Q6/Q8: executed-state REAL contact on the end "
+                "face (solver-registered, on-face, not buried) with a "
+                "pre-defined load floor = m*g/(2*mu) from the scene's own "
+                "mass and friction"),
+            "penetration_tolerance_mm": _G6_PEN_TOL_MM,
+            "gap_tolerance_mm": _G6_GAP_TOL_MM,
+            "box_mass_kg": round(_m6, 6),
+            "friction_coefficient": round(_mu6, 6),
+            "lift_need_N": round(_need6, 6),
+            "n_real_contacts": sum(1 for v in _real.values()
+                                   if v["real_contact"]),
+            "normal_force_sum_N": round(_fn_sum, 6),
+            "per_pad": _real,
+            "pass": bool(_fn_sum >= _need6 and any(v["real_contact"]
+                                                   for v in _real.values())),
+        }
+
     # verdicts
     verdict = {}
     for gate in ("gate1_final_touch", "gate2_contact", "gate3_approach_clean",
-                 "gate5_palm_deviation"):
+                 "gate5_palm_deviation", "gate6_executed_contact"):
         verdict[gate] = all(report["per_side"][s][gate]["pass"] for s in VIDEOS)
     g4 = report["per_side"]
     if SCENE_KIND.startswith("ur5e"):
