@@ -29,6 +29,7 @@ import sys
 
 import mujoco
 import numpy as np
+from scipy.spatial.transform import Rotation as _Rot
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
 PIPE = REPO / "runs/.venv-retarget/bin/python"
@@ -148,7 +149,7 @@ def build_ref(idx: int) -> pathlib.Path:
     _tgt_R = np.asarray(row["R"], float)
     _rng = np.random.default_rng(7)
     _best = None
-    for _t in range(120):
+    for _t in range(240):
         mujoco.mj_resetData(_m, _d2)
         _d2.qpos[:] = _m.qpos0
         for _i in range(6):
@@ -159,27 +160,42 @@ def build_ref(idx: int) -> pathlib.Path:
                 _j = mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_JOINT,
                                        f"{_f}j{_k}")
                 _d2.qpos[int(_m.jnt_qposadr[_j])] = _cf[_f][_k]
-        for _it in range(260):
+        for _it in range(600):
             mujoco.mj_forward(_m, _d2)
             _ep = _tgt_p - np.asarray(_d2.xpos[_palm_b])
             _Rp = np.asarray(_d2.xmat[_palm_b]).reshape(3, 3)
-            _eR = 0.5 * (_Rp.T @ _tgt_R - _tgt_R.T @ _Rp)
-            _er = np.array([_eR[2, 1], _eR[0, 2], _eR[1, 0]])
+            # r131: the rotation error is the ROTVEC of the relative
+            # rotation.  The old skew-vector form, 0.5*(Rp^T R - R^T Rp),
+            # is EXACTLY ZERO at a 180 deg error (the r65 artifact that
+            # already invalidated palm_pose_reach.json): the solver
+            # therefore "converged" with the right hand's plate rotated
+            # 180 deg from the intended face orientation, and the
+            # pipeline -- which uses the correct rotvec metric -- then
+            # had to swing the arm 3.78 rad to reach it.
+            _er = _Rot.from_matrix(_Rp.T @ _tgt_R).as_rotvec()
             if np.linalg.norm(_ep) < 1e-5 and np.linalg.norm(_er) < 1e-4:
                 break
             _jp = np.zeros((3, _m.nv))
             _jr = np.zeros((3, _m.nv))
             mujoco.mj_jacBody(_m, _d2, _jp, _jr, _palm_b)
             _J = np.vstack([_jp[:, _AD], _jr[:, _AD]])
-            _dq = np.linalg.lstsq(_J, np.concatenate([_ep, _er]),
-                                  rcond=None)[0]
+            # r131b: damped least squares with a trust region.  The
+            # undamped solve steps 1/lambda times the residual near a
+            # singularity, which threw the arm to the joint limits and
+            # left the corrected-metric solve 618 mm short.
+            _e6 = np.concatenate([_ep, _er])
+            _JJ = _J.T @ _J + 1e-4 * np.eye(6)
+            _dq = np.linalg.solve(_JJ, _J.T @ _e6)
+            _mx = float(np.abs(_dq).max())
+            if _mx > 0.1:
+                _dq *= 0.1 / _mx
             _d2.qpos[_AQ] = np.clip(_d2.qpos[_AQ] + _dq, _LO, _HI)
         mujoco.mj_forward(_m, _d2)
         _ep = float(np.linalg.norm(
             _tgt_p - np.asarray(_d2.xpos[_palm_b])))
         _Rp = np.asarray(_d2.xmat[_palm_b]).reshape(3, 3)
-        _eR = 0.5 * (_Rp.T @ _tgt_R - _tgt_R.T @ _Rp)
-        _er = float(np.linalg.norm([_eR[2, 1], _eR[0, 2], _eR[1, 0]]))
+        _er = float(np.linalg.norm(
+            _Rot.from_matrix(_Rp.T @ _tgt_R).as_rotvec()))
         # r125c: ties at ~0 residual are broken by the DISTANCE to the
         # delivered arm -- the free tie-break once picked an elbow-DOWN
         # branch whose approach swept the box (the box was shoved 21 mm

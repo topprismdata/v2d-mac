@@ -6869,8 +6869,17 @@ def main() -> int:
                         # with the same damped IK, so the palm stays on
                         # the terminal pose while the arm reconfigures.
                         _nb93 = int(_os.environ.get("W6B_R93_BLEND", "30"))
+                        # r131: a 6-DoF arm has NO null space for a 6D pose task, so no
+                        # joint-space path between two IK solutions of one
+                        # pose can hold that pose (measured: the r130 dwell
+                        # re-projected every frame back to the starting
+                        # branch).  The dwell is therefore OFF by default;
+                        # it exists only to soften a residual reconfiguration
+                        # below ~0.2 rad, and the real fix is to make the
+                        # approach arrive ON the terminal's branch (the r131
+                        # build_ref rotation-metric fix does exactly that).
                         _nrc130 = int(_os.environ.get(
-                            "W6B_RECONFIG_FRAMES", "30"))
+                            "W6B_RECONFIG_FRAMES", "0"))
                         if _nrc130 > 0:
                             _nb93 = 0  # the dwell replaces the blend
                         if _path75 and (_nb93 > 0 or _nrc130 > 0):
