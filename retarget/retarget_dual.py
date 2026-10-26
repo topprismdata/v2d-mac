@@ -6853,8 +6853,27 @@ def main() -> int:
                         # the path's configuration into the terminal's;
                         # both are at the terminal's pose, so the blend
                         # moves the elbow, not the hand.
+                        # r130: POSE-PRESERVING reconfiguration.  The r93
+                        # in-place blend interpolated JOINTS between two
+                        # IK solutions of the SAME pose; the intermediate
+                        # frames do not satisfy that pose, so the palm
+                        # swept at 19.8 mm/frame (peak joint step 0.203
+                        # rad/frame, frames 271-300 -- measured) and the
+                        # plate slammed the box 11.9 mm.  Spreading the
+                        # blend made it WORSE (60 frames: box 26.3 mm)
+                        # because the sweep left the line earlier.  The
+                        # reconfiguration is instead a DWELL appended
+                        # after the path: the config walks from the
+                        # path's last frame to the terminal's and each
+                        # frame is re-projected onto the terminal pose
+                        # with the same damped IK, so the palm stays on
+                        # the terminal pose while the arm reconfigures.
                         _nb93 = int(_os.environ.get("W6B_R93_BLEND", "30"))
-                        if _path75 and _nb93 > 0:
+                        _nrc130 = int(_os.environ.get(
+                            "W6B_RECONFIG_FRAMES", "30"))
+                        if _nrc130 > 0:
+                            _nb93 = 0  # the dwell replaces the blend
+                        if _path75 and (_nb93 > 0 or _nrc130 > 0):
                             _q_end93 = np.asarray(q, float).copy()
                             for _j in range(6):
                                 while (abs(_q_end93[_j]
@@ -6877,6 +6896,22 @@ def main() -> int:
                                 _t = float(_r93[_i])
                                 _path75[_k] = ((1.0 - _t) * _path75[_k]
                                                + _t * _q_end93)
+                            if _nrc130 > 0:
+                                _d130 = _q_end93 - np.asarray(
+                                    _path75[-1], float)
+                                _s130 = 0.5 * (1.0 - np.cos(np.linspace(
+                                    0.0, np.pi, _nrc130 + 2)[1:-1]))
+                                for _s in _s130:
+                                    _qi130 = (np.asarray(_path75[-1], float)
+                                              + float(_s) * _d130)
+                                    _qi130 = np.asarray(
+                                        _ik75(tgt_pos, tgt_R, _qi130,
+                                              _damp75), float)
+                                    _path75.append(_qi130.copy())
+                                # the dwell's last frame IS the terminal's
+                                # configuration, so the hold that follows
+                                # is continuous
+                                _path75[-1] = _q_end93.copy()
                         # r90: UNWRAP the path so it is continuous in
                         # the 2*pi branch.  The path's frames are
                         # produced by different solvers (the phase-A IK
@@ -6931,10 +6966,14 @@ def main() -> int:
                                 _tt = float(_ramp_a[_pi])
                                 _tgt75[_pi] = (_p_home + _tt * (_p_stage
                                                               - _p_home))
-                            else:
+                            elif _pi - _n75a < len(_ramp_b):
                                 _tt = float(_ramp_b[_pi - _n75a])
                                 _tgt75[_pi] = (_p_stage + _tt * (tgt_pos
                                                                 - _p_stage))
+                            else:
+                                # r130: the reconfiguration dwell holds
+                                # the terminal pose
+                                _tgt75[_pi] = tgt_pos
                         _dev75 = np.linalg.norm(_palm75 - _tgt75, axis=1)
                         _SIDE_PATH_REC[s2] = {
                             "max_m": float(_dev75.max()),
