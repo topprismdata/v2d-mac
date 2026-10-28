@@ -7880,6 +7880,7 @@ def main() -> int:
         _sv_q148 = data.qpos.copy()
         _sv_v148 = data.qvel.copy()
         _sv_c148 = data.ctrl.copy()
+        _sq149 = float(_os.environ.get("W6B_LIFT_SQUEEZE_MM", "0"))
         _ramp148 = 0.5 * (1.0 - np.cos(np.linspace(
             0.0, np.pi, _lift_n + 1)))
         for _sd in VIDEOS:
@@ -7907,7 +7908,19 @@ def main() -> int:
                                   _sp._palm_id)
                 _J148 = np.vstack([_jp148[:, _sp.wrist_dofadr],
                                    _jr148[:, _sp.wrist_dofadr]])
-                _e148 = np.array([0.0, 0.0, _dz, 0.0, 0.0, 0.0])
+                # r149: the lift can carry a SQUEEZE -- a small inward
+                # translation along the face normal, ramped with the rise.
+                # The left hand's press comes from its FINGER servos
+                # (0.04-0.18 N.m), so when the palm rises the pad's contact
+                # goes intermittent (measured: 2.035 N at the terminal,
+                # 0.51 N on some lift frames and nothing on most, and the
+                # box peaked at +1.53 mm then settled back to +0.10 mm).
+                # A human squeezing harder while lifting is exactly this
+                # term; it keeps both normal forces up without touching
+                # any threshold.
+                _dx149 = (_sq149 * 1e-3) * float(
+                    _ramp148[_k + 1]) * (-_sp.face_sign)
+                _e148 = np.array([_dx149, 0.0, _dz, 0.0, 0.0, 0.0])
                 try:
                     _dq148 = np.linalg.lstsq(_J148, _e148,
                                              rcond=None)[0]
@@ -7926,6 +7939,7 @@ def main() -> int:
             _lift_rec[_sd] = {
                 "commanded_mm": _lift_mm,
                 "frames": _lift_n,
+                "squeeze_mm": _sq149,
                 "palm_rise_mm": round(
                     (float(data.xpos[_sp._palm_id][2]) - _z0) * 1e3, 4),
                 "terminal_arm": [round(float(v), 6) for v in _q148],
