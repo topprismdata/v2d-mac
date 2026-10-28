@@ -573,6 +573,13 @@ def build_ref(idx: int) -> pathlib.Path:
             v[j] *= LEFT_CURL
         lf[f] = v
     lcand["fingers"] = lf
+    # r145 (REMOVED as inert): advancing the LEFT reference palm_pos does
+    # not move the left's executed terminal -- measured, a 2.0 mm advance
+    # moved the executed palm 0.05 mm and left the index tip's gap at
+    # 0.274-0.289 mm.  The left's terminal does not come from the ref's
+    # palm_pos in this recipe, so the knob was dead code.  The left's
+    # reach is compensated in the scene instead (r146: the thin pads
+    # 0.75 -> 1.45 mm half-thickness).
     WORK.mkdir(parents=True, exist_ok=True)
     p = WORK / f"plate_{idx}.json"
     p.write_text(json.dumps(ref, indent=1))

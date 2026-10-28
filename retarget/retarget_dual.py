@@ -7108,13 +7108,29 @@ def main() -> int:
                                 [_fs75,
                                  np.tile(_fs75[-1:], (_n_new - _fs75.shape[0], 1))],
                                 axis=0)
-                        _old75 = _fs75[_n_f75 - 1].copy()
+                        # r144: the terminal finger curl can be ramped in
+                        # EARLIER than the hold (W6B_R144_FINGER_LEAD
+                        # frames of the path).  In the plate branch the
+                        # right hand's fingers are passengers -- folded
+                        # back at curl -1.0 -- but the approach still flew
+                        # them at the video curl, and they swept the box on
+                        # the way in: measured, the box was lifted +6.7 mm
+                        # and shoved -5.2 mm before the terminal window
+                        # even started, and then rode up the yaw-stop bars
+                        # to +10.6 mm.  Lead 0 keeps the old behaviour.
+                        _lead75 = int(_os.environ.get(
+                            "W6B_R144_FINGER_LEAD", "0"))
+                        _lead75 = max(0, min(_lead75, _n_f75 - 1))
+                        _nr75 = _lead75 + n_hold
+                        _st75 = _n_f75 - _lead75
+                        _old75 = _fs75[_st75 - 1].copy()
                         _ramp_f75 = 0.5 * (1.0 - np.cos(np.linspace(
-                            0.0, np.pi, n_hold)))
-                        for _k in range(n_hold):
-                            if _n_f75 + _k < _fs75.shape[0]:
-                                _fs75[_n_f75 + _k] = (
-                                    _old75 + _ramp_f75[_k] * (pol_curl - _old75))
+                            0.0, np.pi, _nr75)))
+                        for _k in range(_nr75):
+                            if _st75 + _k < _fs75.shape[0]:
+                                _fs75[_st75 + _k] = (
+                                    _old75 + _ramp_f75[_k]
+                                    * (pol_curl - _old75))
                         cmds_global[s2]["finger"] = _fs75[:_n_new]
                         _r63_path[s2] = {
                             "path_clearance_mm": round(_worst75 * 1e3, 3),

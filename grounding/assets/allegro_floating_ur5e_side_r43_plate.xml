@@ -95,7 +95,24 @@
                contact face.  The pad stays 40 x 40 mm, so the contact
                patch -- and the Coulomb friction it can develop -- is
                unchanged; the extra length is a massless press stub
-               between the wrist mount and the pad, disclosed as such. -->
+               between the wrist mount and the pad, disclosed as such.
+               r146: the LEFT thin pads go 0.75 -> 1.45 mm half-thickness.
+               The refined left terminal pose was solved for the ORIGINAL
+               1.5 mm pad, so with the 0.75 mm thin pad the executed index
+               tip stood 0.282 mm off the face and developed only 0.26 N
+               (a quarter of the 1.0907 N floor); it did not respond to
+               W6B_R50_PRELOAD_MM (0.05 -> 0.25 mm left the penetration at
+               -0.026..-0.030 mm, because the r38 seat refinement measures
+               the left pads 58-65 mm off the face in this scene and
+               returns sv=-4.54 mm, i.e. it is not functional here) nor to
+               advancing the reference pose (the left's executed terminal
+               does not follow the ref's palm_pos: a 2 mm advance moved it
+               0.05 mm).  1.45 mm recovers 0.7 of the 0.75 mm the pose was
+               solved for and lifts the left's index-tip force to
+               0.98-1.01 N.  Still short of the floor, and unstable: at a
+               0.7-0.8 mm squeeze the pad goes flat (gap -0.01 mm, inside
+               the real-contact window) but the force collapses to
+               0.09-0.15 N. -->
           <geom size="0.0420 0.0200 0.0200" pos="-0.0093 0 -0.0475"
                 quat="0.92388 -0.38268 0 0" />
         </default>
@@ -380,7 +397,7 @@
                            sets mass="0"; the palm body's mass stays
                            0.35136 kg), so this changes no dynamics. -->
                       <geom class="palm_collision" name="palm_collision"
-                            pos="0.0300 0 0" />
+                            pos="0.0400 0 -0.0475" />
                       <body name="ff_base" pos="0 0.0435 -0.001542" quat="0.999048 -0.0436194 0 0">
                         <joint name="ffj0" class="base" stiffness="0.0318" springref="-0.144" />
                         <geom class="base_visual" name="ff_base_visual" rgba="0.45 0.45 0.50 1" />
@@ -583,7 +600,7 @@
                                 <body name="ff_pad_left" pos="0 0 0">
                                   <joint name="ff_padrx_left" type="hinge" pos="0 0 0" axis="0 1 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0.047" />
                                   <joint name="ff_padry_left" type="hinge" pos="0 0 0" axis="1 0 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0" />
-                                  <geom class="fingertip_collision" name="ff_tip_left_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="box" size="0.006 0.006 0.00075" friction="1.8 0.005 0.0001" mass="0.005" />
+                                  <geom class="fingertip_collision" name="ff_tip_left_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="box" size="0.006 0.006 0.00145" friction="1.8 0.005 0.0001" mass="0.005" />
                                 </body>
                               </body>
                             </body>
@@ -611,7 +628,7 @@
                                 <body name="mf_pad_left" pos="0 0 0">
                                   <joint name="mf_padrx_left" type="hinge" pos="0 0 0" axis="0 1 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0.047" />
                                   <joint name="mf_padry_left" type="hinge" pos="0 0 0" axis="1 0 0" range="-0.6 0.6" stiffness="0.02" damping="0.002" springref="0" />
-                                  <geom class="fingertip_collision" name="mf_tip_left_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="box" size="0.006 0.006 0.00075" friction="1.8 0.005 0.0001" mass="0.005" />
+                                  <geom class="fingertip_collision" name="mf_tip_left_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="box" size="0.006 0.006 0.00145" friction="1.8 0.005 0.0001" mass="0.005" />
                                 </body>
                               </body>
                             </body>
@@ -636,7 +653,7 @@
                               <geom class="distal_collision" name="rf_distal_left_collision" />
                               <body name="rf_tip_left">
                                 <geom class="fingertip_visual" name="rf_tip_left_visual" rgba="0.45 0.45 0.50 1" />
-                                <geom class="fingertip_collision" name="rf_tip_left_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="box" size="0.006 0.006 0.00075" friction="1.8 0.005 0.0001" />
+                                <geom class="fingertip_collision" name="rf_tip_left_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="box" size="0.006 0.006 0.00145" friction="1.8 0.005 0.0001" />
                               </body>
                             </body>
                           </body>
@@ -660,7 +677,7 @@
                               <geom class="thumb_distal_collision" name="th_distal_left_collision" />
                               <body name="th_tip_left">
                                 <geom class="thumbtip_visual" name="th_tip_left_visual" rgba="0.45 0.45 0.50 1" />
-                                <geom class="thumbtip_collision" name="th_tip_left_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="box" size="0.006 0.006 0.00075" friction="1.8 0.005 0.0001" />
+                                <geom class="thumbtip_collision" name="th_tip_left_collision" solref="0.004 1" solimp="0.95 0.99 0.001 0.5 2" rgba="0.72 0.72 0.76 1" type="box" size="0.006 0.006 0.00145" friction="1.8 0.005 0.0001" />
                               </body>
                             </body>
                           </body>
