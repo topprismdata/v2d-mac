@@ -8245,7 +8245,8 @@ def main() -> int:
             "cmd_finger": cmds_global[s]["finger"],
             "exec_palm": rep["hist"][s]["palm"],
             "exec_tips": rep["hist"][s]["tips"],
-            "exec_wrist_qpos": rep["hist"][s]["qpos"][:, spec.wrist_qadr],
+            "exec_wrist_qpos": rep["hist"][s]["qpos"][
+                :, specs[s].wrist_qadr],
             "q22": chains[s]["chain"]["qpos22"],
             "r_reg": regs[s]["r_reg"],
             "anchor_hinge": chains[s]["chain"]["anchor"]["hinge_cmd"],
