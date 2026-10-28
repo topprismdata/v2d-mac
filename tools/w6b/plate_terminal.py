@@ -159,12 +159,40 @@ def build_ref(idx: int) -> pathlib.Path:
     _TBL_G = mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_GEOM, "table_slab")
     _TC133 = float(os.environ.get("W6B_PLATE_TABLE_CLEAR_MM", "15.0")) * 1e-3
     _BOTTOM_CLEAR = float(os.environ.get("W6B_PLATE_BOTTOM_MM", "15.0")) * 1e-3
+    _HAND_CLEAR = float(os.environ.get("W6B_HAND_CLEAR_MM", "5.0")) * 1e-3
     _ARM_B = {mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_BODY,
                                 f"ur5e_r_{n}_link") for n in
               ("shoulder", "upper_arm", "forearm", "wrist_1", "wrist_2",
                "wrist_3")}
     _ARM_G = [g for g in range(_m.ngeom)
               if int(_m.geom_bodyid[g]) in _ARM_B]
+    # r136: the HAND's own geoms must also clear the box -- only the
+    # plate may touch it.  Measured with the r135 seed: the thumb base
+    # pressed the box's chamfer at 9.3 N (0.28 mm in), which is a contact
+    # the gate6 does not count but which loads the box and would falsify
+    # a lift.
+    _hr = mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_BODY, "hand_root")
+    _HAND_B = {_hr}
+    for _b136 in range(_m.nbody):
+        _p136 = int(_m.body_parentid[_b136])
+        while _p136 > 0:
+            if _p136 == _hr:
+                _HAND_B.add(_b136)
+                break
+            _p136 = int(_m.body_parentid[_p136])
+    # r136b: only geoms that CAN collide with the box count.  Measured:
+    # the wmount_* adapter hardware and every *_visual geom carry
+    # contype=conaffinity=0, and gating on them (the wmount cap penetrates
+    # the box's AABB by 17.2 mm) made all 36 rolls infeasible even though
+    # the roll-0 solve was 50 mm clear of the table and 50 mm clear of the
+    # box with its fingertips.
+    _HAND_G = [g for g in range(_m.ngeom)
+               if int(_m.geom_bodyid[g]) in _HAND_B
+               and int(_m.geom_contype[g]) & int(_m.geom_contype[_BOX_G])
+               and int(_m.geom_conaffinity[g]) & int(
+                   _m.geom_conaffinity[_BOX_G])
+               and (mujoco.mj_id2name(_m, mujoco.mjtObj.mjOBJ_GEOM, g)
+                    or "") != "palm_collision"]
 
     def _fk(qq):
         _dd = mujoco.MjData(_m)
@@ -187,13 +215,17 @@ def build_ref(idx: int) -> pathlib.Path:
         mujoco.mj_forward(_m, _dd)
         _tc = min((mujoco.mj_geomDistance(_m, _dd, _g, _TBL_G, 0.05, None)
                    for _g in _ARM_G), default=0.05)
+        _hb = min((mujoco.mj_geomDistance(_m, _dd, _g, _BOX_G, 0.05, None)
+                   for _g in _HAND_G), default=0.05)
+        _ht = min((mujoco.mj_geomDistance(_m, _dd, _g, _TBL_G, 0.05, None)
+                   for _g in _HAND_G), default=0.05)
         _tips = np.asarray([_dd.xpos[b] for b in _TIP_B], float)
         _tb = min(float(np.linalg.norm(np.maximum(
             np.abs(_t - _BOX_C) - _BOX_H, 0.0))) for _t in _tips)
         _bh = min(float(_t[0]) - _PLATE_IN_X for _t in _tips)
         _mg = float(np.min(np.minimum(np.clip(qq, _LO, _HI) - _LO,
                                       _HI - np.clip(qq, _LO, _HI))))
-        return float(_tc), _tb, _bh, _mg
+        return float(_tc), _tb, _bh, _mg, float(_hb), float(_ht)
 
     def _unwrap(qq):
         qq = np.asarray(qq, float).copy()
@@ -346,7 +378,7 @@ def build_ref(idx: int) -> pathlib.Path:
                         _plz - _cw[2]])
         _b = _solve_arm(_tp, _Rr, 24, False, _seed=_prev)
         _a = _unwrap(_b[3])
-        _tc, _tb, _bh, _mg = _clear(_a)
+        _tc, _tb, _bh, _mg, _hb, _ht = _clear(_a)
         # r134c: the gate is the FINGERTIP/BOX clearance, not "the tips
         # behind the plate's plane".  Measured: every converged roll puts
         # the tips 62 mm in FRONT of the plate's inner face plane, but
@@ -354,7 +386,8 @@ def build_ref(idx: int) -> pathlib.Path:
         # while the plate's own face is 3 mm into it, so the plate still
         # touches first.  The behind-plane number is reported, not gated.
         _ok = (_b[1] <= 2e-3 and _b[2] <= 0.02 and _tc >= _TC133
-               and _tb >= 0.009 and _mg >= 0.3)
+               and _tb >= 0.009 and _mg >= 0.3
+               and _hb >= _HAND_CLEAR and _ht >= _HAND_CLEAR)
         _sweep.append({
             "roll_deg": float(_th_deg),
             "pos_err_mm": round(_b[1] * 1e3, 4),
@@ -365,6 +398,8 @@ def build_ref(idx: int) -> pathlib.Path:
             "tip_box_clear_mm": round(_tb * 1e3, 2),
             "tip_behind_plate_mm": round(_bh * 1e3, 2),
             "joint_margin_rad": round(_mg, 3),
+            "hand_box_clear_mm": round(_hb * 1e3, 2),
+            "hand_table_clear_mm": round(_ht * 1e3, 2),
             "feasible": bool(_ok),
             "arm": [round(float(v), 4) for v in _a],
             "palm_pos": [round(float(v), 5) for v in _tp],
@@ -375,15 +410,19 @@ def build_ref(idx: int) -> pathlib.Path:
         raise SystemExit(
             "no feasible plate roll: " + json.dumps(
                 [{k: r[k] for k in ("roll_deg", "pos_err_mm",
+                                    "rot_err_rad",
                                     "arm_table_clear_mm",
                                     "tip_box_clear_mm",
                                     "tip_behind_plate_mm",
+                                    "hand_box_clear_mm",
+                                    "hand_table_clear_mm",
                                     "joint_margin_rad")} for r in _sweep],
                 indent=1))
     # among the feasible rolls, keep the one with the worst-case clearance
     # as large as possible (the pose least dependent on tolerance)
     _pick = max(_feas, key=lambda r: (
-        min(r["arm_table_clear_mm"], r["tip_box_clear_mm"]),
+        min(r["arm_table_clear_mm"], r["tip_box_clear_mm"],
+            r["hand_box_clear_mm"], r["hand_table_clear_mm"]),
         r["joint_margin_rad"], -r["pos_err_mm"]))
     _arm = np.asarray(_pick["arm"], float)
     _tp2 = np.asarray(_pick["palm_pos"], float)
@@ -395,7 +434,8 @@ def build_ref(idx: int) -> pathlib.Path:
     cand["roll_pick_deg"] = _pick["roll_deg"]
     print(f"  [plate-roll-sweep] {len(_sweep)} rolls, {len(_feas)} feasible, "
           f"picked {_pick['roll_deg']:.0f} deg "
-          f"(arm/table {_pick['arm_table_clear_mm']:+.2f} mm, tip/box "
+          f"(arm/table {_pick['arm_table_clear_mm']:+.2f} mm, hand/box "
+          f"{_pick['hand_box_clear_mm']:+.2f} mm, tip/box "
           f"{_pick['tip_box_clear_mm']:+.2f} mm, tip behind the plate "
           f"{_pick['tip_behind_plate_mm']:+.2f} mm, margin "
           f"{_pick['joint_margin_rad']:.3f} rad, pos err "
@@ -411,14 +451,15 @@ def build_ref(idx: int) -> pathlib.Path:
                                    f"{_f}j{_k}")
             _dd.qpos[int(_m.jnt_qposadr[_j])] = _cf[_f][_k]
     mujoco.mj_forward(_m, _dd)
-    _tc = min((mujoco.mj_geomDistance(_m, _dd, _g, _TBL_G, 0.05, None)
-               for _g in _ARM_G), default=0.05)
+    _tc, _tb2, _bh2, _mg2, _hb, _ht = _clear(np.clip(_arm, _LO, _HI))
     _tips = np.asarray([_dd.xpos[b] for b in _TIP_B], float)
     _tclear = min(float(np.linalg.norm(np.maximum(
         np.abs(_t - _BOX_C) - _BOX_H, 0.0))) for _t in _tips)
     print(f"  [plate-seed-clear] arm-link/table {_tc*1e3:+.2f} mm "
-          f"(floor {_TC133*1e3:.0f}) | fingertip/box {_tclear*1e3:+.2f} mm "
-          f"(floor 9.0) | tips behind the plate's inner face: "
+          f"(floor {_TC133*1e3:.0f}) | hand/box {_hb*1e3:+.2f} mm and "
+          f"hand/table {_ht*1e3:+.2f} mm (floor {_HAND_CLEAR*1e3:.0f}) | "
+          f"fingertip/box {_tclear*1e3:+.2f} mm (floor 9.0) | tips behind "
+          f"the plate's inner face: "
           f"{[round(float(t[0]-_PLATE_IN_X)*1e3,1) for t in _tips]} mm")
     print(f"  [plate-seed-fk] pos {np.round(_p_ach*1e3,2).tolist()} "
           f"target {np.round(_tp2*1e3,2).tolist()} "
