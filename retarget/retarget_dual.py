@@ -4326,9 +4326,21 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
         # opposition).  Measured at the same executed terminal state with
         # the same semantics as the fingertip v3 evidence: solver contact,
         # closest point on the end face, signed surface gap, normal force.
-        _pg_name = "palm_collision" if side == "right" \
-            else "palm_collision_left"
+        # r151: the LEFT plate's geom is named palm_left_collision in every
+        # side-cell scene (r41 mixed, r42, r43 -- checked); this code asked
+        # for "palm_collision_left", so mj_name2id returned -1 and the whole
+        # left-plate record was an artifact: surface_gap_mm read 0.0 (the
+        # degenerate return of a distance query on geom -1) while the true
+        # distance was 88.69 mm, and in_contact could never be true.  Both
+        # spellings are tried so an older scene still resolves.
+        _pg_name = "palm_collision" if side == "right" else "palm_left_collision"
         _pg = int(_mj.mj_name2id(model, _mj.mjtObj.mjOBJ_GEOM, _pg_name))
+        if _pg < 0:
+            _alt = ("palm_collision_left" if side != "right"
+                    else "palm_collision")
+            _pg = int(_mj.mj_name2id(model, _mj.mjtObj.mjOBJ_GEOM, _alt))
+            if _pg >= 0:
+                _pg_name = _alt
         # r139: the BOX is more than object_geom -- its top edges carry
         # chamfer geoms, and object_chamfer_posx PROTRUDES 1.7 mm past the
         # face plane.  Measuring only against object_geom reported a
@@ -4350,7 +4362,19 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
                 _pwho = (_mj.mj_id2name(model, _mj.mjtObj.mjOBJ_GEOM,
                                         _bg) or f"#{_bg}")
         _prel = np.asarray(_pft[3:6]) - np.asarray(data.xpos[obj_body])
-        _pon_end = bool(abs(abs(float(_prel[0])) - face_x) < 2e-3)
+        # r152: "on the end face" also requires the closest point to lie
+        # INSIDE the face's rectangle, 1 mm clear of its edges.  The
+        # x-plane test alone passed the left plate at a true distance of
+        # 117.45 mm: its nearest point on the box is the face's TOP EDGE
+        # (z_rel = +40.0 mm = half_z exactly, x_rel = -60 mm), which is on
+        # the face's boundary but is not a face contact in any sense the
+        # lift criterion means.  real_contact also needs in_contact, so
+        # this never produced a false PASS -- but the recorded flag was
+        # misleading.
+        _pon_end = bool(
+            abs(abs(float(_prel[0])) - face_x) < 2e-3
+            and abs(float(_prel[1])) <= float(half[1]) - 1e-3
+            and abs(float(_prel[2])) <= float(half[2]) - 1e-3)
         _pfn = 0.0
         _pin = False
         _pcg = ""
@@ -8277,6 +8301,7 @@ def main() -> int:
             _nm6 = _mj6.mj_id2name(model, _mj6.mjtObj.mjOBJ_GEOM, _gi6)
             if _nm6 and (_nm6.endswith("tip_collision")
                          or _nm6 in ("palm_collision",
+                                     "palm_left_collision",
                                      "palm_collision_left")):
                 _mu6 = max(_mu6, float(model.geom_friction[_gi6][0]))
         _need6 = _m6 * 9.80665 / (2.0 * _mu6)
