@@ -291,21 +291,32 @@
                     </body>
                     <body name="palm" quat="0 1 0 1" childclass="allegro_right">
                       <geom class="palm_visual" mesh="base_link" name="palm_visual" rgba="0.45 0.45 0.50 1" />
-                      <!-- r137: the RIGHT plate stands off 15 mm from the
-                           palm (the class default is -0.0093; local +x
-                           points AT the box, so a more negative x moves
-                           the plate away from the palm and lets the whole
-                           hand sit 15 mm further back while the plate's
-                           inner face stays on the end face).  Measured at
-                           the r42 mount: the thumb base's collision box
-                           reaches 5.5 mm PAST the plate's inner face and
-                           penetrates the box by 8.17 mm, at every roll of
-                           the sweep (best -4.70 mm) and at every thumb
-                           curl (0.0 -> -8.17 mm, 1.0 -> -11.40 mm).  The
-                           plate geom is massless (the class sets
-                           mass="0"), so this changes no dynamics. -->
+                      <!-- r137b: the RIGHT plate is carried 20 mm TOWARD
+                           the box (the class default pos x is -0.0093;
+                           the palm's local +x points AT the box, so the
+                           plate's centre goes to +0.0107).  The plate's
+                           inner face therefore sits 31.1 mm in front of
+                           the palm's origin instead of 11.1 mm, and the
+                           whole hand stands 20 mm further back while the
+                           plate's face stays on the end face.  15 mm was
+                           measured first and fell 2.1 mm short of the
+                           5 mm hand/box floor (the best roll, 10 deg,
+                           reached +2.88 mm).
+                           Measured at the r42 mount: the thumb base's
+                           collision box reaches 5.5 mm PAST the plate's
+                           inner face and penetrates the box by 8.17 mm at
+                           every roll of the sweep (best -4.70 mm) and at
+                           every thumb curl (0.0 -> -8.17, 1.0 -> -11.40).
+                           The FIRST attempt at this (r137: pos -0.0243,
+                           i.e. carrying the plate AWAY from the box) had
+                           the sign backwards and pulled the palm 15 mm
+                           INTO the box -- the sweep's hand/box gate
+                           caught it (roll 0: -8.18 -> -15.79 mm).
+                           The plate geom is massless (the collision class
+                           sets mass="0"; the palm body's mass stays
+                           0.35136 kg), so this changes no dynamics. -->
                       <geom class="palm_collision" name="palm_collision"
-                            pos="-0.0243 0 -0.0475" />
+                            pos="0.0107 0 -0.0475" />
                       <body name="ff_base" pos="0 0.0435 -0.001542" quat="0.999048 -0.0436194 0 0">
                         <joint name="ffj0" class="base" stiffness="0.0318" springref="-0.144" />
                         <geom class="base_visual" name="ff_base_visual" rgba="0.45 0.45 0.50 1" />
