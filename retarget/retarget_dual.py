@@ -7863,6 +7863,83 @@ def main() -> int:
         _json.dump({s: {"wrist": np.asarray(cmds_global[s]["wrist"])[-1].tolist(),
                         "finger": np.asarray(cmds_global[s]["finger"])[-1].tolist()}
                     for s in VIDEOS}, open(_dump, "w"))
+    # r148: the LIFT phase (W6B_LIFT_MM over W6B_LIFT_FRAMES; the review's
+    # acceptance is 6 mm in 90 frames).  Both arms' terminal poses rise
+    # together on a cos-smoothstep, the palm's ORIENTATION held and the
+    # fingers held at their terminal curl, so the grasp does not change
+    # while the box is raised.  Each frame is a damped Jacobian step on
+    # the palm (6x6, orientation rows included) with a 0.05 rad trust
+    # region -- the rise is 0.067 mm/frame, so no IK re-solve is needed.
+    _lift_mm = float(_os.environ.get("W6B_LIFT_MM", "0"))
+    _lift_n = int(_os.environ.get("W6B_LIFT_FRAMES", "90"))
+    _lift_rec = {}
+    if _lift_mm > 0.0 and _lift_n > 0:
+        # the Jacobian passes below write data.qpos; the replay's initial
+        # state must survive them (measured: leaving data at qpos0 moved
+        # the executed terminal palm 10 mm and changed the whole run)
+        _sv_q148 = data.qpos.copy()
+        _sv_v148 = data.qvel.copy()
+        _sv_c148 = data.ctrl.copy()
+        _ramp148 = 0.5 * (1.0 - np.cos(np.linspace(
+            0.0, np.pi, _lift_n + 1)))
+        for _sd in VIDEOS:
+            _sp = specs[_sd]
+            _w148 = np.asarray(cmds_global[_sd]["wrist"], float).copy()
+            _f148 = np.asarray(cmds_global[_sd]["finger"], float).copy()
+            _lo148 = model.actuator_ctrlrange[_sp.wrist_act_id, 0]
+            _hi148 = model.actuator_ctrlrange[_sp.wrist_act_id, 1]
+            _q148 = _w148[-1].copy()
+            _z0 = None
+            _new148 = []
+            for _k in range(_lift_n):
+                _dz = (_lift_mm * 1e-3) * float(
+                    _ramp148[_k + 1] - _ramp148[_k])
+                data.qpos[:] = model.qpos0
+                data.qpos[_sp.wrist_qadr] = _q148
+                data.qpos[_sp.finger_qadr] = _f148[-1]
+                mujoco.mj_kinematics(model, data)
+                mujoco.mj_comPos(model, data)
+                if _z0 is None:
+                    _z0 = float(data.xpos[_sp._palm_id][2])
+                _jp148 = np.zeros((3, model.nv))
+                _jr148 = np.zeros((3, model.nv))
+                mujoco.mj_jacBody(model, data, _jp148, _jr148,
+                                  _sp._palm_id)
+                _J148 = np.vstack([_jp148[:, _sp.wrist_dofadr],
+                                   _jr148[:, _sp.wrist_dofadr]])
+                _e148 = np.array([0.0, 0.0, _dz, 0.0, 0.0, 0.0])
+                try:
+                    _dq148 = np.linalg.lstsq(_J148, _e148,
+                                             rcond=None)[0]
+                except np.linalg.LinAlgError:
+                    _dq148 = np.zeros(6)
+                _mx148 = float(np.abs(_dq148).max())
+                if _mx148 > 0.05:
+                    _dq148 *= 0.05 / _mx148
+                _q148 = np.clip(_q148 + _dq148, _lo148, _hi148)
+                _new148.append(_q148.copy())
+            data.qpos[:] = model.qpos0
+            data.qpos[_sp.wrist_qadr] = _q148
+            data.qpos[_sp.finger_qadr] = _f148[-1]
+            mujoco.mj_kinematics(model, data)
+            mujoco.mj_comPos(model, data)
+            _lift_rec[_sd] = {
+                "commanded_mm": _lift_mm,
+                "frames": _lift_n,
+                "palm_rise_mm": round(
+                    (float(data.xpos[_sp._palm_id][2]) - _z0) * 1e3, 4),
+                "terminal_arm": [round(float(v), 6) for v in _q148],
+            }
+            cmds_global[_sd]["wrist"] = np.concatenate(
+                [_w148, np.asarray(_new148)], axis=0)
+            cmds_global[_sd]["finger"] = np.concatenate(
+                [_f148, np.tile(_f148[-1:], (_lift_n, 1))], axis=0)
+        data.qpos[:] = _sv_q148
+        data.qvel[:] = _sv_v148
+        data.ctrl[:] = _sv_c148
+        mujoco.mj_forward(model, data)
+        print(f"    [r148-lift] {_lift_mm} mm over {_lift_n} frames: "
+              + json.dumps(_lift_rec))
     rep = dual_replay(model, data, specs, cmds_global, frame_skip)
     if BOX_TRACE:
         import json as _json126
