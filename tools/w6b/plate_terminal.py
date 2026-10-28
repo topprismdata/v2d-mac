@@ -35,13 +35,26 @@ REPO = pathlib.Path(__file__).resolve().parents[2]
 PIPE = REPO / "runs/.venv-retarget/bin/python"
 SCRIPT = REPO / "retarget/retarget_dual.py"
 REFERENCE = REPO / "runs/w6b/palm_pose_refine.json"
-SEARCH = REPO / "runs/w6b/palm_plate_search.json"
+SEARCH = REPO / ("runs/w6b/palm_plate_search"
+                 + ("" if os.environ.get("W6B_PLATE_SIDE", "right")
+                    == "right" else "_left")
+                 + ".json")
 WORK = REPO / "runs/w6b/plate_refs"
 REPORT = REPO / "runs/w6b/report.json"
 
 SCENE = sys.argv[2] if len(sys.argv) > 2 else \
     "grounding/assets/allegro_floating_ur5e_side_r41_mixed.xml"
 LEFT_CURL = 1.25
+# r153: the baker serves either hand.  Every right-only literal below goes
+# through this spec: body/geom/joint names, the end face's sign, and the
+# plate's tangential (y) offset, which mirrors with the hand.
+SIDE = os.environ.get("W6B_PLATE_SIDE", "right")
+_SUF = "" if SIDE == "right" else "_left"
+FS = 1.0 if SIDE == "right" else -1.0
+_PLATE_GEOM = "palm_collision" if SIDE == "right" else "palm_left_collision"
+_CHAMFER = ("object_chamfer_posx" if SIDE == "right"
+            else "object_chamfer_negx")
+_PLATE_Y = 0.0194 * FS
 
 BASE = {
     "W6B_SCENE": "ur5e",
@@ -77,8 +90,13 @@ def curl_fingers(m, curl):
 def build_ref(idx: int) -> pathlib.Path:
     row = json.loads(SEARCH.read_text())["feasible"][idx]
     m = mujoco.MjModel.from_xml_path(str(REPO / SCENE))
-    ref = json.loads(REFERENCE.read_text())
-    r = ref["sides"]["right"]
+    # r153: a dual-plate reference is built in two passes -- the left pass
+    # must start from the RIGHT's baked plate ref, not from the pad-only
+    # refine reference, or it would throw the right's plate away.
+    _base = pathlib.Path(os.environ.get("W6B_PLATE_BASE_REF",
+                                        str(REFERENCE)))
+    ref = json.loads(_base.read_text())
+    r = ref["sides"][SIDE]
     cand = r["best"][0] if isinstance(r.get("best"), list) else r["best"]
     # the r63 target reads palm_pos / palm_R (the pipeline's key names);
     # 'the palm' / 'the palm_R' are the ANALYSIS outputs' key names
@@ -98,18 +116,19 @@ def build_ref(idx: int) -> pathlib.Path:
                                    f"{_f}j{_k}")
             _d.qpos[int(_m.jnt_qposadr[_j])] = _cf[_f][_k]
     mujoco.mj_forward(_m, _d)
-    _palm_b = mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_BODY, "palm")
+    _palm_b = mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_BODY,
+                                "palm" + _SUF)
     _palm_p = np.asarray(_d.xpos[_palm_b])
     _palm_R = np.asarray(_d.xmat[_palm_b]).reshape(3, 3)
     _plate_g = mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_GEOM,
-                                 "palm_collision")
+                                _PLATE_GEOM)
     _plate_c = np.asarray(_d.geom_xpos[_plate_g]) - _palm_p
     _plate_half = float(_m.geom_size[_plate_g][0])
     _R = np.asarray(row["R"], float)
     _c_w = _R @ (_palm_R.T @ _plate_c)     # the plate centre in the ROW frame
     _box_half = np.asarray(_m.geom_size[
         mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_GEOM, "object_geom")])
-    _face_x = float(_box_half[0])          # the box centre x = 0
+    _face_x = FS * float(_box_half[0])     # the box centre x = 0
     # the plate is TALLER than the face (the plate is 95-113 mm across,
     # the face is 80 mm), so a plate centred at the face's centre dips
     # BELOW the table top (0.70) and smashes into the table (measured:
@@ -123,8 +142,8 @@ def build_ref(idx: int) -> pathlib.Path:
     _plate_z = _TABLE_TOP + _plate_halfz + 0.001
     _standoff = float(os.environ.get("W6B_PLATE_STANDOFF_MM", "0.1")) * 1e-3
     _palm_pos = [
-        _face_x + _plate_half + _standoff - _c_w[0],
-        0.0194 - _c_w[1],
+        _face_x + FS * (_plate_half + _standoff) - _c_w[0],
+        _PLATE_Y - _c_w[1],
         _plate_z - _c_w[2],
     ]
     cand["palm_pos"] = [float(v) for v in _palm_pos]
@@ -139,7 +158,8 @@ def build_ref(idx: int) -> pathlib.Path:
     # unwrap every joint into its [lo, hi] limit band before seeding.
     _d2 = mujoco.MjData(_m)
     _AJ = [mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_JOINT,
-                              f"ur5e_r_{n}_joint") for n in
+                              f"ur5e_{'r' if SIDE == 'right' else 'l'}_"
+                              f"{n}_joint") for n in
            ("shoulder_pan", "shoulder_lift", "elbow", "wrist_1",
             "wrist_2", "wrist_3")]
     _AQ = np.array([int(_m.jnt_qposadr[j]) for j in _AJ])
@@ -153,11 +173,12 @@ def build_ref(idx: int) -> pathlib.Path:
     _cand_arm = np.asarray(cand.get("arm", np.zeros(6)), float)
 
     _TIP_B = [mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_BODY,
-                                f"{f}_tip") for f in ("ff", "mf", "rf", "th")]
+                                f"{f}_tip{_SUF}")
+                               for f in ("ff", "mf", "rf", "th")]
     _BOX_G = mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_GEOM, "object_geom")
     _BOX_H = np.asarray(_m.geom_size[_BOX_G], float)
     _BOX_C = np.asarray(_d.geom_xpos[_BOX_G], float).copy()
-    _PLATE_IN_X = (_face_x + _plate_half + _standoff) - _plate_half
+    _PLATE_IN_X = _face_x + FS * _standoff
     _TBL_G = mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_GEOM, "table_slab")
     _TC133 = float(os.environ.get("W6B_PLATE_TABLE_CLEAR_MM", "15.0")) * 1e-3
     _BOTTOM_CLEAR = float(os.environ.get("W6B_PLATE_BOTTOM_MM", "15.0")) * 1e-3
@@ -169,12 +190,13 @@ def build_ref(idx: int) -> pathlib.Path:
     # r138: the +x chamfer's underside -- the plate's top must stay below
     # it so the contact lands on the FLAT part of the end face
     _ch = mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_GEOM,
-                            "object_chamfer_posx")
+                            _CHAMFER)
     _PLATE_TOP_MAX = (float(_BOX_C[2]) + float(_m.geom_pos[_ch][2])
                       - float(_m.geom_size[_ch][2]) - 0.002) if _ch >= 0 \
         else _FACE_CENTRE_Z + float(_box_half[2])
     _ARM_B = {mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_BODY,
-                                f"ur5e_r_{n}_link") for n in
+                                f"ur5e_{'r' if SIDE == 'right' else 'l'}_"
+                                f"{n}_link") for n in
               ("shoulder", "upper_arm", "forearm", "wrist_1", "wrist_2",
                "wrist_3")}
     _ARM_G = [g for g in range(_m.ngeom)
@@ -184,7 +206,8 @@ def build_ref(idx: int) -> pathlib.Path:
     # pressed the box's chamfer at 9.3 N (0.28 mm in), which is a contact
     # the gate6 does not count but which loads the box and would falsify
     # a lift.
-    _hr = mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_BODY, "hand_root")
+    _hr = mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_BODY,
+                            "hand_root" + _SUF)
     _HAND_B = {_hr}
     for _b136 in range(_m.nbody):
         _p136 = int(_m.body_parentid[_b136])
@@ -205,7 +228,7 @@ def build_ref(idx: int) -> pathlib.Path:
                and int(_m.geom_conaffinity[g]) & int(
                    _m.geom_conaffinity[_BOX_G])
                and (mujoco.mj_id2name(_m, mujoco.mjtObj.mjOBJ_GEOM, g)
-                    or "") != "palm_collision"]
+                    or "") != _PLATE_GEOM]
 
     def _fk(qq):
         _dd = mujoco.MjData(_m)
@@ -453,8 +476,8 @@ def build_ref(idx: int) -> pathlib.Path:
             })
             continue
         _cw = _Rr @ _c_local
-        _tp = np.array([_face_x + _plate_half + _standoff - _cw[0],
-                        0.0194 - _cw[1],
+        _tp = np.array([_face_x + FS * (_plate_half + _standoff) - _cw[0],
+                        _PLATE_Y - _cw[1],
                         _plz - _cw[2]])
         _b = _solve_arm(_tp, _Rr, 24, False, _seed=_prev)
         _a = _unwrap(_b[3])

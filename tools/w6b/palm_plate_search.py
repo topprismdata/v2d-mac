@@ -24,6 +24,7 @@ Method:
 usage: palm_plate_search.py [scene.xml]
 """
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -32,7 +33,13 @@ import numpy as np
 
 SCENE = Path(sys.argv[1] if len(sys.argv) > 1 else
               "grounding/assets/allegro_floating_ur5e_side_r37.xml")
-OUT = Path("runs/w6b/palm_plate_search.json")
+# r153: the sweep serves either hand.  The left's bodies/geoms/joints all
+# carry a _left suffix and its end face is the box's -x face, so the face
+# normal and the side the plate stands on flip with the side.
+SIDE = os.environ.get("W6B_PLATE_SIDE", "right")
+_SUF = "" if SIDE == "right" else "_left"
+FS = 1.0 if SIDE == "right" else -1.0
+OUT = Path(f"runs/w6b/palm_plate_search{_SUF or '_right'}.json")
 
 m = mujoco.MjModel.from_xml_path(str(SCENE))
 d = mujoco.MjData(m)
@@ -44,14 +51,16 @@ def bid(n):
     return i
 
 
-PALM = bid("palm")
-PLATE_G = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, "palm_collision")
-TIPS = ["ff_tip", "mf_tip", "rf_tip", "th_tip"]
+PALM = bid("palm" + _SUF)
+PLATE_G = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM,
+                            "palm_collision" if SIDE == "right"
+                            else "palm_left_collision")
+TIPS = [f"{f}_tip{_SUF}" for f in ("ff", "mf", "rf", "th")]
 TIP_B = {t: bid(t) for t in TIPS}
 TIP_R = 0.006
 FJ = [(f, k) for f in ("ff", "mf", "rf", "th") for k in range(4)]
-FJ_ID = [mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT, f"{f}j{k}")
-         for f, k in FJ]
+FJ_ID = [mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT,
+                           f"{f}j{k}{_SUF}") for f, k in FJ]
 BOX_G = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, "object_geom")
 BOX_HALF = np.array(m.geom_size[BOX_G])
 BOX_C = np.array([0.0, 0.0, 0.74])
@@ -83,10 +92,10 @@ def clearance_to_box(p):
 
 
 def main():
-    face_n = np.array([1.0, 0.0, 0.0])          # the right hand's end face
+    face_n = np.array([FS, 0.0, 0.0])   # the hand's end-face outward normal
     global PLATE_HALF_X
     PLATE_HALF_X = float(m.geom_size[PLATE_G][0])
-    face_x = BOX_C[0] + BOX_HALF[0]
+    face_x = BOX_C[0] + FS * BOX_HALF[0]
     cands = []
     for curl in (0.0, 0.2, 0.4, 0.6, 0.8, 1.0):
         tips, plate_n0, plate_c0 = hand_offsets(curl)
@@ -120,7 +129,7 @@ def main():
                     # the plate's CENTRE must sit one half-thickness
                     # OUTSIDE the face's plane (its normal points at the
                     # box), so the plate's outer surface is tangent
-                    p_palm = (np.array([face_x + PLATE_HALF_X, 0.0,
+                    p_palm = (np.array([face_x + FS * PLATE_HALF_X, 0.0,
                                         BOX_C[2]])
                               - plate_c_w
                               + t_hat * lat)
@@ -152,9 +161,14 @@ def main():
         # the plate's outer surface = its centre + plate_half along the
         # normal (the palm's x = -face_n)
         # the plate's outer surface (the one that faces the box) is HALF a
-        # thickness along the normal, and the normal points at the box
+        # thickness along the normal, and the normal points at the box.
+        # r153: for the LEFT the normal is +x and the centre sits at
+        # face_x - half, so the contact side is centre + half: the offset
+        # must be reduced by FS * half, not by half.  With the right-only
+        # sign every left candidate read surf_gap = -84 mm and the left
+        # sweep returned zero feasible rows.
         rec["surf_gap_mm"] = round(
-            (rec["surf_gap_mm"] * 1e-3 - plate_half) * 1e3, 3)
+            (rec["surf_gap_mm"] * 1e-3 - FS * plate_half) * 1e3, 3)
     feas = [r for r in cands
             if abs(r["surf_gap_mm"]) < 2.0
             and r["box_clear_mm"] > 2.0 and r["table_clear_mm"] > 2.0]
