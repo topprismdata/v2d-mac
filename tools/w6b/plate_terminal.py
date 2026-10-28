@@ -117,6 +117,7 @@ def build_ref(idx: int) -> pathlib.Path:
     # centre so the plate's BOTTOM EDGE sits 1 mm above the table; the
     # plate then covers the face's full 80 mm height.
     _TABLE_TOP = 0.70
+    _FACE_CENTRE_Z = 0.74   # the box centre z: the face spans 0.70-0.78
     _plate_halfz = float(sum(abs(_R[2, k]) * float(_m.geom_size[_plate_g][k])
                              for k in range(3)))
     _plate_z = _TABLE_TOP + _plate_halfz + 0.001
@@ -149,6 +150,22 @@ def build_ref(idx: int) -> pathlib.Path:
     _sz = np.asarray(_m.geom_size[_plate_g], float)
     _cand_arm = np.asarray(cand.get("arm", np.zeros(6)), float)
 
+    _TIP_B = [mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_BODY,
+                                f"{f}_tip") for f in ("ff", "mf", "rf", "th")]
+    _BOX_G = mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_GEOM, "object_geom")
+    _BOX_H = np.asarray(_m.geom_size[_BOX_G], float)
+    _BOX_C = np.asarray(_d.geom_xpos[_BOX_G], float).copy()
+    _PLATE_IN_X = (_face_x + _plate_half + _standoff) - _plate_half
+    _TBL_G = mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_GEOM, "table_slab")
+    _TC133 = float(os.environ.get("W6B_PLATE_TABLE_CLEAR_MM", "15.0")) * 1e-3
+    _BOTTOM_CLEAR = float(os.environ.get("W6B_PLATE_BOTTOM_MM", "15.0")) * 1e-3
+    _ARM_B = {mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_BODY,
+                                f"ur5e_r_{n}_link") for n in
+              ("shoulder", "upper_arm", "forearm", "wrist_1", "wrist_2",
+               "wrist_3")}
+    _ARM_G = [g for g in range(_m.ngeom)
+              if int(_m.geom_bodyid[g]) in _ARM_B]
+
     def _fk(qq):
         _dd = mujoco.MjData(_m)
         _dd.qpos[:] = _m.qpos0
@@ -156,6 +173,27 @@ def build_ref(idx: int) -> pathlib.Path:
         mujoco.mj_forward(_m, _dd)
         return (np.asarray(_dd.xpos[_palm_b], float).copy(),
                 np.asarray(_dd.xmat[_palm_b], float).reshape(3, 3).copy())
+
+    def _clear(qq):
+        """(arm-link/table, fingertip/box, worst tip-behind-plate, margin)"""
+        _dd = mujoco.MjData(_m)
+        _dd.qpos[:] = _m.qpos0
+        _dd.qpos[_AQ] = np.clip(qq, _LO, _HI)
+        for _f in ("ff", "mf", "rf", "th"):
+            for _k in range(4):
+                _j = mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_JOINT,
+                                       f"{_f}j{_k}")
+                _dd.qpos[int(_m.jnt_qposadr[_j])] = _cf[_f][_k]
+        mujoco.mj_forward(_m, _dd)
+        _tc = min((mujoco.mj_geomDistance(_m, _dd, _g, _TBL_G, 0.05, None)
+                   for _g in _ARM_G), default=0.05)
+        _tips = np.asarray([_dd.xpos[b] for b in _TIP_B], float)
+        _tb = min(float(np.linalg.norm(np.maximum(
+            np.abs(_t - _BOX_C) - _BOX_H, 0.0))) for _t in _tips)
+        _bh = min(float(_t[0]) - _PLATE_IN_X for _t in _tips)
+        _mg = float(np.min(np.minimum(np.clip(qq, _LO, _HI) - _LO,
+                                      _HI - np.clip(qq, _LO, _HI))))
+        return float(_tc), _tb, _bh, _mg
 
     def _unwrap(qq):
         qq = np.asarray(qq, float).copy()
@@ -232,47 +270,170 @@ def build_ref(idx: int) -> pathlib.Path:
             # stalled (all 301 frames held the terminal).
             _marg = np.minimum(_d2.qpos[_AQ] - _LO, _HI - _d2.qpos[_AQ])
             _mp = float(np.sum(np.maximum(0.0, 0.3 - _marg)))
-            _cost = (_ep + 0.05 * _er + 0.02 * _mp
+            # r132: the FINGERTIPS must clear the box AND stay behind the
+            # plate's inner face.  The roll gauge has a continuum of
+            # solutions and only some of them keep the fingers on the
+            # plate's far side; the chosen one put all four tips 38-68 mm
+            # in FRONT of a plate whose inner face was at 101 mm, so the
+            # middle tip touched the box's top edge at 1.35 N and held the
+            # whole hand 50 mm short of its command.
+            _tp132 = np.asarray([_d2.xpos[b] for b in _TIP_B], float)
+            _short = 0.0
+            for _t132 in _tp132:
+                _d132 = np.linalg.norm(np.maximum(
+                    np.abs(_t132 - _BOX_C) - _BOX_H, 0.0))
+                _short += float(max(0.0, 0.009 - _d132))
+                _short += float(max(0.0, (_PLATE_IN_X + 0.005)
+                                    - float(_t132[0])))
+            # r133b: the ARM LINKS must clear the table.  Only the arm's
+            # own bodies are checked -- the hand is AT the box by design.
+            _tc133 = 0.0
+            for _g133 in _ARM_G:
+                _dd133 = mujoco.mj_geomDistance(_m, _d2, _g133, _TBL_G,
+                                                _TC133, None)
+                if _dd133 < _TC133:
+                    _tc133 += (_TC133 - _dd133)
+            # r133c/r134b: HARD-GATE ordering, CONVERGENCE FIRST.  With
+            # only the geometric gate, a non-converged solve parked at the
+            # joint limits (424 mm off target, 50 mm clear of everything)
+            # was CHEAPER than a converged solve that penetrated the table
+            # -- measured: all 36 rolls returned margin 0.00 at the limits.
+            # A non-converged solve now costs 1e6 more than any converged
+            # one, and the clearances rank only among converged solves.
+            _conv = 0.0 if (_ep <= 2e-3 and _er <= 0.02) else 1e6
+            _cost = (_conv + 1e3 * _tc133 + 1e2 * _short
+                     + _ep + 0.05 * _er + 0.02 * _mp
                      + 1e-6 * float(np.linalg.norm(
                          _d2.qpos[_AQ] - _cand_arm)))
             if _bb is None or _cost < _bb[0]:
                 _bb = (_cost, _ep, _er, _d2.qpos[_AQ].copy())
         return _bb
 
-    # stage 1: position + the plate's NORMAL direction (roll free)
-    _b1 = _solve_arm(np.asarray(_palm_pos, float),
-                     np.asarray(row["R"], float), 240, True)
-    _arm1 = _unwrap(_b1[3])
-    _p1, _R1 = _fk(_arm1)
-
-    # stage 2: the roll is now FIXED at the achieved value.  A rolled
-    # plate has a different VERTICAL EXTENT, so the centre is re-derived
-    # for it (the bottom edge stays 1 mm above the table and the centre
-    # is on the face centre), and the arm is re-solved against the true
-    # 6D target with that rotation.
-    _halfz2 = float(sum(abs(_R1[2, k]) * _sz[k] for k in range(3)))
-    _plz2 = _TABLE_TOP + _halfz2 + 0.001
-    _cw2 = _R1 @ _c_local
-    _tp2 = np.array([_face_x + _plate_half + _standoff - _cw2[0],
-                     0.0194 - _cw2[1],
-                     _plz2 - _cw2[2]])
-    _b2 = _solve_arm(_tp2, _R1, 240, False, _seed=_arm1)
-    _arm = _unwrap(_b2[3])
+    # r134: ROLL SWEEP.  The roll about the plate's normal is a gauge for
+    # the CONTACT (the plate is a centred box, invariant under a 180 deg
+    # turn about that normal) but it is not free in practice: it sets the
+    # plate's vertical extent, which side the fingertips sit on, and
+    # whether the wrist links clear the table.  Measured before this sweep:
+    # stage 1's cheapest roll made stage 2's target unreachable (the solve
+    # stopped 163 mm short), and the pre-sweep roll buried the executed
+    # forearm/wrist meshes 0.2-38.5 mm IN the table, where the arm was
+    # held -- 3x the actuator force range changed nothing (-450/+450 N.m
+    # saturated, the joint error stayed 0.25/0.45 rad).
+    # Every 10 deg: re-derive the plate's centre for that roll (the bottom
+    # edge 1 mm above the table, or the face's centre, whichever is higher
+    # -- the face spans 0.70-0.78 so a 45 mm plate centred at 0.74 covers
+    # 717-763 mm, fully on the face), solve the full 6D pose warm-started
+    # from the previous roll, and keep the feasible solves.
+    _R_row = np.asarray(row["R"], float)
+    _prev = np.asarray(cand.get("arm", np.zeros(6)), float)
+    _sweep = []
+    for _th_deg in np.arange(0.0, 360.0, 10.0):
+        _Rr = _R_row @ _Rot.from_rotvec(
+            [float(np.deg2rad(_th_deg)), 0.0, 0.0]).as_matrix()
+        _halfz = float(sum(abs(_Rr[2, k]) * _sz[k] for k in range(3)))
+        # r135: the plate's BOTTOM CLEARANCE above the table is a
+        # parameter, not 1 mm.  Measured with 1 mm: the plate grazes the
+        # table on the way in, the contact jams wrist_1 (the constraint
+        # torque -28.25 N.m against the actuator's +-28 limit, 362.7 N at
+        # 1.35 mm of penetration) and the arm cannot finish its last
+        # 0.47 rad, so the plate ends 51.8 mm off the face.  The face
+        # spans 0.70-0.78; a 147 mm plate whose bottom is at 0.715 still
+        # covers 65 of the face's 80 mm.
+        _plz = max(_TABLE_TOP + _halfz + _BOTTOM_CLEAR, _FACE_CENTRE_Z)
+        _cw = _Rr @ _c_local
+        _tp = np.array([_face_x + _plate_half + _standoff - _cw[0],
+                        0.0194 - _cw[1],
+                        _plz - _cw[2]])
+        _b = _solve_arm(_tp, _Rr, 24, False, _seed=_prev)
+        _a = _unwrap(_b[3])
+        _tc, _tb, _bh, _mg = _clear(_a)
+        # r134c: the gate is the FINGERTIP/BOX clearance, not "the tips
+        # behind the plate's plane".  Measured: every converged roll puts
+        # the tips 62 mm in FRONT of the plate's inner face plane, but
+        # laterally offset -- at roll 0 they are 36.8 mm clear of the box
+        # while the plate's own face is 3 mm into it, so the plate still
+        # touches first.  The behind-plane number is reported, not gated.
+        _ok = (_b[1] <= 2e-3 and _b[2] <= 0.02 and _tc >= _TC133
+               and _tb >= 0.009 and _mg >= 0.3)
+        _sweep.append({
+            "roll_deg": float(_th_deg),
+            "pos_err_mm": round(_b[1] * 1e3, 4),
+            "rot_err_rad": round(_b[2], 5),
+            "plate_halfz_mm": round(_halfz * 1e3, 2),
+            "plate_centre_z_mm": round(_plz * 1e3, 2),
+            "arm_table_clear_mm": round(_tc * 1e3, 2),
+            "tip_box_clear_mm": round(_tb * 1e3, 2),
+            "tip_behind_plate_mm": round(_bh * 1e3, 2),
+            "joint_margin_rad": round(_mg, 3),
+            "feasible": bool(_ok),
+            "arm": [round(float(v), 4) for v in _a],
+            "palm_pos": [round(float(v), 5) for v in _tp],
+        })
+        _prev = _a
+    _feas = [r for r in _sweep if r["feasible"]]
+    if not _feas:
+        raise SystemExit(
+            "no feasible plate roll: " + json.dumps(
+                [{k: r[k] for k in ("roll_deg", "pos_err_mm",
+                                    "arm_table_clear_mm",
+                                    "tip_box_clear_mm",
+                                    "tip_behind_plate_mm",
+                                    "joint_margin_rad")} for r in _sweep],
+                indent=1))
+    # among the feasible rolls, keep the one with the worst-case clearance
+    # as large as possible (the pose least dependent on tolerance)
+    _pick = max(_feas, key=lambda r: (
+        min(r["arm_table_clear_mm"], r["tip_box_clear_mm"]),
+        r["joint_margin_rad"], -r["pos_err_mm"]))
+    _arm = np.asarray(_pick["arm"], float)
+    _tp2 = np.asarray(_pick["palm_pos"], float)
+    _R_pick = _R_row @ _Rot.from_rotvec(
+        [float(np.deg2rad(_pick["roll_deg"])), 0.0, 0.0]).as_matrix()
+    _halfz2 = _pick["plate_halfz_mm"] * 1e-3
     _p_ach, _r_ach = _fk(_arm)
+    cand["roll_sweep"] = _sweep
+    cand["roll_pick_deg"] = _pick["roll_deg"]
+    print(f"  [plate-roll-sweep] {len(_sweep)} rolls, {len(_feas)} feasible, "
+          f"picked {_pick['roll_deg']:.0f} deg "
+          f"(arm/table {_pick['arm_table_clear_mm']:+.2f} mm, tip/box "
+          f"{_pick['tip_box_clear_mm']:+.2f} mm, tip behind the plate "
+          f"{_pick['tip_behind_plate_mm']:+.2f} mm, margin "
+          f"{_pick['joint_margin_rad']:.3f} rad, pos err "
+          f"{_pick['pos_err_mm']:.4f} mm)")
     cand["arm"] = [float(v) for v in _arm]
+    # the chosen solution's own violations, so the recipe is auditable
+    _dd = mujoco.MjData(_m)
+    _dd.qpos[:] = _m.qpos0
+    _dd.qpos[_AQ] = np.clip(_arm, _LO, _HI)
+    for _f in ("ff", "mf", "rf", "th"):
+        for _k in range(4):
+            _j = mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_JOINT,
+                                   f"{_f}j{_k}")
+            _dd.qpos[int(_m.jnt_qposadr[_j])] = _cf[_f][_k]
+    mujoco.mj_forward(_m, _dd)
+    _tc = min((mujoco.mj_geomDistance(_m, _dd, _g, _TBL_G, 0.05, None)
+               for _g in _ARM_G), default=0.05)
+    _tips = np.asarray([_dd.xpos[b] for b in _TIP_B], float)
+    _tclear = min(float(np.linalg.norm(np.maximum(
+        np.abs(_t - _BOX_C) - _BOX_H, 0.0))) for _t in _tips)
+    print(f"  [plate-seed-clear] arm-link/table {_tc*1e3:+.2f} mm "
+          f"(floor {_TC133*1e3:.0f}) | fingertip/box {_tclear*1e3:+.2f} mm "
+          f"(floor 9.0) | tips behind the plate's inner face: "
+          f"{[round(float(t[0]-_PLATE_IN_X)*1e3,1) for t in _tips]} mm")
     print(f"  [plate-seed-fk] pos {np.round(_p_ach*1e3,2).tolist()} "
           f"target {np.round(_tp2*1e3,2).tolist()} "
           f"| pos err {np.linalg.norm(_p_ach-_tp2)*1e3:.4f} mm "
           f"| rot err (incl roll) "
-          f"{float(np.linalg.norm(_Rot.from_matrix(_r_ach.T @ _R1).as_rotvec())):.5f} rad"
+          f"{float(np.linalg.norm(_Rot.from_matrix(_r_ach.T @ _R_pick).as_rotvec())):.5f} rad"
           f" | plate halfz {_halfz2*1e3:.1f} mm bottom "
           f"{(float(_p_ach[2]) + float((_r_ach @ _c_local)[2]) - _halfz2)*1e3:.1f} mm")
     # the ref's pose IS the seed's pose: the pipeline's IK then starts at
     # zero residual and no terminal reconfiguration is needed
     cand["palm_pos"] = [float(v) for v in _p_ach]
     cand["palm_R"] = [[float(v) for v in rr] for rr in _r_ach]
-    print(f"  [plate-arm-seed] stage2 pos {_b2[1]*1000:.3f} mm "
-          f"rot {_b2[2]:.5f} | arm {np.round(_arm, 3).tolist()}")
+    print(f"  [plate-arm-seed] roll {_pick['roll_deg']:.0f} deg, pos "
+          f"{_pick['pos_err_mm']:.4f} mm, rot {_pick['rot_err_rad']:.5f} rad "
+          f"| arm {np.round(_arm, 3).tolist()}")
     # the left: its winning thin-pad curl (r122), same transform as the
     # thinpad scan
     l = ref["sides"]["left"]
