@@ -4319,34 +4319,58 @@ def gate_final_touch(model, data, specs, cmds) -> dict:
         _pg_name = "palm_collision" if side == "right" \
             else "palm_collision_left"
         _pg = int(_mj.mj_name2id(model, _mj.mjtObj.mjOBJ_GEOM, _pg_name))
-        _pft = np.zeros(6)
-        _pd = float(_mj.mj_geomDistance(model, data, _pg, box_geom,
-                                        1.0, _pft))
+        # r139: the BOX is more than object_geom -- its top edges carry
+        # chamfer geoms, and object_chamfer_posx PROTRUDES 1.7 mm past the
+        # face plane.  Measuring only against object_geom reported a
+        # 1.91 mm "no contact" gap while the solver had the plate on the
+        # chamfer at 18.7 N.  The distance and the contact search now run
+        # over every colliding geom of the box's body; on_end_face stays
+        # STRICT (the closest point must lie on the flat face plane), so a
+        # chamfer-only contact is still reported honestly as off-face.
+        _bgs = [g for g in range(model.ngeom)
+                if int(model.geom_bodyid[g]) == obj_body
+                and int(model.geom_contype[g]) != 0]
+        _pd, _pft, _pwho = 1e9, np.zeros(6), ""
+        for _bg in _bgs:
+            _ft = np.zeros(6)
+            _dd = float(_mj.mj_geomDistance(model, data, _pg, _bg,
+                                            1.0, _ft))
+            if _dd < _pd:
+                _pd, _pft = _dd, _ft
+                _pwho = (_mj.mj_id2name(model, _mj.mjtObj.mjOBJ_GEOM,
+                                        _bg) or f"#{_bg}")
         _prel = np.asarray(_pft[3:6]) - np.asarray(data.xpos[obj_body])
         _pon_end = bool(abs(abs(float(_prel[0])) - face_x) < 2e-3)
         _pfn = 0.0
         _pin = False
+        _pcg = ""
         for _pci in range(data.ncon):
             _pc = data.contact[_pci]
             _g1c, _g2c = int(_pc.geom1), int(_pc.geom2)
-            # r125: only the plate-vs-BOX contact counts -- the plate is
-            # bigger than the face is tall, so it can graze the TABLE, and
-            # the first plate contact found was measured at 448.9 N against
-            # the TABLE while the plate stood 13.3 mm off the box.
-            if {_g1c, _g2c} != {_pg, int(box_geom)}:
+            if _pg not in (_g1c, _g2c):
+                continue
+            _oth = _g2c if _g1c == _pg else _g1c
+            # r125: only the plate-vs-BOX contact counts -- the plate can
+            # graze the TABLE, and the first plate contact found was
+            # measured at 448.9 N against the TABLE while the plate stood
+            # 13.3 mm off the box.
+            if _oth not in _bgs:
                 continue
             _pcf = np.zeros(6)
             _mj.mj_contactForce(model, data, _pci, _pcf)
-            _pfn = float(abs(np.asarray(_pcf[:3])
-                             @ np.array([-spec.face_sign, 0.0, 0.0])))
+            _pfn += float(abs(np.asarray(_pcf[:3])
+                              @ np.array([-spec.face_sign, 0.0, 0.0])))
             _pin = True
-            break
+            _pcg = (_mj.mj_id2name(model, _mj.mjtObj.mjOBJ_GEOM, _oth)
+                    or f"#{_oth}")
         palm_plate_exec = {
             "geom": _pg_name,
             "surface_gap_mm": round(_pd * 1e3, 4),
             "closest_point_on_end_face": _pon_end,
             "in_contact": bool(_pin),
             "contact_normal_force_N": round(_pfn, 4),
+            "nearest_box_geom": _pwho,
+            "contact_box_geom": _pcg,
         }
         # GPT round-3 upgrade: >= 2 pads per hand inside the rectangle
         n_in_rect = sum(1 for v in per_pad.values() if v <= tol * 1e3)

@@ -33,7 +33,55 @@
       <default class="collision">
         <geom group="3" type="box" mass="0" />
         <default class="palm_collision">
-          <geom size="0.0204 0.0565 0.0475" pos="-0.0093 0 -0.0475" />
+          <!-- r138: the plate is 41 x 113 x 95 mm in the r42 scene.  The
+               box's end face spans z 0.700-0.780 and its TOP edge carries
+               a chamfer geom (object_chamfer_posx) whose collision box
+               PROTRUDES to x 0.0617 and z 0.7781-0.7811 -- 1.7 mm past the
+               face plane.  A 95 mm plate (or a rolled one, whose vertical
+               extent grows to 147 mm) always meets that chamfer first:
+               measured, the plate's only box contact was
+               object_chamfer_posx at 18.7 N while its distance to the
+               flat face stayed 1.9 mm.  The plate is therefore 60 mm
+               tall and 110 mm wide, and the baker keeps its top below
+               the chamfer's underside, so the contact is on the FLAT
+               face.  r138d: 113 mm wide was 0.1 mm too wide -- at the
+               row's 45 deg plate orientation the vertical extent is
+               0.707*(2*half_y + 2*half_z) = 61.2 mm against a
+               0.715-0.7761 window of 61.1 mm, and the only rolls that
+               fit (135/315 deg) flip the palm's mount offset below the
+               plate centre, which put the palm itself at z=698.6 mm,
+               under the table.  Narrowing the plate to 110 mm gives a
+               60.1 mm extent, so the near-zero rolls fit with the palm
+               ABOVE the plate (measured at roll 0: the palm z is
+               +33.6 mm over the plate centre).
+               r138e: that arithmetic was wrong by a factor of two --
+               0.0565/0.0300 are the HALF sizes, so the plate at the
+               row's 45 deg orientation is 120 mm tall, not 60, against a
+               61 mm window.  The only rolls that fit (135/315 deg) flip
+               the mount offset so the palm itself lands at z=698.6 mm,
+               under the table.  The plate geom therefore carries a
+               -45 deg mount quaternion about the palm's x, which cancels
+               the palm's own 45 deg roll: at sweep roll 0 the plate's
+               axes are world-aligned, its vertical extent is exactly its
+               60 mm thickness, and it fits the 0.715-0.7761 window with
+               the palm above it.
+               r141: 113 x 60 mm still left the hand's own geoms inside
+               the box -- with the palm 31 mm behind the face the thumb's
+               medial link reaches 27.5 mm past the face plane and the
+               ring finger's proximal link 7.9 mm, at EVERY thumb posture
+               (the best of 81 joint combinations still measured
+               -7.89 mm) and at every finger curl (0.0 -> -27.5 mm,
+               2.0 -> -41.6 mm: the Allegro curls its fingers TOWARD the
+               palm's contact side, i.e. into the box).  Standing the
+               palm far enough back would need a 64 mm thick plate, which
+               is a fixture, not a hand.  The plate is therefore a
+               41 x 40 x 40 mm pad: its vertical extent never exceeds
+               28.3 mm, so EVERY roll fits the table/chamfer window and
+               the sweep is free to find a roll that points the fingers
+               clear of the box.  The contact patch is smaller, which
+               does not change the Coulomb friction available. -->
+          <geom size="0.0204 0.0200 0.0200" pos="-0.0093 0 -0.0475"
+                quat="0.92388 -0.38268 0 0" />
         </default>
         <default class="base_collision">
           <geom size="0.0098 0.01375 0.0082" pos="0 0 0.0082" />
