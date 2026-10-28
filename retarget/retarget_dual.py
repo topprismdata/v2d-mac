@@ -3054,8 +3054,18 @@ def refine_terminal_seat(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
     w_last[-2] += d_pitch
     xs = fk_pads(w_last)
     xs_after_roll = xs.copy()
-    # step 2: push the deepest pad to +PRELOAD outside the face plane
-    s = (face_x * spec.face_sign + PRELOAD_M) - float(np.min(xs))
+    # step 2: push the deepest pad to +PRELOAD outside the face plane.
+    # r147: the depth is taken in the SIGNED face frame (u = x*face_sign,
+    # where the face plane is u = +half_x for BOTH sides and deeper into
+    # the box is smaller u).  A plain min(x) is the deepest pad only for
+    # the right hand; for the left the deepest pad is the LARGEST x, so
+    # the first guess was 125 mm off (measured: the r38 seat refinement
+    # reported the left pads 58-65 mm off the face and sv = -4.54 mm, and
+    # the left's index tip then stood 0.282 mm clear at 0.26 N).  The
+    # shift is applied below as s * face_sign, i.e. s is already the
+    # signed-frame quantity, so only the depth term was wrong.
+    s = ((face_x * spec.face_sign + PRELOAD_M)
+         - float(np.min(np.asarray(xs) * spec.face_sign)))
     palm_bid = spec._palm_id
     jacp = np.zeros((3, model.nv))
     mujoco.mj_jacBody(model, data, jacp, None, palm_bid)
