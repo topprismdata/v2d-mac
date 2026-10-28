@@ -162,6 +162,10 @@ def build_ref(idx: int) -> pathlib.Path:
     _TC133 = float(os.environ.get("W6B_PLATE_TABLE_CLEAR_MM", "15.0")) * 1e-3
     _BOTTOM_CLEAR = float(os.environ.get("W6B_PLATE_BOTTOM_MM", "15.0")) * 1e-3
     _HAND_CLEAR = float(os.environ.get("W6B_HAND_CLEAR_MM", "5.0")) * 1e-3
+    # the search's own fingertip floor was 9 mm; with the 84 mm press
+    # stub the best roll lands at 8.33 mm, so the floor is a parameter
+    # (still far above the solver's contact margin)
+    _TIP_CLEAR = float(os.environ.get("W6B_TIP_CLEAR_MM", "9.0")) * 1e-3
     # r138: the +x chamfer's underside -- the plate's top must stay below
     # it so the contact lands on the FLAT part of the end face
     _ch = mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_GEOM,
@@ -462,7 +466,7 @@ def build_ref(idx: int) -> pathlib.Path:
         # while the plate's own face is 3 mm into it, so the plate still
         # touches first.  The behind-plane number is reported, not gated.
         _ok = (_b[1] <= 2e-3 and _b[2] <= 0.02 and _tc >= _TC133
-               and _tb >= 0.009 and _mg >= 0.3
+               and _tb >= _TIP_CLEAR and _mg >= 0.3
                and _hb >= _HAND_CLEAR and _ht >= _HAND_CLEAR)
         _sweep.append({
             "roll_deg": float(_th_deg),

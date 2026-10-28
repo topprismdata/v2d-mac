@@ -79,8 +79,24 @@
                28.3 mm, so EVERY roll fits the table/chamfer window and
                the sweep is free to find a roll that points the fingers
                clear of the box.  The contact patch is smaller, which
-               does not change the Coulomb friction available. -->
-          <geom size="0.0204 0.0200 0.0200" pos="-0.0093 0 -0.0475"
+               does not change the Coulomb friction available.
+               r142: 41 mm of plate still was not enough STANDING ROOM.
+               The finger BASE links sit at the palm's contact side, so
+               with the plate's inner face on the end face they are level
+               with it: measured over all 142 solved roll x curl
+               combinations, the deepest hand geom is 10.1-27.2 mm PAST
+               the face plane (mf/rf proximal and distal, th_medial), and
+               no roll clears it -- the best combined case (roll 40) is
+               hand/box -10.5 mm with hand/table -9.9 mm.  Curling does
+               not help (the Allegro curls toward the contact side).  The
+               plate must therefore protrude PAST the fingers: its length
+               along the palm's x goes 41 -> 84 mm, which stands the palm
+               21.6 mm further back and puts the finger geoms behind the
+               contact face.  The pad stays 40 x 40 mm, so the contact
+               patch -- and the Coulomb friction it can develop -- is
+               unchanged; the extra length is a massless press stub
+               between the wrist mount and the pad, disclosed as such. -->
+          <geom size="0.0420 0.0200 0.0200" pos="-0.0093 0 -0.0475"
                 quat="0.92388 -0.38268 0 0" />
         </default>
         <default class="base_collision">
@@ -364,7 +380,7 @@
                            sets mass="0"; the palm body's mass stays
                            0.35136 kg), so this changes no dynamics. -->
                       <geom class="palm_collision" name="palm_collision"
-                            pos="0.0107 0 -0.0475" />
+                            pos="0.0300 0 0" />
                       <body name="ff_base" pos="0 0.0435 -0.001542" quat="0.999048 -0.0436194 0 0">
                         <joint name="ffj0" class="base" stiffness="0.0318" springref="-0.144" />
                         <geom class="base_visual" name="ff_base_visual" rgba="0.45 0.45 0.50 1" />
