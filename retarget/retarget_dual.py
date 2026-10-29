@@ -6051,6 +6051,32 @@ def main() -> int:
                     if _cart:
                         from scipy.spatial.transform import Rotation as _Rt74
                         from scipy.spatial.transform import Slerp as _Sl74
+                        # r159: TWO-PHASE insertion.  The single lerp rotates
+                        # the hand WHILE it translates in, and the left's
+                        # open finger chain (its only feasible sweep rows are
+                        # curl 0) sweeps 12.2 mm through the box mid-insertion
+                        # (measured, r73 clearance -12.204 mm on
+                        # object<->rf_distal_left), shoving the box into the
+                        # opposite plate and wedging it -- both presses then
+                        # run to their servo stall forces (17-49 N) and no
+                        # gentle dual press is possible.  Phase A moves the
+                        # palm to a RETRACTED waypoint beside the terminal
+                        # (out along the face normal) while the rotation
+                        # completes IN THE CLEAR; phase B translates straight
+                        # in along the face normal with the orientation held.
+                        _fs159 = 1.0 if s2 == "right" else -1.0
+                        _out159 = float(_os.environ.get(
+                            "W6B_R159_ROTATE_OUT_MM", "60")) * 1e-3
+                        _two159 = _os.environ.get(
+                            f"W6B_R159_TWOPHASE_{s2.upper()}",
+                            "1" if s2 == "left" else "0") == "1"
+                        _na159 = max(n_blend6 // 2, 1)
+                        _ra159 = ramp6[:_na159] / max(ramp6[_na159 - 1], 1e-9)
+                        _rb159 = (ramp6[_na159:]
+                                  - ramp6[_na159 - 1]) / max(
+                                      ramp6[-1] - ramp6[_na159 - 1], 1e-9)
+                        _prot159 = tgt_pos + np.array(
+                            [_fs159 * _out159, 0.0, 0.0])
                         _saver = data.qpos.copy()
                         data.qpos[qadr2] = q_app
                         mujoco.mj_kinematics(model, data)
@@ -6068,11 +6094,23 @@ def main() -> int:
                         _q_prev = q_app.copy()
                         _worst74 = 0.0
                         for k in range(n_blend6):
-                            _t = float(ramp6[k])
-                            _tp = _p_app + _t * (tgt_pos - _p_app)
+                            if _two159:
+                                if k < _na159:
+                                    _t = float(_ra159[k])
+                                    _p0, _p1 = _p_app, _prot159
+                                else:
+                                    _t = float(_rb159[k - _na159])
+                                    _p0, _p1 = _prot159, tgt_pos
+                                _tp = _p0 + _t * (_p1 - _p0)
+                                # the rotation completes during phase A only
+                                _ta = float(_ra159[k]) if k < _na159 else 1.0
+                            else:
+                                _t = float(ramp6[k])
+                                _ta = _t
+                                _tp = _p_app + _t * (tgt_pos - _p_app)
                             _tR = _Rt74.from_quat(
-                                _qa74 * (1.0 - _t)
-                                + _qb74 * _t).as_matrix()
+                                _qa74 * (1.0 - _ta)
+                                + _qb74 * _ta).as_matrix()
                             _qk = _q_prev.copy()
                             for _it in range(120):
                                 data.qpos[qadr2] = _qk
@@ -7409,6 +7447,20 @@ def main() -> int:
                 _dly127 = int(_os.environ.get(
                     "W6B_R127_LEFT_CURL_DELAY", "0")) \
                     if s == "left" else 0
+                # r160: the RIGHT's curl can be delayed for the same
+                # reason the left's was.  In the dual-plate run the box
+                # trace pins the first hand-box strike on the RIGHT's
+                # index tip at frames 278-279 (-0.14 -> -0.35 mm, 1.87 ->
+                # 4.21 N) -- mid-insertion, while the curl is only partway
+                # in and the finger chain protrudes past the plate.  The
+                # delay holds the fingers OPEN until the plate has seated,
+                # then the fold completes behind it (measured at full curl:
+                # the tips ride 82-95 mm behind the plate's inner face).
+                _dly160 = int(_os.environ.get(
+                    "W6B_R127_CURL_DELAY_RIGHT", "0")) \
+                    if s == "right" else 0
+                if _dly160 > 0:
+                    _dly127 = _dly160
                 if _dly127 > 0 and span > _dly127:
                     ramp_f = np.concatenate([
                         np.zeros(_dly127),
