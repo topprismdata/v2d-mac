@@ -6064,12 +6064,18 @@ def main() -> int:
                         # (out along the face normal) while the rotation
                         # completes IN THE CLEAR; phase B translates straight
                         # in along the face normal with the orientation held.
+                        # DEFAULT OFF: enabling it for the left changed the
+                        # master recipe's left pad contact (F 2.03 -> 0 N)
+                        # and nudged the dual-plate forces by ~0.03 N, and
+                        # it did NOT fix the insertion sweep -- this block
+                        # is not the executed writer for either recipe.  It
+                        # stays as an opt-in experiment.
                         _fs159 = 1.0 if s2 == "right" else -1.0
                         _out159 = float(_os.environ.get(
                             "W6B_R159_ROTATE_OUT_MM", "60")) * 1e-3
                         _two159 = _os.environ.get(
                             f"W6B_R159_TWOPHASE_{s2.upper()}",
-                            "1" if s2 == "left" else "0") == "1"
+                            "0") == "1"
                         _na159 = max(n_blend6 // 2, 1)
                         _ra159 = ramp6[:_na159] / max(ramp6[_na159 - 1], 1e-9)
                         _rb159 = (ramp6[_na159:]
