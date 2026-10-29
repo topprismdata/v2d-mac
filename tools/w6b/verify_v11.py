@@ -65,6 +65,10 @@ MASTER_ENV = dict(DUAL_ENV, **{
     "W6B_LIFT_MM": "0",
     "W6B_LIFT_FRAMES": "0",
     "W6B_R126_BOX_TRACE": "0",
+    # the master recipe has NO right curl delay (it would hold the right's
+    # pads open through seating) and needs the preload
+    "W6B_R127_CURL_DELAY_RIGHT": "0",
+    "W6B_R50_PRELOAD_MM": "0.05",
 })
 
 
