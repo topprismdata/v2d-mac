@@ -1,0 +1,176 @@
+{
+ "scene": "grounding/assets/allegro_floating_ur5e_side_r37.xml",
+ "note": "the side cell's terminal reference.  The pipeline's default terminal comes from this file (the W6B_R63_REFERENCE default), so it must be in the repo: without it a fresh clone falls back to the ceiling-cell seed pairs and cannot reproduce the delivered numbers (r117).",
+ "rebuilt_from": "runs/w6b/report.json",
+ "sides": {
+  "right": {
+   "best": [
+    {
+     "source": "rebuilt from the delivered report's terminal commands by tools/w6b/rebuild_terminal_reference.py",
+     "palm_pos": [
+      0.14178816619757914,
+      0.05829475058797156,
+      0.7672413709909102
+     ],
+     "palm_R": [
+      [
+       -0.999999999993253,
+       -2.106946383216886e-06,
+       3.0088557079535313e-06
+      ],
+      [
+       3.673205103589407e-06,
+       -0.5735988935058421,
+       0.819136319152911
+      ],
+      [
+       -1.999357744522732e-16,
+       0.819136319158437,
+       0.5735988935097117
+      ]
+     ],
+     "arm": [
+      -2.9738,
+      3.6083,
+      -1.8774,
+      -1.7309,
+      -1.403,
+      2.5307
+     ],
+     "fingers": {
+      "ff": [
+       -0.16449999999999998,
+       0.3909500000000001,
+       0.4379750000000001,
+       0.372625
+      ],
+      "mf": [
+       -0.16449999999999998,
+       0.3909500000000001,
+       0.4379750000000001,
+       0.372625
+      ],
+      "rf": [
+       -0.16449999999999998,
+       0.3909500000000001,
+       0.4379750000000001,
+       0.372625
+      ],
+      "th": [
+       0.6312249999999999,
+       0.30710000000000004,
+       0.40672499999999995,
+       0.4493250000000001
+      ]
+     },
+     "palm_pos_mm": [
+      170.9,
+      -30.0,
+      800.02
+     ],
+     "roll_sweep": [
+      {
+       "roll_deg": 10.0,
+       "curl": -1.0,
+       "pos_err_mm": 0.0003,
+       "rot_err_rad": 0.0,
+       "plate_halfz_mm": 23.17,
+       "plate_centre_z_mm": 740.0,
+       "arm_table_clear_mm": 28.46,
+       "tip_box_clear_mm": 42.98,
+       "tip_behind_plate_mm": 29.35,
+       "joint_margin_rad": 1.264,
+       "hand_box_clear_mm": 27.73,
+       "hand_box_worst_geom": "th_medial_collision",
+       "hand_table_clear_mm": 16.84,
+       "feasible": true,
+       "arm": [
+        -2.9738,
+        3.6083,
+        -1.8774,
+        -1.7309,
+        -1.403,
+        2.5307
+       ],
+       "palm_pos": [
+        0.1418,
+        0.05831,
+        0.76724
+       ]
+      }
+     ],
+     "roll_pick_deg": 10.0,
+     "curl": -1.0
+    }
+   ]
+  },
+  "left": {
+   "best": [
+    {
+     "source": "rebuilt from the delivered report's terminal commands by tools/w6b/rebuild_terminal_reference.py",
+     "palm_pos": [
+      -0.17103118982848747,
+      -0.030001504233778592,
+      0.805015332932986
+     ],
+     "palm_R": [
+      [
+       0.6977125417315639,
+       -0.13881447808592245,
+       0.7027999358168809
+      ],
+      [
+       -0.2859662251129687,
+       -0.9534617612001786,
+       0.09557189975976868
+      ],
+      [
+       0.6568261011905038,
+       -0.26765875775469283,
+       -0.7049384811400887
+      ]
+     ],
+     "arm": [
+      -2.873459,
+      1.857866,
+      0.520803,
+      -1.472206,
+      -1.106263,
+      -1.690329
+     ],
+     "fingers": {
+      "ff": [
+       -0.278333,
+       0.51359375,
+       0.39449375000000003,
+       0.24166625
+      ],
+      "mf": [
+       0.184975,
+       0.4233575,
+       0.7810775000000001,
+       0.48485
+      ],
+      "rf": [
+       -0.04597,
+       0.7355062499999999,
+       0.6947587500000001,
+       0.58777125
+      ],
+      "th": [
+       0.319449,
+       0.7337875,
+       0.6774975,
+       0.30063625
+      ]
+     },
+     "palm_pos_mm": [
+      -171.03,
+      -30.0,
+      805.02
+     ]
+    }
+   ]
+  }
+ }
+}
