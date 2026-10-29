@@ -647,7 +647,12 @@ def main() -> int:
     print("red gates:", [k for k, v in rep["verdict_checks"].items() if not v])
     pathlib.Path("runs/w6b/plate_terminal.json").write_text(
         json.dumps(out, indent=1))
-    ref.unlink(missing_ok=True)
+    # r153: the baked reference IS the evidence for the terminal pose --
+    # deleting it (as this line did) left no way to re-run the pipeline
+    # with extra instrumentation after a bake.  Keep it; the file is
+    # named by idx and overwritten by a re-bake at the same idx.
+    if os.environ.get("W6B_PLATE_KEEP_REF", "1") == "0":
+        ref.unlink(missing_ok=True)
     return 0
 
 
