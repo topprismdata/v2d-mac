@@ -3756,6 +3756,7 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
             _bt_boxg = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM,
                                          "object_geom")
             _bt_pos = np.asarray(data.xpos[_bt_obj]).tolist()
+            _bt_quat = np.asarray(data.xquat[_bt_obj]).tolist()
             _bt_con = []
             for _btc in range(data.ncon):
                 _b = data.contact[_btc]
@@ -3765,14 +3766,28 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
                     continue
                 _bf = np.zeros(6)
                 mujoco.mj_contactForce(model, data, _btc, _bf)
+                # r162: the lift's acceptance needs a per-frame FORCE
+                # ACCOUNT, not just |fn|: mj_contactForce returns
+                # [fn, ft1, ft2, tq1..3] in the CONTACT frame, and
+                # contact.frame (row-major) carries the contact axes in
+                # world coordinates -- frame[0:3] is the normal.  The
+                # force is reported for the SECOND geom (negate for the
+                # first); box_is_g1 lets the analysis apply the sign and
+                # self-check it against the at-rest invariant (the
+                # table's normal force on the resting box must sum to
+                # +m*g in world z).
                 _bt_con.append({
                     "other": mujoco.mj_id2name(model,
                                                mujoco.mjtObj.mjOBJ_GEOM,
                                                _o),
                     "dist": float(_b.dist),
                     "fn": float(abs(_bf[0])),
+                    "f6": [float(v) for v in _bf],
+                    "frame": [float(v) for v in np.asarray(_b.frame)],
+                    "box_is_g1": int(_b.geom1) == _bt_boxg,
                 })
-            BOX_TRACE.append({"t": t, "pos": _bt_pos, "contacts": _bt_con})
+            BOX_TRACE.append({"t": t, "pos": _bt_pos, "quat": _bt_quat,
+                              "contacts": _bt_con})
 
         if _os.environ.get("W6B_DBG_FORCE", "0") == "1" and t in (n_frames - r36_hold, n_frames - 1):
             print(f"    [dbg-force] t={t} r force={np.round(data.actuator_force[arm_act_r],1)} "
