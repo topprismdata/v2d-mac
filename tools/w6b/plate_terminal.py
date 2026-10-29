@@ -149,6 +149,17 @@ def build_ref(idx: int) -> pathlib.Path:
     cand["palm_pos"] = [float(v) for v in _palm_pos]
     cand["palm_R"] = [[float(v) for v in rr] for rr in row["R"]]
     cand["fingers"] = curl_fingers(m, float(row["curl"]))
+    # r163: the sweep's curl is the PAD-era clearance optimum (the tips
+    # had to reach the face).  For the PLATE branch the tips are idle and
+    # an open finger chain sticks ~98 mm forward of the palm: measured,
+    # the left's mf_distal pressed the box 1.7 -> 19.6 N through the
+    # entry (frames 276-284) and shoved it +2.6 mm into the yaw stops.
+    # Folding the terminal fingers keeps the chain behind the plate; the
+    # knob bakes the folded posture so the arm solve, the clearances and
+    # the seat refinement all see the same finger state.
+    _fc163 = os.environ.get("W6B_R163_FINGER_CURL", "")
+    if _fc163:
+        cand["fingers"] = curl_fingers(m, float(_fc163))
     # r125: the reference's arm IS the terminal IK's start seed (the
     # pipeline's arm_start).  The stale delivered arm (solved for the OLD
  #   ceiling mount) seeds a WOUND solution at the new base -- measured:
