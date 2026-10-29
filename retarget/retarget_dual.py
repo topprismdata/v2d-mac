@@ -5614,6 +5614,21 @@ def main() -> int:
                         "arm": np.asarray(_e63["arm"], float),
                         "fingers": _e63.get("fingers"),
                     }
+    # r155: a per-side RUN-TIME trim of the terminal target along the face
+    # normal (positive = retract away from the box).  With a plate on BOTH
+    # sides the box is squeezed between two stiff arm servos: whichever
+    # side penetrates deeper slides the box (measured 4.0-6.8 mm into the
+    # yaw stops) and both forces run to 21-27 N.  Balancing the two
+    # penetrations is a two-point boundary problem, and a re-bake per
+    # trial costs ~12 min, so the trim is a run-time knob (10 s/point).
+    # It moves only the terminal TARGET; the baked arm seed is untouched.
+    for _s63 in list(_r63_tgt):
+        _tr63 = float(_os.environ.get(
+            f"W6B_R155_TRIM_MM_{_s63.upper()}", "0")) * 1e-3
+        if _tr63:
+            _fs63 = 1.0 if _s63 == "right" else -1.0
+            _r63_tgt[_s63]["pos"] = _r63_tgt[_s63]["pos"].copy()
+            _r63_tgt[_s63]["pos"][0] += _fs63 * _tr63
     # r63: the terminal CURL comes from the search too -- the pose and the
     # curls are ONE solution (the curl decides where each pad lands, and
     # the search measured the pads' distances with those curls).
