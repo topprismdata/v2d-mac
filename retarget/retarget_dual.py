@@ -6828,13 +6828,40 @@ def main() -> int:
                         _lam75 = float(_os.environ.get(
                             "W6B_R82_DESCENT_LAM_" + s2.upper(),
                             _os.environ.get("W6B_R82_DESCENT_LAM", "0.8")))
+                        # r169: a TWO-SEGMENT phase B for the entry.  The
+                        # straight staging->terminal line drags the left's
+                        # finger chain THROUGH the face plane (the mf_distal
+                        # pressed the box 1.7 -> 22.4 N through frames
+                        # 276-287, folded AND open -- r165).  With
+                        # W6B_R169_ENTRY_Z_MM the hand first translates to
+                        # a waypoint 20 mm ABOVE the terminal (in the clear,
+                        # above the face's top edge), then descends VERTIC
+                        # ALLY the last 20 mm: the fingers stay above/outside
+                        # the face's edge band until the very end, and the
+                        # descent presses no normal force into the face
+                        # (the x servo only trims in at the terminal).
+                        _ez169 = float(_os.environ.get(
+                            "W6B_R169_ENTRY_Z_MM_" + s2.upper(),
+                            _os.environ.get("W6B_R169_ENTRY_Z_MM", "0")))
+
+                        def _b_tp(_t):
+                            if _ez169 > 0.0:
+                                _wp169 = tgt_pos + np.array(
+                                    [0.0, 0.0, _ez169 * 1e-3])
+                                if _t < 0.7:
+                                    return (_p_stage + (_t / 0.7)
+                                            * (_wp169 - _p_stage))
+                                return (_wp169 + ((_t - 0.7) / 0.3)
+                                        * (tgt_pos - _wp169))
+                            return _p_stage + _t * (tgt_pos - _p_stage)
+
                         _q_term_ref = np.asarray(q, float).copy()
                         _n_hold86 = 0
                         _res_prev = 0.0
                         for _k in range(0 if (_joint88 or _wp89 or _wp94)
                                        else _n75b):
                             _t = float(_ramp_b[_k])
-                            _tp = _p_stage + _t * (tgt_pos - _p_stage)
+                            _tp = _b_tp(_t)
                             _q_try = _ik75(_tp, tgt_R, _q_prev,
                                            _damp75, _q_ref=_q_term_ref,
                                            _lam=_lam75)
@@ -7109,8 +7136,7 @@ def main() -> int:
                                                               - _p_home))
                             elif _pi - _n75a < len(_ramp_b):
                                 _tt = float(_ramp_b[_pi - _n75a])
-                                _tgt75[_pi] = (_p_stage + _tt * (tgt_pos
-                                                                - _p_stage))
+                                _tgt75[_pi] = _b_tp(_tt)
                             else:
                                 # r130: the reconfiguration dwell holds
                                 # the terminal pose
