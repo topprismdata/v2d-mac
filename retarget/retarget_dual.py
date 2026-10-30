@@ -6975,8 +6975,7 @@ def main() -> int:
                             _segB = []
                             for _k in range(_n75b - 1, -1, -1):
                                 _t = float(_ramp_b[_k])
-                                _tp = (_p_stage
-                                       + _t * (tgt_pos - _p_stage))
+                                _tp = _b_tp(_t)
                                 _qb94 = _ik75(_tp, tgt_R, _qb94, _damp75)
                                 _segB.append(_qb94.copy())
                             _segB.reverse()
