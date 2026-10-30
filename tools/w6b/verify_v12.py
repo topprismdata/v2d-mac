@@ -170,7 +170,7 @@ def main() -> int:
     ph = {}
     for line in out.splitlines():
         parts = line.split()
-        if len(parts) == 10 and parts[0] in ("approach", "grasp",
+        if len(parts) == 9 and parts[0] in ("approach", "grasp",
                                              "lift_accel", "lift_hold"):
             ph[parts[0]] = [float(v) for v in parts[1:]]
     check("the account table parsed (4 phases, fresh process)",
