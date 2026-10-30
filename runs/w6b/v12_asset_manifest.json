@@ -6,6 +6,5 @@
  "runs/w6/gate3_qpos.json": "c58e49fc03f85c6d8d785b9712276456186f9e3069d18ffed8f9ce4125177ce1",
  "retarget/retarget_dual.py": "9ed4757d74b6ca4e02e3ef5c41714d86cf929977170e95e0f8f3acab3f6faf0b",
  "tools/w6b/plate_terminal.py": "d1a03f6911200611de721382202dfb5f2ff7bb8a7dd1d051f8961aa7f4609130",
- "tools/w6b/lift_force_account.py": "52570c3fd8545e20c414fdba099b1d388f010703d024f2e66302fcdb40102a52",
- "tools/w6b/verify_v12.py": "83aca9cd7b7c7c64bd67f8482268038ee5f742888adf92fc626064c801eb6c23"
+ "tools/w6b/lift_force_account.py": "52570c3fd8545e20c414fdba099b1d388f010703d024f2e66302fcdb40102a52"
 }
