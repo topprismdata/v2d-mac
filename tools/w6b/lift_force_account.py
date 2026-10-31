@@ -38,7 +38,11 @@ DT = 1.0 / CTRL_HZ
 
 def classify(name):
     n = name or ""
-    if "palm_collision" in n:
+    # r170: the LEFT plate's geom is palm_left_collision -- it does NOT
+    # contain the substring "palm_collision", so it fell into "other" and
+    # the printed account hid the left plate's (possibly negative) share
+    # while the SUM still closed.  Match both spellings.
+    if "palm_collision" in n or "palm_left_collision" in n:
         return "plate"
     if "table" in n:
         return "table"
@@ -124,9 +128,7 @@ def main() -> int:
     z = np.array([p[2] for _, p, _ in rows])
     print(f"\nbox z: start {z[0] * 1e3:.3f}  peak {(z.max() - z[0]) * 1e3:.3f}  "
           f"final {(z[-1] - z[0]) * 1e3:.3f} mm")
-    print(f"{'phase':<11}{'Fz_plates':>10}{'Fz_table':>10}{'Fz_stops':>10}"
-          f"{'Fz_vise':>9}{'Fz_all':>9}{'m*az':>8}{'resid_z':>9}"
-          f"{'|resid|':>9}")
+    print(f"\n{'phase':<11}{'per-class world-z mean Fz (N), ALL contact geoms'}")
     for name, rng in phases.items():
         idx = [i for i in rng if 0 < i < len(rows) - 1]
         if not idx:
@@ -137,30 +139,35 @@ def main() -> int:
         rm = []
         for i in idx:
             _, _, sums = rows[i]
-            for k in ("plate", "table", "yaw_stop", "vise"):
-                agg[k] = agg.get(k, 0.0) + sums.get(k, np.zeros(3))[2]
+            for k, v in sums.items():
+                agg[k] = agg.get(k, 0.0) + v[2]
             for v in sums.values():
                 fz_all += v[2]
             r = resid(i)
             rz.append(float(r[2]))
             rm.append(float(np.linalg.norm(r)))
         n = len(idx)
-        print(f"{name:<11}"
-              f"{agg.get('plate', 0) / n:>+10.3f}"
-              f"{agg.get('table', 0) / n:>+10.3f}"
-              f"{agg.get('yaw_stop', 0) / n:>+10.3f}"
-              f"{agg.get('vise', 0) / n:>+9.3f}"
-              f"{fz_all / n:>+9.3f}"
-              f"{np.mean([mass * accel(i)[2] for i in idx]):>+8.3f}"
-              f"{np.mean(rz):>+9.4f}"
-              f"{np.max(rm):>9.4f}")
+        parts = "  ".join(f"{k}={agg.get(k, 0.0) / n:+.3f}"
+                          for k in sorted(agg))
+        close = fz_all / n - mass * g
+        print(f"{name:<11} {parts}  | SUM={fz_all / n:+.3f}  "
+              f"SUM-mg={close:+.4f}  resid_z={np.mean(rz):+.4f}  "
+              f"|resid|max={np.max(rm):.4f}")
     # the plates' vertical friction vs the weight in the hold phase
     hold = [i for i in phases["lift_hold"] if 0 < i < len(rows) - 1]
     if hold:
-        fz_pl = np.mean([sums.get("plate", np.zeros(3))[2]
-                         for _, _, sums in (rows[i] for i in hold)])
-        print(f"\nhold: plates Fz mean {fz_pl:+.3f} N vs weight "
-              f"{-mass * g:+.3f} N -> cover {abs(fz_pl) / (mass * g) * 100:.1f}%")
+        per = {}
+        for i in hold:
+            for k, v in rows[i][2].items():
+                per[k] = per.get(k, 0.0) + v[2]
+        for k, v in sorted(per.items()):
+            print(f"hold {k}: mean Fz {v / len(hold):+.3f} N")
+        tot = sum(per.values()) / len(hold)
+        print(f"hold: ALL-contacts total Fz {tot:+.3f} N vs weight "
+              f"{-mass * g:+.3f} N -> closes to {abs(tot + mass * g):+.4f} N"
+              f" (a NEGATIVE plate share = that plate's friction points"
+              f" DOWN: the box slides UP relative to it -- physically"
+              f" required for Newton-Euler closure, not a missing contact)")
     return 0
 
 

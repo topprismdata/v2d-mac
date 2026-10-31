@@ -167,32 +167,50 @@ def main() -> int:
     print("[3] the per-frame force account (P0)")
     rc, out = run_tool("lift_force_account.py", {}, timeout=300)
     check("lift_force_account ran", rc == 0, "exit " + str(rc))
-    ph = {}
+    rows = {}
     for line in out.splitlines():
         parts = line.split()
-        if len(parts) == 9 and parts[0] in ("approach", "grasp",
-                                             "lift_accel", "lift_hold"):
-            ph[parts[0]] = [float(v) for v in parts[1:]]
+        if parts and parts[0] in ("approach", "grasp", "lift_accel",
+                                  "lift_hold") and "=" in line:
+            d = {}
+            for tok in parts[1:]:
+                if "=" in tok:
+                    k, v = tok.split("=", 1)
+                    try:
+                        d[k] = float(v)
+                    except ValueError:
+                        pass
+            rows[parts[0]] = d
     check("the account table parsed (4 phases, fresh process)",
-          len(ph) == 4, str(sorted(ph)))
-    if len(ph) == 4:
-        app, hold = ph["approach"], ph["lift_hold"]
-        # columns: Fz_plates Fz_table Fz_stops Fz_vise Fz_all m*az resid_z |resid|
+          len(rows) == 4, str(sorted(rows)))
+    if len(rows) == 4:
+        app, hold = rows["approach"], rows["lift_hold"]
+        exp_t, tol_t = EXPECTED["account_approach_table_N"]
         check("approach: the table carries the full weight",
-              abs(app[1] - EXPECTED["account_approach_table_N"][0])
-              <= EXPECTED["account_approach_table_N"][1]
-              and app[0] == 0.0 and app[2] == 0.0,
-              f"table {app[1]:.3f} N")
-        check("hold: the plates alone carry the box",
-              abs(hold[0] - EXPECTED["hold_plates_N"][0])
-              <= EXPECTED["hold_plates_N"][1]
-              and hold[1] == 0.0 and hold[2] == 0.0 and hold[3] == 0.0,
-              f"plates {hold[0]:.3f} N "
-              f"({hold[0]/EXPECTED['weight_N']*100:.0f}% of weight)")
+              abs(app.get("table", 0.0) - exp_t) <= tol_t
+              and app.get("plate", 0.0) == 0.0
+              and app.get("other", 0.0) == 0.0,
+              f"table {app.get('table', 0.0):+.3f} N")
+        # hold: EVERY contact class must be shown; the plates alone carry
+        # the box (their world-z shares may be asymmetric -- a negative
+        # share is a real downward friction, required for closure)
+        other = {k: v for k, v in hold.items()
+                 if k not in ("plate", "SUM", "SUM-mg", "resid_z")
+                 and abs(v) > 1e-9}
+        pl = hold.get("plate", 0.0)
+        check("hold: no contact class besides the two plates",
+              not other, str(other))
+        check("hold: the two plates' world-z shares sum to the weight",
+              abs(pl - EXPECTED["weight_N"]) <= 0.02,
+              f"plate share {hold.get('plate', 0.0):+.3f} N "
+              f"(sum {pl:+.3f} vs weight {-EXPECTED['weight_N']:+.3f})")
+        check("hold: the account closes (SUM - mg within the tolerance)",
+              abs(hold.get("SUM-mg", 1e9)) <= 0.02,
+              f"SUM-mg {hold.get('SUM-mg', 0.0):+.4f} N")
         er, et = EXPECTED["account_resid_N"]
         check("the Newton-Euler z residual closes",
-              abs(hold[6]) <= abs(et) + abs(er),
-              f"resid {hold[6]:+.4f} N (anchor {er:+.4f})")
+              abs(hold.get("resid_z", 1e9)) <= abs(et) + abs(er),
+              f"resid {hold.get('resid_z', 0.0):+.4f} N (anchor {er:+.4f})")
 
     # 3. the frozen envelope's corner cells (P2)
     print("[4] the frozen envelope's corner cells (P2)")
