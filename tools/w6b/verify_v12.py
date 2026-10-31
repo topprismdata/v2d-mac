@@ -174,7 +174,7 @@ def main() -> int:
                                   "lift_hold") and "=" in line:
             d = {}
             for tok in parts[1:]:
-                if "=" in tok:
+                if "=" in tok and "|" not in tok:
                     k, v = tok.split("=", 1)
                     try:
                         d[k] = float(v)
