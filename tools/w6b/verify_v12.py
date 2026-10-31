@@ -91,7 +91,6 @@ EXPECTED = {
     "force_right_N": (24.00, 0.15),
     "force_left_N": (24.04, 0.15),
     "weight_N": 3.9279,
-    "hold_plates_N": (9.603, 0.3),
     "account_resid_N": (0.0036, 0.02),
     "account_approach_table_N": (3.928, 0.01),
 }
@@ -194,12 +193,21 @@ def main() -> int:
         # hold: EVERY contact class must be shown; the plates alone carry
         # the box (their world-z shares may be asymmetric -- a negative
         # share is a real downward friction, required for closure)
-        other = {k: v for k, v in hold.items()
-                 if k not in ("plate", "SUM", "SUM-mg", "resid_z")
-                 and abs(v) > 1e-9}
         pl = hold.get("plate", 0.0)
-        check("hold: no contact class besides the two plates",
-              not other, str(other))
+        # per-frame uniqueness (the review rejected the phase-aggregate
+        # check: same-class contacts could cancel inside an average):
+        # every hold frame's contact set must contain ONLY plate geoms
+        bad_frames = []
+        for i in hold:
+            names = {str(c.get("other", "")) for c in
+                     (fr[i].get("contacts") or []) if "f6" in c}
+            bad = [n for n in names
+                   if "palm_collision" not in n
+                   and "palm_left_collision" not in n]
+            if bad:
+                bad_frames.append((i, sorted(bad)))
+        check("hold: every frame's contact set is plates-only (per-frame)",
+              not bad_frames, str(bad_frames[:3]))
         check("hold: the two plates' world-z shares sum to the weight",
               abs(pl - EXPECTED["weight_N"]) <= 0.02,
               f"plate share {hold.get('plate', 0.0):+.3f} N "

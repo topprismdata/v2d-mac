@@ -164,7 +164,7 @@ def main() -> int:
             print(f"hold {k}: mean Fz {v / len(hold):+.3f} N")
         tot = sum(per.values()) / len(hold)
         print(f"hold: ALL-contacts total Fz {tot:+.3f} N vs weight "
-              f"{-mass * g:+.3f} N -> closes to {abs(tot + mass * g):+.4f} N"
+              f"{-mass * g:+.3f} N -> closes to {abs(tot - mass * g):+.4f} N"
               f" (a NEGATIVE plate share = that plate's friction points"
               f" DOWN: the box slides UP relative to it -- physically"
               f" required for Newton-Euler closure, not a missing contact)")
