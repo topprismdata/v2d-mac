@@ -8,5 +8,5 @@
  "retarget/retarget_dual.py": "c439fae0e3a4dfd17c829c8d0b586b71f92db9ce2ed70af33fca805a24763adc",
  "tools/w6b/plate_terminal.py": "d1a03f6911200611de721382202dfb5f2ff7bb8a7dd1d051f8961aa7f4609130",
  "tools/w6b/lift_force_account.py": "a35129ba244fdf9c8c16b1fecdd86f91f4283b382546fcc5e0e923e95fc03aa6",
- "tools/w6b/verify_v12.py": "450fd20b26688b0e1333282a79e469e85b598d83d0e25c00483bd6c06e487def"
+ "tools/w6b/verify_v12.py": "09e34df2742a0d145d9ad749daa2d84da556d533d61e0e934c49719ac6d9828e"
 }
