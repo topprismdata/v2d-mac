@@ -8009,6 +8009,7 @@ def main() -> int:
     # region -- the rise is 0.067 mm/frame, so no IK re-solve is needed.
     _lift_mm = float(_os.environ.get("W6B_LIFT_MM", "0"))
     _lift_n = int(_os.environ.get("W6B_LIFT_FRAMES", "90"))
+    _lift_6d = _os.environ.get("W6B_LIFT_6D", "0") == "1"
     _lift_rec = {}
     if _lift_mm > 0.0 and _lift_n > 0:
         # the Jacobian passes below write data.qpos; the replay's initial
@@ -8039,6 +8040,12 @@ def main() -> int:
                 mujoco.mj_comPos(model, data)
                 if _z0 is None:
                     _z0 = float(data.xpos[_sp._palm_id][2])
+                    _p0148 = np.array([
+                        float(data.xpos[_sp._palm_id][0]),
+                        float(data.xpos[_sp._palm_id][1]),
+                        float(data.xpos[_sp._palm_id][2])])
+                    _R0148 = np.array(
+                        data.xmat[_sp._palm_id]).reshape(3, 3).copy()
                 _jp148 = np.zeros((3, model.nv))
                 _jr148 = np.zeros((3, model.nv))
                 mujoco.mj_jacBody(model, data, _jp148, _jr148,
@@ -8057,7 +8064,38 @@ def main() -> int:
                 # any threshold.
                 _dx149 = (_sq149 * 1e-3) * float(
                     _ramp148[_k + 1]) * (-_sp.face_sign)
-                _e148 = np.array([_dx149, 0.0, _dz, 0.0, 0.0, 0.0])
+                if _lift_6d:
+                    # r174: closed-loop 6D differential IK.  The r148 loop
+                    # integrates an open-chain z (+squeeze) error -- the
+                    # linearization drifts in orientation and horizontally
+                    # and the error compounds with amplitude (measured: at
+                    # 60 mm the left plate left the face at lift frame ~5,
+                    # droop 49 mm; the box never cleanly lifted).  Feed
+                    # back the FULL pose error (position + orientation)
+                    # against the ramped target: drift is corrected every
+                    # frame instead of accumulating.  Env-gated; the
+                    # delivered v12 recipe (W6B_LIFT_6D unset) keeps the
+                    # r148 path bit-identical.
+                    _pc148 = np.array([
+                        float(data.xpos[_sp._palm_id][0]),
+                        float(data.xpos[_sp._palm_id][1]),
+                        float(data.xpos[_sp._palm_id][2])])
+                    _Rc148 = np.array(
+                        data.xmat[_sp._palm_id]).reshape(3, 3)
+                    _pt148 = _p0148 + np.array(
+                        [0.0, 0.0, (_lift_mm * 1e-3)
+                         * float(_ramp148[_k + 1])])
+                    _Rt148 = _R0148
+                    _ep148 = _pt148 - _pc148
+                    _Re148 = _Rt148 @ _Rc148.T - _Rc148 @ _Rt148.T
+                    _er148 = 0.5 * np.array([
+                        _Re148[2, 1] - _Re148[1, 2],
+                        _Re148[0, 2] - _Re148[2, 0],
+                        _Re148[1, 0] - _Re148[0, 1]])
+                    _e148 = np.concatenate([_ep148, _er148])
+                else:
+                    _e148 = np.array([_dx149, 0.0, _dz,
+                                      0.0, 0.0, 0.0])
                 try:
                     _dq148 = np.linalg.lstsq(_J148, _e148,
                                              rcond=None)[0]
