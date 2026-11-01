@@ -8561,8 +8561,8 @@ def main() -> int:
     _c_seat = max(1, min(_c_seat, _c_rise - 1))
     _anchors = [(0.0, 0.0),
                 (67.0 / VIDEO_FPS, float(_c_seat)),
-                (160.0 / VIDEO_FPS, float(_c_rise)),
-                (220.0 / VIDEO_FPS, float(_c_peak)),
+                (129.0 / VIDEO_FPS, float(_c_rise)),
+                (160.0 / VIDEO_FPS, float(_c_peak)),
                 ((n_grid - 1) / VIDEO_FPS, float(rep["n_frames"] - 1))]
     for _k in range(1, len(_anchors)):
         if _anchors[_k][1] <= _anchors[_k - 1][1]:
@@ -8592,9 +8592,10 @@ def main() -> int:
             "the sim descending while the human had already lifted.  This "
             "grid samples the SAME executed control stream (physics "
             "untouched, no invented or reversed frames) through a "
-            "piecewise-linear warp anchored on the clip's phase tempo "
-            "(touch 2.233 s, lift 5.33-7.33 s, per "
-            "docs/video_frames/manifest.json) and the stream's measured "
+            "piecewise-linear warp anchored on the clip's measured phase "
+            "tempo (touch 2.233 s; lift-off 4.3 s, lift complete 5.33 s -- "
+            "both measured from extracted source frames, not segment "
+            "labels) and the stream's measured "
             "box-motion landmarks (first box move "
             f"{_c_seat}, first rise {_c_rise}, peak {_c_peak}; pre-roll "
             f"{R25_PREROLL} prepended).  At the clip's release segment the "
