@@ -8567,9 +8567,17 @@ def main() -> int:
     # frames (1.25 s) before first contact, so both panes open with the
     # end-effector beside the box; the trimmed portion is disclosed here.
     _c_start = max(0, _c_seat - 25)
+    # r173d: the clip's lift is front-loaded (the hands raise the box to
+    # ~85% height within ~0.5 s of lift-off, measured on the extracted
+    # frames at 4.6/4.8/5.0 s), while the executed cos ramp peaks mid-way
+    # -- a two-point lift anchor then leaves the sim ~28% while the clip
+    # is at ~70% (user-visible at f140).  A mid anchor at 4.8 s past 85%
+    # of the rise matches the measured front-loaded tempo.
     _anchors = [(0.0, float(_c_start)),
                 (67.0 / VIDEO_FPS, float(_c_seat)),
                 (129.0 / VIDEO_FPS, float(_c_rise)),
+                (144.0 / VIDEO_FPS,
+                 float(_c_rise + 0.85 * (_c_peak - _c_rise))),
                 (160.0 / VIDEO_FPS, float(_c_peak)),
                 ((n_grid - 1) / VIDEO_FPS, float(rep["n_frames"] - 1))]
     for _k in range(1, len(_anchors)):
