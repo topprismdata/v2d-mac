@@ -8559,7 +8559,15 @@ def main() -> int:
     _c_rise = int(np.argmax(_zw > _z0w + 5e-4)) or 1
     _c_peak = int(np.argmax(_zw)) or rep["n_frames"] - 1
     _c_seat = max(1, min(_c_seat, _c_rise - 1))
-    _anchors = [(0.0, 0.0),
+    # r173c: the clip OPENS with the hands already beside the box (no
+    # long descent exists in the video), while the r75 path starts from a
+    # high home -- a grid anchored at control 0 then shows an empty stage
+    # while the human is already reaching (the residual mismatch the user
+    # flagged at f15/f45).  The grid therefore starts TRIMMED, 25 control
+    # frames (1.25 s) before first contact, so both panes open with the
+    # end-effector beside the box; the trimmed portion is disclosed here.
+    _c_start = max(0, _c_seat - 25)
+    _anchors = [(0.0, float(_c_start)),
                 (67.0 / VIDEO_FPS, float(_c_seat)),
                 (129.0 / VIDEO_FPS, float(_c_rise)),
                 (160.0 / VIDEO_FPS, float(_c_peak)),
@@ -8597,8 +8605,11 @@ def main() -> int:
             "both measured from extracted source frames, not segment "
             "labels) and the stream's measured "
             "box-motion landmarks (first box move "
-            f"{_c_seat}, first rise {_c_rise}, peak {_c_peak}; pre-roll "
-            f"{R25_PREROLL} prepended).  At the clip's release segment the "
+            f"{_c_seat}, first rise {_c_rise}, peak {_c_peak}).  The grid "
+            f"opens TRIMMED at control {_c_start} (25 frames / 1.25 s "
+            "before contact): the clip opens with the hands already beside "
+            "the box, so the home->box descent is not shown (disclosed; "
+            f"pre-roll {R25_PREROLL}).  At the clip's release segment the "
             "sim HOLDS the box at the top (it does not release) -- the "
             "difference is intentional and disclosed.  Internal controller "
             "20 Hz; grid frame i carries control frame "
