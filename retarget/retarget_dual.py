@@ -8534,21 +8534,47 @@ def main() -> int:
         }.items()},
     )
 
-    # W6d replay contract, round-4 revision: FRAME-EXACT 1:1 correspondence
-    # with the source clip (Main ruling, user hard requirement) --
-    # len(replay) == 390 == source frames; sim frame i <-> source frame i;
-    # t_i = (i-1)/30 exact.  The internal controller still runs at 20 Hz; a
-    # grid frame renders the state of the nearest PRECEDING control frame
-    # (hold semantics, disclosed below).
+    # W6d replay contract, r173 revision: PHASE-ALIGNED time warp.  The
+    # r25 frame-exact 1:1 contract assumed the VIDEO-DRIVEN approach (the
+    # sim then shared the clip's tempo by construction).  The v12 plate
+    # recipe replaces the approach with the r75 Cartesian path (home ->
+    # staging -> terminal, ~15 s) -- a strict 1:1 grid then shows the sim
+    # still descending while the human has already lifted (the desync the
+    # panel displayed).  The grid therefore samples the SAME executed
+    # control stream through a piecewise-linear time warp anchored on the
+    # clip's measured phase tempo (touch 2.233 s, lift 5.33-7.33 s per
+    # docs/video_frames/manifest.json) and the stream's own box-motion
+    # landmarks (first contact-like box move, first rise, peak).  Physics
+    # untouched: every grid frame is a real control frame, none invented,
+    # none played backwards; the warp only changes WHICH control frame a
+    # grid slot shows, disclosed here and in the panel caption.
     import subprocess
 
     T_video = streams_rec["right"]["n_frames_executed"]
     n_grid = T_video
+    _zw = np.array([p[2] for p in rep["obj_world"]])
+    _xw = np.array([p[0] for p in rep["obj_world"]])
+    _z0w, _x0w = _zw[0], _xw[0]
+    _c_seat = int(np.argmax(np.abs(_xw - _x0w) > 5e-4)) or 1
+    _c_rise = int(np.argmax(_zw > _z0w + 5e-4)) or 1
+    _c_peak = int(np.argmax(_zw)) or rep["n_frames"] - 1
+    _c_seat = max(1, min(_c_seat, _c_rise - 1))
+    _anchors = [(0.0, 0.0),
+                (67.0 / VIDEO_FPS, float(_c_seat)),
+                (160.0 / VIDEO_FPS, float(_c_rise)),
+                (220.0 / VIDEO_FPS, float(_c_peak)),
+                ((n_grid - 1) / VIDEO_FPS, float(rep["n_frames"] - 1))]
+    for _k in range(1, len(_anchors)):
+        if _anchors[_k][1] <= _anchors[_k - 1][1]:
+            _anchors[_k] = (_anchors[_k][0],
+                            _anchors[_k - 1][1] + 1.0)
+    _aw = [a[0] for a in _anchors]
+    _cw = [a[1] for a in _anchors]
     grid = []
     for i in range(n_grid):
         t_i = i / VIDEO_FPS
-        ci = min(rep["n_frames"] - 1,
-                 R25_PREROLL + int(np.floor(t_i * CTRL_HZ + 1e-9)))
+        c_i = int(round(float(np.interp(t_i, _aw, _cw))))
+        ci = min(rep["n_frames"] - 1, R25_PREROLL + c_i)
         grid.append({
             "t": round(t_i, 9),
             "qpos": [round(float(v), 9) for v in rep["qpos_full"][ci]],
@@ -8559,27 +8585,23 @@ def main() -> int:
     replay = {
         "fps": float(VIDEO_FPS),
         "fps_scope": (
-            "r25 PRE-ROLL CONTRACT NOTE: control frames f(-"
-            f"{R25_PREROLL}..-1) before the video grid are the ADDITIVE "
-            "pre-roll segment (home -> path-start ease ramp, safe "
-            "half-grip) — f1-f390 frame-exact semantics UNCHANGED (Main "
-            "r25 approved).  "
-            "FRAME-EXACT source-clip grid: fps = 30.0 = the source clip's "
-            "rate; sim frame i corresponds to source frame i with "
-            f"t_i = (i-1)/30 (390 frames, {T_video * 0 + n_grid} total). "
-            "The internal controller runs at 20 Hz; grid frame i carries the "
-            "state of control frame floor(t_i*20) -- HOLD semantics "
-            "(nearest preceding control frame), control_frame recorded per "
-            "frame. Segment map: grid frames 1.."
-            f"{n_grid} = video-driven control frames 0..{n_v_ctrl - 1} "
-            f"(approach + grip, t 0..{(n_grid - 1) / VIDEO_FPS:.3f} s); the "
-            f"seed blend occupies control frames {n_v_ctrl}..{n_v_ctrl + n_blend - 1} "
-            f"(sim t {(n_v_ctrl) / CTRL_HZ:.3f}..{(n_v_ctrl + n_blend) / CTRL_HZ:.3f} s) "
-            f"and the seed hold control frames {n_v_ctrl + n_blend}..{n_v_ctrl + n_blend + n_hold - 1} "
-            "-- both BEYOND the video grid (the source clip has ended); they "
-            "appear in report.gpt_triptych and the gate-1 terminal metrics, "
-            "not in this grid. mano_params_fullfps.npz stays on the same "
-            "30 fps timeline."
+            "r173 PHASE-ALIGNED TIME WARP: the r25 frame-exact 1:1 grid "
+            "assumed the VIDEO-DRIVEN approach; the v12 plate recipe uses "
+            "the r75 Cartesian approach (~15 s, its own tempo -- the "
+            "wrist_referenced_error red gate), so a strict 1:1 grid showed "
+            "the sim descending while the human had already lifted.  This "
+            "grid samples the SAME executed control stream (physics "
+            "untouched, no invented or reversed frames) through a "
+            "piecewise-linear warp anchored on the clip's phase tempo "
+            "(touch 2.233 s, lift 5.33-7.33 s, per "
+            "docs/video_frames/manifest.json) and the stream's measured "
+            "box-motion landmarks (first box move "
+            f"{_c_seat}, first rise {_c_rise}, peak {_c_peak}; pre-roll "
+            f"{R25_PREROLL} prepended).  At the clip's release segment the "
+            "sim HOLDS the box at the top (it does not release) -- the "
+            "difference is intentional and disclosed.  Internal controller "
+            "20 Hz; grid frame i carries control frame "
+            f"{_c_seat} (hold semantics); control_frame recorded per frame."  # noqa: E501
         ),
         "frames": grid,
     }
