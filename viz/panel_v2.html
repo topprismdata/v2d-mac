@@ -117,6 +117,11 @@
     <div class="frameinfo" id="finfo"></div>
   </div>
 
+  <div class="term" id="term" style="margin-top:10px;display:flex;gap:14px;align-items:flex-start">
+    <img id="termimg" alt="终态静帧" style="width:340px;border:1px solid #ccc;border-radius:6px">
+    <div id="termcap" style="font-size:12px;line-height:1.8;opacity:.92;max-width:560px"></div>
+  </div>
+
   <div class="foot" id="foot"></div>
 </div>
 
@@ -321,6 +326,21 @@ function draw(i) {
   $("finfo").innerHTML = `帧 <b>${i + 1}/${rf.length}</b> · ${RENDERER_LABEL} · 预设 <b>${presetLabel.label || state.preset}</b> · ←/→ 键逐帧 ±1`;
   document.querySelectorAll("#presets button").forEach(b =>
     b.classList.toggle("on", b.dataset.k === state.preset));
+  /* r172: the TERMINAL still -- the post-lift grasp state lies beyond the
+     frame-exact video grid (the source clip has ended); show it with the
+     measured rise so the lift the gates measure is visible in the panel. */
+  const term = (D.replay && D.replay.terminal) || null;
+  const rd = ((meta.renders || {}).dir) || "";
+  if (term && rd) {
+    const z0 = rf[0].obj[2], zt = term.obj[2];
+    $("termimg").src = "../" + rd + "/terminal_" + state.preset + ".png";
+    $("termcap").innerHTML =
+      `<b>终态静帧（视频网格之外，控制帧末尾）</b> — 双掌板夹持 · ` +
+      `箱升 <b>${((zt - z0) * 1e3).toFixed(3)} mm</b>` +
+      `（z ${(z0 * 1e3).toFixed(1)} → ${(zt * 1e3).toFixed(1)} mm）<br>` +
+      `v12 交付配方 · r45 消融场景（挡杆/角铁已移出）· 掌板摩擦独立承重 ` +
+      `（ΣFz − mg = −0.004 N）· 门徽章如实（gate1/gate4/wrist 红）。`;
+  }
 }
 
 /* ---------- footer ---------- */
