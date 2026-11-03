@@ -7241,8 +7241,10 @@ def main() -> int:
                                             _wpx185.shape[0])
                                 _ref185 = _wpx185[0:_a185][
                                     _v185[0:_a185]].mean(axis=0)
-                                _sh185 = (_wpx185 - _ref185) @ np.asarray(
-                                    regs[s2]["r_reg"]).T
+                                _mp3185 = np.zeros((_wpx185.shape[0], 3))
+                                _mp3185[:, 0:2] = _wpx185 - _ref185
+                                _sh185 = (_mp3185 @ np.asarray(
+                                    regs[s2]["r_reg"]).T)[:, 0:2]
                                 _sh185 = _sh185[0:_a185, 0:2]
                                 _sh185 = _sh185 - _sh185[0]
                                 # the MP detector's per-frame jitter is
