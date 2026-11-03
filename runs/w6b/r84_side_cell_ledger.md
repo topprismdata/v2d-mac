@@ -2061,3 +2061,16 @@ r59/r74/blend6 链条是围绕旧场景调好的，R75=1 交付时代已腐烂�
 
 **当前记账基线不变**：R75=1 交付配方（gate6 绿）仍是 v12 交付态；
 R75=0 家族全部实验配置无门绿，不入交付。
+
+## r181：历史分支净室回归的第一性事实（v7 @ HEAD 复验）
+
+净室克隆运行 tools/w6b/verify_v7.py @ HEAD（ccf3fe11+）：
+- **FAIL**：side cell 门 got False vs expect True、cmd/exec 全列 MISMATCH；
+  ceiling master 大部 OK（右列 151.0 vs 152.7 等 3 项 OK）。
+- 原因：v7 冻结配方（r53 时代）在 HEAD 管线下不复现 —— 管线经
+  r45 场景/r63 目标/r169 路径演化，历史数字绑定其时代提交与工件。
+- **复验协议（组包口径）**：历史分支证据钉在其自身提交
+  （v7 = 72875791 "v7 package made internally consistent for the r53
+  recipe"）+ 该时代 ledger 记录；HEAD 不复现属预期演化而非证据失效。
+  完整 era-worktree 复验（checkout 72875791 + 时代工件重建）为
+  下一会话欠账项。
