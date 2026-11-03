@@ -5958,6 +5958,19 @@ def main() -> int:
                             for _i110 in range(0, 16, 4):
                                 for _j110 in (1, 2, 3):
                                     _fv63[_i110 + _j110] *= _cs110
+                        # r175d: left index-SPREAD (ffj0) seat trim.  At
+                        # the 40 mm rung the loaded lift pushed ffj0_left
+                        # past jnt_range by 4.9e-05 rad for one frame
+                        # (gate4 winding rule).  The seat command sits AT
+                        # the range edge; trimming the servo target inward
+                        # by ~100 urad moves the joint ~2 um geometrically
+                        # -- far below any contact tolerance -- but keeps
+                        # the loaded joint off the limit.
+                        if s2 == "left":
+                            _ffj0_trim = float(_os.environ.get(
+                                "W6B_R110_FFJ0_LEFT_DELTA", "0"))
+                            if _ffj0_trim != 0.0:
+                                _fv63[0] += _ffj0_trim
                         f_start = np.clip(np.asarray(_fv63, float),
                                           lo16_f, hi16_f)
                         arm_start = _r63_tgt[s2]["arm"].copy()
