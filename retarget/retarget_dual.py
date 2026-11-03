@@ -8053,6 +8053,23 @@ def main() -> int:
             _f148 = np.asarray(cmds_global[_sd]["finger"], float).copy()
             _lo148 = model.actuator_ctrlrange[_sp.wrist_act_id, 0]
             _hi148 = model.actuator_ctrlrange[_sp.wrist_act_id, 1]
+            # r175c: micro-relief of the left index SPREAD (element 0 of
+            # the finger vector) over the lift frames only.  Measured at
+            # the 40 mm rung: ffj0_left saturates its force limit for one
+            # frame at the rise's end (frame 450) and exceeds jnt_range by
+            # 4.9e-05 rad -- gate4's winding rule rejects the excursion
+            # outright.  The delta shifts the lift's hold command for that
+            # one DoF by a comparable amount; disclosed, default 0.
+            _ffj0_relief = float(_os.environ.get(
+                "W6B_LIFT_FFJ0_LEFT_DELTA", "0"))
+            if _sd == "left" and _ffj0_relief != 0.0:
+                _f148 = _f148.copy()
+                _f148[-1][0] = float(
+                    np.clip(_f148[-1][0] + _ffj0_relief,
+                            model.actuator_ctrlrange[
+                                _sp.finger_act_id[0], 0],
+                            model.actuator_ctrlrange[
+                                _sp.finger_act_id[0], 1]))
             _q148 = _w148[-1].copy()
             _z0 = None
             _new148 = []
