@@ -9016,6 +9016,26 @@ def main() -> int:
             wmedian = _wmed(errs, weights)
             wmedian_raw = _wmed(errs_raw, weights)
             frac = wmedian / span_m
+            # r179: per-frame error profile (env-gated) -- where in the
+            # approach does the fidelity error live?  Median-only hides
+            # the shape (a fixable time-shift reads differently from a
+            # fixed offset).
+            if _os.environ.get("W6B_R179_ERR_PROFILE", "0") == "1":
+                _prof = REPO / "runs/w6b/wrist_err_profile.json"
+                _prev = {}
+                if _prof.exists():
+                    _prev = json.loads(_prof.read_text())
+                _prev[side] = {
+                    "gi": [int(g) for g in range(a1)
+                           if valid_wl[g]],
+                    "err_mm": [round(float(e) * 1e3, 2)
+                               for e in errs],
+                    "err_raw_mm": [round(float(e) * 1e3, 2)
+                                   for e in errs_raw],
+                    "video_t_s": [round(g / VIDEO_FPS, 3)
+                                  for g in range(a1) if valid_wl[g]],
+                }
+                _prof.write_text(json.dumps(_prev, indent=1))
             traj_err["wrist_referenced"]["per_side"][side] = {
                 "basis": "executed palm lateral (control-domain hold "
                          "sampling) vs MediaPipe wrist, both centred at "
