@@ -7220,12 +7220,17 @@ def main() -> int:
                             _inj185 = None
                             if _os.environ.get("W6B_DBG_PATH", "0") == "1":
                                 print(f"    [dbg-path] {s2}: r185 amp="
-                                      f"{_amp185} wl={'set' if globals().get('wl') is not None else 'NONE'} "
+                                      f"{_amp185} npz={'pre'} "
                                       f"regs={'set' if s2 in regs else 'MISSING'}")
-                            # the module-level wl (main rebinds the name
-                            # locally in the report section, so a bare
-                            # reference here would be UnboundLocalError)
-                            _wl185 = globals().get("wl")
+                            # the wrist landmarks: there is no module-level
+                            # wl (both load sites are function-local), so
+                            # load the npz here
+                            _wl185 = None
+                            try:
+                                _wl185 = np.load(REPO / "runs/w6b/"
+                                                 "wrist_landmarks.npz")
+                            except Exception:
+                                _wl185 = None
                             if _amp185 > 0.0 and _wl185 is not None:
                                 _pres185 = _wl185[f"{s2}/present"].astype(bool)
                                 _wpx185 = _wl185[f"{s2}/wrist_px"].copy()
