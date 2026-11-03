@@ -1971,6 +1971,46 @@ def retarget_chain_side(joints: np.ndarray, model, data, spec: SideSpec,
             if _deepest < _side182 * _min_x182:
                 palm_task[:-_n182, 0] += (_side182 * _min_x182
                                           - _deepest)
+        # r183: the Z FLOOR (env-gated).  The registered MP path's height
+        # dips to the table in the late approach (the video hands descend
+        # to the box top; mapped into the side cell the path grazes the
+        # table while the fingers hang 4-8 cm below the palm) -- that is
+        # what put 141 support-contact frames on the left arm in config
+        # B and broke gate3 across the R75=0 family.  A soft floor: keep
+        # the MP z wherever it is high (the shape is kept), lift it only
+        # where it would put the hand's lowest geom under table+clearance.
+        # The hang (palm minus lowest hand geom at each frame's own
+        # finger command) is measured by FK, exactly like the r59 block.
+        if _os.environ.get("W6B_R183_ZFLOOR", "0") == "1":
+            import mujoco as _mj183
+            _clr183 = float(_os.environ.get("W6B_R59_CLEAR_MM",
+                                            "25")) * 1e-3
+            _tbl183 = 0.70
+            for _g183 in range(model.ngeom):
+                if _mj183.mj_id2name(model, _mj183.mjtObj.mjOBJ_GEOM,
+                                     _g183) == "table_slab":
+                    _tbl183 = float(model.geom_pos[_g183][2]
+                                    + model.geom_size[_g183][2])
+            _f183 = np.asarray(qpos22[:, 6:22])[
+                :, rs.URDF_TO_MJCF_ACTUATOR_ORDER]
+            _f183 = np.clip(
+                _f183,
+                model.actuator_ctrlrange[spec.finger_act_id, 0][None, :],
+                model.actuator_ctrlrange[spec.finger_act_id, 1][None, :])
+            _q183 = data.qpos.copy()
+            _hg183 = sorted(spec.hand_geoms)
+            for _t183 in range(palm_task.shape[0]):
+                data.qpos[spec.finger_qadr] = _f183[
+                    min(_t183, _f183.shape[0] - 1)]
+                _mj183.mj_kinematics(model, data)
+                _mj183.mj_comPos(model, data)
+                _pz = float(data.xpos[spec._palm_id][2])
+                _mz = min(float(data.geom_xpos[_g][2])
+                          for _g in _hg183)
+                _floor = _tbl183 + _clr183 + (_pz - _mz)
+                if palm_task[_t183, 2] < _floor:
+                    palm_task[_t183, 2] = _floor
+            data.qpos[:] = _q183
         # r59 (v9): the SIDE-CELL APPROACH RE-REGISTRATION.  The retargeted
         # clip's approach (the human's wrist descends onto the box from the
         # upper corners of the ego view) maps into the side cell as a palm
