@@ -6439,6 +6439,19 @@ def main() -> int:
                         # amounts are honoured).
                         _sq109 = float(_os.environ.get(
                             "W6B_R109_SQUEEZE_MM", "0"))
+                        # r175: per-side override.  The right plate's seat
+                        # gap is systematically larger than the left's
+                        # (r63 reference + servo droop): with a shared
+                        # squeeze the left plate pushed the box rightward
+                        # and the box SLID into the right's gap without
+                        # ever pressing it (trace: left press decayed
+                        # 6.8->1.9 N through the hold, right plate zero
+                        # contacts, drift 5.8 mm).  W6B_R109_SQUEEZE_MM_RIGHT
+                        # lets the right side close its own gap so the box
+                        # is caught between both plates before the lift.
+                        if s2 == "right":
+                            _sq109 = float(_os.environ.get(
+                                "W6B_R109_SQUEEZE_MM_RIGHT", _sq109))
                         if _sq109 > 0.0:
                             data.qpos[qadr2] = q
                             mujoco.mj_kinematics(model, data)
