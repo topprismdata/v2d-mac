@@ -152,6 +152,7 @@ def main() -> int:
         close = fz_all / n - mass * g
         print(f"{name:<11} {parts}  | SUM={fz_all / n:+.3f}  "
               f"SUM-mg={close:+.4f}  resid_z={np.mean(rz):+.4f}  "
+              f"resid_z|max={np.max(np.abs(rz)):.4f}  "
               f"|resid|max={np.max(rm):.4f}")
     # the plates' vertical friction vs the weight in the hold phase
     hold = [i for i in phases["lift_hold"] if 0 < i < len(rows) - 1]

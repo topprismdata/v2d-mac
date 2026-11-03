@@ -226,6 +226,16 @@ def main() -> int:
         check("the Newton-Euler z residual closes",
               abs(hold.get("resid_z", 1e9)) <= abs(et) + abs(er),
               f"resid {hold.get('resid_z', 0.0):+.4f} N (anchor {er:+.4f})")
+        # r176 (P3-5): the review rejected phase-MEAN-only residuals --
+        # a mean can hide per-frame cancellations.  The account now also
+        # prints the per-frame |resid_z| maximum for every phase; the
+        # HOLD phase (the load-bearing proof, quasi-static) must close
+        # PER FRAME, not just on average.
+        rzmax = hold.get("resid_z|max")
+        check("hold: the z account closes on EVERY frame (per-frame max)",
+              rzmax is not None and rzmax <= 0.01,
+              f"per-frame |resid_z| max {rzmax if rzmax is not None else 'n/a'} N "
+              f"(anchor 0.0050, tol 0.01)")
 
     # 3. the frozen envelope's corner cells (P2)
     print("[4] the frozen envelope's corner cells (P2)")
