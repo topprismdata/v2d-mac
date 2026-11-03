@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import subprocess
 import sys
@@ -99,20 +100,26 @@ EXPECTED = {
 def main() -> int:
     print("=== v12 clean-room verification (fresh processes)")
 
-    # 0. asset-hash closure, BEFORE any number is read
+    # 0. asset-hash closure, BEFORE any number is read.
+    # r176: fail-closed ORDER fixed per the v12 review (P3-1): check
+    # existence FIRST (a missing file must not raise inside sha()), then
+    # compare hashes, and ABORT the run immediately on any drift -- a
+    # drifted asset must not be followed by any number-producing step.
     print("[1] asset manifest (fail-closed)")
     man_p = REPO / "runs/w6b/v12_asset_manifest.json"
     if not man_p.exists():
         check("the asset manifest exists", False, str(man_p))
         return _fin()
     man = json.loads(man_p.read_text())
-    bad = {rel: sha(REPO / rel)
-           for rel in man
-           if sha(REPO / rel) != man[rel]}
     missing = [rel for rel in man if not (REPO / rel).exists()]
+    changed = sorted(rel for rel in man
+                     if rel not in missing
+                     and sha(REPO / rel) != man[rel])
+    assets_ok = not missing and not changed
     check("every pinned asset matches its committed SHA-256",
-          not bad and not missing,
-          f"changed={sorted(bad)} missing={missing}")
+          assets_ok, f"changed={changed} missing={missing}")
+    if not assets_ok:
+        return _fin()
 
     # 1. the delivered recipe, fresh process
     print("[2] the delivered r45 recipe (fresh process)")
@@ -237,13 +244,21 @@ def main() -> int:
               rc == 0 and abs(r2 - exp) <= 0.02,
               f"rise {r2:.3f} mm, exit {rc}")
 
-    # 4. frame-by-frame trajectory closure vs the committed evidence
+    # 4. frame-by-frame trajectory closure vs the committed evidence.
+    # r176 (P3-2): the rerun's return code and artifact freshness are
+    # asserted BEFORE any comparison, not just at the P2 corners.
     print("[5] full-trajectory comparison (committed evidence)")
     ev_p = REPO / "runs/w6b/box_trace_r45_p2_base.json"
     if not ev_p.exists():
         check("the committed evidence trace exists", False, str(ev_p))
     else:
-        _pipeline(RECIPE, timeout=900)
+        t5 = time.time()
+        rc5, _ = _pipeline(RECIPE, timeout=900)
+        fresh5 = (fresh(trace_p, t5) and fresh(report_p, t5))
+        check("the evidence rerun exits clean and is fresh",
+              rc5 == 0 and fresh5, f"exit {rc5}, fresh {fresh5}")
+        if rc5 != 0 or not fresh5:
+            return _fin()
         ev = json.loads(ev_p.read_text())
         evf = ev["frames"] if isinstance(ev, dict) else ev
         tr3 = json.loads(trace_p.read_text())
@@ -252,10 +267,38 @@ def main() -> int:
             check("the trajectory lengths match", False,
                   f"{len(evf)} vs {len(fr3)}")
         else:
+            # r176 (P3-3/P3-4): the state contract covers position AND
+            # orientation AND the per-frame contact-geom SET -- position
+            # equality alone cannot exclude a rotated or re-contacted
+            # state.  The wording is also fixed: the contract is a
+            # 1e-6 m / 1e-6 rad / set-equality tolerance, NOT strict
+            # bit-level identity (the observed maxima happen to be 0.0,
+            # which is a stronger observation, not the contract).
             mx = max(abs(a["pos"][k] - b["pos"][k])
                      for a, b in zip(evf, fr3) for k in range(3))
-            check("the executed trajectory is bit-faithful to the evidence",
-                  mx < 1e-6, f"max |dpos| {mx:.3e} m over {len(fr3)} frames")
+
+            def _qang(q0, q1):
+                d = abs(sum(a * b for a, b in zip(q0, q1)))
+                return 2.0 * math.degrees(math.acos(min(1.0, d)))
+
+            mq = max(_qang(a["quat"], b["quat"])
+                     for a, b in zip(evf, fr3))
+            mc = [(i, sorted({str(c.get("other", ""))
+                              for c in (a.get("contacts") or [])
+                              if c.get("fn", 0.0) > 0.0}
+                             ^ {str(c.get("other", ""))
+                                for c in (b.get("contacts") or [])
+                                if c.get("fn", 0.0) > 0.0}))
+                  for i, (a, b) in enumerate(zip(evf, fr3))
+                  if {str(c.get("other", "")) for c in (a.get("contacts") or []) if c.get("fn", 0.0) > 0.0}
+                  != {str(c.get("other", "")) for c in (b.get("contacts") or []) if c.get("fn", 0.0) > 0.0}]
+            check("the executed state is consistent with the evidence "
+                  "within the contract (pos <1e-6 m, quat <1e-6 deg, "
+                  "active-contact geom sets equal)",
+                  mx < 1e-6 and mq < 1e-6 and not mc,
+                  f"max |dpos| {mx:.3e} m, max |dq| {mq:.3e} deg, "
+                  f"contact-set diffs {len(mc)} over {len(fr3)} frames"
+                  + (f" first {mc[0]}" if mc else ""))
 
     return _fin()
 
