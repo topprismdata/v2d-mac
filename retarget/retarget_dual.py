@@ -1951,6 +1951,19 @@ def retarget_chain_side(joints: np.ndarray, model, data, spec: SideSpec,
             bell = 0.5 * (1.0 - np.cos(
                 2.0 * np.pi * np.arange(span_f) / max(span_f - 1, 1)))
             palm_task[:span_f, 2] += fly_m * bell
+        # r182: the MID-PLANE GUARD (env-gated).  The registered MP lateral
+        # crosses the box's mid-plane late in the approach (the r59
+        # measurement: the palm crosses into the opposite side and
+        # descends into the table) -- the plate face's outer edge is at
+        # |x| = 0.115 (face 0.06 + plate reach ~0.05); clamp the swing's
+        # lateral to it.  The terminal window is untouched.
+        if _os.environ.get("W6B_R182_GUARD", "0") == "1":
+            _n182 = min(62, palm_task.shape[0])
+            _side182 = spec.face_sign
+            _min_x182 = _side182 * 0.115
+            _bad182 = _side182 * palm_task[:-_n182, 0] < _side182 * _min_x
+            if _bad182.any():
+                palm_task[:-_n182, 0][_bad182] = _min_x182
         # r59 (v9): the SIDE-CELL APPROACH RE-REGISTRATION.  The retargeted
         # clip's approach (the human's wrist descends onto the box from the
         # upper corners of the ego view) maps into the side cell as a palm
