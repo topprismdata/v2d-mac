@@ -8036,6 +8036,18 @@ def main() -> int:
         _ramp148 = 0.5 * (1.0 - np.cos(np.linspace(
             0.0, np.pi, _lift_n + 1)))
         for _sd in VIDEOS:
+            # r175b: per-side lift squeeze -- during the rise one plate
+            # tends to leave the face while the other grips (measured:
+            # left fn 0 through the 60 mm rise, right 41.9 N at the top);
+            # the side-specific value holds the weak side on the face
+            # without over-pressing the strong side off its own window.
+            _sq149 = float(_os.environ.get("W6B_LIFT_SQUEEZE_MM", "0"))
+            if _sd == "left" and _os.environ.get(
+                    "W6B_LIFT_SQUEEZE_MM_LEFT") is not None:
+                _sq149 = float(_os.environ["W6B_LIFT_SQUEEZE_MM_LEFT"])
+            if _sd == "right" and _os.environ.get(
+                    "W6B_LIFT_SQUEEZE_MM_RIGHT") is not None:
+                _sq149 = float(_os.environ["W6B_LIFT_SQUEEZE_MM_RIGHT"])
             _sp = specs[_sd]
             _w148 = np.asarray(cmds_global[_sd]["wrist"], float).copy()
             _f148 = np.asarray(cmds_global[_sd]["finger"], float).copy()
