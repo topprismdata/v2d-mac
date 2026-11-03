@@ -7306,9 +7306,63 @@ def main() -> int:
                                         _e185[:, _cl] = np.convolve(
                                             _e185[:, _cl], _kernl,
                                             mode="same")
-                                    _pkl = float(np.max(np.linalg.norm(
-                                        _e185, axis=1)))
-                                    if _pkl > 1e-9:
+                                    # r185m: the ACCUMULATING damped
+                                    # fixed point.  Mode 1 (peak-normalise
+                                    # x amp) re-injects the same direction
+                                    # at the same magnitude every round --
+                                    # a one-step freeze.  Mode 2 keeps the
+                                    # offset in METRES in a sidecar file:
+                                    # off_{k+1} = off_k + damp * e_k,
+                                    # per-frame capped, x-guarded.  The
+                                    # rounds walk the executed palm onto
+                                    # the metric's reference.
+                                    if _os.environ.get(
+                                            "W6B_R185_LEARN") == "2":
+                                        _accp = (REPO / "runs/w6b/"
+                                                 "r185_offset.npz")
+                                        _offk = np.zeros((_a1, 2))
+                                        if _accp.is_file():
+                                            try:
+                                                _offk = np.load(
+                                                    _accp)["off"]
+                                                if _offk.shape != (
+                                                        _a1, 2):
+                                                    _offk = np.zeros(
+                                                        (_a1, 2))
+                                            except Exception:
+                                                _offk = np.zeros((_a1, 2))
+                                        _dmp = float(_os.environ.get(
+                                            "W6B_R185_DAMP", "0.5"))
+                                        _offk = _offk + _dmp * _e185
+                                        _cap = float(_os.environ.get(
+                                            "W6B_R185_CAP_MM",
+                                            "300")) * 1e-3
+                                        _nk = np.linalg.norm(
+                                            _offk, axis=1)
+                                        _bad = _nk > _cap
+                                        if _bad.any():
+                                            _offk[_bad] = (
+                                                _offk[_bad]
+                                                * (_cap / _nk[_bad])[
+                                                    :, None])
+                                        np.savez(_accp, off=_offk)
+
+                                        def _inj185(_j, _sh=_offk,
+                                                    _n=(_n75a + _n75b),
+                                                    _fs=spec2.face_sign):
+                                            _p = _j / max(_n - 1, 1)
+                                            _e = min(1.0, _p / 0.25,
+                                                     (1.0 - _p) / 0.25)
+                                            _e = max(0.0, _e)
+                                            _gi = min(
+                                                int(_p * (_sh.shape[0] - 1)),
+                                                _sh.shape[0] - 1)
+                                            _off3 = np.zeros(3)
+                                            _off3[0:2] = _e * _sh[_gi]
+                                            if _fs * _off3[0] > 0.0:
+                                                _off3[0] = 0.0
+                                            return _off3
+                                    elif _pkl > 1e-9:
                                         _e185 = _e185 / _pkl
 
                                         def _inj185(_j, _n=(_n75a + _n75b),
