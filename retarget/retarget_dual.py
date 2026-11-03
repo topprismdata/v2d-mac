@@ -7278,12 +7278,14 @@ def main() -> int:
                                             int(_p * (_sh.shape[0] - 1)),
                                             _sh.shape[0] - 1)
                                         _off = _amp * _e * _sh[_gi]
+                                        _off3 = np.zeros(3)
+                                        _off3[0:2] = _off
                                         # the x guard: the palm stays on
                                         # its own side of the plate-face
                                         # plane (0.115 m)
-                                        if _fs * _off[0] > 0.0:
-                                            _off[0] = 0.0
-                                        return _off
+                                        if _fs * _off3[0] > 0.0:
+                                            _off3[0] = 0.0
+                                        return _off3
                             _qb94 = np.asarray(q, float).copy()
                             _segB = []
                             for _k in range(_n75b - 1, -1, -1):
