@@ -28,12 +28,8 @@ BASE_ENV = {
     "W6B_SCENE": "ur5e",
     "W6B_SCENE_XML": "grounding/assets/allegro_floating_ur5e_side_r45_ablation.xml",
     "W6B_R75_SIDE_APPROACH": "1",
-    "W6B_R59_APPROACH": "side",
-    "W6B_R180_MP_BLEND": "1",
     "W6B_R23_FLYOVER_MM": "250",
-    "W6B_R180_DECAY": "0.45",
-    "W6B_R59_STANDOFF_MM": "140",
-    "W6B_R59_CLEAR_MM": "25",
+    "W6B_R22_MARGIN_MM": "8",
     "W6B_R169_ENTRY_Z_MM_LEFT": "30",
     "W6B_R155_TRIM_MM_LEFT": "-0.01",
     "W6B_R109_SQUEEZE_MM": "0.4",
@@ -51,16 +47,16 @@ BASE_ENV = {
     "W6B_R36_GSTATIC": "1",
     "W6B_R36_I": "0",
     "W6B_R39_HOLD": "60",
+    "W6B_R126_BOX_TRACE": "1",
 }
 
 # the coordinate-descent knobs: (env name, [values in try order])
 KNOBS = [
-    ("W6B_R180_DECAY", ["0.60", "0.75", "0.90", "1.10", "0.30"]),
+    ("W6B_R22_MARGIN_MM", ["4", "12", "0", "16", "-4"]),
+    ("W6B_R155_TRIM_MM_LEFT", ["0.0", "-0.02", "0.01", "-0.03"]),
     ("W6B_R23_FLYOVER_MM", ["180", "320", "120", "400"]),
-    ("W6B_R59_STANDOFF_MM", ["110", "170", "90", "200"]),
-    ("W6B_R59_CLEAR_MM", ["35", "18", "45"]),
-    ("W6B_R169_ENTRY_Z_MM_LEFT", ["20", "40", "10"]),
-    ("W6B_R155_TRIM_MM_LEFT", ["0.0", "-0.02", "0.01"]),
+    ("W6B_R169_ENTRY_Z_MM_LEFT", ["20", "40", "10", "50"]),
+    ("W6B_R50_CURL", ["1.2", "1.3", "1.15"]),
 ]
 
 
