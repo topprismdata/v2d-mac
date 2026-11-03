@@ -7360,7 +7360,7 @@ def main() -> int:
                                                 _sh.shape[0] - 1)
                                             _off3 = np.zeros(3)
                                             _off3[0:2] = _e * _sh[_gi]
-                                            if _fs * _off3[0] < 0.0:
+                                            if _fs * _off3[0] > 0.0:
                                                 _off3[0] = 0.0
                                             return _off3
                                     elif _pkl > 1e-9:
@@ -7379,7 +7379,7 @@ def main() -> int:
                                                 _sh.shape[0] - 1)
                                             _off3 = np.zeros(3)
                                             _off3[0:2] = _amp * _e * _sh[_gi]
-                                            if _fs * _off3[0] < 0.0:
+                                            if _fs * _off3[0] > 0.0:
                                                 _off3[0] = 0.0
                                             return _off3
                                 except (KeyError, ValueError,
@@ -7438,7 +7438,7 @@ def main() -> int:
                                         # the x guard: the palm stays on
                                         # its own side of the plate-face
                                         # plane (0.115 m)
-                                        if _fs * _off3[0] < 0.0:
+                                        if _fs * _off3[0] > 0.0:
                                             _off3[0] = 0.0
                                         return _off3
                             _qb94 = np.asarray(q, float).copy()
@@ -7448,6 +7448,8 @@ def main() -> int:
                                 _tp = _b_tp(_t)
                                 if _inj185 is not None:
                                     _tp = _tp + _inj185(_n75b - 1 - _k)
+                                    if spec2.face_sign * _tp[0] < 0.115:
+                                        _tp[0] = spec2.face_sign * 0.115
                                 _qb94 = _ik75(_tp, tgt_R, _qb94, _damp75)
                                 _segB.append(_qb94.copy())
                             _segB.reverse()
@@ -7460,6 +7462,8 @@ def main() -> int:
                                 if _inj185 is not None:
                                     _tp = _tp + _inj185(_n75b + _n75a - 1
                                                         - _k)
+                                    if spec2.face_sign * _tp[0] < 0.115:
+                                        _tp[0] = spec2.face_sign * 0.115
                                 _qa94 = _ik75(_tp, tgt_R, _qa94, _damp75)
                                 _segA.append(_qa94.copy())
                             _segA.reverse()
