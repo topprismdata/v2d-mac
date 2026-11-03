@@ -7010,6 +7010,9 @@ def main() -> int:
                         # in the terminal's configuration.
                         _wp94 = (_os.environ.get("W6B_R94_BACKWARD", "1")
                                  == "1")
+                        if _os.environ.get("W6B_DBG_PATH", "0") == "1":
+                            print(f"    [dbg-path] {s2}: wp94={_wp94} "
+                                  f"joint88={_joint88} path75={len(_path75)}")
                         for _k in range(0 if (_joint88 or _wp89 or _wp94)
                                        else _n75a):
                             _t = float(_ramp_a[_k])
