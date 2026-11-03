@@ -3525,11 +3525,13 @@ def equalize_pad_curls(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
 BOX_TRACE: list = []          # r126: filled when W6B_R126_BOX_TRACE=1
 _BT_SLIP: dict = {}           # r177: per-side cumulative slip (mm)
 _SUBSTEP_SEEN: dict = {}      # r178: substep transient-pusher dedupe
+_R178_PREV_VX = 0.0           # r178: previous substep's box qvel x
 
 
 def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
     """Command both hands through the resampled trajectory; record everything
     the gates read.  Only data.ctrl is written inside the loop."""
+    global _R178_PREV_VX
     import mujoco
     BOX_TRACE.clear()
     _BT_SLIP.clear()
@@ -3761,6 +3763,24 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
             if _os.environ.get("W6B_R178_SUBSTEP_TRACE", "0") == "1":
                 _bt_boxg0 = mujoco.mj_name2id(
                     model, mujoco.mjtObj.mjOBJ_GEOM, "object_geom")
+                _bb = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY,
+                                        "object")
+                _vj = int(model.jnt_dofadr[mujoco.mj_name2id(
+                    model, mujoco.mjtObj.mjOBJ_JOINT, "object_free")]) + 0
+                _vx = float(data.qvel[_vj])
+                if abs(_vx - _R178_PREV_VX) > 1e-4:
+                    _cs = [(mujoco.mj_id2name(
+                        model, mujoco.mjtObj.mjOBJ_GEOM,
+                        int(_c.geom1) if int(_c.geom2) == _bt_boxg0
+                        else int(_c.geom2)) or "?",
+                            float(_c.dist),
+                            int(_c.geom1) == _bt_boxg0
+                            or int(_c.geom2) == _bt_boxg0)
+                           for _c in data.contact[:data.ncon]]
+                    print(f"    [r178-vjump] t={t} sub={_} "
+                          f"dvx={_vx - _R178_PREV_VX:+.5f} ncon={data.ncon} "
+                          f"pairs={_cs}")
+                _R178_PREV_VX = _vx
                 for _stc in range(data.ncon):
                     _c = data.contact[_stc]
                     _o2 = int(_c.geom1) if int(_c.geom2) == _bt_boxg0 \
