@@ -2022,6 +2022,37 @@ def retarget_chain_side(joints: np.ndarray, model, data, spec: SideSpec,
             # sweep is not a grasp motion in the side cell
             _y59 = np.full(palm_task.shape[0], float(palm_task[-1, 1]))
             _new59 = np.stack([_x59, _y59, _z59], axis=1)
+            # r180: the LAMBDA BLEND (the v13 review's multi-objective
+            # min E_wrist + lambda1 E_collision + lambda2 E_pregrasp, as
+            # a concrete path rule).  The r59-side re-registration pins
+            # the lateral to a synthetic face-normal column (y := const,
+            # "not a grasp motion") -- collision-safe but it ERASES the
+            # human wrist's lateral shape, which is exactly what the
+            # fidelity metric measures (measured: R75=0 with the raw MP
+            # lateral scores 30.2%/19.6%; the r59 column alone scores
+            # far worse).  Blend the lateral back toward the registered
+            # MP wrist with a progress weight: full MP shape early in
+            # the approach (free space), converging to the r59-safe
+            # geometry before the seat (the grasp geometry and the
+            # mid-plane guard own the terminal window).  z keeps the
+            # r59 table-clearance profile UNCHANGED.
+            if _os.environ.get("W6B_R180_MP_BLEND", "0") == "1":
+                _dec180 = float(_os.environ.get("W6B_R180_DECAY", "0.75"))
+                _w180 = np.clip(1.0 - _prof59 / max(_dec180, 1e-9),
+                                0.0, 1.0)
+                _w180 = 0.5 * (1.0 - np.cos(np.pi * _w180))
+                _orig_lat = np.asarray(palm_task)[:, 0:2].copy()
+                _bh180 = float(_os.environ.get("W6B_R22_MARGIN_MM",
+                                               "8")) * 1e-3 + 0.012
+                _new59[:, 0] = ((_w180 * _orig_lat[:, 0]
+                                 + (1.0 - _w180) * _new59[:, 0]))
+                _new59[:, 1] = ((_w180 * _orig_lat[:, 1]
+                                 + (1.0 - _w180) * _new59[:, 1]))
+                _side180 = spec.face_sign
+                _min_x = _side180 * (_bh + 0.012)
+                _bad = _side180 * _new59[:, 0] < _side180 * _min_x
+                if _bad.any():
+                    _new59[_bad, 0] = _side180 * _min_x
             # blend into the original path over the last frames of the swing
             # span so the terminal window itself is untouched
             _k59 = min(12, span59)
