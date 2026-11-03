@@ -7254,7 +7254,8 @@ def main() -> int:
                             # or three iterations should converge the
                             # executed palm onto the metric's reference.
                             _rep185p = REPO / "runs/w6b/report.json"
-                            if (_os.environ.get("W6B_R185_LEARN", "0") == "1"
+                            if (_os.environ.get("W6B_R185_LEARN", "0")
+                                    in ("1", "2")
                                     and _rep185p.is_file()):
                                 try:
                                     _r185p = json.loads(
