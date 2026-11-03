@@ -3524,6 +3524,7 @@ def equalize_pad_curls(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
 
 BOX_TRACE: list = []          # r126: filled when W6B_R126_BOX_TRACE=1
 _BT_SLIP: dict = {}           # r177: per-side cumulative slip (mm)
+_SUBSTEP_SEEN: dict = {}      # r178: substep transient-pusher dedupe
 
 
 def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
@@ -3750,6 +3751,31 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
             data.qfrc_applied[finger_dofs] = data.qfrc_bias[finger_dofs]
         for _ in range(frame_skip):
             mujoco.mj_step(model, data)
+            # r178: SUBSTEP contact sentinel (env-gated).  The 20 Hz trace
+            # showed the box displacing 1.6 mm at frames 266-277 with ONLY
+            # table contacts recorded -- a pusher that exists between the
+            # samples (the review's "integrator vs sampling offset"
+            # hypothesis).  When armed, any box contact from a NON-table,
+            # NON-plate geom inside a substep is recorded with its impulse
+            # window, so transient pushers become visible.
+            if _os.environ.get("W6B_R178_SUBSTEP_TRACE", "0") == "1":
+                _bt_boxg0 = mujoco.mj_name2id(
+                    model, mujoco.mjtObj.mjOBJ_GEOM, "object_geom")
+                for _stc in range(data.ncon):
+                    _c = data.contact[_stc]
+                    _o2 = int(_c.geom1) if int(_c.geom2) == _bt_boxg0 \
+                        else (int(_c.geom2) if int(_c.geom1) == _bt_boxg0
+                              else -1)
+                    if _o2 < 0:
+                        continue
+                    _nm2 = mujoco.mj_id2name(
+                        model, mujoco.mjtObj.mjOBJ_GEOM, _o2) or ""
+                    if ("table" in _nm2 or "palm_collision" in _nm2
+                            or _nm2 in _SUBSTEP_SEEN):
+                        continue
+                    _SUBSTEP_SEEN[_nm2] = _SUBSTEP_SEEN.get(_nm2, 0) + 1
+                    print(f"    [r178-substep] t={t} sub={_} "
+                          f"geom={_nm2} dist={_c.dist:.6f}")
         # r126: per-frame box trace + box contacts (env-gated, off by
         # default).  The plate branch still shoves the box ~10 mm and the
         # source (which frame, which geom) needs per-frame forensics.
