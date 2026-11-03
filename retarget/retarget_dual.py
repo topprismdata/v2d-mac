@@ -8010,6 +8010,7 @@ def main() -> int:
     _lift_mm = float(_os.environ.get("W6B_LIFT_MM", "0"))
     _lift_n = int(_os.environ.get("W6B_LIFT_FRAMES", "90"))
     _lift_6d = _os.environ.get("W6B_LIFT_6D", "0") == "1"
+    _seat_frames = int(_os.environ.get("W6B_LIFT_SEAT_FRAMES", "0"))
     _lift_rec = {}
     if _lift_mm > 0.0 and _lift_n > 0:
         # the Jacobian passes below write data.qpos; the replay's initial
@@ -8076,6 +8077,29 @@ def main() -> int:
                     # frame instead of accumulating.  Env-gated; the
                     # delivered v12 recipe (W6B_LIFT_6D unset) keeps the
                     # r148 path bit-identical.
+                    #
+                    # r174b: SEAT-THEN-RISE.  At the hold's end the plates
+                    # sit 0.1-0.5 mm off the faces (servo droop under the
+                    # finger preload; the trace shows NO plate contacts in
+                    # the last hold frames) -- the lift's first frames then
+                    # SLIDE the plates up the faces while the box rests on
+                    # the table (measured: ~30 frames of slip in the 30 mm
+                    # rung; at 60 mm the plates walk off and the box never
+                    # follows).  The first W6B_LIFT_SEAT_FRAMES frames
+                    # therefore move PURELY inward (world x toward the
+                    # face) to load the contact, and the rise ramps over
+                    # the remaining frames with the squeeze held.
+                    _sf174 = _seat_frames
+                    if _k < _sf174:
+                        _zr174 = 0.0
+                        _sr174 = _sq149 * 1e-3 * (_k + 1) / _sf174
+                    else:
+                        _kr = _k - _sf174
+                        _nr = _lift_n - _sf174
+                        _zr174 = (_lift_mm * 1e-3) * float(
+                            _ramp148[min(_nr, _kr + 1)] /
+                            _ramp148[_nr])
+                        _sr174 = _sq149 * 1e-3
                     _pc148 = np.array([
                         float(data.xpos[_sp._palm_id][0]),
                         float(data.xpos[_sp._palm_id][1]),
@@ -8083,8 +8107,7 @@ def main() -> int:
                     _Rc148 = np.array(
                         data.xmat[_sp._palm_id]).reshape(3, 3)
                     _pt148 = _p0148 + np.array(
-                        [0.0, 0.0, (_lift_mm * 1e-3)
-                         * float(_ramp148[_k + 1])])
+                        [-_sp.face_sign * _sr174, 0.0, _zr174])
                     _Rt148 = _R0148
                     _ep148 = _pt148 - _pc148
                     _Re148 = _Rt148 @ _Rc148.T - _Rc148 @ _Rt148.T
