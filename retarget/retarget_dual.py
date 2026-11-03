@@ -7215,6 +7215,10 @@ def main() -> int:
                             _amp185 = float(_os.environ.get(
                                 "W6B_R185_MP_LAT_MM", "0"))
                             _inj185 = None
+                            if _os.environ.get("W6B_DBG_PATH", "0") == "1":
+                                print(f"    [dbg-path] {s2}: r185 amp="
+                                      f"{_amp185} wl={'set' if wl is not None else 'NONE'} "
+                                      f"regs={'set' if s2 in regs else 'MISSING'}")
                             if _amp185 > 0.0 and wl is not None:
                                 _pres185 = wl[f"{s2}/present"].astype(bool)
                                 _wpx185 = wl[f"{s2}/wrist_px"].copy()
