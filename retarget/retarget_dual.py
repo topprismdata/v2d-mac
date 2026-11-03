@@ -2037,19 +2037,19 @@ def retarget_chain_side(joints: np.ndarray, model, data, spec: SideSpec,
             # mid-plane guard own the terminal window).  z keeps the
             # r59 table-clearance profile UNCHANGED.
             if _os.environ.get("W6B_R180_MP_BLEND", "0") == "1":
-                _dec180 = float(_os.environ.get("W6B_R180_DECAY", "0.75"))
+                _dec180 = float(_os.environ.get("W6B_R180_DECAY", "0.45"))
                 _w180 = np.clip(1.0 - _prof59 / max(_dec180, 1e-9),
                                 0.0, 1.0)
                 _w180 = 0.5 * (1.0 - np.cos(np.pi * _w180))
                 _orig_lat = np.asarray(palm_task)[:, 0:2].copy()
-                _bh180 = float(_os.environ.get("W6B_R22_MARGIN_MM",
-                                               "8")) * 1e-3 + 0.012
-                _new59[:, 0] = ((_w180 * _orig_lat[:, 0]
-                                 + (1.0 - _w180) * _new59[:, 0]))
-                _new59[:, 1] = ((_w180 * _orig_lat[:, 1]
-                                 + (1.0 - _w180) * _new59[:, 1]))
+                # the guard is the PLATE FACE's outer edge (palm origin +
+                # the plate's inward reach ~0.05): |x| must stay outside
+                # the grip face plane or the palm plate lands inside the
+                # box volume (measured: the v1 guard at bh+12mm let the
+                # blended path reach x=-0.121 with the plate 13 mm inside
+                # the box -- gate3/gate6 red).
                 _side180 = spec.face_sign
-                _min_x = _side180 * (_bh + 0.012)
+                _min_x = _side180 * 0.115
                 _bad = _side180 * _new59[:, 0] < _side180 * _min_x
                 if _bad.any():
                     _new59[_bad, 0] = _side180 * _min_x
