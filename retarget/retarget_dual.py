@@ -7360,7 +7360,7 @@ def main() -> int:
                                                 _sh.shape[0] - 1)
                                             _off3 = np.zeros(3)
                                             _off3[0:2] = _e * _sh[_gi]
-                                            if _fs * _off3[0] > 0.0:
+                                            if _fs * _off3[0] < 0.0:
                                                 _off3[0] = 0.0
                                             return _off3
                                     elif _pkl > 1e-9:
@@ -7379,7 +7379,7 @@ def main() -> int:
                                                 _sh.shape[0] - 1)
                                             _off3 = np.zeros(3)
                                             _off3[0:2] = _amp * _e * _sh[_gi]
-                                            if _fs * _off3[0] > 0.0:
+                                            if _fs * _off3[0] < 0.0:
                                                 _off3[0] = 0.0
                                             return _off3
                                 except (KeyError, ValueError,
@@ -7438,7 +7438,7 @@ def main() -> int:
                                         # the x guard: the palm stays on
                                         # its own side of the plate-face
                                         # plane (0.115 m)
-                                        if _fs * _off3[0] > 0.0:
+                                        if _fs * _off3[0] < 0.0:
                                             _off3[0] = 0.0
                                         return _off3
                             _qb94 = np.asarray(q, float).copy()
