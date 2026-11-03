@@ -7217,6 +7217,17 @@ def main() -> int:
                             # full shape tracking; the sweep decides.
                             _amp185 = float(_os.environ.get(
                                 "W6B_R185_MP_LAT_MM", "0"))
+                            # r185i: per-side sign/amp.  The measured sweep
+                            # at amp 60/150/300: LEFT improves monotonically
+                            # (44.6 -> 26.1%), RIGHT degrades (31.8 -> 121%)
+                            # -- the right's registered shape is
+                            # ANTI-correlated with its metric reference (a
+                            # mirror/x-order sign).  W6B_R185_SIGN_{SIDE}
+                            # flips it per side.
+                            _sgn185 = float(_os.environ.get(
+                                "W6B_R185_SIGN_" + s2.upper(),
+                                _os.environ.get("W6B_R185_SIGN", "1")))
+                            _amp185 *= _sgn185
                             _inj185 = None
                             if _os.environ.get("W6B_DBG_PATH", "0") == "1":
                                 print(f"    [dbg-path] {s2}: r185 amp="
@@ -7231,7 +7242,7 @@ def main() -> int:
                                                  "wrist_landmarks.npz")
                             except Exception:
                                 _wl185 = None
-                            if _amp185 > 0.0 and _wl185 is not None:
+                            if abs(_amp185) > 0.0 and _wl185 is not None:
                                 _pres185 = _wl185[f"{s2}/present"].astype(bool)
                                 _wpx185 = _wl185[f"{s2}/wrist_px"].copy()
                                 _z185 = np.all(np.abs(_wpx185) < 0.5,
