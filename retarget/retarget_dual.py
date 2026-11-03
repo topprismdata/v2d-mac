@@ -7194,11 +7194,71 @@ def main() -> int:
                         # the terminal's branch, so no regulariser is
                         # needed at all.
                         if _wp94:
+                            # r185: the MP-LATERAL INJECTION (the v13
+                            # review's authorized fidelity optimization).
+                            # The r94 backward path tracks straight lines
+                            # (home->staging->terminal): collision-safe,
+                            # but the human wrist's lateral GESTURE is
+                            # absent, which is what the fidelity metric
+                            # scores (the delivered straight-line approach
+                            # sits at 30.2%/19.6% against the 10% limit).
+                            # Inject the registered MP wrist's lateral
+                            # DISPLACEMENT (from the approach start) onto
+                            # the line targets, with a bell envelope that
+                            # pins both endpoints (the home and terminal
+                            # poses stay exact), the z profile untouched
+                            # (horizontal only -- no new table risk), and
+                            # an x guard keeping the palm outside the
+                            # plate-face plane.  The amplitude env is in
+                            # mm of peak displacement: 1000/1000 would be
+                            # full shape tracking; the sweep decides.
+                            _amp185 = float(_os.environ.get(
+                                "W6B_R185_MP_LAT_MM", "0"))
+                            _inj185 = None
+                            if _amp185 > 0.0 and wl is not None:
+                                _pres185 = wl[f"{s2}/present"].astype(bool)
+                                _wpx185 = wl[f"{s2}/wrist_px"].copy()
+                                _z185 = np.all(np.abs(_wpx185) < 0.5,
+                                               axis=1)
+                                _v185 = _pres185 & (~_z185)
+                                _a185 = min(GRASP_FRAMES[1],
+                                            _wpx185.shape[0])
+                                _ref185 = _wpx185[0:_a185][
+                                    _v185[0:_a185]].mean(axis=0)
+                                _sh185 = (_wpx185 - _ref185) @ np.asarray(
+                                    regs[s2]["r_reg"]).T
+                                _sh185 = _sh185[0:_a185, 0:2]
+                                _sh185 = _sh185 - _sh185[0]
+                                _pk185 = float(np.max(np.linalg.norm(
+                                    _sh185, axis=1)))
+                                if _pk185 > 1e-9:
+                                    _sh185 = _sh185 / _pk185
+
+                                    def _inj185(_j, _n=(_n75a + _n75b),
+                                                _amp=_amp185 * 1e-3,
+                                                _sh=_sh185,
+                                                _fs=spec2.face_sign):
+                                        _p = _j / max(_n - 1, 1)
+                                        _e = min(1.0, _p / 0.25,
+                                                 (1.0 - _p) / 0.25)
+                                        _e = max(0.0, _e)
+                                        _gi = min(
+                                            int(_p * (_sh.shape[0] - 1)),
+                                            _sh.shape[0] - 1)
+                                        _off = _amp * _e * _sh[_gi]
+                                        # the x guard: the palm stays on
+                                        # its own side of the plate-face
+                                        # plane (0.115 m)
+                                        if _fs * _off[0] > 0.0:
+                                            _off[0] = 0.0
+                                        return _off
                             _qb94 = np.asarray(q, float).copy()
                             _segB = []
                             for _k in range(_n75b - 1, -1, -1):
                                 _t = float(_ramp_b[_k])
                                 _tp = _b_tp(_t)
+                                if _inj185 is not None:
+                                    _tp = _tp + _inj185(_n75b - 1 - _k)
                                 _qb94 = _ik75(_tp, tgt_R, _qb94, _damp75)
                                 _segB.append(_qb94.copy())
                             _segB.reverse()
@@ -7208,6 +7268,9 @@ def main() -> int:
                                 _t = float(_ramp_a[_k])
                                 _tp = (_p_home
                                        + _t * (_p_stage - _p_home))
+                                if _inj185 is not None:
+                                    _tp = _tp + _inj185(_n75b + _n75a - 1
+                                                        - _k)
                                 _qa94 = _ik75(_tp, tgt_R, _qa94, _damp75)
                                 _segA.append(_qa94.copy())
                             _segA.reverse()
