@@ -3523,12 +3523,15 @@ def equalize_pad_curls(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
 
 
 BOX_TRACE: list = []          # r126: filled when W6B_R126_BOX_TRACE=1
+_BT_SLIP: dict = {}           # r177: per-side cumulative slip (mm)
 
 
 def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
     """Command both hands through the resampled trajectory; record everything
     the gates read.  Only data.ctrl is written inside the loop."""
     import mujoco
+    BOX_TRACE.clear()
+    _BT_SLIP.clear()
     _reset_home(model, data, cmds=cmds, specs=specs)
 
     # r28 option 3 (Main item 3): per-joint gravity compensation — the
@@ -3758,6 +3761,36 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
             _bt_pos = np.asarray(data.xpos[_bt_obj]).tolist()
             _bt_quat = np.asarray(data.xquat[_bt_obj]).tolist()
             _bt_con = []
+            # r177: per-plate SLIP ACCOUNT (the recheck's demand: friction
+            # SIGN alone cannot distinguish static friction from sliding;
+            # the tangential relative velocity at the contact and its
+            # time integral can).  For every plate contact: both bodies'
+            # point velocities (COM velocity + w x r), the tangential
+            # component in the contact plane, and the per-side cumulative
+            # slip (mm).  Also the tangential force vs the friction
+            # capacity ratio |ft|/(mu*fn) -- the recheck asked for it as
+            # the distance-to-slip metric.
+            _bt_vel = {}
+            for _bid in (_bt_obj,):
+                _bv = np.zeros(6)
+                mujoco.mj_objectVelocity(model, data, mujoco.mjtObj.mjOBJ_BODY,
+                                         _bid, _bv, 0)
+                _bt_vel[_bid] = (_bv[:3].copy(), _bv[3:].copy(),
+                                 np.asarray(data.xipos[_bid]).copy())
+            for _sdn, _sgs in (("right", ("palm_collision",)),
+                               ("left", ("palm_left_collision",
+                                         "palm_collision_left"))):
+                for _sg in _sgs:
+                    _sgid = mujoco.mj_name2id(
+                        model, mujoco.mjtObj.mjOBJ_GEOM, _sg)
+                    if _sgid >= 0:
+                        _hb = int(model.geom_bodyid[_sgid])
+                        _bv = np.zeros(6)
+                        mujoco.mj_objectVelocity(model, data,
+                                                 mujoco.mjtObj.mjOBJ_BODY,
+                                                 _hb, _bv, 0)
+                        _bt_vel[_hb] = (_bv[:3].copy(), _bv[3:].copy(),
+                                        np.asarray(data.xipos[_hb]).copy())
             for _btc in range(data.ncon):
                 _b = data.contact[_btc]
                 _o = int(_b.geom1) if int(_b.geom2) == _bt_boxg \
@@ -3776,18 +3809,45 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
                 # self-check it against the at-rest invariant (the
                 # table's normal force on the resting box must sum to
                 # +m*g in world z).
-                _bt_con.append({
-                    "other": mujoco.mj_id2name(model,
-                                               mujoco.mjtObj.mjOBJ_GEOM,
-                                               _o),
+                _oname = mujoco.mj_id2name(model,
+                                           mujoco.mjtObj.mjOBJ_GEOM,
+                                           _o)
+                _ent = {
+                    "other": _oname,
                     "dist": float(_b.dist),
                     "fn": float(abs(_bf[0])),
                     "f6": [float(v) for v in _bf],
                     "frame": [float(v) for v in np.asarray(_b.frame)],
                     "box_is_g1": int(_b.geom1) == _bt_boxg,
-                })
+                }
+                if _ent["other"] and ("palm_collision" in _ent["other"]
+                                      or "palm_left_collision" in _ent["other"]):
+                    _cp = np.asarray(_b.pos)
+                    _R = np.asarray(_b.frame).reshape(3, 3)
+                    _vb, _wb, _cb = _bt_vel[_bt_obj]
+                    _gbid = int(model.geom_bodyid[_o])
+                    _vg, _wg, _cg = _bt_vel[_gbid]
+                    _vpb = _vb + np.cross(_wb, _cp - _cb)
+                    _vpg = _vg + np.cross(_wg, _cp - _cg)
+                    _vrel = _vpb - _vpg
+                    _vt = np.array([_R[1], _R[2]])  # tangent rows (world)
+                    _sv = float(np.linalg.norm(
+                        _vt @ _vrel)) * 1e3  # mm/s
+                    _side = ("left" if "left" in _ent["other"]
+                             else "right")
+                    _BT_SLIP[_side] = _BT_SLIP.get(_side, 0.0) \
+                        + _sv * (1.0 / CTRL_HZ)
+                    _mu_b = float(model.geom_friction[_bt_boxg][0])
+                    _mu_g = float(model.geom_friction[_o][0])
+                    _mu = max(_mu_b, _mu_g)
+                    _ft = float(np.hypot(_bf[1], _bf[2]))
+                    _ent["slip_v_mm_s"] = _sv
+                    _ent["ft_ratio"] = (_ft / (_mu * abs(_bf[0]))
+                                        if _bf[0] > 1e-9 else None)
+                _bt_con.append(_ent)
             BOX_TRACE.append({"t": t, "pos": _bt_pos, "quat": _bt_quat,
-                              "contacts": _bt_con})
+                              "contacts": _bt_con,
+                              "slip_mm": dict(_BT_SLIP)})
 
         if _os.environ.get("W6B_DBG_FORCE", "0") == "1" and t in (n_frames - r36_hold, n_frames - 1):
             print(f"    [dbg-force] t={t} r force={np.round(data.actuator_force[arm_act_r],1)} "
