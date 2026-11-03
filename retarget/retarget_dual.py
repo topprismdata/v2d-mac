@@ -7216,7 +7216,9 @@ def main() -> int:
                             # mm of peak displacement: 1000/1000 would be
                             # full shape tracking; the sweep decides.
                             _amp185 = float(_os.environ.get(
-                                "W6B_R185_MP_LAT_MM", "0"))
+                                "W6B_R185_MP_LAT_MM_" + s2.upper(),
+                                _os.environ.get("W6B_R185_MP_LAT_MM",
+                                                "0")))
                             # r185i: per-side sign/amp.  The measured sweep
                             # at amp 60/150/300: LEFT improves monotonically
                             # (44.6 -> 26.1%), RIGHT degrades (31.8 -> 121%)
