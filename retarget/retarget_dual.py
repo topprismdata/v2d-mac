@@ -7244,7 +7244,94 @@ def main() -> int:
                                                  "wrist_landmarks.npz")
                             except Exception:
                                 _wl185 = None
-                            if abs(_amp185) > 0.0 and _wl185 is not None:
+                            # r185k: the LEARNED correction.  Instead of
+                            # assuming the registered MP shape is the right
+                            # signal (the right's sweep disproved that),
+                            # read the PREVIOUS run's report and inject the
+                            # measured per-frame ERROR (mp centred minus
+                            # executed centred): a fixed-point iteration on
+                            # the additive path model line(t)+off(t).  Two
+                            # or three iterations should converge the
+                            # executed palm onto the metric's reference.
+                            _rep185p = REPO / "runs/w6b/report.json"
+                            if (_os.environ.get("W6B_R185_LEARN", "0") == "1"
+                                    and _rep185p.is_file()):
+                                try:
+                                    _r185p = json.loads(
+                                        _rep185p.read_text())
+                                    _ex185 = np.asarray(
+                                        _r185p["per_side"][s2][
+                                            "executed_palm_path_m"])
+                                    _te = _r185p.get(
+                                        "trajectory_error", {}).get(
+                                        "wrist_referenced", {})
+                                    _a1 = _te.get("approach_frames",
+                                                  [1, 151])[1]
+                                    _a1 = min(_a1, _wl185[
+                                        f"{s2}/wrist_px"].shape[0]
+                                        if _wl185 is not None else _a1)
+                                    _presl = _wl185[
+                                        f"{s2}/present"].astype(bool)
+                                    _wpxl = _wl185[
+                                        f"{s2}/wrist_px"].copy()
+                                    _zl = np.all(np.abs(_wpxl) < 0.5,
+                                                 axis=1)
+                                    _vl = _presl & (~_zl)
+                                    _refl = _wpxl[0:_a1][
+                                        _vl[0:_a1]].mean(axis=0)
+                                    _mp3l = np.zeros((_wpxl.shape[0], 3))
+                                    _mp3l[:, 0:2] = _wpxl - _refl
+                                    _mpl = (_mp3l @ np.asarray(
+                                        regs[s2]["r_reg"]).T)[:, 0:2]
+                                    _cpl = int(_a1 / 30.0 * CTRL_HZ)
+                                    _pc = _ex185[0:_cpl, 0:2] - _ex185[
+                                        0:_cpl, 0:2].mean(axis=0)
+                                    # e[gi] = mp[gi] - executed[ci(gi)],
+                                    # both centred the way the metric does
+                                    _e185 = np.zeros((_a1, 2))
+                                    for _gil in range(_a1):
+                                        if not _vl[_gil]:
+                                            continue
+                                        _cil = min(
+                                            _pc.shape[0] - 1,
+                                            int(np.floor(
+                                                _gil / 30.0 * CTRL_HZ
+                                                + 1e-9)))
+                                        _e185[_gil] = (_mpl[_gil]
+                                                       - _pc[_cil])
+                                    _w185l = int(_os.environ.get(
+                                        "W6B_R185_SMOOTH", "21"))
+                                    _kernl = np.ones(_w185l) / _w185l
+                                    for _cl in range(2):
+                                        _e185[:, _cl] = np.convolve(
+                                            _e185[:, _cl], _kernl,
+                                            mode="same")
+                                    _pkl = float(np.max(np.linalg.norm(
+                                        _e185, axis=1)))
+                                    if _pkl > 1e-9:
+                                        _e185 = _e185 / _pkl
+
+                                        def _inj185(_j, _n=(_n75a + _n75b),
+                                                    _amp=_amp185 * 1e-3,
+                                                    _sh=_e185,
+                                                    _fs=spec2.face_sign):
+                                            _p = _j / max(_n - 1, 1)
+                                            _e = min(1.0, _p / 0.25,
+                                                     (1.0 - _p) / 0.25)
+                                            _e = max(0.0, _e)
+                                            _gi = min(
+                                                int(_p * (_sh.shape[0] - 1)),
+                                                _sh.shape[0] - 1)
+                                            _off3 = np.zeros(3)
+                                            _off3[0:2] = _amp * _e * _sh[_gi]
+                                            if _fs * _off3[0] > 0.0:
+                                                _off3[0] = 0.0
+                                            return _off3
+                                except (KeyError, ValueError,
+                                        json.JSONDecodeError):
+                                    _inj185 = None
+                            if (_inj185 is None and _amp185 > 0.0
+                                    and _wl185 is not None):
                                 _pres185 = _wl185[f"{s2}/present"].astype(bool)
                                 _wpx185 = _wl185[f"{s2}/wrist_px"].copy()
                                 _z185 = np.all(np.abs(_wpx185) < 0.5,
