@@ -7229,6 +7229,20 @@ def main() -> int:
                                     regs[s2]["r_reg"]).T
                                 _sh185 = _sh185[0:_a185, 0:2]
                                 _sh185 = _sh185 - _sh185[0]
+                                # the MP detector's per-frame jitter is
+                                # 10-30 mm; injected raw it puts steps into
+                                # the targets the backward IK cannot track
+                                # (measured: the executed rect ended 99-126
+                                # mm off the face).  Smooth the shape over
+                                # ~0.7 s before injecting.
+                                _w185 = int(_os.environ.get(
+                                    "W6B_R185_SMOOTH", "21"))
+                                if _w185 > 1:
+                                    _kern = np.ones(_w185) / _w185
+                                    for _c in range(2):
+                                        _sh185[:, _c] = np.convolve(
+                                            _sh185[:, _c], _kern,
+                                            mode="same")
                                 _pk185 = float(np.max(np.linalg.norm(
                                     _sh185, axis=1)))
                                 if _pk185 > 1e-9:
