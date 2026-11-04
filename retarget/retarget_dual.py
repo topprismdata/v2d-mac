@@ -6705,6 +6705,43 @@ def main() -> int:
                         _p_home = np.array([_p_stage[0], _p_stage[1],
                                             _p_stage[2]
                                             + _home_lift * 1e-3])
+                        # r185t: the HOME SEEK.  The injector's bell
+                        # envelope pins the path's start, so the metric
+                        # error at the video's start (the left: 62-74 mm
+                        # -- the reference sweeps 4 mm/frame while the
+                        # executed sits at the pinned home) is
+                        # unreachable by the mid-path offsets.  But the
+                        # home POSITION is a design choice (r76/r91:
+                        # solved, collision-checked, directly above the
+                        # staging): shift the home's lateral target by
+                        # the converged offset field's first frame, and
+                        # the whole phase-A line picks the reference's
+                        # start up.  The home IK + collision checks
+                        # rerun at the shifted target.
+                        if _os.environ.get("W6B_R185_HOME_SEEK",
+                                           "0") == "1":
+                            _acch = (REPO / "runs/w6b/"
+                                     "r185_offset.npz")
+                            if _acch.is_file():
+                                try:
+                                    _offh = np.load(_acch)["off"]
+                                    _h0 = np.zeros(3)
+                                    _h0[0:2] = _offh[0]
+                                    _nh = float(np.linalg.norm(
+                                        _offh[0]))
+                                    _hc = float(_os.environ.get(
+                                        "W6B_R185_HOME_SEEK_MM",
+                                        "100")) * 1e-3
+                                    if _nh > _hc:
+                                        _h0[0:2] *= _hc / _nh
+                                    _p_home = _p_home + _h0
+                                    if _os.environ.get(
+                                            "W6B_DBG_PATH", "0") == "1":
+                                        print(f"    [dbg-path] {s2}: "
+                                              f"r185t home seek "
+                                              f"{np.round(_h0*1e3, 1)}")
+                                except Exception:
+                                    pass
                         # r85: the home's orientation is the hand pointing
                         # DOWN, not the grasp orientation.  With the grasp
                         # orientation the arm has to be folded (the wrist_1
