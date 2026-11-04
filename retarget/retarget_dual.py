@@ -6718,8 +6718,12 @@ def main() -> int:
                         # the whole phase-A line picks the reference's
                         # start up.  The home IK + collision checks
                         # rerun at the shifted target.
-                        if _os.environ.get("W6B_R185_HOME_SEEK",
-                                           "0") == "1":
+                        _seek_sides = _os.environ.get(
+                            "W6B_R185_HOME_SEEK_SIDES",
+                            "right,left").split(",")
+                        if (_os.environ.get("W6B_R185_HOME_SEEK",
+                                            "0") == "1"
+                                and s2 in _seek_sides):
                             _acch = (REPO / "runs/w6b/"
                                      "r185_offset.npz")
                             if _acch.is_file():
