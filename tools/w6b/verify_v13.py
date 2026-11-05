@@ -215,8 +215,19 @@ def main() -> int:
         # every hold frame's contact set must contain ONLY plate geoms
         bad_frames = []
         for i in hold:
+            # r187: only frame-index keys are per-frame entries; the
+            # account row also carries aggregate metric keys (plate,
+            # SUM-mg, resid_z) which are not frame indices (the v12
+            # verifier crashed on them once the account's format gained
+            # the per-frame residual column).
+            try:
+                fi = int(i)
+            except (TypeError, ValueError):
+                continue
+            if not (0 <= fi < len(fr)):
+                continue
             names = {str(c.get("other", "")) for c in
-                     (fr[i].get("contacts") or []) if "f6" in c}
+                     (fr[fi].get("contacts") or []) if "f6" in c}
             bad = [n for n in names
                    if "palm_collision" not in n
                    and "palm_left_collision" not in n]
