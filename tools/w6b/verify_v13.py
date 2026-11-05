@@ -21,7 +21,7 @@ Closedness discipline (this verifier):
   * every expected number is pinned; a missing artifact is a FAIL, not a
     skip (fail-closed);
   * the scene XMLs, the plate references and the state seeds are pinned
-    by SHA-256 in runs/w6b/v12_asset_manifest.json (committed); any drift
+    by SHA-256 in runs/w6b/v13_asset_manifest.json (committed); any drift
     fails the run before a number is read;
   * the executed trajectory is compared FRAME BY FRAME against the
     committed evidence trace (max |dx|, |dy|, |dz| over all 421 frames);
@@ -115,7 +115,7 @@ def main() -> int:
     # compare hashes, and ABORT the run immediately on any drift -- a
     # drifted asset must not be followed by any number-producing step.
     print("[1] asset manifest (fail-closed)")
-    man_p = REPO / "runs/w6b/v12_asset_manifest.json"
+    man_p = REPO / "runs/w6b/v13_asset_manifest.json"
     if not man_p.exists():
         check("the asset manifest exists", False, str(man_p))
         return _fin()
