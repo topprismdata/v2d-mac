@@ -7393,7 +7393,10 @@ def main() -> int:
                                                     _n=(_n75a + _n75b),
                                                     _fs=spec2.face_sign):
                                             _p = _j / max(_n - 1, 1)
-                                            _e = min(1.0, _p / 0.25,
+                                            _r0 = max(float(_os.environ.get(
+                                                "W6B_R185_RAMP_START",
+                                                "0.25")), 1e-6)
+                                            _e = min(1.0, _p / _r0,
                                                      (1.0 - _p) / 0.25)
                                             _e = max(0.0, _e)
                                             _gi = min(
@@ -7412,7 +7415,10 @@ def main() -> int:
                                                     _sh=_e185,
                                                     _fs=spec2.face_sign):
                                             _p = _j / max(_n - 1, 1)
-                                            _e = min(1.0, _p / 0.25,
+                                            _r0 = max(float(_os.environ.get(
+                                                "W6B_R185_RAMP_START",
+                                                "0.25")), 1e-6)
+                                            _e = min(1.0, _p / _r0,
                                                      (1.0 - _p) / 0.25)
                                             _e = max(0.0, _e)
                                             _gi = min(
@@ -7467,7 +7473,10 @@ def main() -> int:
                                                 _sh=_sh185,
                                                 _fs=spec2.face_sign):
                                         _p = _j / max(_n - 1, 1)
-                                        _e = min(1.0, _p / 0.25,
+                                        _r0 = max(float(_os.environ.get(
+                                            "W6B_R185_RAMP_START",
+                                            "0.25")), 1e-6)
+                                        _e = min(1.0, _p / _r0,
                                                  (1.0 - _p) / 0.25)
                                         _e = max(0.0, _e)
                                         _gi = min(
