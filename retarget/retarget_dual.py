@@ -4985,6 +4985,18 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
                 print(f"      col{_jj} {spec.finger_joints[_jj]}: (frame, qpos, cmd) {_vals}")
                 _diff = np.abs(_fc[:, _jj] - fq[:, _jj])
                 print(f"      col{_jj} |cmd-qpos| max {float(_diff.max()):.3f} at frame {int(_diff.argmax())}")
+                # r193: the reviewer's confirmation -- read the ACTUAL
+                # actuator_force at the violation frames, not the nominal
+                # gain*error.  Saturation = |force| pinned at forcerange.
+                _aid = int(spec.finger_act_id[_jj])
+                _fr_cap = float(model.actuator_forcerange[_aid, 1])
+                _af = np.asarray(h["force"])[:, _aid]
+                for _fr in (_bad[0], _bad[len(_bad)//2], _bad[-1]):
+                    print(f"      col{_jj} frame {_fr}: actual actuator_force "
+                          f"{float(_af[_fr]):+.6f} N.m (forcerange +-{_fr_cap:.5f})")
+                _sat = int(np.sum(np.abs(np.abs(_af[_bad]) - _fr_cap) < 1e-4))
+                print(f"      col{_jj} saturation: {_sat}/{len(_bad)} violation "
+                      f"frames within 1e-4 N.m of the forcerange cap")
             for _fr in _bad[:6]:
                 _row = fq[_fr]
                 _d = np.where((_row < jlo - 1e-9) | (_row > jhi + 1e-9))[0]
