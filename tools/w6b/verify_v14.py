@@ -400,6 +400,44 @@ def main() -> int:
     check("the optimized lift ends OFF the table (rise, table 0 N)",
           rise_mm >= 9.5 and tbl_end < 1e-2 and tilt < 6.0,
           f"rise {rise_mm:.2f} mm, table {tbl_end:.3f} N, tilt {tilt:.2f} deg")
+    # r192 (review v14, the final table-off criterion): after the first
+    # confirmation frame t_c (table force < eps_F AND clearance > 0),
+    # EVERY later frame must keep the minimum signed corner-table
+    # distance above eps_d and the table force at or below eps_F.
+    # Tolerances frozen at 0.05 mm / 1e-3 N (the contact solver's
+    # penetration scale is ~1e-5 m); the box half-extents are the
+    # model's own (0.06, 0.12, 0.04) and the table top is z=0.70.
+    half = (0.06, 0.12, 0.04)
+    def _min_clear(f_):
+        q = f_["quat"]
+        w, x, y, z = q
+        r20 = 2*(x*z - w*y); r21 = 2*(y*z + w*x); r22 = 1 - 2*(x*x + y*y)
+        px, py, pz = f_["pos"]
+        best = None
+        for sx in (-1.0, 1.0):
+            for sy in (-1.0, 1.0):
+                for sz in (-1.0, 1.0):
+                    wz = (r20*sx*half[0] + r21*sy*half[1]
+                          + r22*sz*half[2] + pz)
+                    d = wz - 0.70
+                    if best is None or d < best:
+                        best = d
+        return best
+    def _tbl_f(f_):
+        return sum(float(c.get("fn", 0.0))
+                   for c in (f_.get("contacts") or [])
+                   if "table" in str(c.get("other", "")))
+    eps_d, eps_F = 5e-5, 1e-3
+    clears = [_min_clear(f_) for f_ in frames]
+    tf = [_tbl_f(f_) for f_ in frames]
+    tc = next(i for i in range(len(frames))
+              if tf[i] < eps_F and clears[i] > 0.0)
+    min_c = min(clears[tc:])
+    max_f = max(tf[tc:])
+    check("the lift stays clear PER FRAME after t_c (d_min > eps, F<=eps)",
+          min_c >= eps_d and max_f <= eps_F,
+          f"t_c {tc}, min clearance {min_c*1e3:.3f} mm >= 0.05 mm, "
+          f"max table {max_f:.4f} N")
     # the accepted reds of the optimized recipe, disclosed in the
     # package: g1/g5 are the delivered recipe's own accepted reds; g4 is
     # the left mfa0's limit-boundary event (36 lift/hold frames,

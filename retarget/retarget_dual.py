@@ -3638,6 +3638,30 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
         model, mujoco.mjtObj.mjOBJ_JOINT, f"ur5e_r_{n}_joint")]
         for n in ("shoulder_pan", "shoulder_lift", "elbow",
                   "wrist_1", "wrist_2", "wrist_3")]
+    # r191 (review v14 P4 / ablation B): the g4 causal test.  Disable
+    # ONLY the left middle finger's box contact (four collision geoms
+    # vs the box's three) and replay the same command stream: if the
+    # 36-frame stagnation at the joint limit resolves, the box edge is
+    # the constraint; if it persists, the cause is elsewhere (drive
+    # saturation, another contact, solver limits).  Diagnostic only --
+    # never a recipe (the env defaults to 0, the delivered path is
+    # bit-identical).
+    if _os_r28.environ.get("W6B_DBG_G4CUT", "0") == "1":
+        import mujoco as _mj
+        _mfg = [_mj.mj_name2id(model, _mj.mjtObj.mjOBJ_GEOM, n)
+                for n in ("mf_base_left_collision", "mf_proximal_left_collision",
+                          "mf_medial_left_collision", "mf_distal_left_collision",
+                          "mf_tip_left_collision")]
+        _boxg = [_mj.mj_name2id(model, _mj.mjtObj.mjOBJ_GEOM, n)
+                 for n in ("object_geom", "object_chamfer_negx",
+                           "object_chamfer_posx")]
+        _boxg = [g for g in _boxg if g >= 0]
+        for _g in _mfg:
+            if _g >= 0:
+                model.geom_contype[_g] = 0
+                model.geom_conaffinity[_g] = 0
+        print("[g4cut] middle-finger collision geoms disabled:", _mfg)
+
     # r100: the finger gravity cancel is OFF by default.  Measured: with
     # it (hold only) the executed terminal is 10.43/10.65 mm and the
     # gate4 residual 1.22e-03 rad; without it 9.90/10.04 mm and
@@ -4952,6 +4976,15 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
         if _os.environ.get("W6B_DBG_G4", "0") == "1":
             _bad = sorted(set(int(v) for v in viol[0]))
             print(f"    [dbg-g4] {side}: violation frames {_bad[:24]}")
+            _fc = np.asarray(h["ctrl"])[:, spec.finger_act_id]
+            _jmask = np.where((fq < jlo - 1e-9) | (fq > jhi + 1e-9))[1]
+            for _jj in sorted(set(int(x) for x in _jmask)):
+                _vals = [(int(_fr), round(float(fq[_fr, _jj]), 4),
+                          round(float(_fc[_fr, _jj]), 4))
+                         for _fr in _bad[:8]]
+                print(f"      col{_jj} {spec.finger_joints[_jj]}: (frame, qpos, cmd) {_vals}")
+                _diff = np.abs(_fc[:, _jj] - fq[:, _jj])
+                print(f"      col{_jj} |cmd-qpos| max {float(_diff.max()):.3f} at frame {int(_diff.argmax())}")
             for _fr in _bad[:6]:
                 _row = fq[_fr]
                 _d = np.where((_row < jlo - 1e-9) | (_row > jhi + 1e-9))[0]
