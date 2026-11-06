@@ -1,0 +1,13 @@
+{
+ "grounding/assets/allegro_floating_ur5e_side_r44_dualplate.xml": "ad6185201ecc6d87c6313dbda33c82ce83699e1932d1483b6ead0f9d4bbe13a7",
+ "grounding/assets/allegro_floating_ur5e_side_r45_ablation.xml": "d9afd2b619acf248d307831159b9b403d13f34b439b7e48d7e822248f1eccb6c",
+ "retarget/retarget_dual.py": "bd083cc2d5364fd42c30f4b540c3dada976305195eaef0db661de917e1edee3f",
+ "runs/w6/gate3_qpos.json": "c58e49fc03f85c6d8d785b9712276456186f9e3069d18ffed8f9ce4125177ce1",
+ "runs/w6b/box_trace_r45_p2_base.json": "21255b332835767aba21a1d3c6c136c9e240d4cc1435cdc9fe113709de569cfd",
+ "runs/w6b/plate_refs/plate_1.json": "93ee6080bb79b2c3a5f39ad507a94e4ff2c456e66442cab1f3ec944b9149565c",
+ "runs/w6b/plate_refs/plate_2.json": "3e43e2dd04ddc0ce52d80cb78b00b42c93dd11fcd39058a777ecbac1a24c4afc",
+ "tools/w6b/lift_force_account.py": "8d12357d7eb850ac624ddcb43c3bd47892d6294fb3be2dd40e5990bbdacd82ed",
+ "tools/w6b/plate_terminal.py": "d1a03f6911200611de721382202dfb5f2ff7bb8a7dd1d051f8961aa7f4609130",
+ "tools/w6b/verify_v12.py": "408fd091d1814881bc87866f74f8d64ce5b587c8042b2b6994fadd7744fdb91f",
+ "tools/w6b/verify_v13.py": "8672f272a8ac5c7c53c80bc864d1adb21430a75ce68765fd45a45af5df2e6a4f"
+}
