@@ -8592,6 +8592,22 @@ def main() -> int:
                 _fl = model.actuator_ctrlrange[_sp.finger_act_id, 0]
                 _fh = model.actuator_ctrlrange[_sp.finger_act_id, 1]
                 _f148[-1] = np.clip(_f148[-1], _fl + _fmar, _fh - _fmar)
+            # r189b: the surgical single-joint headroom for the diagnosed
+            # offender: mfj0_left (URDF finger column 4) is commanded to
+            # its full-open range limit and the converged approach's box
+            # contact presses it 3.1e-5 rad past it for 36 lift/hold
+            # frames.  A delta on THAT column only (the global margin
+            # disturbed the other 15 joints and was non-monotone).
+            _mfj0_delta = float(_os.environ.get(
+                "W6B_LIFT_MFJ0_LEFT_DELTA", "0"))
+            if _sd == "left" and _mfj0_delta != 0.0:
+                _f148 = _f148.copy()
+                _f148[-1][4] = float(
+                    np.clip(_f148[-1][4] + _mfj0_delta,
+                            model.actuator_ctrlrange[
+                                _sp.finger_act_id[4], 0],
+                            model.actuator_ctrlrange[
+                                _sp.finger_act_id[4], 1]))
             _ffj0_relief = float(_os.environ.get(
                 "W6B_LIFT_FFJ0_LEFT_DELTA", "0"))
             if _sd == "left" and _ffj0_relief != 0.0:
