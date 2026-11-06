@@ -8576,6 +8576,22 @@ def main() -> int:
             # 4.9e-05 rad -- gate4's winding rule rejects the excursion
             # outright.  The delta shifts the lift's hold command for that
             # one DoF by a comparable amount; disclosed, default 0.
+            # r189: the LIFT/ HOLD finger-limit margin.  The optimized
+            # approach's arrival transient leaves the left middle
+            # finger's proximal joint (mfj0_left) pressed against its
+            # -0.470 full-open range limit for 36 lift/hold frames
+            # (exceeds jnt_range by 3.1e-5 rad -- the v13 review's new
+            # -0.15 item).  A command-side margin inside the actuator
+            # range gives the contact somewhere to push: the joint
+            # holds `m` rad short of the limit, so the same push cannot
+            # cross it.  No model/limit/force change.
+            _fmar = float(_os.environ.get(
+                "W6B_LIFT_FINGER_MARGIN_RAD", "0"))
+            if _fmar > 0.0:
+                _f148 = _f148.copy()
+                _fl = model.actuator_ctrlrange[_sp.finger_act_id, 0]
+                _fh = model.actuator_ctrlrange[_sp.finger_act_id, 1]
+                _f148[-1] = np.clip(_f148[-1], _fl + _fmar, _fh - _fmar)
             _ffj0_relief = float(_os.environ.get(
                 "W6B_LIFT_FFJ0_LEFT_DELTA", "0"))
             if _sd == "left" and _ffj0_relief != 0.0:
