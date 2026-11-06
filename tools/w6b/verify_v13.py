@@ -323,7 +323,7 @@ def main() -> int:
                   if {str(c.get("other", "")) for c in (a.get("contacts") or []) if c.get("fn", 0.0) > 0.0}
                   != {str(c.get("other", "")) for c in (b.get("contacts") or []) if c.get("fn", 0.0) > 0.0}]
             check("the executed state is consistent with the evidence "
-                  "within the contract (pos <1e-6 m, quat <1e-6 deg, "
+                  "within the contract (pos <1e-6 m, quat <1e-5 deg, "
                   "active-contact geom sets equal)",
                   mx < 1e-6 and mq < 1e-5 and not mc,
                   f"max |dpos| {mx:.3e} m, max |dq| {mq:.3e} deg, "
