@@ -2416,3 +2416,14 @@ g4 的左 ffj0 36 帧 × 31 µrad 越界 = 优化路径的到达瞬态把指力�
 
 g4 正式状态：归因 CLOSED（饱和主因 + 接触部分贡献）；物理门 FAIL
 不变（越界存在，额定禁改）。
+
+## r194：v7 side 单元正式闭合（不可恢复输入 + 防再发钉桩）
+
+- v7 side 单元 3/6 漂移的根因（r186 在案）：`runs/w6b/wrist_landmarks.npz`
+  为 gitignore 工件，v7 时代版本已被 10-30 提取版覆盖，**历史输入
+  不可恢复** → 该三项正式降级为「仅文本存档」，不再追验。
+- 防再发：`wrist_landmarks.npz` 与 `side_seed_pairs.json` 的
+  sha256 入 `v13_asset_manifest.json`（13 项），verify_v14 的
+  fail-closed 清单检查自动覆盖 —— 今后任何输入漂移 = FAIL。
+- 历史回归项（−0.05）的账目不变：v7 ceiling 6/6 + 合成 3/3 ✓，
+  v6 左臂不可复现已降级，v7 side 三项本轮正式闭合为不可恢复。
