@@ -5,7 +5,11 @@ fidelity optimization (the review-authorized iterative scheme).
 The v14 sections extend v13: the optimized recipe's lift is raised to
 9 mm (its 3.4-deg grasp tilt brings a box corner ~6.6 mm low, so the 6 mm
 lift left a 0.173-0.185 N corner-table contact; 9 mm clears it to 0.0 N
-with the fidelity unchanged) and the section asserts the table-free lift
+with the fidelity unchanged) and the r196 middle-finger clearance bias
+(0.8 rad curl on the left mfj1-3 over the last 40 approach rows), which
+retracts the tip that r178 pinned as the pre-displacement pusher and, as
+a side effect, removes the g4 limit event entirely (36 -> 0 frames: the
+finger is no longer wedged by the box at the lift) and the section asserts the table-free lift
 end explicitly.  Unchanged: the v12 sections (the delivered recipe's
 gates, the force
 account, the frozen envelope's corners, the trajectory closure).  The new
@@ -355,6 +359,7 @@ def main() -> int:
     opt = dict(RECIPE)
     opt.update({
         "W6B_LIFT_MM": "9",
+        "W6B_R178_MF_BIAS_LEFT": "0.8",
         "W6B_R185_LEARN": "2",
         "W6B_R185_DAMP": "0.15",
         "W6B_R185_CAP_MM": "120",
@@ -455,12 +460,20 @@ def main() -> int:
     # the box, so the fix is geometric, see the ledger) and the wrist
     # gate is the very metric under optimization (still FAIL at 10%,
     # improved by 24%)
+    # r196: with the clearance bias the g4 limit event is gone
+    # (0 frames) and gate4_joint_limits PASSES -- the failing set is the
+    # delivered recipe's own accepted reds plus the wrist gate.
     check("the optimized failing set is the disclosed one",
           set(k for k, v in repo["verdict_checks"].items() if not v)
-          == {"gate1_final_touch", "gate4_joint_limits",
+          == {"gate1_final_touch",
               "gate5_palm_deviation", "wrist_referenced_error"},
           str(sorted(k for k, v in repo["verdict_checks"].items()
                      if not v)))
+    check("the g4 limit event stays cleared (0 frames)",
+          len(repo["per_side"]["left"]["gate4_joint_limits"]
+              .get("finger_qpos_violation_frames") or []) == 0,
+          str(len(repo["per_side"]["left"]["gate4_joint_limits"]
+                  .get("finger_qpos_violation_frames") or [])) + " frames")
 
     return _fin()
 

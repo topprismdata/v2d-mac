@@ -8051,6 +8051,30 @@ def main() -> int:
             # frames left on the standard seed made the terminal frame
             # read the seed (measured r18)
             for s in VIDEOS:
+                # r196: the grasp-establishment pre-displacement fix.
+                # r178 pinned the 1.6 mm unlogged box push on the LEFT
+                # MIDDLE FINGER's tip/distal riding the box face during
+                # the final descent (t=263-264, sub-sampled contacts --
+                # before the override ramp even starts).  A curl bias on
+                # the left's mfj1-3 columns over the last
+                # W6B_R178_MF_CLEAR_FRAMES approach rows retracts the
+                # tip off the face before the descent crosses it.
+                # Env-gated, default 0 = the delivered path bit-identical.
+                _mf_bias = float(_os.environ.get(
+                    "W6B_R178_MF_BIAS_LEFT", "0"))
+                _mf_frames = int(_os.environ.get(
+                    "W6B_R178_MF_CLEAR_FRAMES", "40"))
+                if s == "left" and _mf_bias != 0.0:
+                    _st = cmds_global[s]["finger"]
+                    _k0 = max(0, n_ctrl - _mf_frames)
+                    for _k in range(_k0, n_ctrl):
+                        _w = (_k - _k0) / max(1, n_ctrl - _k0)
+                        for _c in (5, 6, 7):
+                            _aid = specs[s].finger_act_id[_c]
+                            _st[_k, _c] = float(np.clip(
+                                _st[_k, _c] + _mf_bias * _w,
+                                model.actuator_ctrlrange[_aid, 0],
+                                model.actuator_ctrlrange[_aid, 1]))
                 tgt16 = cmds_global[s].pop("finger_target_override", None)
                 if tgt16 is None:
                     continue
