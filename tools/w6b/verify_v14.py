@@ -264,7 +264,15 @@ def main() -> int:
 
     # 3. the frozen envelope's corner cells (P2)
     print("[4] the frozen envelope's corner cells (P2)")
-    corners = {"L-0.02_S0.2": 8.066, "L-0.005_S0.8": 7.805}
+    # r195: the envelope measured in FULL before freezing -- six new
+    # corners scanned (all exit 0, g6 double-green, rise 7.636-7.766 mm)
+    # and pinned at their measured anchors; the delivered recipe's
+    # perturbation envelope is now 8 cells (L in [-0.035,-0.005],
+    # S in [0.2, 1.0]).
+    corners = {"L-0.02_S0.2": 8.066, "L-0.005_S0.8": 7.805,
+               "L-0.03_S0.2": 7.644, "L-0.03_S0.8": 7.719,
+               "L-0.02_S0.8": 7.674, "L-0.005_S0.2": 7.766,
+               "L-0.035_S0.8": 7.743, "L-0.02_S1.0": 7.636}
     for cell, exp in corners.items():
         lt, sq = cell.split("_")
         env2 = dict(RECIPE)
