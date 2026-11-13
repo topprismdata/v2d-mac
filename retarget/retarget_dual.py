@@ -8604,6 +8604,37 @@ def main() -> int:
             "MuJoCo's own contact distance: tools/w6b/pad_gap_verify.py -- "
             "7 of 7 tilts; the disc formula it replaced was wrong in 7 of 7)")
         seat_pub[_side] = _rec
+    # r199 (applied AFTER the r63-reorient / r38-seat stages, which
+    # rebuild the terminal window and would wipe earlier edits): the
+    # residual pre-displacement is a graze, not a slam (r198: the right
+    # palm clips the box's top +x chamfer with 70 um penetration at
+    # frame 281 and the lateral normal shoves the box -3.55/-2.50 mm).
+    # Soft-seat: a cosine ease of the last W6B_R199_SOFTSEAT_RIGHT
+    # approach rows drives the terminal velocity to zero.
+    # Clear: a standoff-then-land +x offset (W6B_R199_CLEAR_MM_RIGHT,
+    # decaying to zero at the seating) keeps the plate off the chamfer
+    # on the way down.  Env-gated, defaults 0 = delivered path intact.
+    for _sd199 in VIDEOS:
+        _ssk = int(_os.environ.get("W6B_R199_SOFTSEAT_RIGHT", "0")) \
+            if _sd199 == "right" else 0
+        _clr_mm = float(_os.environ.get("W6B_R199_CLEAR_MM_RIGHT", "0")) \
+            if _sd199 == "right" else 0
+        if _ssk <= 0 or _clr_mm <= 0:
+            continue
+        _ws = cmds_global[_sd199]["wrist"]
+        _j0 = max(0, n_ctrl - _ssk)
+        if _ws.shape[0] < n_ctrl or n_ctrl - _j0 <= 1:
+            continue
+        _wa = _ws[_j0].copy()
+        _wt = _ws[n_ctrl - 1].copy()
+        _rw = 0.5 * (1.0 - np.cos(np.linspace(0.0, np.pi, n_ctrl - _j0)))
+        for _k in range(_j0, n_ctrl):
+            _ws[_k] = _wa + _rw[_k - _j0] * (_wt - _wa)
+            _fall = 1.0 - 0.5 * (1.0 - np.cos(
+                np.pi * (_k - _j0) / max(1, n_ctrl - _j0)))
+            _ws[_k, 0] += _clr_mm * 1e-3 * _fall
+        print(f"    [r199-softseat] {_sd199}: window {_j0}..{n_ctrl}, "
+              f"clear {_clr_mm} mm")
     _dump = _os.environ.get("W6B_DUMP_TERMINAL", "")
     if _dump:
         import json as _json

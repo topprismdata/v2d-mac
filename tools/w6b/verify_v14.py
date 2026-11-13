@@ -360,6 +360,8 @@ def main() -> int:
     opt.update({
         "W6B_LIFT_MM": "9",
         "W6B_R178_MF_BIAS_LEFT": "0.8",
+        "W6B_R199_SOFTSEAT_RIGHT": "48",
+        "W6B_R199_CLEAR_MM_RIGHT": "1.0",
         "W6B_R185_LEARN": "2",
         "W6B_R185_DAMP": "0.15",
         "W6B_R185_CAP_MM": "120",
@@ -469,6 +471,23 @@ def main() -> int:
               "gate5_palm_deviation", "wrist_referenced_error"},
           str(sorted(k for k, v in repo["verdict_checks"].items()
                      if not v)))
+    # r199: the residual pre-displacement was a right-palm chamfer
+    # graze (87.42 N lateral impulse at frame 281); the soft-seat +
+    # chamfer-clear profile kills it.  Pin: the approach displacement
+    # (frames 0..300, xy) under 0.5 mm and no palm contact above 1 N
+    # before the lift.
+    trace_p2 = REPO / "runs/w6b/box_trace.json"
+    _fr = json.loads(trace_p2.read_text())
+    _fr = _fr["frames"] if isinstance(_fr, dict) else _fr
+    _p0 = _fr[0]["pos"]
+    _pre = ((sum((_fr[300]["pos"][i] - _p0[i]) ** 2 for i in (0, 1)))
+            ** 0.5) * 1e3
+    _imp = max((float(c.get("fn", 0.0)) for f_ in _fr[:300]
+                for c in (f_.get("contacts") or [])
+                if "palm" in str(c.get("other", ""))), default=0.0)
+    check("the approach is contact-free (pre-disp, palm impact)",
+          _pre <= 0.5 and _imp <= 1.0,
+          f"pre-disp {_pre:.3f} mm, palm impact {_imp:.2f} N")
     check("the g4 limit event stays cleared (0 frames)",
           len(repo["per_side"]["left"]["gate4_joint_limits"]
               .get("finger_qpos_violation_frames") or []) == 0,
