@@ -8064,7 +8064,13 @@ def main() -> int:
                     "W6B_R178_MF_BIAS_LEFT", "0"))
                 _mf_frames = int(_os.environ.get(
                     "W6B_R178_MF_CLEAR_FRAMES", "40"))
-                if s == "left" and _mf_bias != 0.0:
+                # r198: the ring finger shows the same disease (the
+                # residual 3.49 mm push carries rf_distal at -0.22 mm
+                # next to mf_distal -0.52 mm at t=308-312), so the same
+                # clearance bias covers its curl columns too.
+                _rf_bias = float(_os.environ.get(
+                    "W6B_R178_RF_BIAS_LEFT", "0"))
+                if s == "left" and (_mf_bias != 0.0 or _rf_bias != 0.0):
                     _st = cmds_global[s]["finger"]
                     _k0 = max(0, n_ctrl - _mf_frames)
                     for _k in range(_k0, n_ctrl):
@@ -8073,6 +8079,12 @@ def main() -> int:
                             _aid = specs[s].finger_act_id[_c]
                             _st[_k, _c] = float(np.clip(
                                 _st[_k, _c] + _mf_bias * _w,
+                                model.actuator_ctrlrange[_aid, 0],
+                                model.actuator_ctrlrange[_aid, 1]))
+                        for _c in (9, 10, 11):
+                            _aid = specs[s].finger_act_id[_c]
+                            _st[_k, _c] = float(np.clip(
+                                _st[_k, _c] + _rf_bias * _w,
                                 model.actuator_ctrlrange[_aid, 0],
                                 model.actuator_ctrlrange[_aid, 1]))
                 tgt16 = cmds_global[s].pop("finger_target_override", None)
