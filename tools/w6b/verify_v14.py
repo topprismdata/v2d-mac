@@ -379,9 +379,18 @@ def main() -> int:
           and abs(base["left"] - 0.446) <= 2e-3,
           f"{base['right']:.3f} / {base['left']:.3f}")
     for rnd in (1, 2):
-        rc, _ = _pipeline(opt, timeout=900)
+        rc, out = _pipeline(opt, timeout=900)
         check(f"the optimization round {rnd} ran clean", rc == 0,
               "exit " + str(rc))
+        # r200 (review r199, the P3 execution-chain item): a knob that
+        # never reaches the final execution stream must not be counted.
+        # The r199 shaping is applied AFTER the r63-reorient/r38-seat
+        # stages (which silently wiped an earlier edit location), so the
+        # pipeline's post-seat print is the "actually applied" marker;
+        # the executed consequence is asserted separately below.
+        check(f"the r199 shaping reached the final stream (round {rnd})",
+              "r199-softseat] right" in out,
+              "marker " + str("r199-softseat] right" in out))
     repo = json.loads(report_p.read_text())
     fin = {s: repo["trajectory_error"]["wrist_referenced"]["per_side"][s]
            ["conf_weighted_median_err_span_frac"]
