@@ -83,6 +83,16 @@ def main() -> int:
             p = np.array(c["pos"])
             tot_f += f_w
             tot_t += np.cross(p - com[i], f_w)
+            # r212: the contact-frame TORQUE components (f6[3:6]) --
+            # condim 4 carries a torsional friction torque about the
+            # normal; ignoring it was exactly the pre-lift angular gap.
+            tq_c = f6[3:6]
+            if c.get("box_is_g1"):
+                tq_c = -tq_c
+            n_ax = ax[0]
+            t_ax1 = ax[1]
+            t_ax2 = ax[2]
+            tot_t += tq_c[0] * n_ax + tq_c[1] * t_ax1 + tq_c[2] * t_ax2
         Fsum[i] = tot_f
         Tsum[i] = tot_t
 

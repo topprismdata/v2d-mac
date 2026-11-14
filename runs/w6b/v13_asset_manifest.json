@@ -1,7 +1,7 @@
 {
   "grounding/assets/allegro_floating_ur5e_side_r44_dualplate.xml": "ad6185201ecc6d87c6313dbda33c82ce83699e1932d1483b6ead0f9d4bbe13a7",
   "grounding/assets/allegro_floating_ur5e_side_r45_ablation.xml": "d9afd2b619acf248d307831159b9b403d13f34b439b7e48d7e822248f1eccb6c",
-  "retarget/retarget_dual.py": "0be0bff9bd114e90bc81cfaeef9a59989ad16d82ae6e34cfc5297c3bc6d1223b",
+  "retarget/retarget_dual.py": "1eb1dfcdf33b6b88f62ea17dd45f53b7de64594262c73a7753ba85df57ebc539",
   "runs/w6/gate3_qpos.json": "c58e49fc03f85c6d8d785b9712276456186f9e3069d18ffed8f9ce4125177ce1",
   "runs/w6b/box_trace_r45_p2_base.json": "21255b332835767aba21a1d3c6c136c9e240d4cc1435cdc9fe113709de569cfd",
   "runs/w6b/plate_refs/plate_1.json": "93ee6080bb79b2c3a5f39ad507a94e4ff2c456e66442cab1f3ec944b9149565c",
@@ -12,5 +12,5 @@
   "tools/w6b/plate_terminal.py": "d1a03f6911200611de721382202dfb5f2ff7bb8a7dd1d051f8961aa7f4609130",
   "tools/w6b/verify_v12.py": "408fd091d1814881bc87866f74f8d64ce5b587c8042b2b6994fadd7744fdb91f",
   "tools/w6b/verify_v13.py": "8672f272a8ac5c7c53c80bc864d1adb21430a75ce68765fd45a45af5df2e6a4f",
-  "tools/w6b/verify_v14.py": "f1f6b172b3916543dbedcd5b6984bb3f3ffb3ccb8a8eb24e8cb3060f7ea4f609"
+  "tools/w6b/verify_v14.py": "6b6cf43683d587583b6d663b7c8eaf70e551494c661b45f3868af9ddba4473c7"
 }

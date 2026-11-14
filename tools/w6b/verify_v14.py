@@ -669,7 +669,49 @@ def main() -> int:
               f"max |f_rec| vs |clamp(kp(cmd-qpos))| err {worst:.5f} "
               f"N.m (tol 5% of cap = {0.05 * scale:.4f})")
 
+    # r212 (review r211): the FULL 6D dynamics closure, audited by the
+    # substep impulse sidecar (W6B_R211_AUDIT, default off -- the 20 Hz
+    # trace, the anchors and the delivered path are untouched).  The
+    # account includes the condim-4 torsional contact torque (f6[3]
+    # about the normal, negated for the box-as-geom1 like the force).
+    # Frozen: the sidecar-integrated closures per phase.
+    print("[9] the full 6D dynamics closure (audit sidecar)")
+    env9 = dict(opt)
+    env9["W6B_R211_AUDIT"] = "1"
+    rc9, _ = _pipeline(env9, timeout=900)
+    side9 = REPO / "runs/w6b/audit_impulse.json"
+    if not side9.exists():
+        check("the audit sidecar was written", False, str(side9))
+        return _fin()
+    rcD, outD = run_tool_full_dynamics()
+    lin = {}
+    ang = {}
+    for ln in outD.splitlines():
+        if "J_sub - m*dv" in ln:
+            parts = ln.split()
+            ph = parts[0]
+            try:
+                lin[ph] = float(parts[-7])
+                ang[ph] = float(parts[-2])
+            except (IndexError, ValueError):
+                pass
+    check("the audit sidecar ran and parsed", rc9 == 0 and rcD == 0
+          and len(lin) >= 4, f"exit {rc9}/{rcD}, phases {sorted(lin)}")
+    check("the substep-integrated linear closure is exact",
+          all(v <= 0.01 for v in lin.values()),
+          "max " + f"{max(lin.values()):.4f} N.s" if lin else "")
+    check("the substep-integrated angular closure is exact",
+          all(v <= 0.001 for v in ang.values()),
+          "max " + f"{max(ang.values()):.4f} N.m.s" if ang else "")
+
     return _fin()
+
+
+def run_tool_full_dynamics() -> tuple[int, str]:
+    p = subprocess.run(
+        [sys.executable, str(REPO / "tools/w6b/full_dynamics_account.py"),
+         "--audit"], cwd=REPO, capture_output=True, text=True, timeout=300)
+    return p.returncode, p.stdout + p.stderr
 
 
 def _pipeline(env_extra: dict, timeout: int) -> tuple[int, str]:

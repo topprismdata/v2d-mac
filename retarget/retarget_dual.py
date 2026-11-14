@@ -3942,11 +3942,13 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
                     mujoco.mj_contactForce(model, data, _stc, _bf6)
                     _ax = np.asarray(_c.frame).reshape(3, 3)
                     _fw = _ax.T @ _bf6[0:3]
+                    _tw = _ax.T @ _bf6[3:6]
                     if _b1 == _aud_bid:
                         _fw = -_fw
+                        _tw = -_tw
                     _p = np.asarray(_c.pos)
                     _aud_F += _fw
-                    _aud_T += np.cross(_p - _aud_com, _fw)
+                    _aud_T += np.cross(_p - _aud_com, _fw) + _tw
                 _aud_n += 1
         # r126: per-frame box trace + box contacts (env-gated, off by
         # default).  The plate branch still shoves the box ~10 mm and the
