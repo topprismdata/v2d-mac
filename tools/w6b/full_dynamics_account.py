@@ -48,6 +48,7 @@ def quat_w(q, dq):
 
 
 def main() -> int:
+    audit_mode = "--audit" in sys.argv
     import mujoco
     m = mujoco.MjModel.from_xml_path(str(SCENE))
     bid = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, "object")
@@ -108,15 +109,14 @@ def main() -> int:
 
     phases = [("approach+grasp", 0, 260), ("pre-lift", 260, 331),
               ("lift_accel", 331, 345), ("lift_hold", 345, n - 1)]
-    g = np.array([0.0, 0.0, -9.81])
+    gv = np.array([0.0, 0.0, -9.81])  # the gravity ACCELERATION
+    W = mass * gv                     # the gravity FORCE on the box
     print(f"frames {n}  dt {DT} s  (the impulse-momentum closure)")
     worst_lin = 0.0
     worst_ang = 0.0
     for name, i0, i1 in phases:
-        J = Fsum[i0:i1].sum(axis=0) * DT + g.sum(axis=0) * 0  # placeholder
-        J = Fsum[i0:i1].sum(axis=0) * DT
         nfr = i1 - i0
-        J = J + g * DT * nfr
+        J = Fsum[i0:i1].sum(axis=0) * DT + W * DT * nfr
         dp = mass * (acc * 0)  # placeholder
         v0 = (pos[min(i0 + 1, n - 1)] - pos[max(i0 - 1, 0)]) / (2 * DT)
         v1 = (pos[min(i1, n - 1)] - pos[max(i1 - 2, 0)]) / (2 * DT)
@@ -134,6 +134,32 @@ def main() -> int:
           f"|Jt - dL| {worst_ang:8.4f} N.m.s")
     print(f"weight-momentum scale: m*g*T_lift "
           f"{mass * 9.81 * (345 - 331) * DT:.3f} N.s (the linear scale)")
+
+    if audit_mode:
+        # r211: the SUBSTEP-INTEGRATED closure -- the impulses come from
+        # the audit sidecar (per-physics-substep integration), so the
+        # 20 Hz sampling limit does not apply to J any more; only the
+        # boundary velocity/momentum estimates remain 20 Hz.
+        side = REPO / "runs/w6b/audit_impulse.json"
+        aud = json.loads(side.read_text())
+        af = np.array([f["F"] for f in aud["frames"]])
+        at = np.array([f["T"] for f in aud["frames"]])
+        ats = np.array([f["t"] for f in aud["frames"]])
+        dtc = float(aud.get("dt_ctrl_s", DT))
+        print("-- audit sidecar (substep-integrated impulses) --")
+        for name, i0, i1 in phases:
+            i1s = min(i1, len(af))
+            J = af[i0:i1s].sum(axis=0) * dtc + W * dtc * (i1s - i0)
+            v0 = (pos[min(i0 + 1, n - 1)] - pos[max(i0 - 1, 0)]) / (2 * DT)
+            i1b = min(i1, n - 1)
+            v1 = (pos[i1b] - pos[max(i1b - 2, 0)]) / (2 * DT)
+            dp = mass * (v1 - v0)
+            lin = np.linalg.norm(J - dp)
+            Ja = at[i0:i1s].sum(axis=0) * dtc
+            dL = Lw(min(i1, n - 1)) - Lw(max(i0 - 1, 0))
+            ang = np.linalg.norm(Ja - dL)
+            print(f"{name:16s} |J_sub - m*dv| {lin:8.4f} N.s  "
+                  f"|Jt_sub - dL| {ang:8.4f} N.m.s")
     return 0
 
 

@@ -3614,6 +3614,7 @@ def equalize_pad_curls(model, data, spec: SideSpec, wrist_cmd: np.ndarray,
 
 
 BOX_TRACE: list = []          # r126: filled when W6B_R126_BOX_TRACE=1
+AUDIT_IMPULSE: list = []   # r211: the substep impulse audit sidecar
 _BT_SLIP: dict = {}           # r177: per-side cumulative slip (mm)
 _SUBSTEP_SEEN: dict = {}      # r178: substep transient-pusher dedupe
 _R178_PREV_VX = 0.0           # r178: previous substep's box qvel x
@@ -3627,6 +3628,7 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
     BOX_TRACE.clear()
     _BT_SLIP.clear()
     _reset_home(model, data, cmds=cmds, specs=specs)
+    AUDIT_IMPULSE.clear()   # r211: one sidecar per dual_replay call
 
     # r28 option 3 (Main item 3): per-joint gravity compensation — the
     # arm dofs get qfrc_applied = -qfrc_bias (the gravity+coriolis
@@ -3866,6 +3868,20 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
             # drifted from the commanded 18.7 deg to 35.8 deg.
             # r101: the sign is + (see the r28 note above)
             data.qfrc_applied[finger_dofs] = data.qfrc_bias[finger_dofs]
+        # r211 (review r210): the AUDIT-ONLY substep impulse recorder.
+        # The 20 Hz trace records the last-substep instantaneous force,
+        # so its impulse integral misses the intra-frame contact
+        # dynamics (r209 quantified it).  This sidecar integrates the
+        # contact resultant per PHYSICS substep; the 20 Hz trace, the
+        # delivery anchors and everything the gates read are untouched
+        # (env-gated, default off).
+        _r211 = _os.environ.get("W6B_R211_AUDIT", "0") == "1"
+        if _r211:
+            _aud_bid = mujoco.mj_name2id(
+                model, mujoco.mjtObj.mjOBJ_BODY, "object")
+            _aud_F = np.zeros(3)
+            _aud_T = np.zeros(3)
+            _aud_n = 0
         for _ in range(frame_skip):
             mujoco.mj_step(model, data)
             # r178: SUBSTEP contact sentinel (env-gated).  The 20 Hz trace
@@ -3911,6 +3927,27 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
                     _SUBSTEP_SEEN[_nm2] = _SUBSTEP_SEEN.get(_nm2, 0) + 1
                     print(f"    [r178-substep] t={t} sub={_} "
                           f"geom={_nm2} dist={_c.dist:.6f}")
+
+            if _r211:
+                _aud_com = np.asarray(data.xipos[_aud_bid])
+                for _stc in range(data.ncon):
+                    _c = data.contact[_stc]
+                    _g1 = int(_c.geom1)
+                    _g2 = int(_c.geom2)
+                    _b1 = int(model.geom_bodyid[_g1])
+                    _b2 = int(model.geom_bodyid[_g2])
+                    if _b1 != _aud_bid and _b2 != _aud_bid:
+                        continue
+                    _bf6 = np.zeros(6)
+                    mujoco.mj_contactForce(model, data, _stc, _bf6)
+                    _ax = np.asarray(_c.frame).reshape(3, 3)
+                    _fw = _ax.T @ _bf6[0:3]
+                    if _b1 == _aud_bid:
+                        _fw = -_fw
+                    _p = np.asarray(_c.pos)
+                    _aud_F += _fw
+                    _aud_T += np.cross(_p - _aud_com, _fw)
+                _aud_n += 1
         # r126: per-frame box trace + box contacts (env-gated, off by
         # default).  The plate branch still shoves the box ~10 mm and the
         # source (which frame, which geom) needs per-frame forensics.
@@ -4027,6 +4064,15 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
             BOX_TRACE.append({"t": t, "pos": _bt_pos, "quat": _bt_quat,
                               "contacts": _bt_con,
                               "slip_mm": dict(_BT_SLIP)})
+            if _r211:
+                _ns = max(1, _aud_n)
+                AUDIT_IMPULSE.append({"t": t,
+                                      "F": (_aud_F / _ns).tolist(),
+                                      "T": (_aud_T / _ns).tolist(),
+                                      "n": _aud_n})
+                _aud_F = np.zeros(3)
+                _aud_T = np.zeros(3)
+                _aud_n = 0
 
         if _os.environ.get("W6B_DBG_FORCE", "0") == "1" and t in (n_frames - r36_hold, n_frames - 1):
             print(f"    [dbg-force] t={t} r force={np.round(data.actuator_force[arm_act_r],1)} "
@@ -9453,6 +9499,12 @@ def main() -> int:
         "obj": [round(float(v), 9) for v in rep["obj_world"][-1]],
     }
     REPLAY_PATH.write_text(json.dumps(replay, indent=1))
+    if AUDIT_IMPULSE:
+        (OUT_DIR / "audit_impulse.json").write_text(
+            json.dumps({"dt_ctrl_s": rep.get("dt_ctrl_s", 0.05),
+                        "frames": AUDIT_IMPULSE}))
+        print(f"wrote {OUT_DIR / 'audit_impulse.json'} "
+              f"({len(AUDIT_IMPULSE)} frames)")
     frame_alignment = {
         "len_replay": len(replay["frames"]),
         "len_expected": T_video,
