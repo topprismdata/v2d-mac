@@ -3993,6 +3993,10 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
                     "f6": [float(v) for v in _bf],
                     "frame": [float(v) for v in np.asarray(_b.frame)],
                     "box_is_g1": int(_b.geom1) == _bt_boxg,
+                    # r209: the contact POINT (world) -- the full 6D
+                    # Newton-Euler account needs the torque arm
+                    # (contact point vs the box COM).
+                    "pos": [float(v) for v in np.asarray(_b.pos)],
                 }
                 if _ent["other"] and ("palm_collision" in _ent["other"]
                                       or "palm_left_collision" in _ent["other"]):
