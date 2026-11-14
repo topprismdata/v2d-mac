@@ -618,6 +618,57 @@ def main() -> int:
               len(_vals) == 2 and min(_vals) > 0.0,
               f"margins {[round(v, 4) for v in _vals]} rad")
 
+    # r207 (review r206): the recorder-integrity cross-check -- the
+    # recorded finger actuator force must equal the clamp of the gain
+    # law |f| = clamp(kp * (cmd - qpos), forcerange) computed from the
+    # INDEPENDENTLY recorded ctrl and qpos histories.  A corrupted
+    # force recorder (e.g. hiding saturation) breaks the equality on
+    # the saturated frames.
+    print("[8] the recorder integrity (gain-law cross-check)")
+    rep8 = json.loads(report_p.read_text())
+    for side in ("right", "left"):
+        fh = rep8["per_side"][side].get("finger_force_history")
+        ch = rep8["per_side"][side].get("finger_ctrl_history")
+        qh = rep8["per_side"][side].get("finger_qpos_history")
+        check(f"the {side} force recorder matches the gain law",
+              bool(fh) and bool(ch) and bool(qh),
+              "histories present" if fh else "missing")
+        if not (fh and ch and qh):
+            continue
+        import mujoco
+        m8 = mujoco.MjModel.from_xml_path(str(
+            REPO / "grounding/assets/"
+            "allegro_floating_ur5e_side_r45_ablation.xml"))
+        _sp8_ids = [mujoco.mj_name2id(m8, mujoco.mjtObj.mjOBJ_ACTUATOR, n)
+                    for n in ("ffa0_left", "ffa1_left", "ffa2_left",
+                              "ffa3_left", "mfa0_left", "mfa1_left",
+                              "mfa2_left", "mfa3_left", "rfa0_left",
+                              "rfa1_left", "rfa2_left", "rfa3_left",
+                              "tha0_left", "tha1_left", "tha2_left",
+                              "tha3_left")] if side == "left" else [
+            mujoco.mj_name2id(m8, mujoco.mjtObj.mjOBJ_ACTUATOR, n)
+            for n in ("ffa0", "ffa1", "ffa2", "ffa3", "mfa0", "mfa1",
+                      "mfa2", "mfa3", "rfa0", "rfa1", "rfa2", "rfa3",
+                      "tha0", "tha1", "tha2", "tha3")]
+        gains = [float(m8.actuator_gainprm[i][0]) for i in _sp8_ids]
+        caps = [max(abs(float(m8.actuator_forcerange[i][0])),
+                    abs(float(m8.actuator_forcerange[i][1])))
+                for i in _sp8_ids]
+        n8 = min(len(fh), len(ch), len(qh))
+        worst = 0.0
+        for k in range(n8):
+            for j in range(16):
+                nominal = gains[j] * (ch[k][j] - qh[k][j])
+                clamped = max(-caps[j], min(caps[j], nominal))
+                err = abs(abs(fh[k][j]) - abs(clamped))
+                if err > worst:
+                    worst = err
+        scale = max(caps)
+        check(f"the {side} force recorder is gain-law consistent",
+              worst <= 0.05 * scale,
+              f"max |f_rec| vs |clamp(kp(cmd-qpos))| err {worst:.5f} "
+              f"N.m (tol 5% of cap = {0.05 * scale:.4f})")
+
     return _fin()
 
 

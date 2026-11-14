@@ -44,3 +44,9 @@ d_min ≥0.05 mm 且 F≤1e-3 N；失败集 = {g1,g5,wrist}；g4 = 0 帧；
   up_z —— 报 UNVERIFIABLE（verify_v6/v7 分轨）
 - 连续参数域鲁棒性：只证 6 角 + 标称，不证插值状态
 - mfa0_left 设计性饱和：已披露的冻结工作点，非裕度声明
+
+## 记录器完整性（r207，[8] 段）
+手指三史（force/ctrl/qpos）持久化进 report；增益定律交叉断言
+|f_rec| vs |clamp(kp(cmd−qpos))| ≤ 5% cap。故障注入实测：
+漏写接触 → Newton-Euler 拦截；fn 缩放 → 账目物理律拒绝；
+饱和隐藏 → 增益定律拦截（err 0.018 vs 0.009）。

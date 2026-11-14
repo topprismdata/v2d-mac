@@ -32,10 +32,13 @@ REPORT = REPO / "runs/w6b/report.json"
 PINNED = REPO / "tools/w6b/plate_terminal.py"
 
 
-def run_verifier(timeout: int = 420):
+def run_verifier(timeout: int = 420, extra_env: dict | None = None):
     t0 = time.time()
+    env = dict(os.environ)
+    if extra_env:
+        env.update(extra_env)
     r = subprocess.run([str(PY), str(V14)], cwd=REPO, timeout=timeout,
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, env=env)
     return r.returncode, r.stdout + r.stderr, time.time() - t0
 
 
@@ -101,6 +104,16 @@ def restore_e():
     shutil.copy("/tmp/fd_trace_backup2.json", TRACE)
 
 
+# r207: the recorder-level injections (the fault lives INSIDE the
+# pipeline's recorder, activated through the environment the verifier
+# propagates to its pipeline subprocesses).  The expected interception
+# is by the PHYSICS cross-checks, not by artifact comparison:
+#   F drop_contacts -- the Newton-Euler per-frame residual loses the
+#     plate samples and cannot close            -> FAIL [3]
+#   G scale_forces  -- fn*0.7 breaks the plate-share == weight law
+#                                             -> FAIL [3]
+#   H hide_saturation -- the recorded 0.9*cap contradicts the gain-law
+#     clamp(kp*(cmd-qpos)) = cap on the saturated frames -> FAIL [8]
 CASES = [
     ("A pin tamper -> FAIL [1]", case_a, restore_a, "FAIL", True),
     # B/D are INERT BY REGENERATION: the verifier reruns the pipeline
@@ -121,6 +134,29 @@ CASES = [
 
 def main() -> int:
     results = []
+    env_cases = [
+        ("F drop_contacts -> FAIL [3]", {"W6B_FAULT_RECORDER":
+                                         "drop_contacts"},
+         "FAIL", "plates-only"),
+        ("G scale_forces -> FAIL [3]", {"W6B_FAULT_RECORDER":
+                                        "scale_forces"},
+         "FAIL", None),
+        ("H hide_saturation -> FAIL [8]", {"W6B_FAULT_RECORDER":
+                                           "hide_saturation"},
+         "FAIL", "gain-law"),
+    ]
+    for name, fenv, expect, want in env_cases:
+        t0 = time.time()
+        rc, out, dt = run_verifier(extra_env=fenv)
+        ok = (rc != 0) if expect == "FAIL" else (rc == 0)
+        if want:
+            ok = ok and (want in out)
+        results.append((name, ok, rc, "", dt))
+        bad = [ln.strip() for ln in out.splitlines()
+               if ln.strip().startswith("FAIL")]
+        print(f"[{'OK' if ok else 'MISS'}] {name}: rc={rc} ({dt:.0f}s) "
+              f"{bad[0][:80] if bad else '(clean pass -- NOT intercepted)'}",
+              flush=True)
     for name, inject, restore, expect, _ in CASES:
         t0 = time.time()
         inject()

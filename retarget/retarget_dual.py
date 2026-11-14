@@ -3973,6 +3973,19 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
                 _oname = mujoco.mj_id2name(model,
                                            mujoco.mjtObj.mjOBJ_GEOM,
                                            _o)
+                # r207 (review r206): the RECORDER fault harness -- a
+                # corrupted-recorder drill needs the recorder itself to
+                # lie; the verifier's physics cross-checks (the
+                # Newton-Euler per-frame residual, the friction cone,
+                # the plate share) must then catch it.  Env-gated,
+                # default off = the delivered path bit-identical.
+                _frt_fault = _os.environ.get("W6B_FAULT_RECORDER", "")
+                _bt_drop = False
+                if _frt_fault == "drop_contacts" and (
+                        "palm_collision" in (_oname or "")):
+                    _bt_drop = True
+                if _frt_fault == "scale_forces":
+                    _bf = _bf * 0.7
                 _ent = {
                     "other": _oname,
                     "dist": float(_b.dist),
@@ -4005,7 +4018,8 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
                     _ent["slip_v_mm_s"] = _sv
                     _ent["ft_ratio"] = (_ft / (_mu * abs(_bf[0]))
                                         if _bf[0] > 1e-9 else None)
-                _bt_con.append(_ent)
+                if not _bt_drop:
+                    _bt_con.append(_ent)
             BOX_TRACE.append({"t": t, "pos": _bt_pos, "quat": _bt_quat,
                               "contacts": _bt_con,
                               "slip_mm": dict(_BT_SLIP)})
@@ -4111,7 +4125,14 @@ def dual_replay(model, data, specs, cmds, frame_skip) -> dict:
                 model, data, force_lo, force_hi)))
             h["qpos"].append(data.qpos.copy())
             h["qvel"].append(data.qvel.copy())
-            h["force"].append(data.actuator_force.copy())
+            _af_r = data.actuator_force.copy()
+            if _os_r28.environ.get("W6B_FAULT_RECORDER", "") \
+                    == "hide_saturation":
+                _cap_r = np.maximum(
+                    np.abs(model.actuator_forcerange[:, 0]),
+                    np.abs(model.actuator_forcerange[:, 1]))
+                _af_r = np.clip(_af_r, -0.9 * _cap_r, 0.9 * _cap_r)
+            h["force"].append(_af_r)
             h["qfrc_con"].append(np.asarray(data.qfrc_constraint).copy())
             h["qfrc_other"].append(rs._qfrc_other(data))
             h["tips"].append(np.stack([data.xpos[b].copy() for b in spec._tip_body_ids]))
@@ -5154,6 +5175,14 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
                 cons["hand_world_pose_deviation"]["palm_frame"]["max_m"]
                 <= _cap95 and float(exec_dev.max()) <= _cap95)
         report["per_side"][side] = {
+            # r207: the finger triple-history for the verifier's
+            # gain-law cross-check (the force recorder vs the
+            # independently recorded ctrl/qpos physics).
+            "finger_force_history": np.asarray(
+                h["force"])[:, spec.finger_act_id].tolist(),
+            "finger_ctrl_history": np.asarray(
+                h["ctrl"])[:, spec.finger_act_id].tolist(),
+            "finger_qpos_history": h["qpos"][:, spec.finger_qadr].tolist(),
             "gate1_final_touch": gates[side],
             "gate2_contact": {
                 "endface_contact_frames": len(endface_frames),
