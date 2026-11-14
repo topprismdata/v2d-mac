@@ -569,7 +569,8 @@ def main() -> int:
         env4 = dict(opt)
         env4["W6B_R155_TRIM_MM_LEFT"] = lt[1:]
         env4["W6B_R109_SQUEEZE_MM"] = sq[1:]
-        rc4, _ = _pipeline(env4, timeout=900)
+        env4["W6B_DBG_G4"] = "1"
+        rc4, out4 = _pipeline(env4, timeout=900)
         rcA, outA = run_tool("lift_force_account.py", {}, timeout=300)
         _hold = None
         for line in outA.splitlines():
@@ -585,6 +586,37 @@ def main() -> int:
               rc4 == 0 and rcA == 0 and _hold is not None
               and abs(_hold) <= 0.02,
               f"exit {rc4}/{rcA}, lift_hold SUM-mg {_hold} N")
+        # r203 (review r202): the contact-stability and control-margin
+        # metrics.  slip_mm in the trace IS the accumulated true
+        # relative slip (the tangential contact-point velocity
+        # integrated per side); ft_ratio = |f_t| / (mu * f_n) per
+        # contact -- a ratio above 1 means the friction cone is
+        # violated (true sliding loss).  The control margin line
+        # carries the per-actuator peak |force|/forcerange, the
+        # saturated frame counts, and the smallest joint-limit margin;
+        # the design's proximal 0.015 N.m saturation is known and
+        # disclosed (r193) -- what must NOT appear is a negative joint
+        # margin (a limit violation).
+        _frt = json.loads((REPO / "runs/w6b/box_trace.json").read_text())
+        _frt = _frt["frames"] if isinstance(_frt, dict) else _frt
+        _rt = [float(c["ft_ratio"]) for f_ in _frt
+               for c in (f_.get("contacts") or [])
+               if c.get("ft_ratio") is not None]
+        check(f"the worst corner {_wc} stays in the friction cone",
+              bool(_rt) and max(_rt) <= 1.0,
+              f"{len(_rt)} contact samples, ft_ratio max "
+              f"{max(_rt) if _rt else float('nan'):.3f}")
+        _marg = [ln for ln in out4.splitlines()
+                 if "min joint margin" in ln]
+        _vals = []
+        for ln in _marg:
+            try:
+                _vals.append(float(ln.rstrip().rsplit(" ", 2)[-2]))
+            except (IndexError, ValueError):
+                pass
+        check(f"the worst corner {_wc} keeps positive joint margins",
+              len(_vals) == 2 and min(_vals) > 0.0,
+              f"margins {[round(v, 4) for v in _vals]} rad")
 
     return _fin()
 

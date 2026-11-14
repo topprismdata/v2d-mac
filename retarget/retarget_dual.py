@@ -4997,6 +4997,25 @@ def build_report(model, gates, streams_rec, chains, warm, rep, specs, cal,
                 _sat = int(np.sum(np.abs(np.abs(_af[_bad]) - _fr_cap) < 1e-4))
                 print(f"      col{_jj} saturation: {_sat}/{len(_bad)} violation "
                       f"frames within 1e-4 N.m of the forcerange cap")
+            # r203 (review r202, the control-margin ask): per finger
+            # actuator, the peak |force|/forcerange over the lift+hold
+            # window, the saturated frame count, and the smallest joint
+            # limit margin -- the corners must not ride NEW saturation.
+            _n_lift = min(len(_fc), 91)
+            _afc = np.asarray(h["force"])[:, spec.finger_act_id]
+            _lo = np.array([model.actuator_forcerange[i, 0]
+                            for i in spec.finger_act_id])
+            _hi = np.array([model.actuator_forcerange[i, 1]
+                            for i in spec.finger_act_id])
+            _cap = np.maximum(np.abs(_lo), np.abs(_hi))
+            _ratio = np.abs(_afc[-_n_lift:]) / np.maximum(_cap, 1e-9)
+            _pk = _ratio.max(axis=0)
+            _satc = (np.abs(_afc[-_n_lift:]) >= 0.999 * _cap).sum(axis=0)
+            _fq_l = fq[-_n_lift:]
+            _marg = float(min((_fq_l - jlo).min(), (jhi - _fq_l).min()))
+            print(f"      [ctrl-margin] {side}: peak|f|/forcerange "
+                  f"{np.round(_pk, 3).tolist()} | saturated frames "
+                  f"{_satc.tolist()} | min joint margin {_marg:.4f} rad")
             for _fr in _bad[:6]:
                 _row = fq[_fr]
                 _d = np.where((_row < jlo - 1e-9) | (_row > jhi + 1e-9))[0]
