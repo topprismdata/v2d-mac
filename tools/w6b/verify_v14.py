@@ -510,6 +510,12 @@ def main() -> int:
     # exit 0, g4 stays 0, the approach stays contact-free (pre <= 0.5
     # mm, palm impact <= 1 N), the lift ends table-free.
     print("[6] the optimized recipe's perturbation sweep (P2)")
+    states = {}
+
+    def np_norm(a, b):
+        import math
+        return math.sqrt(sum((x - y) ** 2
+                             for x, y in zip(a, b)))
     opt_corners = {"L-0.02_S0.2", "L-0.005_S0.8", "L-0.03_S0.2",
                    "L-0.035_S0.8", "L-0.02_S1.0", "L-0.005_S0.2"}
     for cell in sorted(opt_corners):
@@ -533,6 +539,52 @@ def main() -> int:
               rc3 == 0 and g4l3 == 0 and pre3 <= 0.5 and tbl3 < 1e-2,
               f"exit {rc3}, g4 {g4l3}, pre {pre3:.3f} mm, "
               f"table {tbl3:.3f} N")
+        _rfp = REPO / "runs/w6b/replay_frames.json"
+        if _rfp.exists():
+            _rf = json.loads(_rfp.read_text())
+            _ff = _rf["frames"] if isinstance(_rf, dict) else _rf
+            if _ff:
+                states[cell] = [float(v) for v in
+                                _ff[min(300, len(_ff) - 1)]["qpos"]]
+
+    # r202 (review r201, the P2 closure asks):
+    # (a) the perturbations must actually reach the executed stream --
+    #     the six corners' executed states at frame 300 are asserted
+    #     pairwise DISTINCT (the L knob's effect is small -- measured
+    #     ~3e-5 rad -- but far above the 1e-6 distinctness floor), so
+    #     no two corners silently test the same trajectory;
+    # (b) the TWO WORST corners (0.096 mm clearance: L-0.03_S0.2 and
+    #     L-0.005_S0.2) get a full per-phase force account: the lift
+    #     hold must close to the weight within 0.02 N, so the thin-
+    #     corner success is not riding an unclosed force account.
+    def _min_pair():
+        vals = [np_norm(states[a], states[b])
+                for a in states for b in states if a < b]
+        return min(vals) if vals else float("nan")
+    check("the six corners execute DISTINCT states (pairwise)",
+          len(states) == 6 and _min_pair() > 1e-6,
+          f"{len(states)} states, min pairwise {_min_pair():.2e}")
+    for _wc in ("L-0.03_S0.2", "L-0.005_S0.2"):
+        lt, sq = _wc.split("_")
+        env4 = dict(opt)
+        env4["W6B_R155_TRIM_MM_LEFT"] = lt[1:]
+        env4["W6B_R109_SQUEEZE_MM"] = sq[1:]
+        rc4, _ = _pipeline(env4, timeout=900)
+        rcA, outA = run_tool("lift_force_account.py", {}, timeout=300)
+        _hold = None
+        for line in outA.splitlines():
+            parts = line.split()
+            if parts and parts[0] == "lift_hold" and "=" in line:
+                for tok in parts[1:]:
+                    if tok.startswith("SUM-mg="):
+                        try:
+                            _hold = float(tok.split("=", 1)[1])
+                        except ValueError:
+                            pass
+        check(f"the worst corner {_wc} closes its lift account",
+              rc4 == 0 and rcA == 0 and _hold is not None
+              and abs(_hold) <= 0.02,
+              f"exit {rc4}/{rcA}, lift_hold SUM-mg {_hold} N")
 
     return _fin()
 
