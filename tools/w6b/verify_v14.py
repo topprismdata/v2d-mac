@@ -503,6 +503,37 @@ def main() -> int:
           str(len(repo["per_side"]["left"]["gate4_joint_limits"]
                   .get("finger_qpos_violation_frames") or [])) + " frames")
 
+    # r201: the OPTIMIZED recipe's perturbation sweep (the review's P2
+    # risk item: the r199 corner clearance is 0.137 mm at nominal, so a
+    # clean nominal is NOT enough -- the whole frozen envelope must hold
+    # with the bias + soft-seat active).  Six corners, all asserted:
+    # exit 0, g4 stays 0, the approach stays contact-free (pre <= 0.5
+    # mm, palm impact <= 1 N), the lift ends table-free.
+    print("[6] the optimized recipe's perturbation sweep (P2)")
+    opt_corners = {"L-0.02_S0.2", "L-0.005_S0.8", "L-0.03_S0.2",
+                   "L-0.035_S0.8", "L-0.02_S1.0", "L-0.005_S0.2"}
+    for cell in sorted(opt_corners):
+        lt, sq = cell.split("_")
+        env3 = dict(opt)
+        env3["W6B_R155_TRIM_MM_LEFT"] = lt[1:]
+        env3["W6B_R109_SQUEEZE_MM"] = sq[1:]
+        rc3, _ = _pipeline(env3, timeout=900)
+        rep3 = json.loads(report_p.read_text())
+        g4l3 = len(rep3["per_side"]["left"]["gate4_joint_limits"]
+                   .get("finger_qpos_violation_frames") or [])
+        tr3 = json.loads(trace_p.read_text())
+        fr3 = tr3["frames"] if isinstance(tr3, dict) else tr3
+        p03 = fr3[0]["pos"]
+        pre3 = ((sum((fr3[300]["pos"][i] - p03[i]) ** 2
+                     for i in (0, 1))) ** 0.5) * 1e3
+        tbl3 = sum(float(c.get("fn", 0.0))
+                   for c in (fr3[-1].get("contacts") or [])
+                   if "table" in str(c.get("other", "")))
+        check(f"the optimized corner {cell} holds (g4, pre, table)",
+              rc3 == 0 and g4l3 == 0 and pre3 <= 0.5 and tbl3 < 1e-2,
+              f"exit {rc3}, g4 {g4l3}, pre {pre3:.3f} mm, "
+              f"table {tbl3:.3f} N")
+
     return _fin()
 
 
